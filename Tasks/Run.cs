@@ -191,6 +191,15 @@ namespace Tasks
 
             return mobility;
         }
+        public static int CountModificationsThatShiftMobility(IEnumerable<Modification> modifications)
+        {
+            List<string> shiftingModifications = new List<string> { "Acetylation", "Ammonia loss", "Carbamyl", "Deamidation", "Formylation",
+                "N2-acetylarginine", "N6-acetyllysine", "N-acetylalanine", "N-acetylaspartate", "N-acetylcysteine", "N-acetylglutamate", "N-acetylglycine",
+                "N-acetylisoleucine", "N-acetylmethionine", "N-acetylproline", "N-acetylserine", "N-acetylthreonine", "N-acetyltyrosine", "N-acetylvaline",
+                "Phosphorylation", "Phosphoserine", "Phosphothreonine", "Phosphotyrosine", "Sulfonation" };
+
+            return modifications.Select(n => n.OriginalId).Intersect(shiftingModifications).Count();
+        }
         private void Warn(string v)
         {
             WarnHandler?.Invoke(null, new StringEventArgs(v, null));

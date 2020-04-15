@@ -8,7 +8,7 @@
         Title="ProteaseGuru" Height="450" Width="800">
     <Grid>
         <TabControl>
-            <TabItem Header="Load" Background="DarkGray">
+            <TabItem Header="Digestion Set Up" Background="DarkGray">
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="400"/>
@@ -30,7 +30,7 @@
                                 <DataGrid x:Name="dataGridProteinDatabases" ItemsSource="{Binding}" CanUserSortColumns="False" CanUserResizeColumns="False" CanUserReorderColumns="False">
                                     <DataGrid.Resources>
                                         <Style TargetType="DataGridCell">
-                                            <EventSetter Event="MouseDoubleClick" Handler="Row_DoubleClick" />
+                                            <!--<EventSetter Event="MouseDoubleClick" Handler="Row_DoubleClick" />-->
                                         </Style>
                                     </DataGrid.Resources>
                                 </DataGrid>
@@ -41,157 +41,20 @@
                             </Grid>
                         </GroupBox>
                         <GridSplitter Grid.Row="1" VerticalAlignment="Center" HorizontalAlignment="Stretch" Background="Silver" Height="5" />
-                        <GroupBox Header="MetaMorpheus PSM or Peptide Results Files" Grid.Row="2" Name="datafilesGroupBox">
-                            <Grid>
-                                <Grid.RowDefinitions>
-                                    <RowDefinition Height="*"/>
-                                    <RowDefinition Height="20"/>
-                                </Grid.RowDefinitions>
-                                <DataGrid x:Name="dataGridResultFiles" ItemsSource="{Binding}" CanUserSortColumns="False" CanUserResizeColumns="False" CanUserReorderColumns="False" DockPanel.Dock="Top">
-                                    <Style TargetType="DataGridCell">
-                                        <EventSetter Event="MouseDoubleClick" Handler="Row_DoubleClick"/>
-                                    </Style>
-                                </DataGrid>
-                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Grid.Row="1">
-                                    <Button x:Name="AddPsmtsv" Content="Add" Click="AddPsmtsvFile_Click"/>
-                                    <Button x:Name="ClearPsmtsv" Content="Clear" Click="ClearPsmtsvFile_Click"/>
-                                </StackPanel>
-                            </Grid>
-                        </GroupBox>
-                    </Grid>
-                    <GridSplitter Grid.Column="1" HorizontalAlignment="Center" VerticalAlignment="Stretch" Background="Silver" Height="5" />
-                    <Grid Grid.Column="2">
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="150"/>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="1*"/>
-                        </Grid.RowDefinitions>
-                        <GroupBox Header="Proteases" Name="proteasesGroupBox">
-                            <Grid>
-                                <Grid.RowDefinitions>
-                                    <RowDefinition Height="*"/>
-                                    <RowDefinition Height="20"/>
-                                </Grid.RowDefinitions>
-                                <ScrollViewer VerticalScrollBarVisibility="Visible" HorizontalScrollBarVisibility="Auto" Grid.Row="0">
-                                    <Grid>
-                                        <Grid.RowDefinitions>
-                                            <RowDefinition Height="20"/>
-                                            <RowDefinition Height="20"/>
-                                            <RowDefinition Height="20"/>
-                                            <RowDefinition Height="20"/>
-                                            <RowDefinition Height="20"/>
-                                            <RowDefinition Height="20"/>
-                                            <RowDefinition Height="20"/>
-                                            <RowDefinition Height="20"/>
-                                            <RowDefinition Height="20"/>
-                                            <RowDefinition Height="20"/>
-                                            <RowDefinition Height="20"/>
-                                        </Grid.RowDefinitions>
-                                        <StackPanel Orientation="Horizontal" Margin="5 5 5 0" Grid.Column="0" Grid.Row="0">
-                                            <CheckBox x:Name="ArgCProtease" Content="Arg-C" IsEnabled="{Binding IsChecked, ElementName=CheckBoxParsimony}">
-                                                <ToolTipService.ToolTip>
-                                                    <ToolTip Content="Cleave on C terminus of R"  ToolTipService.ShowDuration="999999" ToolTipService.InitialShowDelay="500" />
-                                                </ToolTipService.ToolTip>
-                                            </CheckBox>
-                                        </StackPanel>
-                                        <StackPanel Orientation="Horizontal" Margin="5 5 5 0" Grid.Column="0" Grid.Row="1">
-                                            <CheckBox x:Name="AspNProtease" Content="Asp-N" IsEnabled="{Binding IsChecked, ElementName=CheckBoxParsimony}">
-                                                <ToolTipService.ToolTip>
-                                                    <ToolTip Content="Cleave on N terminus of D"  ToolTipService.ShowDuration="999999" ToolTipService.InitialShowDelay="500" />
-                                                </ToolTipService.ToolTip>
-                                            </CheckBox>
-                                        </StackPanel>
-                                        <StackPanel Orientation="Horizontal" Margin="5 5 5 0" Grid.Column="0" Grid.Row="2">
-                                            <CheckBox x:Name="chymotrypsinNoProProtease" Content="chymotrypsin (don't cleave before proline)" IsEnabled="{Binding IsChecked, ElementName=CheckBoxParsimony}">
-                                                <ToolTipService.ToolTip>
-                                                    <ToolTip Content="Cleave on C terminus of Y,F and W"  ToolTipService.ShowDuration="999999" ToolTipService.InitialShowDelay="500" />
-                                                </ToolTipService.ToolTip>
-                                            </CheckBox>
-                                        </StackPanel>
-                                        <StackPanel Orientation="Horizontal" Margin="5 5 5 0" Grid.Column="0" Grid.Row="3">
-                                            <CheckBox x:Name="chymotrypsinProtease" Content="chymotrypsin (cleave before proline)" IsEnabled="{Binding IsChecked, ElementName=CheckBoxParsimony}">
-                                                <ToolTipService.ToolTip>
-                                                    <ToolTip Content="Cleave on C terminus of Y,F and W"  ToolTipService.ShowDuration="999999" ToolTipService.InitialShowDelay="500" />
-                                                </ToolTipService.ToolTip>
-                                            </CheckBox>
-                                        </StackPanel>
-                                        <StackPanel Orientation="Horizontal" Margin="5 5 5 0" Grid.Column="0" Grid.Row="4">
-                                            <CheckBox x:Name="elastaseProtease" Content="elastase" IsEnabled="{Binding IsChecked, ElementName=CheckBoxParsimony}">
-                                                <ToolTipService.ToolTip>
-                                                    <ToolTip Content="Cleave on C terminus of A, V, S, G, L and I"  ToolTipService.ShowDuration="999999" ToolTipService.InitialShowDelay="500" />
-                                                </ToolTipService.ToolTip>
-                                            </CheckBox>
-                                        </StackPanel>
-                                        <StackPanel Orientation="Horizontal" Margin="5 5 5 0" Grid.Column="0" Grid.Row="5">
-                                            <CheckBox x:Name="gluCProtease" Content="Glu-C" IsEnabled="{Binding IsChecked, ElementName=CheckBoxParsimony}">
-                                                <ToolTipService.ToolTip>
-                                                    <ToolTip Content="Cleave on C terminus of E"  ToolTipService.ShowDuration="999999" ToolTipService.InitialShowDelay="500" />
-                                                </ToolTipService.ToolTip>
-                                            </CheckBox>
-                                        </StackPanel>
-                                        <StackPanel Orientation="Horizontal" Margin="5 5 5 0" Grid.Column="0" Grid.Row="6">
-                                            <CheckBox x:Name="gluCWithAspProtease" Content="Glu-C (with asp)" IsEnabled="{Binding IsChecked, ElementName=CheckBoxParsimony}">
-                                                <ToolTipService.ToolTip>
-                                                    <ToolTip Content="Cleave on C terminus of E and D"  ToolTipService.ShowDuration="999999" ToolTipService.InitialShowDelay="500" />
-                                                </ToolTipService.ToolTip>
-                                            </CheckBox>
-                                        </StackPanel>
-                                        <StackPanel Orientation="Horizontal" Margin="5 5 5 0" Grid.Column="0" Grid.Row="7">
-                                            <CheckBox x:Name="lysCNoProProtease" Content="Lys-C (don't cleave before proline)" IsEnabled="{Binding IsChecked, ElementName=CheckBoxParsimony}">
-                                                <ToolTipService.ToolTip>
-                                                    <ToolTip Content="Cleave on C terminus of K"  ToolTipService.ShowDuration="999999" ToolTipService.InitialShowDelay="500" />
-                                                </ToolTipService.ToolTip>
-                                            </CheckBox>
-                                        </StackPanel>
-                                        <StackPanel Orientation="Horizontal" Margin="5 5 5 0" Grid.Column="0" Grid.Row="8">
-                                            <CheckBox x:Name="lysCProtease" Content="Lys-C (cleave before proline)" IsEnabled="{Binding IsChecked, ElementName=CheckBoxParsimony}">
-                                                <ToolTipService.ToolTip>
-                                                    <ToolTip Content="Cleave on C terminus of K"  ToolTipService.ShowDuration="999999" ToolTipService.InitialShowDelay="500" />
-                                                </ToolTipService.ToolTip>
-                                            </CheckBox>
-                                        </StackPanel>
-                                        <StackPanel Orientation="Horizontal" Margin="5 5 5 0" Grid.Column="0" Grid.Row="9">
-                                            <CheckBox x:Name="lysNProtease" Content="Lys-N" IsEnabled="{Binding IsChecked, ElementName=CheckBoxParsimony}">
-                                                <ToolTipService.ToolTip>
-                                                    <ToolTip Content="Cleave on N terminus of K"  ToolTipService.ShowDuration="999999" ToolTipService.InitialShowDelay="500" />
-                                                </ToolTipService.ToolTip>
-                                            </CheckBox>
-                                        </StackPanel>
-                                        <StackPanel Orientation="Horizontal" Margin="5 5 5 0" Grid.Column="0" Grid.Row="10">
-                                            <CheckBox x:Name="trypsinProtease" Content="trypsin" IsEnabled="{Binding IsChecked, ElementName=CheckBoxParsimony}">
-                                                <ToolTipService.ToolTip>
-                                                    <ToolTip Content="Cleave on C terminus of K and R"  ToolTipService.ShowDuration="999999" ToolTipService.InitialShowDelay="500" />
-                                                </ToolTipService.ToolTip>
-                                            </CheckBox>
-                                        </StackPanel>
-                                    </Grid>
-                                </ScrollViewer>
-                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Grid.Row="5">
-                                    <Button x:Name="defaultProteasesButton" Content="Default Proteases" Click="SelectDefaultProteases_Click"/>
-                                    <Button x:Name="clearProteasesButton" Content="Clear Proteases" Click="ClearSelectedProteases_Click"/>
-                                    <Button x:Name="addCustomProteasesButton" Content="Add Custom Protease" Click="AddAndSelectCustomProtease_Click"/>
-                                </StackPanel>
-                            </Grid>
-                        </GroupBox>
-                        <GridSplitter Grid.Row="1" VerticalAlignment="Center" HorizontalAlignment="Stretch" Background="Silver" Height="5"/>
                         <GroupBox Header="Parameters" Grid.Row="2">
                             <Grid>
                                 <Grid.RowDefinitions>
-                                    <RowDefinition Height="*"/>
-                                    <RowDefinition Height="0"/>
-                                    <RowDefinition Height="0"/>
-                                    <RowDefinition Height="20"/>
-                                    <RowDefinition Height="40"/>
-                                    <RowDefinition Height="35"/>
+                                    <RowDefinition Height="*"/>                                   
+                                    <RowDefinition Height="20"/>                                    
                                 </Grid.RowDefinitions>
                                 <GroupBox DockPanel.Dock="Top" >
                                     <StackPanel>
                                         <Grid>
-                                            <Grid.RowDefinitions>                                                
-                                                <RowDefinition Height="1*"/>
-                                                <RowDefinition Height="1*"/>
-                                                <RowDefinition Height="1*"/>
-                                                <RowDefinition Height="1*"/>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="38"/>
+                                                <RowDefinition Height="38"/>
+                                                <RowDefinition Height="38"/>
+                                                <RowDefinition Height="33"/>
                                             </Grid.RowDefinitions>
                                             <!-- Max missed cleavages -->
                                             <StackPanel Orientation="Horizontal" Margin="5 5 5 0" Grid.Column="0" Grid.Row="0">
@@ -242,10 +105,102 @@
                                     </StackPanel>
                                 </GroupBox>
 
-                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Grid.Row="3">
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Grid.Row="1">
                                     <Button x:Name="ResetParametersButton" Content="Reset" Click="ResetParametersButton_Click"/>
                                 </StackPanel>
-                                <DockPanel Margin="5" Grid.Row="4" LastChildFill="True">
+                            </Grid>
+                        </GroupBox>
+                    </Grid>
+                    <GridSplitter Grid.Column="1" HorizontalAlignment="Center" VerticalAlignment="Stretch" Background="Silver" Height="5" />
+                    <Grid Grid.Column="2">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="315"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="1*"/>
+                        </Grid.RowDefinitions>
+                        <GroupBox Header="Proteases" Name="proteasesGroupBox">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="*"/>
+                                    <RowDefinition Height="20"/>
+                                </Grid.RowDefinitions>
+                                <ScrollViewer VerticalScrollBarVisibility="Visible" HorizontalScrollBarVisibility="Auto" Grid.Row="0">
+                                    <ListBox>
+                                        <ListBoxItem Content="Arg-C">
+                                            <ToolTipService.ToolTip>
+                                                <ToolTip Content="Cleave on C terminus of R"  ToolTipService.ShowDuration="999999" ToolTipService.InitialShowDelay="500" />
+                                            </ToolTipService.ToolTip>
+                                        </ListBoxItem>
+                                        <ListBoxItem Content="Asp-N">
+                                            <ToolTipService.ToolTip>
+                                                <ToolTip Content="Cleave on N terminus of D"  ToolTipService.ShowDuration="999999" ToolTipService.InitialShowDelay="500" />
+                                            </ToolTipService.ToolTip>
+                                        </ListBoxItem>
+                                        <ListBoxItem Content="chymotrypsin (don't cleave before proline)">
+                                            <ToolTipService.ToolTip>
+                                                <ToolTip Content="Cleave on C terminus of Y,F and W"  ToolTipService.ShowDuration="999999" ToolTipService.InitialShowDelay="500" />
+                                            </ToolTipService.ToolTip>
+                                        </ListBoxItem>
+                                        <ListBoxItem Content="chymotrypsin (cleave before proline)">
+                                            <ToolTipService.ToolTip>
+                                                <ToolTip Content="Cleave on C terminus of Y,F and W"  ToolTipService.ShowDuration="999999" ToolTipService.InitialShowDelay="500" />
+                                            </ToolTipService.ToolTip>
+                                        </ListBoxItem>
+                                        <ListBoxItem Content="elastase">
+                                            <ToolTipService.ToolTip>
+                                                <ToolTip Content="Cleave on C terminus of A, V, S, G, L and I"  ToolTipService.ShowDuration="999999" ToolTipService.InitialShowDelay="500" />
+                                            </ToolTipService.ToolTip>
+                                        </ListBoxItem>
+                                        <ListBoxItem Content="Glu-C">
+                                            <ToolTipService.ToolTip>
+                                                <ToolTip Content="Cleave on C terminus of E"  ToolTipService.ShowDuration="999999" ToolTipService.InitialShowDelay="500" />
+                                            </ToolTipService.ToolTip>
+                                        </ListBoxItem>
+                                        <ListBoxItem Content="Glu-C (with asp)">
+                                            <ToolTipService.ToolTip>
+                                                <ToolTip Content="Cleave on C terminus of E and D"  ToolTipService.ShowDuration="999999" ToolTipService.InitialShowDelay="500" />
+                                            </ToolTipService.ToolTip>
+                                        </ListBoxItem>
+                                        <ListBoxItem Content="Lys-C (don't cleave before proline)">
+                                            <ToolTipService.ToolTip>
+                                                <ToolTip Content="Cleave on C terminus of K"  ToolTipService.ShowDuration="999999" ToolTipService.InitialShowDelay="500" />
+                                            </ToolTipService.ToolTip>
+                                        </ListBoxItem>
+                                        <ListBoxItem Content="Lys-C (cleave before proline)">
+                                            <ToolTipService.ToolTip>
+                                                <ToolTip Content="Cleave on C terminus of K"  ToolTipService.ShowDuration="999999" ToolTipService.InitialShowDelay="500" />
+                                            </ToolTipService.ToolTip>
+                                        </ListBoxItem>
+                                        <ListBoxItem Content="Lys-N">
+                                            <ToolTipService.ToolTip>
+                                                <ToolTip Content="Cleave on N terminus of K"  ToolTipService.ShowDuration="999999" ToolTipService.InitialShowDelay="500" />
+                                            </ToolTipService.ToolTip>
+                                        </ListBoxItem>
+                                        <ListBoxItem Content="trypsin">
+                                            <ToolTipService.ToolTip>
+                                                <ToolTip Content="Cleave on C terminus of K and R"  ToolTipService.ShowDuration="999999" ToolTipService.InitialShowDelay="500" />
+                                            </ToolTipService.ToolTip>
+                                        </ListBoxItem>
+                                        
+                                    </ListBox>
+                                    
+                                </ScrollViewer>
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Grid.Row="5">
+                                    <Button x:Name="defaultProteasesButton" Content="Default Proteases" Click="SelectDefaultProteases_Click"/>
+                                    <Button x:Name="clearProteasesButton" Content="Clear Proteases" Click="ClearSelectedProteases_Click"/>
+                                    <Button x:Name="addCustomProteasesButton" Content="Add Custom Protease" Click="AddAndSelectCustomProtease_Click"/>
+                                </StackPanel>
+                            </Grid>
+                        </GroupBox>
+                        <GridSplitter Grid.Row="1" VerticalAlignment="Center" HorizontalAlignment="Stretch" Background="Silver" Height="5"/>
+                        <GroupBox Grid.Row="2">
+                            <Grid>
+                                <Grid.RowDefinitions>                                    
+                                    <RowDefinition Height="40"/>
+                                    <RowDefinition Height="35"/>
+                                </Grid.RowDefinitions>                               
+                                    
+                                <DockPanel Margin="5" Grid.Row="0" LastChildFill="True">
                                     <Button x:Name="OpenOutputFolderButton" Content="Open" Width="40" DockPanel.Dock="Right" Click="OpenOutputFolder_Click"></Button>
                                     <Label Content="Output Folder:"/>
                                     <TextBox x:Name="OutputFolderTextBox"/>
@@ -256,7 +211,26 @@
                     </Grid>
                 </Grid>
             </TabItem>
-            <TabItem Header="Results" Background="DarkGray">
+            <TabItem Header="Load Peptide Results">
+                <GroupBox Header="MetaMorpheus PSM or Peptide Results Files" Grid.Row="2" Name="datafilesGroupBox">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="*"/>
+                                    <RowDefinition Height="20"/>
+                                </Grid.RowDefinitions>
+                                <DataGrid x:Name="dataGridResultFiles" ItemsSource="{Binding}" CanUserSortColumns="False" CanUserResizeColumns="False" CanUserReorderColumns="False" DockPanel.Dock="Top">
+                                    <Style TargetType="DataGridCell">
+                                        <!--<EventSetter Event="MouseDoubleClick" Handler="Row_DoubleClick"/>-->
+                                    </Style>
+                                </DataGrid>
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Grid.Row="1">
+                                    <Button x:Name="AddPsmtsv" Content="Add" Click="AddPsmtsvFile_Click"/>
+                                    <Button x:Name="ClearPsmtsv" Content="Clear" Click="ClearPsmtsvFile_Click"/>
+                                </StackPanel>
+                            </Grid>
+                        </GroupBox>
+            </TabItem>
+            <TabItem Header="Digestion Results" Background="DarkGray">
                 <TabControl>
                     <TabItem Header="Summary" Background="DarkGray" BorderThickness="10" BorderBrush="Black">
                         
