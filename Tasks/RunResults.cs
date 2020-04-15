@@ -6,7 +6,7 @@ namespace Tasks
 {
     public class RunResults
     {
-        internal RunResults(Run run)
+        internal RunResults(RunTask run)
         { 
         
         }

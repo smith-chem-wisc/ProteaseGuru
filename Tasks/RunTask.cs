@@ -1,4 +1,5 @@
-﻿using Proteomics;
+﻿using Engine;
+using Proteomics;
 using Proteomics.ProteolyticDigestion;
 using Proteomics.RetentionTimePrediction;
 using System;
@@ -9,17 +10,18 @@ using UsefulProteomicsDatabases;
 
 namespace Tasks
 {
-    class Run
+    public class RunTask
     {
         
         public static event EventHandler<StringEventArgs> WarnHandler;
         public Parameters DigestionParameters { get; set; }
-        public Run(List<Protease> proteases, Parameters userParams)
+        public RunTask()
         {
-            DigestionParameters = userParams;
+            DigestionParameters = new Parameters();
 
         }
-        protected RunResults RunSpecific(string OutputFolder, List<DbForDigestion> dbFileList,List<string> peptideResultFilePaths, List<Protease> proteases)
+        
+        protected RunResults RunSpecific(string OutputFolder, List<DbForDigestion> dbFileList,List<string> peptideResultFilePaths)
         {
             //Key (string) = databse file name
             //Value (List<Protein>) = list of protein objects loaded from said database
@@ -35,7 +37,7 @@ namespace Tasks
             //Value (List<PeptideWithSetModifications>) = peptides that were geenrated by digestion of Protein (Key)
             Dictionary<Protease, Dictionary<string, Dictionary<Protein, List<InSilicoPeptide>>>> peptideByProtease = 
                 new Dictionary<Protease, Dictionary<string, Dictionary<Protein, List<InSilicoPeptide>>>>();
-            foreach (var protease in proteases)
+            foreach (var protease in DigestionParameters.ProteasesForDigestion)
             {
                 var peptides = DigestDatabase(proteinsByDatabase, protease, DigestionParameters);
                 var inSilicoPeptidesByFile = DeterminePeptideStatus(peptides, DigestionParameters);
@@ -111,7 +113,7 @@ namespace Tasks
             return peptidesByDatabase;
         }
         //determine if peptides are unique and shared for the speicifc database that they came from (Will do pooled analysis later)
-        protected Dictionary<string, Dictionary<Protein, List<InSilicoPeptide>>> DeterminePeptideStatus(Dictionary<string, Dictionary<Protein, List<PeptideWithSetModifications>>> databasePeptides,
+        Dictionary<string, Dictionary<Protein, List<InSilicoPeptide>>> DeterminePeptideStatus(Dictionary<string, Dictionary<Protein, List<PeptideWithSetModifications>>> databasePeptides,
             Parameters userParams)
         {
             SSRCalc3 RTPrediction = new SSRCalc3("SSRCalc 3.0 (300A)", SSRCalc3.Column.A300);

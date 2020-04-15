@@ -15,6 +15,8 @@ using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
 using Engine;
+using Tasks;
+using Proteomics.ProteolyticDigestion;
 
 namespace GUI
 {
@@ -146,12 +148,19 @@ namespace GUI
                 Dispatcher.BeginInvoke(new Action(() => GuiWarnHandler(sender, e)));
             }            
         }
-        private void UpdateFieldsFromUser()
-        {
-            int missedCleave = Convert.ToInt32(MissedCleavagesTextBox.Text);
-            int min = Convert.ToInt32(MinPeptideLengthTextBox.Text);
-            int max = Convert.ToInt32(MaxPeptideLengthTextBox.Text);
-            bool modPepsDiff = Convert.ToBoolean(ModPepsAreUnique.IsChecked);
+        private void UpdateFieldsFromUser(RunTask run)
+        { 
+            run.DigestionParameters.NumberOfMissedCleavagesAllowed = Convert.ToInt32(MissedCleavagesTextBox.Text);
+            run.DigestionParameters.MinPeptideLengthAllowed = Convert.ToInt32(MinPeptideLengthTextBox.Text);
+            run.DigestionParameters.MaxPeptideLengthAllowed = Convert.ToInt32(MaxPeptideLengthTextBox.Text);
+            run.DigestionParameters.TreatModifiedPeptidesAsDifferent = Convert.ToBoolean(ModPepsAreUnique.IsChecked);
+            List<Protease> proteases = new List<Protease>();            
+            foreach (var protease in ProteaseSelectedForUse.SelectedItems)
+            {                
+                proteases.Add(ProteaseDictionary.Dictionary[protease.ToString()]);
+            }
+            run.DigestionParameters.ProteasesForDigestion = proteases;
+            
         }
     }
 }
