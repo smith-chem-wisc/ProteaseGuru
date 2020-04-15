@@ -2,10 +2,10 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace Tasks
+namespace Engine
 {
     [Serializable]
-    class ProteaseGuruException : Exception
+    public class ProteaseGuruException : Exception
     {
         public ProteaseGuruException(string message) : base(message)
         {

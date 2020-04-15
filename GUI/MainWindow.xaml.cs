@@ -14,6 +14,7 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
+using Engine;
 
 namespace GUI
 {
@@ -41,7 +42,7 @@ namespace GUI
             {
                 foreach (var filepath in openPicker.FileNames.OrderBy(p => p))
                 {
-                    //AddAFile(filepath);
+                    AddAFile(filepath);
                 }
             }
 
@@ -49,8 +50,8 @@ namespace GUI
         }
 
         private void ClearXML_Click(object sender, MouseButtonEventArgs e)
-        { 
-        
+        {
+            ProteinDbObservableCollection.Clear();
         }
 
         private void Row_DoubleClick(object sender, MouseButtonEventArgs e)
@@ -118,6 +119,39 @@ namespace GUI
                     GuiWarnHandler(null, new StringEventArgs("Unrecognized file type: " + theExtension, null));
                     break;
             }
+        }
+        private bool DatabaseExists(ObservableCollection<ProteinDbForDataGrid> pDOC, ProteinDbForDataGrid uuu)
+        {
+            foreach (ProteinDbForDataGrid pdoc in pDOC)
+            {
+                if (pdoc.FilePath == uuu.FilePath) { return true; }
+            }
+
+            return false;
+        }
+        private void PrintErrorsReadingMods()
+        {
+            // print any error messages reading the mods to the notifications area
+            foreach (var error in GlobalVariables.ErrorsReadingMods)
+            {
+                GuiWarnHandler(null, new StringEventArgs(error, null));
+            }
+            GlobalVariables.ErrorsReadingMods.Clear();
+        }
+
+        private void GuiWarnHandler(object sender, StringEventArgs e)
+        {
+            if (!Dispatcher.CheckAccess())
+            {
+                Dispatcher.BeginInvoke(new Action(() => GuiWarnHandler(sender, e)));
+            }            
+        }
+        private void UpdateFieldsFromUser()
+        {
+            int missedCleave = Convert.ToInt32(MissedCleavagesTextBox.Text);
+            int min = Convert.ToInt32(MinPeptideLengthTextBox.Text);
+            int max = Convert.ToInt32(MaxPeptideLengthTextBox.Text);
+            bool modPepsDiff = Convert.ToBoolean(ModPepsAreUnique.IsChecked);
         }
     }
 }

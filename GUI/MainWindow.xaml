@@ -30,7 +30,7 @@
                                 <DataGrid x:Name="dataGridProteinDatabases" ItemsSource="{Binding}" CanUserSortColumns="False" CanUserResizeColumns="False" CanUserReorderColumns="False">
                                     <DataGrid.Resources>
                                         <Style TargetType="DataGridCell">
-                                            <!--<EventSetter Event="MouseDoubleClick" Handler="Row_DoubleClick" />-->
+                                           <EventSetter Event="MouseDoubleClick" Handler="Row_DoubleClick" />
                                         </Style>
                                     </DataGrid.Resources>
                                 </DataGrid>

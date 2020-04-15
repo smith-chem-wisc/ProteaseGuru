@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using Tasks;
 
 namespace GUI
 {
@@ -17,13 +18,12 @@ namespace GUI
             {
                 Contaminant = true;
             }
-            FileName = Path.GetFileName(FilePath);
+            FileName = System.IO.Path.GetFileName(FilePath);
         }
 
-        public ProteinDbForDataGrid(DbForTask uu)
+        public ProteinDbForDataGrid(DbForDigestion uu)
         {
-            Use = true;
-            Contaminant = uu.IsContaminant;
+            Use = true;            
             FilePath = uu.FilePath;
             FileName = uu.FileName;
         }

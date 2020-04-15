@@ -10,6 +10,7 @@ namespace Tasks
         public int MinPeptideLengthAllowed { get; set; }
         public int MaxPeptideLengthAllowed { get; set; }
         public bool TreatModifiedPeptidesAsDifferent { get; set;  }
+
         public Parameters(int numMissedCleavages, int minPeptideLength, int maxPeptideLength, bool treatModifiedPeptidesDifferent)
         {
             NumberOfMissedCleavagesAllowed = numMissedCleavages;

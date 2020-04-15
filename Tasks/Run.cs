@@ -11,8 +11,15 @@ namespace Tasks
 {
     class Run
     {
+        
         public static event EventHandler<StringEventArgs> WarnHandler;
-        protected RunResults RunSpecific(string OutputFolder, List<DbForDigestion> dbFileList,List<string> peptideResultFilePaths, List<Protease> proteases, Parameters userParams)
+        public Parameters DigestionParameters { get; set; }
+        public Run(List<Protease> proteases, Parameters userParams)
+        {
+            DigestionParameters = userParams;
+
+        }
+        protected RunResults RunSpecific(string OutputFolder, List<DbForDigestion> dbFileList,List<string> peptideResultFilePaths, List<Protease> proteases)
         {
             //Key (string) = databse file name
             //Value (List<Protein>) = list of protein objects loaded from said database
@@ -30,8 +37,8 @@ namespace Tasks
                 new Dictionary<Protease, Dictionary<string, Dictionary<Protein, List<InSilicoPeptide>>>>();
             foreach (var protease in proteases)
             {
-                var peptides = DigestDatabase(proteinsByDatabase, protease, userParams);
-                var inSilicoPeptidesByFile = DeterminePeptideStatus(peptides, userParams);
+                var peptides = DigestDatabase(proteinsByDatabase, protease, DigestionParameters);
+                var inSilicoPeptidesByFile = DeterminePeptideStatus(peptides, DigestionParameters);
                 peptideByProtease.Add(protease, inSilicoPeptidesByFile);
             }            
             RunResults myRunResults = new RunResults(this);

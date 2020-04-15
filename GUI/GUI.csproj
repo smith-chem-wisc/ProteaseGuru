@@ -7,8 +7,13 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="mzLib" Version="1.0.471" />
+    <PackageReference Include="mzLib" Version="1.0.472" />
     <PackageReference Include="Nett" Version="0.15.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Engine\Engine.csproj" />
+    <ProjectReference Include="..\Tasks\Tasks.csproj" />
   </ItemGroup>
 
 </Project>
