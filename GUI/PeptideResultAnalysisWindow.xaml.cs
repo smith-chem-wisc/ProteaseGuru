@@ -21,6 +21,7 @@ using System.IO;
 using System.Globalization;
 using static Tasks.ProteaseGuruTask;
 using MzLibUtil;
+using System.ComponentModel;
 
 namespace GUI
 {
@@ -30,11 +31,29 @@ namespace GUI
     public partial class PeptideResultAnalysisWindow : Window
     {
         
-        public PeptideResultAnalysisWindow(ProteaseGuruTask task)
+        public PeptideResultAnalysisWindow(PeptideResultAnalysisTask task)
         {
             InitializeComponent();
-            
+            TheTask = task ?? new PeptideResultAnalysisTask();           
+            PopulateChoices();
+            UpdateFieldsFromTask(TheTask);            
+
+           
+            base.Closing += this.OnClosing;
         }
         internal PeptideResultAnalysisTask TheTask { get; private set; }
+        private void OnClosing(object sender, CancelEventArgs e)
+        {
+            
+        }
+        private void PopulateChoices()
+        { 
+        
+        }
+
+        private void UpdateFieldsFromTask(PeptideResultAnalysisTask task)
+        { 
+        
+        }
     }
 }

@@ -43,5 +43,10 @@ namespace Tasks
 
 
         public MyTask TaskType { get; set; }
+
+        protected static void Main()
+        { 
+        
+        }
     }
 }
