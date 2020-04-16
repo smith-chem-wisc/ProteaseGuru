@@ -100,7 +100,7 @@ namespace GUI
             theExtension = compressed ? System.IO.Path.GetExtension(System.IO.Path.GetFileNameWithoutExtension(filename)).ToLowerInvariant() : theExtension;
 
             switch (theExtension)
-            {               
+            {
 
                 case ".xml":
                 case ".fasta":
@@ -155,21 +155,21 @@ namespace GUI
             if (!Dispatcher.CheckAccess())
             {
                 Dispatcher.BeginInvoke(new Action(() => GuiWarnHandler(sender, e)));
-            }            
+            }
         }
         private void UpdateFieldsFromUser(DigestionTask run)
-        { 
+        {
             run.DigestionParameters.NumberOfMissedCleavagesAllowed = Convert.ToInt32(MissedCleavagesTextBox.Text);
             run.DigestionParameters.MinPeptideLengthAllowed = Convert.ToInt32(MinPeptideLengthTextBox.Text);
             run.DigestionParameters.MaxPeptideLengthAllowed = Convert.ToInt32(MaxPeptideLengthTextBox.Text);
             run.DigestionParameters.TreatModifiedPeptidesAsDifferent = Convert.ToBoolean(ModPepsAreUnique.IsChecked);
-            List<Protease> proteases = new List<Protease>();            
+            List<Protease> proteases = new List<Protease>();
             foreach (var protease in ProteaseSelectedForUse.SelectedItems)
-            {                
+            {
                 proteases.Add(ProteaseDictionary.Dictionary[protease.ToString()]);
             }
             run.DigestionParameters.ProteasesForDigestion = proteases;
-            
+
         }
         private void AddNewDB(object sender, XmlForTaskListEventArgs e)
         {
@@ -252,10 +252,10 @@ namespace GUI
 
         private void RunAllTasks_Click(object sender, RoutedEventArgs e)
         {
-            GlobalVariables.StopLoops = false;            
+            GlobalVariables.StopLoops = false;
 
             // check for valid tasks/spectra files/protein databases
-                    
+
             if (!ProteinDbObservableCollection.Any())
             {
                 GuiWarnHandler(null, new StringEventArgs("You need to add at least one protein database!", null));
@@ -268,7 +268,7 @@ namespace GUI
             {
                 DynamicTasksObservableCollection.Add(new InRunTask("Task" + (i + 1) + "-" + StaticTasksObservableCollection[i].proteaseGuruTask.TaskType.ToString(), StaticTasksObservableCollection[i].proteaseGuruTask));
             }
-                     
+
 
             // output folder
             if (string.IsNullOrEmpty(OutputFolderTextBox.Text))
@@ -284,7 +284,7 @@ namespace GUI
             // everything is OK to run
             var taskList = DynamicTasksObservableCollection.Select(b => (b.DisplayName, b.Task)).ToList();
             var databaseList = ProteinDbObservableCollection.Where(b => b.Use).Select(b => new DbForDigestion(b.FilePath)).ToList();
-            EverythingRunnerEngine a = new EverythingRunnerEngine(taskList, databaseList,outputFolder);
+            EverythingRunnerEngine a = new EverythingRunnerEngine(taskList, databaseList, outputFolder);
 
             var t = new Task(a.Run);
             t.ContinueWith(EverythingRunnerExceptionHandler, TaskContinuationOptions.OnlyOnFaulted);
@@ -306,7 +306,7 @@ namespace GUI
 
                 var message = "Run failed, Exception: " + e.Message;
                 var messageBoxResult = System.Windows.MessageBox.Show(message + "\n\nWould you like to report this crash?", "Runtime Error", MessageBoxButton.YesNo);
-                
+
                 Exception exception = e;
                 //Find Output Folder
                 string outputFolder = e.Data["folder"].ToString();
@@ -347,9 +347,9 @@ namespace GUI
                     GlobalVariables.StartProcess(mailto);
                     Console.WriteLine(body);
                 }
-                
+
             }
-            
+
         }
         private void AddDigestionTask_Click(object sender, RoutedEventArgs e)
         {
@@ -364,7 +364,7 @@ namespace GUI
             var dialog = new PeptideResultAnalysisWindow(task);
             if (dialog.ShowDialog() == true)
             {
-                AddTaskToCollection(dialog.TheTask);                
+                AddTaskToCollection(dialog.TheTask);
             }
         }
 
@@ -372,6 +372,73 @@ namespace GUI
         {
             PreRunTask pre = new PreRunTask(task);
             StaticTasksObservableCollection.Add(pre);
+        }
+
+        private void ClearXML_Click(object sender, RoutedEventArgs e)
+        {
+            ProteinDbObservableCollection.Clear();
+        }
+
+        private void AddProteinDatabase_Click(object sender, RoutedEventArgs e)
+        {
+            Microsoft.Win32.OpenFileDialog openPicker = new Microsoft.Win32.OpenFileDialog()
+            {
+                Filter = "Database Files|*.xml;*.xml.gz;*.fasta;*.fa",
+                FilterIndex = 1,
+                RestoreDirectory = true,
+                Multiselect = true
+            };
+            if (openPicker.ShowDialog() == true)
+            {
+                foreach (var filepath in openPicker.FileNames.OrderBy(p => p))
+                {
+                    AddAFile(filepath);
+                }
+            }
+
+            dataGridProteinDatabases.Items.Refresh();
+        }
+
+        private void SelectDefaultProteases_Click(object sender, RoutedEventArgs e)
+        {
+            ProteaseSelectedForUse.SelectedItems.Clear();
+            ProteaseSelectedForUse.SelectedItems.Add(ProteaseSelectedForUse.Items.GetItemAt(0));
+            ProteaseSelectedForUse.SelectedItems.Add(ProteaseSelectedForUse.Items.GetItemAt(1));
+            ProteaseSelectedForUse.SelectedItems.Add(ProteaseSelectedForUse.Items.GetItemAt(2));
+            ProteaseSelectedForUse.SelectedItems.Add(ProteaseSelectedForUse.Items.GetItemAt(6));
+            ProteaseSelectedForUse.SelectedItems.Add(ProteaseSelectedForUse.Items.GetItemAt(7));
+            ProteaseSelectedForUse.SelectedItems.Add(ProteaseSelectedForUse.Items.GetItemAt(10));
+
+
+        }
+
+        private void ClearSelectedProteases_Click(object sender, RoutedEventArgs e)
+        {
+            ProteaseSelectedForUse.SelectedItems.Clear();
+        }
+
+        private void AddAndSelectCustomProtease_Click(object sender, RoutedEventArgs e)
+        { 
+        
+        }
+        private void RunTaskButton_Click(object sender, RoutedEventArgs e)
+        { 
+        }
+        private void CheckIfNumber(object sender, TextCompositionEventArgs e)
+        {
+            e.Handled = !CheckIsNumber(e.Text);
+        }
+        public static bool CheckIsNumber(string text)
+        {
+            bool result = true;
+            foreach (var character in text)
+            {
+                if (!Char.IsDigit(character) && !(character == '.') && !(character == '-'))
+                {
+                    result = false;
+                }
+            }
+            return result;
         }
     }
 }

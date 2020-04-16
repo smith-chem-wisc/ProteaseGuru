@@ -55,5 +55,18 @@ namespace GUI
         { 
         
         }
+        private void AddPsmtsvFile_Click( object sender, RoutedEventArgs e)
+        {
+
+        }
+        private void ClearPsmtsvFile_Click(object sender, RoutedEventArgs e)
+        { 
+        
+        }
+        private void AddPeptideResultAnalysisTask_Click(object sender, RoutedEventArgs e)
+        { 
+        
+        }
+
     }
 }

@@ -6,10 +6,7 @@ namespace Engine
 {
     class ProteaseGuruEngine
     {
-        static void Main()
-        {
-
-        }
+       
     }
     
 }

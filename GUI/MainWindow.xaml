@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:GUI"
         mc:Ignorable="d"
-        Title="ProteaseGuru" Height="450" Width="800">
+        Title="ProteaseGuru" Height="475" Width="825">
     <Grid>
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="0*"/>
@@ -65,7 +65,7 @@
                                             <!-- Max missed cleavages -->
                                             <StackPanel Orientation="Horizontal" Margin="5 5 5 0" Grid.Column="0" Grid.Row="1">
                                                 <Label x:Name="maxMissedCleavagesLabel" Content="Max Missed Cleavages:" Width="150" />
-                                                <TextBox x:Name="MissedCleavagesTextBox" PreviewTextInput="CheckIfNumber" Width="45" ToolTipService.ShowDuration="999999" ToolTipService.InitialShowDelay="500" TextChanged="ProteaseSpecificUpdate">
+                                                <TextBox x:Name="MissedCleavagesTextBox" PreviewTextInput="CheckIfNumber" Width="45">
                                                     <TextBox.ToolTip>
                                                         <TextBlock>
                                     Maximum number of missed proteolytic cleavages allowed.
@@ -91,7 +91,7 @@
                                             <!-- Max peptide lengths -->
                                             <StackPanel Orientation="Horizontal" Margin="5 5 5 0" Grid.Column="0" Grid.Row="3">
                                                 <Label x:Name="lblMaxPeptideLength" Content="Max Peptide Length:" Width="150" />
-                                                <TextBox x:Name="MaxPeptideLengthTextBox" PreviewTextInput="CheckIfNumber" Width="45" ToolTipService.ShowDuration="999999" ToolTipService.InitialShowDelay="500" TextChanged="ProteaseSpecificUpdate">
+                                                <TextBox x:Name="MaxPeptideLengthTextBox" PreviewTextInput="CheckIfNumber" Width="45">
                                                     <TextBox.ToolTip>
                                                         <TextBlock>
                                                     The maximum allowed peptide length. Leave empty for no limitation.
@@ -127,8 +127,8 @@
                                     <RowDefinition Height="20"/>
                                 </Grid.RowDefinitions>
                                 <ScrollViewer VerticalScrollBarVisibility="Visible" HorizontalScrollBarVisibility="Auto" Grid.Row="0">
-                                    <ListBox Name ="ProteaseSelectedForUse">
-                                        <ListBoxItem Content="Arg-C">
+                                    <ListBox Name ="ProteaseSelectedForUse" SelectionMode="Multiple">
+                                        <ListBoxItem Content="Arg-C" >
                                             <ToolTipService.ToolTip>
                                                 <ToolTip Content="Cleave on C terminus of R"  ToolTipService.ShowDuration="999999" ToolTipService.InitialShowDelay="500" />
                                             </ToolTipService.ToolTip>
