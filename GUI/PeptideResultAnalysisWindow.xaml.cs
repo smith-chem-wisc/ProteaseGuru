@@ -30,11 +30,11 @@ namespace GUI
     public partial class PeptideResultAnalysisWindow : Window
     {
         
-        public PeptideResultAnalysisWindow()
+        public PeptideResultAnalysisWindow(ProteaseGuruTask task)
         {
             InitializeComponent();
             
-        }               
-
+        }
+        internal PeptideResultAnalysisTask TheTask { get; private set; }
     }
 }

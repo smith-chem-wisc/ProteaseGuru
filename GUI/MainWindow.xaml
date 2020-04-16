@@ -189,7 +189,7 @@
                                 </ScrollViewer>
                                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Grid.Row="5">
                                     <Button x:Name="defaultProteasesButton" Content="Default Proteases" Click="SelectDefaultProteases_Click"/>
-                                    <Button x:Name="clearProteasesButton" Content="Clear Proteases" Click="ClearSelectedProteases_Click"/>
+                                    <Button x:Name="clearProteasesButton" Content="Clear Protease Selection" Click="ClearSelectedProteases_Click"/>
                                     <Button x:Name="addCustomProteasesButton" Content="Add Custom Protease" Click="AddAndSelectCustomProtease_Click"/>
                                 </StackPanel>
                             </Grid>

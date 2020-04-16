@@ -5,13 +5,12 @@ using System.Text;
 
 namespace Tasks
 {
-    public class ProteaseGuruTask
+    public abstract class ProteaseGuruTask
     {
         public enum MyTask
         {
             Digestion,
-            PeptideResultsAnalysis
-            
+            PeptideResultsAnalysis            
         }
         protected string OutputFolder { get; private set; }
 
@@ -21,6 +20,8 @@ namespace Tasks
         {
             this.TaskType = taskType;
         }
+        public abstract MyTaskResults RunSpecific(string OutputFolder, List<DbForDigestion> dbFileList);
+        public abstract MyTaskResults RunSpecific(MyTaskResults digestionResults, List<string> peptideFilePaths);
 
         public static event EventHandler<SingleTaskEventArgs> FinishedSingleTaskHandler;
 

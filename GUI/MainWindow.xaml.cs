@@ -157,7 +157,7 @@ namespace GUI
                 Dispatcher.BeginInvoke(new Action(() => GuiWarnHandler(sender, e)));
             }            
         }
-        private void UpdateFieldsFromUser(RunTask run)
+        private void UpdateFieldsFromUser(DigestionTask run)
         { 
             run.DigestionParameters.NumberOfMissedCleavagesAllowed = Convert.ToInt32(MissedCleavagesTextBox.Text);
             run.DigestionParameters.MinPeptideLengthAllowed = Convert.ToInt32(MinPeptideLengthTextBox.Text);
@@ -352,8 +352,10 @@ namespace GUI
             
         }
         private void AddDigestionTask_Click(object sender, RoutedEventArgs e)
-        { 
-        
+        {
+            DigestionTask task = new DigestionTask();
+            UpdateFieldsFromUser(task);
+            AddTaskToCollection(task);
         }
 
         private void AddPeptidePsmTsvFiles_Click(object sender, RoutedEventArgs e)
@@ -362,9 +364,14 @@ namespace GUI
             var dialog = new PeptideResultAnalysisWindow(task);
             if (dialog.ShowDialog() == true)
             {
-                AddTaskToCollection(dialog.TheTask);
-                UpdateTaskGuiStuff();
+                AddTaskToCollection(dialog.TheTask);                
             }
+        }
+
+        private void AddTaskToCollection(ProteaseGuruTask task)
+        {
+            PreRunTask pre = new PreRunTask(task);
+            StaticTasksObservableCollection.Add(pre);
         }
     }
 }

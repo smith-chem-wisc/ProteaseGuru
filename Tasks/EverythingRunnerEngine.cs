@@ -61,7 +61,7 @@ namespace Tasks
                     Directory.CreateDirectory(outputFolderForThisTask);
 
                 // Actual task running code
-                var myTaskResults = ok.RunSpecific(outputFolderForThisTask, CurrentXmlDbFilenameList);
+                var myTaskResults = ok.Item2.RunSpecific(outputFolderForThisTask, CurrentXmlDbFilenameList);
                                 
                 allResultsText.AppendLine(Environment.NewLine + Environment.NewLine + Environment.NewLine + Environment.NewLine + myTaskResults.ToString());
             }
