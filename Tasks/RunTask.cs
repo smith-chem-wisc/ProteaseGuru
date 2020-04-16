@@ -21,7 +21,7 @@ namespace Tasks
 
         }
         
-        protected RunResults RunSpecific(string OutputFolder, List<DbForDigestion> dbFileList,List<string> peptideResultFilePaths)
+        protected DigestionTask RunSpecific(string OutputFolder, List<DbForDigestion> dbFileList,List<string> peptideResultFilePaths)
         {
             //Key (string) = databse file name
             //Value (List<Protein>) = list of protein objects loaded from said database
@@ -43,7 +43,7 @@ namespace Tasks
                 var inSilicoPeptidesByFile = DeterminePeptideStatus(peptides, DigestionParameters);
                 peptideByProtease.Add(protease, inSilicoPeptidesByFile);
             }            
-            RunResults myRunResults = new RunResults(this);
+            DigestionTask myRunResults = new DigestionTask(this);
             return myRunResults;
         }
        // Load proteins from XML or FASTA databases and keep them associated with the database file name from which they came from

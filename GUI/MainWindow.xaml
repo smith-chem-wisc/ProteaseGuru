@@ -7,7 +7,13 @@
         mc:Ignorable="d"
         Title="ProteaseGuru" Height="450" Width="800">
     <Grid>
-        <TabControl>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="0*"/>
+            <ColumnDefinition Width="0*"/>
+            <ColumnDefinition Width="0*"/>
+            <ColumnDefinition/>
+        </Grid.ColumnDefinitions>
+        <TabControl Grid.ColumnSpan="4">
             <TabItem Header="Digestion Set Up" Background="DarkGray">
                 <Grid>
                     <Grid.ColumnDefinitions>
@@ -30,7 +36,7 @@
                                 <DataGrid x:Name="dataGridProteinDatabases" ItemsSource="{Binding}" CanUserSortColumns="False" CanUserResizeColumns="False" CanUserReorderColumns="False">
                                     <DataGrid.Resources>
                                         <Style TargetType="DataGridCell">
-                                           <EventSetter Event="MouseDoubleClick" Handler="Row_DoubleClick" />
+                                            <!--<EventSetter Event="MouseDoubleClick" Handler="Row_DoubleClick" />-->
                                         </Style>
                                     </DataGrid.Resources>
                                 </DataGrid>
@@ -44,20 +50,20 @@
                         <GroupBox Header="Parameters" Grid.Row="2">
                             <Grid>
                                 <Grid.RowDefinitions>
-                                    <RowDefinition Height="*"/>                                   
-                                    <RowDefinition Height="20"/>                                    
+                                    <RowDefinition Height="*"/>                                    
                                 </Grid.RowDefinitions>
                                 <GroupBox DockPanel.Dock="Top" >
                                     <StackPanel>
                                         <Grid>
                                             <Grid.RowDefinitions>
-                                                <RowDefinition Height="38"/>
-                                                <RowDefinition Height="38"/>
-                                                <RowDefinition Height="38"/>
-                                                <RowDefinition Height="33"/>
+                                                <RowDefinition Height="20"/>
+                                                <RowDefinition Height="40"/>
+                                                <RowDefinition Height="40"/>
+                                                <RowDefinition Height="40"/>
+                                                <RowDefinition Height="40"/>
                                             </Grid.RowDefinitions>
                                             <!-- Max missed cleavages -->
-                                            <StackPanel Orientation="Horizontal" Margin="5 5 5 0" Grid.Column="0" Grid.Row="0">
+                                            <StackPanel Orientation="Horizontal" Margin="5 5 5 0" Grid.Column="0" Grid.Row="1">
                                                 <Label x:Name="maxMissedCleavagesLabel" Content="Max Missed Cleavages:" Width="150" />
                                                 <TextBox x:Name="MissedCleavagesTextBox" PreviewTextInput="CheckIfNumber" Width="45" ToolTipService.ShowDuration="999999" ToolTipService.InitialShowDelay="500" TextChanged="ProteaseSpecificUpdate">
                                                     <TextBox.ToolTip>
@@ -71,7 +77,7 @@
                                             </StackPanel>
 
                                             <!-- Min peptide lengths -->
-                                            <StackPanel Orientation="Horizontal" Margin="5 5 5 0" Grid.Column="0" Grid.Row="1">
+                                            <StackPanel Orientation="Horizontal" Margin="5 5 5 0" Grid.Column="0" Grid.Row="2">
                                                 <Label x:Name="lblMinPeptideLength" Content="Min Peptide Length:" Width="150" />
                                                 <TextBox x:Name="MinPeptideLengthTextBox" PreviewTextInput="CheckIfNumber" Width="45" ToolTipService.ShowDuration="999999" ToolTipService.InitialShowDelay="500">
                                                     <TextBox.ToolTip>
@@ -83,7 +89,7 @@
                                             </StackPanel>
 
                                             <!-- Max peptide lengths -->
-                                            <StackPanel Orientation="Horizontal" Margin="5 5 5 0" Grid.Column="0" Grid.Row="2">
+                                            <StackPanel Orientation="Horizontal" Margin="5 5 5 0" Grid.Column="0" Grid.Row="3">
                                                 <Label x:Name="lblMaxPeptideLength" Content="Max Peptide Length:" Width="150" />
                                                 <TextBox x:Name="MaxPeptideLengthTextBox" PreviewTextInput="CheckIfNumber" Width="45" ToolTipService.ShowDuration="999999" ToolTipService.InitialShowDelay="500" TextChanged="ProteaseSpecificUpdate">
                                                     <TextBox.ToolTip>
@@ -93,7 +99,7 @@
                                                     </TextBox.ToolTip>
                                                 </TextBox>
                                             </StackPanel>
-                                            <StackPanel Orientation="Horizontal" Margin="5 5 5 0" Grid.Column="0" Grid.Row="3">
+                                            <StackPanel Orientation="Horizontal" Margin="5 5 5 0" Grid.Column="0" Grid.Row="4">
                                                 <CheckBox x:Name="ModPepsAreUnique" Content="Treat modified peptides as different peptides" IsEnabled="{Binding IsChecked, ElementName=CheckBoxParsimony}">
                                                     <ToolTipService.ToolTip>
                                                         <ToolTip Content="Modified forms of a peptide base sequence are treated as different"  ToolTipService.ShowDuration="999999" ToolTipService.InitialShowDelay="500" />
@@ -103,18 +109,14 @@
 
                                         </Grid>
                                     </StackPanel>
-                                </GroupBox>
-
-                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Grid.Row="1">
-                                    <Button x:Name="ResetParametersButton" Content="Reset" Click="ResetParametersButton_Click"/>
-                                </StackPanel>
+                                </GroupBox>                                
                             </Grid>
                         </GroupBox>
                     </Grid>
                     <GridSplitter Grid.Column="1" HorizontalAlignment="Center" VerticalAlignment="Stretch" Background="Silver" Height="5" />
                     <Grid Grid.Column="2">
                         <Grid.RowDefinitions>
-                            <RowDefinition Height="315"/>
+                            <RowDefinition Height="235"/>
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="1*"/>
                         </Grid.RowDefinitions>
@@ -181,9 +183,9 @@
                                                 <ToolTip Content="Cleave on C terminus of K and R"  ToolTipService.ShowDuration="999999" ToolTipService.InitialShowDelay="500" />
                                             </ToolTipService.ToolTip>
                                         </ListBoxItem>
-                                        
+
                                     </ListBox>
-                                    
+
                                 </ScrollViewer>
                                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Grid.Row="5">
                                     <Button x:Name="defaultProteasesButton" Content="Default Proteases" Click="SelectDefaultProteases_Click"/>
@@ -195,54 +197,39 @@
                         <GridSplitter Grid.Row="1" VerticalAlignment="Center" HorizontalAlignment="Stretch" Background="Silver" Height="5"/>
                         <GroupBox Grid.Row="2">
                             <Grid>
-                                <Grid.RowDefinitions>                                    
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="35"/>
+                                    <RowDefinition Height="5"/>
+                                    <RowDefinition Height="40"/>
                                     <RowDefinition Height="40"/>
                                     <RowDefinition Height="35"/>
-                                </Grid.RowDefinitions>                               
-                                    
-                                <DockPanel Margin="5" Grid.Row="0" LastChildFill="True">
+                                </Grid.RowDefinitions>
+                                <Button x:Name="AddDigestionTask" Content="Add Digestion Task" Click="AddDigestionTask_Click" FontSize="20" Grid.Row="0" ></Button>
+                                <Button x:Name="AddPeptidePsmTsvFiles" Content="Optional: Analyze Peptide Results" FontSize="20" Click="AddPeptidePsmTsvFiles_Click" Grid.Row="2"></Button>
+                                <DockPanel Margin="5" Grid.Row="3" LastChildFill="True">
                                     <Button x:Name="OpenOutputFolderButton" Content="Open" Width="40" DockPanel.Dock="Right" Click="OpenOutputFolder_Click"></Button>
                                     <Label Content="Output Folder:"/>
                                     <TextBox x:Name="OutputFolderTextBox"/>
                                 </DockPanel>
-                                <Button x:Name="RunTaskButton" Content="Run!" Click="RunTaskButton_Click" FontSize="24" Grid.Row="5"/>
+                                <Button x:Name="RunTaskButton" Content="Run!" Click="RunTaskButton_Click" FontSize="24" Grid.Row="4"/>
                             </Grid>
                         </GroupBox>
                     </Grid>
                 </Grid>
-            </TabItem>
-            <TabItem Header="Load Peptide Results">
-                <GroupBox Header="MetaMorpheus PSM or Peptide Results Files" Grid.Row="2" Name="datafilesGroupBox">
-                            <Grid>
-                                <Grid.RowDefinitions>
-                                    <RowDefinition Height="*"/>
-                                    <RowDefinition Height="20"/>
-                                </Grid.RowDefinitions>
-                                <DataGrid x:Name="dataGridResultFiles" ItemsSource="{Binding}" CanUserSortColumns="False" CanUserResizeColumns="False" CanUserReorderColumns="False" DockPanel.Dock="Top">
-                                    <Style TargetType="DataGridCell">
-                                        <!--<EventSetter Event="MouseDoubleClick" Handler="Row_DoubleClick"/>-->
-                                    </Style>
-                                </DataGrid>
-                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Grid.Row="1">
-                                    <Button x:Name="AddPsmtsv" Content="Add" Click="AddPsmtsvFile_Click"/>
-                                    <Button x:Name="ClearPsmtsv" Content="Clear" Click="ClearPsmtsvFile_Click"/>
-                                </StackPanel>
-                            </Grid>
-                        </GroupBox>
-            </TabItem>
+            </TabItem>            
             <TabItem Header="Digestion Results" Background="DarkGray">
                 <TabControl>
                     <TabItem Header="Summary" Background="DarkGray" BorderThickness="10" BorderBrush="Black">
-                        
+
                     </TabItem>
                     <TabItem Header="Peptide Length Distributions" Background="DarkGray" BorderThickness="10" BorderBrush="Black">
-                        
+
                     </TabItem>
                     <TabItem Header="Protein Seqeunce Coverage Distributions" Background="DarkGray" BorderThickness="10" BorderBrush="Black">
-                        
+
                     </TabItem>
                     <TabItem Header="Search By Protein" Background="DarkGray" BorderThickness="10" BorderBrush="Black">
-                        
+
                     </TabItem>
                     <TabItem Header="Improve My Data" Background="DarkGray" BorderThickness="10" BorderBrush="Black">
 

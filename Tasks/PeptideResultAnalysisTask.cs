@@ -4,11 +4,7 @@ using System.Text;
 
 namespace Tasks
 {
-    public class RunResults
+    public class PeptideResultAnalysisTask
     {
-        internal RunResults(RunTask run)
-        { 
-        
-        }
     }
 }

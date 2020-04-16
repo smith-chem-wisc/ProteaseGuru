@@ -9,13 +9,13 @@ using System.Text;
 
 namespace Tasks
 {
-    class EverythingRunnerEngine
+    public class EverythingRunnerEngine
     {
-        private readonly List<RunTask> RunList;
+        private readonly List<(string, ProteaseGuruTask)> RunList;
         private string OutputFolder;
         private List<DbForDigestion> CurrentXmlDbFilenameList;
 
-        public EverythingRunnerEngine(List<RunTask> runList, List<DbForDigestion> startingXmlDbFilenameList, string outputFolder)
+        public EverythingRunnerEngine(List<(string,ProteaseGuruTask)> runList, List<DbForDigestion> startingXmlDbFilenameList, string outputFolder)
         {
             RunList = runList;
             OutputFolder = outputFolder.Trim('"');            
