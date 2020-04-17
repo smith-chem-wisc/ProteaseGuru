@@ -16,4 +16,10 @@
     <ProjectReference Include="..\Tasks\Tasks.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Page Update="CustomProteaseWindow.xaml">
+      <SubType>Designer</SubType>
+    </Page>
+  </ItemGroup>
+
 </Project>

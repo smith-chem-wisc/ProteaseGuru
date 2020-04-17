@@ -169,7 +169,6 @@ namespace GUI
                 proteases.Add(ProteaseDictionary.Dictionary[protease.ToString()]);
             }
             run.DigestionParameters.ProteasesForDigestion = proteases;
-
         }
         private void AddNewDB(object sender, XmlForTaskListEventArgs e)
         {
@@ -179,11 +178,7 @@ namespace GUI
             }
             else
             {
-                foreach (var uu in ProteinDbObservableCollection)
-                {
-                    uu.Use = false;
-                }
-
+                
                 foreach (var uu in e.NewDatabases)
                 {
                     ProteinDbObservableCollection.Add(new ProteinDbForDataGrid(uu));
@@ -283,7 +278,7 @@ namespace GUI
 
             // everything is OK to run
             var taskList = DynamicTasksObservableCollection.Select(b => (b.DisplayName, b.Task)).ToList();
-            var databaseList = ProteinDbObservableCollection.Where(b => b.Use).Select(b => new DbForDigestion(b.FilePath)).ToList();
+            var databaseList = ProteinDbObservableCollection.Select(b => new DbForDigestion(b.FilePath)).ToList();
             EverythingRunnerEngine a = new EverythingRunnerEngine(taskList, databaseList, outputFolder);
 
             var t = new Task(a.Run);
@@ -410,6 +405,14 @@ namespace GUI
             ProteaseSelectedForUse.SelectedItems.Add(ProteaseSelectedForUse.Items.GetItemAt(10));
 
 
+        }
+
+        private void PopulateProteaseList()
+        {
+            foreach (Protease protease in ProteaseDictionary.Dictionary.Values)
+            {
+                ProteaseSelectedForUse.Items.Add(protease);
+            }
         }
 
         private void ClearSelectedProteases_Click(object sender, RoutedEventArgs e)
