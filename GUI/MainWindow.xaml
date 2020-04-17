@@ -4,6 +4,7 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:GUI"
+        xmlns:Controls="clr-namespace:ProteaseGuruGUI"
         mc:Ignorable="d"
         Title="ProteaseGuru" Height="475" Width="825">
     <Grid>
@@ -163,24 +164,8 @@
                 </Grid>
             </TabItem>            
             <TabItem Header="Digestion Results" Background="DarkGray">
-                <TabControl>
-                    <TabItem Header="Summary" Background="DarkGray" BorderThickness="10" BorderBrush="Black">
-
-                    </TabItem>
-                    <TabItem Header="Peptide Length Distributions" Background="DarkGray" BorderThickness="10" BorderBrush="Black">
-
-                    </TabItem>
-                    <TabItem Header="Protein Seqeunce Coverage Distributions" Background="DarkGray" BorderThickness="10" BorderBrush="Black">
-
-                    </TabItem>
-                    <TabItem Header="Search By Protein" Background="DarkGray" BorderThickness="10" BorderBrush="Black">
-
-                    </TabItem>
-                    <TabItem Header="Improve My Data" Background="DarkGray" BorderThickness="10" BorderBrush="Black">
-
-                    </TabItem>
-
-                </TabControl>
+                
+                <Controls:DigestionResultsWindow/>
             </TabItem>
         </TabControl>
 

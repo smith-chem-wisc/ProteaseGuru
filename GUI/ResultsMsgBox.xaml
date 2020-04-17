@@ -1,0 +1,16 @@
+﻿<Window x:Class="GUI.ResultsMsgBox"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d"
+        Height="135.471" Width="425.393"
+        WindowStartupLocation="CenterScreen"
+        ResizeMode="NoResize">
+    <Grid Margin="0,0,2,-1">
+        <Button Name="CloseButton" Content="Close" HorizontalAlignment="Left" Height="25" Margin="90,63,0,0" VerticalAlignment="Top" Width="83"/>
+        <Button Name="ResultsButton" Content="Go To Results" HorizontalAlignment="Left" Height="25" Margin="189,63,0,0" VerticalAlignment="Top" Width="171"/>
+        <Label Name="Label" Content="All Digestion Tasks Complete!" HorizontalAlignment="Center" VerticalAlignment="Top" Height="27" Width="166" Margin="0,20,0,0"/>
+
+    </Grid>
+</Window>
