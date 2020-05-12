@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:GUI"
         mc:Ignorable="d"
-        Title="Add Custom Protease" Height="250" Width="375">
+        Title="Add Custom Protease" Height="290" Width="375">
     <Grid>
         <StackPanel Orientation="Vertical" VerticalAlignment="Top" HorizontalAlignment="Center" Margin="5">
             <!--Modification name-->
@@ -108,18 +108,14 @@
             <StackPanel Orientation="Horizontal">
                 <Label Content="Cleavage Terminus" Width="180"></Label>
                 <Label Content="*" Foreground="Red" FontWeight="Bold" />
-                <ComboBox Name="cleavageTerminusComboBox" Width="155" Height="23">
-                    <ComboBoxItem Content="C"></ComboBoxItem>
-                    <ComboBoxItem Content="N"></ComboBoxItem>
-                </ComboBox>
+                <ListBox Name="cleavageTerminusListBox" Width="155" Height="46">                    
+                </ListBox>
             </StackPanel>
             <StackPanel Orientation="Horizontal">
                 <Label Content="Cleavage Specificity" Width="180"></Label>
                 <Label Content="*" Foreground="Red" FontWeight="Bold" />
-                <ComboBox Name="cleavageSpecificityComboBox" Width="155" Height="23">
-                    <ComboBoxItem Content="Full"></ComboBoxItem>
-                    <ComboBoxItem Content="Semi"></ComboBoxItem>
-                </ComboBox>
+                <ListBox Name="cleavageSpecificityListBox" Width="155" Height="46">                    
+                </ListBox>
             </StackPanel>
             <StackPanel Orientation="Horizontal">
                 <Label Content="PSI-MS Accession Number" Width="195"></Label>
@@ -153,7 +149,7 @@
         <!--Save and cancel buttons-->
         <StackPanel Orientation="Horizontal" Height="35" VerticalAlignment="Bottom" HorizontalAlignment="Center"  >
             <Button Name="saveButton" Content="Save Protease" FontSize="13" Margin="5" Width="100" Click="SaveCustomProtease_Click" />
-            <Button Name="clearButton" Content="Clear" FontSize="13" Margin="5" Width="100" Click="CancelCustomProtease_Click" />
+            <Button Name="clearButton" Content="Clear" FontSize="13" Margin="5" Width="100" Click="ClearCustomProtease_Click" />
         </StackPanel>
     </Grid>
 </Window>

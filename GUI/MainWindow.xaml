@@ -128,62 +128,7 @@
                                     <RowDefinition Height="20"/>
                                 </Grid.RowDefinitions>
                                 <ScrollViewer VerticalScrollBarVisibility="Visible" HorizontalScrollBarVisibility="Auto" Grid.Row="0">
-                                    <ListBox Name ="ProteaseSelectedForUse" SelectionMode="Multiple">
-                                        <ListBoxItem Content="Arg-C" >
-                                            <ToolTipService.ToolTip>
-                                                <ToolTip Content="Cleave on C terminus of R"  ToolTipService.ShowDuration="999999" ToolTipService.InitialShowDelay="500" />
-                                            </ToolTipService.ToolTip>
-                                        </ListBoxItem>
-                                        <ListBoxItem Content="Asp-N">
-                                            <ToolTipService.ToolTip>
-                                                <ToolTip Content="Cleave on N terminus of D"  ToolTipService.ShowDuration="999999" ToolTipService.InitialShowDelay="500" />
-                                            </ToolTipService.ToolTip>
-                                        </ListBoxItem>
-                                        <ListBoxItem Content="chymotrypsin (don't cleave before proline)">
-                                            <ToolTipService.ToolTip>
-                                                <ToolTip Content="Cleave on C terminus of Y,F and W"  ToolTipService.ShowDuration="999999" ToolTipService.InitialShowDelay="500" />
-                                            </ToolTipService.ToolTip>
-                                        </ListBoxItem>
-                                        <ListBoxItem Content="chymotrypsin (cleave before proline)">
-                                            <ToolTipService.ToolTip>
-                                                <ToolTip Content="Cleave on C terminus of Y,F and W"  ToolTipService.ShowDuration="999999" ToolTipService.InitialShowDelay="500" />
-                                            </ToolTipService.ToolTip>
-                                        </ListBoxItem>
-                                        <ListBoxItem Content="elastase">
-                                            <ToolTipService.ToolTip>
-                                                <ToolTip Content="Cleave on C terminus of A, V, S, G, L and I"  ToolTipService.ShowDuration="999999" ToolTipService.InitialShowDelay="500" />
-                                            </ToolTipService.ToolTip>
-                                        </ListBoxItem>
-                                        <ListBoxItem Content="Glu-C">
-                                            <ToolTipService.ToolTip>
-                                                <ToolTip Content="Cleave on C terminus of E"  ToolTipService.ShowDuration="999999" ToolTipService.InitialShowDelay="500" />
-                                            </ToolTipService.ToolTip>
-                                        </ListBoxItem>
-                                        <ListBoxItem Content="Glu-C (with asp)">
-                                            <ToolTipService.ToolTip>
-                                                <ToolTip Content="Cleave on C terminus of E and D"  ToolTipService.ShowDuration="999999" ToolTipService.InitialShowDelay="500" />
-                                            </ToolTipService.ToolTip>
-                                        </ListBoxItem>
-                                        <ListBoxItem Content="Lys-C (don't cleave before proline)">
-                                            <ToolTipService.ToolTip>
-                                                <ToolTip Content="Cleave on C terminus of K"  ToolTipService.ShowDuration="999999" ToolTipService.InitialShowDelay="500" />
-                                            </ToolTipService.ToolTip>
-                                        </ListBoxItem>
-                                        <ListBoxItem Content="Lys-C (cleave before proline)">
-                                            <ToolTipService.ToolTip>
-                                                <ToolTip Content="Cleave on C terminus of K"  ToolTipService.ShowDuration="999999" ToolTipService.InitialShowDelay="500" />
-                                            </ToolTipService.ToolTip>
-                                        </ListBoxItem>
-                                        <ListBoxItem Content="Lys-N">
-                                            <ToolTipService.ToolTip>
-                                                <ToolTip Content="Cleave on N terminus of K"  ToolTipService.ShowDuration="999999" ToolTipService.InitialShowDelay="500" />
-                                            </ToolTipService.ToolTip>
-                                        </ListBoxItem>
-                                        <ListBoxItem Content="trypsin">
-                                            <ToolTipService.ToolTip>
-                                                <ToolTip Content="Cleave on C terminus of K and R"  ToolTipService.ShowDuration="999999" ToolTipService.InitialShowDelay="500" />
-                                            </ToolTipService.ToolTip>
-                                        </ListBoxItem>
+                                    <ListBox Name ="ProteaseSelectedForUse" SelectionMode="Multiple">                                        
 
                                     </ListBox>
 
@@ -191,7 +136,7 @@
                                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Grid.Row="5">
                                     <Button x:Name="defaultProteasesButton" Content="Default Proteases" Click="SelectDefaultProteases_Click"/>
                                     <Button x:Name="clearProteasesButton" Content="Clear Protease Selection" Click="ClearSelectedProteases_Click"/>
-                                    <Button x:Name="addCustomProteasesButton" Content="Add Custom Protease" Click="AddAndSelectCustomProtease_Click"/>
+                                    <Button x:Name="addCustomProteasesButton" Content="Add Custom Protease" Click="AddCustomProtease_Click"/>
                                 </StackPanel>
                             </Grid>
                         </GroupBox>
