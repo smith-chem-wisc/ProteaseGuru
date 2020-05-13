@@ -9,7 +9,7 @@
         ResizeMode="NoResize">
     <Grid Margin="0,0,2,-1">
         <Button Name="CloseButton" Content="Close" HorizontalAlignment="Left" Height="25" Margin="90,63,0,0" VerticalAlignment="Top" Width="83"/>
-        <Button Name="ResultsButton" Content="Go To Results" HorizontalAlignment="Left" Height="25" Margin="189,63,0,0" VerticalAlignment="Top" Width="171"/>
+        <Button Name="ResultsButton" Content="Go To Results" HorizontalAlignment="Left" Height="25" Margin="189,63,0,0" VerticalAlignment="Top" Width="171" Click="ResultsButton_Click"/>
         <Label Name="Label" Content="All Digestion Tasks Complete!" HorizontalAlignment="Center" VerticalAlignment="Top" Height="27" Width="166" Margin="0,20,0,0"/>
 
     </Grid>

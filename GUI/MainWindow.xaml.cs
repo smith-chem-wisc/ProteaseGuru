@@ -451,8 +451,18 @@ namespace GUI
             }
         }
         private void RunTaskButton_Click(object sender, RoutedEventArgs e)
-        { 
+        {
+            // run task
+
+            // once complete, prompt message box
+            var results = ResultsMsgBox.Show();
+
+            if (results == MessageBoxResult.Yes)
+            {
+                AllResultsTab.IsSelected = true;
+            }
         }
+
         private void CheckIfNumber(object sender, TextCompositionEventArgs e)
         {
             e.Handled = !CheckIsNumber(e.Text);
