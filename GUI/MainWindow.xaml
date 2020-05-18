@@ -164,8 +164,7 @@
                     </Grid>
                 </Grid>
             </TabItem>            
-            <TabItem Header="Digestion Results" Background="DarkGray" Name="AllResultsTab">
-                
+            <TabItem Header="Digestion Results" Background="DarkGray" Name="AllResultsTab">                
                 <Controls:AllResultsWindow/>
             </TabItem>
         </TabControl>
