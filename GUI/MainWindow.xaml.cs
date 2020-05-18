@@ -451,7 +451,49 @@ namespace GUI
             }
         }
         private void RunTaskButton_Click(object sender, RoutedEventArgs e)
-        { 
+        {
+            GlobalVariables.StopLoops = false;
+            
+            // check for valid tasks/spectra files/protein databases
+            if (!StaticTasksObservableCollection.Any())
+            {
+                GuiWarnHandler(null, new StringEventArgs("You need to add at least one task!", null));
+                return;
+            }
+            
+            if (!ProteinDbObservableCollection.Any())
+            {
+                GuiWarnHandler(null, new StringEventArgs("You need to add at least one protein database!", null));
+                return;
+            }
+
+            DynamicTasksObservableCollection = new ObservableCollection<InRunTask>();
+
+            for (int i = 0; i < StaticTasksObservableCollection.Count; i++)
+            {
+                DynamicTasksObservableCollection.Add(new InRunTask("Task" + (i + 1) + "-" + StaticTasksObservableCollection[i].proteaseGuruTask.TaskType, StaticTasksObservableCollection[i].proteaseGuruTask));
+            }
+            
+            // output folder
+            if (string.IsNullOrEmpty(OutputFolderTextBox.Text))
+            {
+                var pathOfFirstSpectraFile = System.IO.Path.GetDirectoryName(ProteinDbObservableCollection.First().FilePath);
+                OutputFolderTextBox.Text = System.IO.Path.Combine(pathOfFirstSpectraFile, @"$DATETIME");
+            }
+
+            var startTimeForAllFilenames = DateTime.Now.ToString("yyyy-MM-dd-HH-mm-ss", CultureInfo.InvariantCulture);
+            string outputFolder = OutputFolderTextBox.Text.Replace("$DATETIME", startTimeForAllFilenames);
+            OutputFolderTextBox.Text = outputFolder;
+            
+            // everything is OK to run
+            EverythingRunnerEngine a = new EverythingRunnerEngine(DynamicTasksObservableCollection.Select(b => (b.DisplayName, b.Task)).ToList(),
+                ProteinDbObservableCollection.Select(b => new DbForDigestion(b.FilePath)).ToList(),
+                outputFolder);
+
+            var t = new Task(a.Run);
+            t.ContinueWith(EverythingRunnerExceptionHandler, TaskContinuationOptions.OnlyOnFaulted);
+            t.Start();
+
         }
         private void CheckIfNumber(object sender, TextCompositionEventArgs e)
         {
