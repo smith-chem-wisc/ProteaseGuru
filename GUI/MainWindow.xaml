@@ -6,6 +6,7 @@
         xmlns:local="clr-namespace:GUI"
         xmlns:Controls="clr-namespace:ProteaseGuruGUI"
         mc:Ignorable="d"
+        WindowStartupLocation="CenterScreen"
         Title="ProteaseGuru" Height="475" Width="825">
     <Grid>
         <Grid.ColumnDefinitions>
@@ -163,9 +164,9 @@
                     </Grid>
                 </Grid>
             </TabItem>            
-            <TabItem Header="Digestion Results" Background="DarkGray">
+            <TabItem Header="Digestion Results" Background="DarkGray" Name="AllResultsTab">
                 
-                <Controls:DigestionResultsWindow/>
+                <Controls:AllResultsWindow/>
             </TabItem>
         </TabControl>
 
