@@ -503,6 +503,7 @@ namespace GUI
             }
 
         }
+
         private void CheckIfNumber(object sender, TextCompositionEventArgs e)
         {
             e.Handled = !CheckIsNumber(e.Text);
