@@ -1,4 +1,7 @@
 ﻿using Engine;
+using FlashLFQ;
+using Proteomics;
+using Proteomics.ProteolyticDigestion;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -32,6 +35,13 @@ namespace Tasks
 
         public static event EventHandler<StringEventArgs> WarnHandler;
 
+        private Dictionary<string, Dictionary<Protease, Dictionary<Protein, List<InSilicoPeptide>>>> PeptideByFile;
+
+        public Dictionary<string, Dictionary<Protease, Dictionary<Protein, List<InSilicoPeptide>>>> Results()
+        {
+            return PeptideByFile;
+        }
+
         public void Run()
         {
             StartingAllTasks();
@@ -62,7 +72,9 @@ namespace Tasks
 
                 // Actual task running code
                 var myTaskResults = ok.Item2.RunSpecific(outputFolderForThisTask, CurrentXmlDbFilenameList);
-                                
+
+                PeptideByFile = myTaskResults.PeptideByFile;
+
                 allResultsText.AppendLine(Environment.NewLine + Environment.NewLine + Environment.NewLine + Environment.NewLine + myTaskResults.ToString());
             }
             stopWatch.Stop();

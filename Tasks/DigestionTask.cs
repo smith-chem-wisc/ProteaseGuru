@@ -19,10 +19,13 @@ namespace Tasks
         }
         public static event EventHandler<StringEventArgs> DigestionWarnHandler;
         public Parameters DigestionParameters { get; set; }
-        
+
+        public Dictionary<string, Dictionary<Protease, Dictionary<Protein, List<InSilicoPeptide>>>> PeptideByFile;
+
+
         public override MyTaskResults RunSpecific(string OutputFolder, List<DbForDigestion> dbFileList)
         {                    
-            Dictionary<string, Dictionary<Protease, Dictionary<Protein, List<InSilicoPeptide>>>> peptideByFile =
+            PeptideByFile =
                 new Dictionary<string, Dictionary<Protease, Dictionary<Protein, List<InSilicoPeptide>>>>();
             foreach (var database in dbFileList)
             {
@@ -34,7 +37,7 @@ namespace Tasks
                     var inSilicoPeptidesByFile = DeterminePeptideStatus(peptides, DigestionParameters);
                     peptidesByProtease.Add(protease, inSilicoPeptidesByFile);
                 }
-                peptideByFile.Add(database.FileName, peptidesByProtease);
+                PeptideByFile.Add(database.FileName, peptidesByProtease);
             }         
             
             MyTaskResults myRunResults = new MyTaskResults(this);

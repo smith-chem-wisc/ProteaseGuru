@@ -30,7 +30,7 @@
                                         IsReadOnly="True" ScrollViewer.CanContentScroll="True" Margin="0,0,0,0" 
                                         SelectedCellsChanged="summaryProteinDB_SelectedCellsChanged" CanUserDeleteRows="false" CanUserAddRows="false">
                                     <DataGrid.Columns>
-                                        <DataGridTextColumn Binding="{Binding FileName}" Width="1*"></DataGridTextColumn>
+                                        <DataGridTextColumn Binding="{Binding}" Width="1*"></DataGridTextColumn>
                                     </DataGrid.Columns>
                                 </DataGrid>
                             </Grid>

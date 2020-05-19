@@ -15,7 +15,7 @@ using System.Globalization;
 
 namespace GUI
 {
-    class PlotModelStat : INotifyPropertyChanged, IPlotModel
+    public class PlotModelStat : INotifyPropertyChanged, IPlotModel
     {
         private PlotModel privateModel;
         private readonly ObservableCollection<InSilicoPeptide> allPeptides;

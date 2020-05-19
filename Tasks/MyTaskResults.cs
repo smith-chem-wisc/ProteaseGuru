@@ -1,4 +1,6 @@
-﻿using System;
+﻿using Proteomics;
+using Proteomics.ProteolyticDigestion;
+using System;
 using System.Collections.Generic;
 using System.Text;
 
@@ -12,9 +14,13 @@ namespace Tasks
 
         private readonly StringBuilder TaskSummaryText = new StringBuilder();
         private readonly StringBuilder PsmPeptideProteinSummaryText = new StringBuilder();
+        public readonly Dictionary<string, Dictionary<Protease, Dictionary<Protein, List<InSilicoPeptide>>>> PeptideByFile;
 
         internal MyTaskResults(ProteaseGuruTask s)
         {
+            var results = (DigestionTask)s;
+            PeptideByFile = results.PeptideByFile;
+
             resultTexts = new List<string>();
         }
 
