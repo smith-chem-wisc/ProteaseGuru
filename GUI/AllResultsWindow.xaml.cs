@@ -1,5 +1,7 @@
 ﻿using GUI;
 using OxyPlot;
+using Proteomics;
+using Proteomics.ProteolyticDigestion;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -19,18 +21,25 @@ namespace ProteaseGuruGUI
     public partial class AllResultsWindow : UserControl
     {
         private readonly ObservableCollection<ProteaseSummaryForTreeView> SummaryForTreeViewObservableCollection;
-        private readonly ObservableCollection<ProteinDbForDataGrid> listOfProteinDbs; // for now, use ProteinDBForDataGrid
+        private readonly ObservableCollection<string> listOfProteinDbs; // for now, use ProteinDBForDataGrid
         ICollectionView proteinDBView;
-        
-        public AllResultsWindow() // change constructor to receive analysis information
-        {            
+        private readonly Dictionary<string, Dictionary<Protease, Dictionary<Protein, List<InSilicoPeptide>>>> PeptideByFile;
+
+        public AllResultsWindow()
+        {
+        }
+
+        public AllResultsWindow(Dictionary<string, Dictionary<Protease, Dictionary<Protein, List<InSilicoPeptide>>>> peptideByFile) // change constructor to receive analysis information
+        {
             InitializeComponent();
-            listOfProteinDbs = new ObservableCollection<ProteinDbForDataGrid>();
+            PeptideByFile = peptideByFile;
+
+            listOfProteinDbs = new ObservableCollection<string>();         
+            SetUpDictionaries();
+
             proteinDBView = CollectionViewSource.GetDefaultView(listOfProteinDbs);
             dataGridProteinDBs.DataContext = proteinDBView;
             SummaryForTreeViewObservableCollection = new ObservableCollection<ProteaseSummaryForTreeView>();
-
-            SetUpDictionaries();
         }
 
         private void SetUpDictionaries()
@@ -38,8 +47,10 @@ namespace ProteaseGuruGUI
             // populate list of protein DBs
             // populate summary for tree view for each db?
 
-            var pd = new ProteinDbForDataGrid("C:/Users/khair/Downloads/ProteinML/02-15-17_YL-stnd_old-heat.mzML");
-            listOfProteinDbs.Add(pd);
+            foreach (var db in PeptideByFile.Keys)
+            {
+                listOfProteinDbs.Add(db);
+            }
 
             // populate list of proteins
         }
@@ -51,7 +62,7 @@ namespace ProteaseGuruGUI
 
         private void OnSelectionChanged()
         {
-            var db = (ProteinDbForDataGrid) dataGridProteinDBs.SelectedItem;
+            //var db = (ProteinDbForDataGrid) dataGridProteinDBs.SelectedItem;
 
             // SUMMARY
             // match selected db with task results
@@ -59,24 +70,24 @@ namespace ProteaseGuruGUI
             // change data context for ProteaseSummaryForTreeView
 
             // dummy code for testing
-            if (db.FileName.Equals("02-15-17_YL-stnd_old-heat.mzML"))
-            {
-                TotalNumberPeptides.Content = 100;
-                TotalNumberDistinctPeptides.Content = 23;
+            //if (db.FileName.Equals("02-15-17_YL-stnd_old-heat.mzML"))
+            //{
+            //    TotalNumberPeptides.Content = 100;
+            //    TotalNumberDistinctPeptides.Content = 23;
 
-                SummaryForTreeViewObservableCollection.Add(new ProteaseSummaryForTreeView("Trypsin"));
-                SummaryForTreeViewObservableCollection.Add(new ProteaseSummaryForTreeView("Asp-N"));
-                SummaryForTreeViewObservableCollection.Add(new ProteaseSummaryForTreeView("Arg-C"));
+            //    SummaryForTreeViewObservableCollection.Add(new ProteaseSummaryForTreeView("Trypsin"));
+            //    SummaryForTreeViewObservableCollection.Add(new ProteaseSummaryForTreeView("Asp-N"));
+            //    SummaryForTreeViewObservableCollection.Add(new ProteaseSummaryForTreeView("Arg-C"));
 
-                foreach (var protease in SummaryForTreeViewObservableCollection)
-                {
-                    protease.Summary.Add(new SummaryForTreeView("Number of Unique Peptides: 30"));
-                    protease.Summary.Add(new SummaryForTreeView("Number of Shared Peptides: 30"));
-                    protease.Summary.Add(new SummaryForTreeView("Average Protein Sequence Coverage: 0.609"));
-                }
+            //    foreach (var protease in SummaryForTreeViewObservableCollection)
+            //    {
+            //        protease.Summary.Add(new SummaryForTreeView("Number of Unique Peptides: 30"));
+            //        protease.Summary.Add(new SummaryForTreeView("Number of Shared Peptides: 30"));
+            //        protease.Summary.Add(new SummaryForTreeView("Average Protein Sequence Coverage: 0.609"));
+            //    }
 
-                ProteaseSummaryTreeView.DataContext = SummaryForTreeViewObservableCollection;
-            }
+            //    ProteaseSummaryTreeView.DataContext = SummaryForTreeViewObservableCollection;
+            //}
 
             // TODO PEPTIDE LENGTH DISTRIBUTION
             // TODO PROTEIN COVERAGE DISTRIBUTION

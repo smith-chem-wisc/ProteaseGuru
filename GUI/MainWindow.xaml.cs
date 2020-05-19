@@ -21,6 +21,7 @@ using System.IO;
 using System.Globalization;
 using static Tasks.ProteaseGuruTask;
 using MzLibUtil;
+using ProteaseGuruGUI;
 
 namespace GUI
 {
@@ -489,19 +490,21 @@ namespace GUI
             EverythingRunnerEngine a = new EverythingRunnerEngine(DynamicTasksObservableCollection.Select(b => (b.DisplayName, b.Task)).ToList(),
                 ProteinDbObservableCollection.Select(b => new DbForDigestion(b.FilePath)).ToList(),
                 outputFolder);
-
+                     
             var t = new Task(a.Run);
             t.ContinueWith(EverythingRunnerExceptionHandler, TaskContinuationOptions.OnlyOnFaulted);
             t.Start();
-
-            // once complete, prompt message box
+            t.Wait();
+            
+            // update results display
+            AllResultsTab.Content = new AllResultsWindow(a.PeptideByFile);
+                        
+            // prompt user to direct to display window
             var results = ResultsMsgBox.Show();
-
             if (results == MessageBoxResult.Yes)
             {
                 AllResultsTab.IsSelected = true;
             }
-
         }
 
         private void CheckIfNumber(object sender, TextCompositionEventArgs e)
