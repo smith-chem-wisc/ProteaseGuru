@@ -1,8 +1,15 @@
 ﻿using GUI;
+using OxyPlot;
+using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.IO;
+using System.Threading.Tasks;
+using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
+using Tasks;
 
 namespace ProteaseGuruGUI
 {
@@ -14,9 +21,9 @@ namespace ProteaseGuruGUI
         private readonly ObservableCollection<ProteaseSummaryForTreeView> SummaryForTreeViewObservableCollection;
         private readonly ObservableCollection<ProteinDbForDataGrid> listOfProteinDbs; // for now, use ProteinDBForDataGrid
         ICollectionView proteinDBView;
-
+        
         public AllResultsWindow() // change constructor to receive analysis information
-        {
+        {            
             InitializeComponent();
             listOfProteinDbs = new ObservableCollection<ProteinDbForDataGrid>();
             proteinDBView = CollectionViewSource.GetDefaultView(listOfProteinDbs);
@@ -73,6 +80,62 @@ namespace ProteaseGuruGUI
 
             // TODO PEPTIDE LENGTH DISTRIBUTION
             // TODO PROTEIN COVERAGE DISTRIBUTION
+        }
+        
+        private async void PlotSelected(object sender, SelectionChangedEventArgs e)
+        {
+            var listview = sender as ListView;
+            var plotName = listview.SelectedItem as string;
+            
+            // get psms from selected source files
+            ObservableCollection<InSilicoPeptide> peptides = new ObservableCollection<InSilicoPeptide>();
+            Dictionary<string, ObservableCollection<InSilicoPeptide>> peptidesByProtease = new Dictionary<string, ObservableCollection<InSilicoPeptide>>();
+
+            //MM code for this section
+            //need to update to get information from our task results to populate peptides
+
+            //foreach (string fileName in selectSourceFileListBox.SelectedItems)
+            //{
+            //    psmsBSF.Add(fileName, psmsBySourceFile[fileName]);
+            //    foreach (PsmFromTsv psm in psmsBySourceFile[fileName])
+            //    {
+            //        psms.Add(psm);
+            //    }
+            //}
+            PlotModelStat plot = await Task.Run(() => new PlotModelStat(plotName, peptides, peptidesByProtease));
+            plotViewStat.DataContext = plot;            
+        }
+
+
+        private void CreatePlotPdf_Click(object sender, RoutedEventArgs e)
+        {
+            var selectedItem = HistogramComboBox.SelectedItem;
+
+            if (selectedItem == null)
+            {
+                MessageBox.Show("Select a plot type to export!");
+                return;
+            }
+
+            var plotName = selectedItem as string;
+            //var fileDirectory = Directory.GetParent(tsvResultsFilePath).ToString();
+            var fileDirectory = "";
+            var fileName = String.Concat(plotName, ".pdf");
+
+            // update font sizes to exported PDF's size
+            double tmpW = plotViewStat.Width;
+            double tmpH = plotViewStat.Height;
+            plotViewStat.Width = 1000;
+            plotViewStat.Height = 700;
+            plotViewStat.UpdateLayout();            
+
+            using (Stream writePDF = File.Create(Path.Combine(fileDirectory, fileName)))
+            {
+                PdfExporter.Export(plotViewStat.Model, writePDF, 1000, 700);
+            }
+            plotViewStat.Width = tmpW;
+            plotViewStat.Height = tmpH;
+            MessageBox.Show("PDF Created at " + Path.Combine(fileDirectory, fileName) + "!");
         }
     }
 }
