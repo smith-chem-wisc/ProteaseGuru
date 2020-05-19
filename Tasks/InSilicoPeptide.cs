@@ -9,7 +9,7 @@ namespace Tasks
 {
     [Serializable]
     //peptide object that hold additional information that we want to report for each peptide. Inherits from PeptideWithSetModifications
-    class InSilicoPeptide: PeptideWithSetModifications
+    public class InSilicoPeptide: PeptideWithSetModifications
     {
         bool UniquePeptide { get; }
         double Hydrophobicity { get; set; }
