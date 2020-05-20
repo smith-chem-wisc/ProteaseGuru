@@ -67,19 +67,19 @@ namespace GUI
 
         private void createPlot(string plotType)
         {
-            if (plotType.Equals("Peptide Length"))
+            if (plotType.Equals(" Peptide Length"))
             {
                 histogramPlot(1);
             }
-            else if (plotType.Equals("Protein Sequence Coverage"))
+            else if (plotType.Equals(" Protein Sequence Coverage"))
             {
                 histogramPlot(2);
             }
-            else if (plotType.Equals("Predicted Peptide Hydrophobicity"))
+            else if (plotType.Equals(" Predicted Peptide Hydrophobicity"))
             {
                 histogramPlot(3);
             }
-            else if (plotType.Equals("Predicted Peptide Electrophoretic Mobility"))
+            else if (plotType.Equals(" Predicted Peptide Electrophoretic Mobility"))
             {
                 histogramPlot(4);
             }            
@@ -135,7 +135,7 @@ namespace GUI
                     break;
                 case 3: // Predicted Peptide Hydrophobicity
                     xAxisTitle = "Predicted Peptide Hydrophobicity";
-                    binSize = 0.1;
+                    binSize = 0.5;
                     foreach (string key in PeptidesByProtease.Keys)
                     {
                         numbersByProtease.Add(key, PeptidesByProtease[key].Select(p => p.GetHydrophobicity()));
@@ -145,7 +145,7 @@ namespace GUI
                     break;
                 case 4: // Predicted Peptide Electrophoretic Mobility
                     xAxisTitle = "Predicted Peptide Electrophoretic Mobility";
-                    binSize = 0.1;
+                    binSize = 0.5;
                     foreach (string key in PeptidesByProtease.Keys)
                     {
                         numbersByProtease.Add(key, PeptidesByProtease[key].Select(p => p.GetElectrophoreticMobility()));

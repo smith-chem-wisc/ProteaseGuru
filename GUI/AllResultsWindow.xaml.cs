@@ -13,6 +13,7 @@ using System.Windows.Controls;
 using System.Windows.Data;
 using Tasks;
 
+
 namespace ProteaseGuruGUI
 {
     /// <summary>
@@ -21,9 +22,10 @@ namespace ProteaseGuruGUI
     public partial class AllResultsWindow : UserControl
     {
         private readonly ObservableCollection<ProteaseSummaryForTreeView> SummaryForTreeViewObservableCollection;
-        private readonly ObservableCollection<string> listOfProteinDbs; // for now, use ProteinDBForDataGrid
+        private readonly ObservableCollection<string> listOfProteinDbs; 
         ICollectionView proteinDBView;
         private readonly Dictionary<string, Dictionary<Protease, Dictionary<Protein, List<InSilicoPeptide>>>> PeptideByFile;
+        List<string> DBSelected;
 
         public AllResultsWindow()
         {
@@ -33,10 +35,9 @@ namespace ProteaseGuruGUI
         {
             InitializeComponent();
             PeptideByFile = peptideByFile;
-
-            listOfProteinDbs = new ObservableCollection<string>();         
+            listOfProteinDbs = new ObservableCollection<string>();
+            DBSelected = new List<string>() { };
             SetUpDictionaries();
-
             proteinDBView = CollectionViewSource.GetDefaultView(listOfProteinDbs);
             dataGridProteinDBs.DataContext = proteinDBView;
             SummaryForTreeViewObservableCollection = new ObservableCollection<ProteaseSummaryForTreeView>();
@@ -57,12 +58,17 @@ namespace ProteaseGuruGUI
 
         private void summaryProteinDB_SelectedCellsChanged(object sender, SelectedCellsChangedEventArgs e)
         {
-            OnSelectionChanged(); // update all results tabs
+            OnDBSelectionChanged(); // update all results tabs
         }
 
-        private void OnSelectionChanged()
+        private void OnDBSelectionChanged()
         {
-            //var db = (ProteinDbForDataGrid) dataGridProteinDBs.SelectedItem;
+            DBSelected.Clear();
+            var dbs = dataGridProteinDBs.SelectedItems;
+            foreach (var db in dbs)
+            {
+                DBSelected.Add(db.ToString());
+            }
 
             // SUMMARY
             // match selected db with task results
@@ -92,27 +98,51 @@ namespace ProteaseGuruGUI
             // TODO PEPTIDE LENGTH DISTRIBUTION
             // TODO PROTEIN COVERAGE DISTRIBUTION
         }
-        
+
         private async void PlotSelected(object sender, SelectionChangedEventArgs e)
         {
-            var listview = sender as ListView;
-            var plotName = listview.SelectedItem as string;
-            
-            // get psms from selected source files
             ObservableCollection<InSilicoPeptide> peptides = new ObservableCollection<InSilicoPeptide>();
             Dictionary<string, ObservableCollection<InSilicoPeptide>> peptidesByProtease = new Dictionary<string, ObservableCollection<InSilicoPeptide>>();
 
-            //MM code for this section
-            //need to update to get information from our task results to populate peptides
+            var selectedPlot = HistogramComboBox.SelectedItem;
+            var objectName = selectedPlot.ToString().Split(':');
+            var plotName = objectName[1];
 
-            //foreach (string fileName in selectSourceFileListBox.SelectedItems)
-            //{
-            //    psmsBSF.Add(fileName, psmsBySourceFile[fileName]);
-            //    foreach (PsmFromTsv psm in psmsBySourceFile[fileName])
-            //    {
-            //        psms.Add(psm);
-            //    }
-            //}
+            //var comboBox = HistogramComboBox as ComboBox;
+            //var plotName = comboBox.SelectedItem as string;
+
+            foreach (var db in DBSelected)
+            {
+                var PeptidesForAllProteases = PeptideByFile[db];
+                foreach (var protease in PeptidesForAllProteases)
+                {
+                    ObservableCollection<InSilicoPeptide> proteasePeptides = new ObservableCollection<InSilicoPeptide>();
+                    if (peptidesByProtease.ContainsKey(protease.Key.Name))
+                    {
+                        foreach (var protein in protease.Value)
+                        {
+                            foreach (var peptide in protein.Value)
+                            {
+                                proteasePeptides.Add(peptide);
+                                peptides.Add(peptide);
+                            }
+                        }
+                        peptidesByProtease[protease.Key.Name] = proteasePeptides;
+                    }
+                    else 
+                    {
+                        foreach (var protein in protease.Value)
+                        {
+                            foreach (var peptide in protein.Value)
+                            {
+                                proteasePeptides.Add(peptide);
+                                peptides.Add(peptide);
+                            }
+                        }
+                        peptidesByProtease.Add(protease.Key.Name, proteasePeptides);
+                    }
+                }
+            }            
             PlotModelStat plot = await Task.Run(() => new PlotModelStat(plotName, peptides, peptidesByProtease));
             plotViewStat.DataContext = plot;            
         }
