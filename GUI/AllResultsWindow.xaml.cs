@@ -25,7 +25,7 @@ namespace ProteaseGuruGUI
         private readonly ObservableCollection<string> listOfProteinDbs; 
         ICollectionView proteinDBView;
         private readonly Dictionary<string, Dictionary<Protease, Dictionary<Protein, List<InSilicoPeptide>>>> PeptideByFile;
-        List<string> DBSelected;
+        List<string> DBSelected;       
 
         public AllResultsWindow()
         {
@@ -40,7 +40,7 @@ namespace ProteaseGuruGUI
             SetUpDictionaries();
             proteinDBView = CollectionViewSource.GetDefaultView(listOfProteinDbs);
             dataGridProteinDBs.DataContext = proteinDBView;
-            SummaryForTreeViewObservableCollection = new ObservableCollection<ProteaseSummaryForTreeView>();
+            SummaryForTreeViewObservableCollection = new ObservableCollection<ProteaseSummaryForTreeView>();            
         }
 
         private void SetUpDictionaries()
@@ -70,6 +70,12 @@ namespace ProteaseGuruGUI
                 DBSelected.Add(db.ToString());
             }
 
+            foreach (var db in DBSelected)
+            {
+                var databasePeptides = PeptideByFile[db];                
+            }
+            
+
             // SUMMARY
             // match selected db with task results
             // change TotalNumberPeptides and TotalNumberDistinctPeptides
@@ -98,6 +104,7 @@ namespace ProteaseGuruGUI
             // TODO PEPTIDE LENGTH DISTRIBUTION
             // TODO PROTEIN COVERAGE DISTRIBUTION
         }
+        
 
         private async void PlotSelected(object sender, SelectionChangedEventArgs e)
         {

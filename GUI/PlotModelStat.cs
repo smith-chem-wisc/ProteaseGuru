@@ -185,7 +185,7 @@ namespace GUI
                 // add a column series for each file
             foreach (string key in dictsByProtease.Keys)
             {
-                 var column = new ColumnSeries { ColumnWidth = 200, IsStacked = true, Title = key, TrackerFormatString = "Bin: {bin}\n{0}: {2}\nTotal: {total}" };
+                 var column = new ColumnSeries { ColumnWidth = 200, IsStacked = false, Title = key, TrackerFormatString = "Bin: {bin}\n{0}: {2}\nTotal: {total}" };
                 foreach (var d in dictsByProtease[key])
                 {
                     int bin = int.Parse(d.Key);
