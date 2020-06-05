@@ -12,6 +12,7 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Linq;
 using System.Globalization;
+using Proteomics;
 
 namespace GUI
 {
@@ -20,6 +21,7 @@ namespace GUI
         private PlotModel privateModel;
         private readonly ObservableCollection<InSilicoPeptide> allPeptides;
         private readonly Dictionary<string, ObservableCollection<InSilicoPeptide>> PeptidesByProtease;
+        private readonly Dictionary<string, ObservableCollection<double>> SequenceCoverageByProtease = new Dictionary<string, ObservableCollection<double>>();
 
         private static List<OxyColor> columnColors = new List<OxyColor>
         {
@@ -56,11 +58,20 @@ namespace GUI
             }
         }
 
-        public PlotModelStat(string plotName, ObservableCollection<InSilicoPeptide> peptides, Dictionary<string, ObservableCollection<InSilicoPeptide>> peptidesByProtease)
+        public PlotModelStat(string plotName, ObservableCollection<InSilicoPeptide> peptides, Dictionary<string, ObservableCollection<InSilicoPeptide>> peptidesByProtease, Dictionary<string, Dictionary<Protein, double>> sequenceCoverageByProtease)
         {
             privateModel = new PlotModel { Title = plotName, DefaultFontSize = 14 };
             allPeptides = peptides;
             this.PeptidesByProtease = peptidesByProtease;
+            foreach (var protease in sequenceCoverageByProtease)
+            {
+                ObservableCollection<double> coverages = new ObservableCollection<double>();
+                foreach (var protein in protease.Value)
+                {
+                    coverages.Add(protein.Value);
+                }
+                SequenceCoverageByProtease.Add(protease.Key, coverages);
+            }            
             createPlot(plotName);
             privateModel.DefaultColors = columnColors;
         }
@@ -86,11 +97,11 @@ namespace GUI
         }
         // returns a bin index of number relative to 0, midpoints are rounded towards zero
         private static int roundToBin(double number, double binSize)
-        {
+        {                 
             int sign = number < 0 ? -1 : 1;
             double d = number * sign;
-            double remainder = d % binSize;
-            int i = remainder < 0.5 * binSize ? (int)(d / binSize + 0.001) : (int)(d / binSize + 1.001);
+            double remainder = (d / binSize) - Math.Floor(d / binSize);
+            int i = remainder != 0 ? (int)(Math.Ceiling(d / binSize)) : (int)(d / binSize);            
             return i * sign;
         }
 
@@ -130,8 +141,14 @@ namespace GUI
                     break;
                 case 2: // Protein Sequence Coverage
                     xAxisTitle = "Protein Sequence Coverage";
-                    binSize = 0.1;
-                    //more complicated implementation
+                    binSize = 0.05;
+                    foreach (string key in SequenceCoverageByProtease.Keys)
+                    {
+                        numbersByProtease.Add(key, SequenceCoverageByProtease[key].Select(p => p));
+                        var testList = numbersByProtease[key].Select(p => roundToBin(p, binSize)).ToList();                        
+                        var results = numbersByProtease[key].GroupBy(p => roundToBin(p, binSize)).OrderBy(p => p.Key).Select(p => p).ToList();
+                        dictsByProtease.Add(key, results.ToDictionary(p => p.Key.ToString(), v => v.Count()));
+                    }
                     break;
                 case 3: // Predicted Peptide Hydrophobicity
                     xAxisTitle = "Predicted Peptide Hydrophobicity";
@@ -205,6 +222,7 @@ namespace GUI
             });
             privateModel.Axes.Add(new LinearAxis { Title = yAxisTitle, Position = AxisPosition.Left, AbsoluteMinimum = 0 });
         }
+        
         //unused interface methods
         public void Update(bool updateData) { }
         public void Render(IRenderContext rc, double width, double height) { }
