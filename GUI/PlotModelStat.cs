@@ -143,7 +143,7 @@ namespace GUI
                     break;
                 case 2: // Protein Sequence Coverage
                     xAxisTitle = "Protein Sequence Coverage";
-                    binSize = 0.05;
+                    binSize = 0.1;
                     foreach (string key in SequenceCoverageByProtease.Keys)
                     {
                         numbersByProtease.Add(key, SequenceCoverageByProtease[key].Select(p => p));
@@ -164,7 +164,7 @@ namespace GUI
                     break;
                 case 4: // Predicted Peptide Electrophoretic Mobility
                     xAxisTitle = "Predicted Peptide Electrophoretic Mobility";
-                    binSize = 0.5;
+                    binSize = 0.005;
                     foreach (string key in PeptidesByProtease.Keys)
                     {
                         numbersByProtease.Add(key, PeptidesByProtease[key].Select(p => p.GetElectrophoreticMobility()));
@@ -180,8 +180,9 @@ namespace GUI
             
             IEnumerable<double> allNumbers = numbersByProtease.Values.SelectMany(x => x);
 
-            int end = roundToBin(allNumbers.Max(), binSize);
-            int start = roundToBin(allNumbers.Min(), binSize);
+            
+            int end = roundToBin(allNumbers.Max(), binSize);  
+            int start = roundToBin(allNumbers.Min(), binSize);                        
             int numBins = end - start + 1;
             int minBinLabels = 22;  // the number of labeled bins will be between minBinLabels and 2 * minBinLabels
             int skipBinLabel = numBins < minBinLabels ? 1 : numBins / minBinLabels;

@@ -179,7 +179,10 @@ namespace Tasks
             int charge = 1 + pwsm.BaseSequence.Count(f => f == 'K') + pwsm.BaseSequence.Count(f => f == 'R') + pwsm.BaseSequence.Count(f => f == 'H') - CountModificationsThatShiftMobility(pwsm.AllModsOneIsNterminus.Values.AsEnumerable());// the 1 + is for N-terminal
 
             double mobility = (Math.Log(1 + 0.35 * (double)charge)) / Math.Pow(pwsm.MonoisotopicMass, 0.411);
-
+            if (Double.IsNaN(mobility)==true)
+            {
+                mobility = 0;
+            }
             return mobility;
         }
         public static int CountModificationsThatShiftMobility(IEnumerable<Modification> modifications)

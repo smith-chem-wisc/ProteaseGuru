@@ -127,11 +127,11 @@ namespace ProteaseGuruGUI
                     thisDigestion.Summary.Add(new SummaryForTreeView("     Number of Distinct Peptide Sequences: " + distintPeptides.Count));
                     thisDigestion.Summary.Add(new SummaryForTreeView("     Average Peptide Length: " + Math.Round(allPeptides.Select(p => p.Length).ToList().Average(),2)));
                     thisDigestion.Summary.Add(new SummaryForTreeView("     Average Peptide Hydrophobicity: " + Math.Round(allPeptides.Select(p => p.GetHydrophobicity()).ToList().Average(),2)));
-                    thisDigestion.Summary.Add(new SummaryForTreeView("     Average Peptide Electrophoretic Mobility: " + Math.Round(allPeptides.Select(p => p.GetElectrophoreticMobility()).ToList().Average(),2)));
+                    thisDigestion.Summary.Add(new SummaryForTreeView("     Average Peptide Electrophoretic Mobility: " + Math.Round(allPeptides.Select(p => p.GetElectrophoreticMobility()).ToList().Average(),3)));
                     thisDigestion.Summary.Add(new SummaryForTreeView("Number of Unique Peptides: " + uniquePeptides.Count));
                     thisDigestion.Summary.Add(new SummaryForTreeView("     Average Length of Unique Peptides: " + Math.Round(uniquePeptides.Select(p => p.Length).ToList().Average(),2)));
                     thisDigestion.Summary.Add(new SummaryForTreeView("     Average Hydrophobicity of Unique Peptides: " + Math.Round(uniquePeptides.Select(p => p.GetHydrophobicity()).ToList().Average(),2)));
-                    thisDigestion.Summary.Add(new SummaryForTreeView("     Average Electrophoretic Mobility of Unique Peptides: " + Math.Round(uniquePeptides.Select(p => p.GetElectrophoreticMobility()).ToList().Average(),2)));
+                    thisDigestion.Summary.Add(new SummaryForTreeView("     Average Electrophoretic Mobility of Unique Peptides: " + Math.Round(uniquePeptides.Select(p => p.GetElectrophoreticMobility()).ToList().Average(),3)));
                     HashSet<string> sp = new HashSet<string>();
                     foreach (var pep in sharedPeptides)
                     {
@@ -140,7 +140,7 @@ namespace ProteaseGuruGUI
                     thisDigestion.Summary.Add(new SummaryForTreeView("Number of Shared Peptides: " + sp.Count()));
                     thisDigestion.Summary.Add(new SummaryForTreeView("     Average Length of Shared Peptides: " + Math.Round(sharedPeptides.Select(p => p.Length).ToList().Average(),2)));
                     thisDigestion.Summary.Add(new SummaryForTreeView("     Average Hydrophobicity of Shared Peptides: " + Math.Round(sharedPeptides.Select(p => p.GetHydrophobicity()).ToList().Average(),2)));
-                    thisDigestion.Summary.Add(new SummaryForTreeView("     Average Electrophoretic Mobility of Shared Peptides: " + Math.Round(sharedPeptides.Select(p => p.GetElectrophoreticMobility()).ToList().Average(),2)));
+                    thisDigestion.Summary.Add(new SummaryForTreeView("     Average Electrophoretic Mobility of Shared Peptides: " + Math.Round(sharedPeptides.Select(p => p.GetElectrophoreticMobility()).ToList().Average(),3)));
                     allDatabases.Summary.Add(thisDigestion);
 
                 }
@@ -177,11 +177,11 @@ namespace ProteaseGuruGUI
                         thisDigestion.Summary.Add(new SummaryForTreeView("     Number of Distinct Peptide Sequences: " + distinctPeptides.Count));
                         thisDigestion.Summary.Add(new SummaryForTreeView("     Average Peptide Length: " + Math.Round(allPeptides.Select(p => p.Length).ToList().Average(), 2)));
                         thisDigestion.Summary.Add(new SummaryForTreeView("     Average Peptide Hydrophobicity: " + Math.Round(allPeptides.Select(p => p.GetHydrophobicity()).ToList().Average(), 2)));
-                        thisDigestion.Summary.Add(new SummaryForTreeView("     Average Peptide Electrophoretic Mobility: " + Math.Round(allPeptides.Select(p => p.GetElectrophoreticMobility()).ToList().Average(), 2)));
+                        thisDigestion.Summary.Add(new SummaryForTreeView("     Average Peptide Electrophoretic Mobility: " + Math.Round(allPeptides.Select(p => p.GetElectrophoreticMobility()).ToList().Average(), 3)));
                         thisDigestion.Summary.Add(new SummaryForTreeView("Number of Unique Peptides: " + uniquePeptides.Count));
                         thisDigestion.Summary.Add(new SummaryForTreeView("     Average Length of Unique Peptides: " + Math.Round(uniquePeptides.Select(p => p.Length).ToList().Average(), 2)));
                         thisDigestion.Summary.Add(new SummaryForTreeView("     Average Hydrophobicity of Unique Peptides: " + Math.Round(uniquePeptides.Select(p => p.GetHydrophobicity()).ToList().Average(), 2)));
-                        thisDigestion.Summary.Add(new SummaryForTreeView("     Average Electrophoretic Mobility of Unique Peptides: " + Math.Round(uniquePeptides.Select(p => p.GetElectrophoreticMobility()).ToList().Average(), 2)));
+                        thisDigestion.Summary.Add(new SummaryForTreeView("     Average Electrophoretic Mobility of Unique Peptides: " + Math.Round(uniquePeptides.Select(p => p.GetElectrophoreticMobility()).ToList().Average(), 3)));
                         HashSet<string> sp = new HashSet<string>();
                         foreach (var pep in sharedPeptides)
                         {
@@ -190,7 +190,7 @@ namespace ProteaseGuruGUI
                         thisDigestion.Summary.Add(new SummaryForTreeView("Number of Shared Peptides: " + sp.Count()));
                         thisDigestion.Summary.Add(new SummaryForTreeView("     Average Length of Shared Peptides: " + Math.Round(sharedPeptides.Select(p => p.Length).ToList().Average(), 2)));
                         thisDigestion.Summary.Add(new SummaryForTreeView("     Average Hydrophobicity of Shared Peptides: " + Math.Round(sharedPeptides.Select(p => p.GetHydrophobicity()).ToList().Average(), 2)));
-                        thisDigestion.Summary.Add(new SummaryForTreeView("     Average Electrophoretic Mobility of Shared Peptides: " + Math.Round(sharedPeptides.Select(p => p.GetElectrophoreticMobility()).ToList().Average(), 2)));
+                        thisDigestion.Summary.Add(new SummaryForTreeView("     Average Electrophoretic Mobility of Shared Peptides: " + Math.Round(sharedPeptides.Select(p => p.GetElectrophoreticMobility()).ToList().Average(), 3)));
                         thisProtease.Summary.Add(thisDigestion);
                     }
                     SummaryForTreeViewObservableCollection.Add(thisProtease);
@@ -230,11 +230,11 @@ namespace ProteaseGuruGUI
                         thisDigestion.Summary.Add(new SummaryForTreeView("     Number of Distinct Peptide Sequences: " + distinctPeptides.Count));
                         thisDigestion.Summary.Add(new SummaryForTreeView("     Average Peptide Length: " + Math.Round(allPeptides.Select(p => p.Length).ToList().Average(), 2)));
                         thisDigestion.Summary.Add(new SummaryForTreeView("     Average Peptide Hydrophobicity: " + Math.Round(allPeptides.Select(p => p.GetHydrophobicity()).ToList().Average(), 2)));
-                        thisDigestion.Summary.Add(new SummaryForTreeView("     Average Peptide Electrophoretic Mobility: " + Math.Round(allPeptides.Select(p => p.GetElectrophoreticMobility()).ToList().Average(), 2)));
+                        thisDigestion.Summary.Add(new SummaryForTreeView("     Average Peptide Electrophoretic Mobility: " + Math.Round(allPeptides.Select(p => p.GetElectrophoreticMobility()).ToList().Average(), 3)));
                         thisDigestion.Summary.Add(new SummaryForTreeView("Number of Unique Peptides: " + uniquePeptides.Count));
                         thisDigestion.Summary.Add(new SummaryForTreeView("     Average Length of Unique Peptides: " + Math.Round(uniquePeptides.Select(p => p.Length).ToList().Average(), 2)));
                         thisDigestion.Summary.Add(new SummaryForTreeView("     Average Hydrophobicity of Unique Peptides: " + Math.Round(uniquePeptides.Select(p => p.GetHydrophobicity()).ToList().Average(), 2)));
-                        thisDigestion.Summary.Add(new SummaryForTreeView("     Average Electrophoretic Mobility of Unique Peptides: " + Math.Round(uniquePeptides.Select(p => p.GetElectrophoreticMobility()).ToList().Average(), 2)));
+                        thisDigestion.Summary.Add(new SummaryForTreeView("     Average Electrophoretic Mobility of Unique Peptides: " + Math.Round(uniquePeptides.Select(p => p.GetElectrophoreticMobility()).ToList().Average(), 3)));
                         HashSet<string> sp = new HashSet<string>();
                         foreach (var pep in sharedPeptides)
                         {
@@ -243,7 +243,7 @@ namespace ProteaseGuruGUI
                         thisDigestion.Summary.Add(new SummaryForTreeView("Number of Shared Peptides: " + sp.Count()));
                         thisDigestion.Summary.Add(new SummaryForTreeView("     Average Length of Shared Peptides: " + Math.Round(sharedPeptides.Select(p => p.Length).ToList().Average(), 2)));
                         thisDigestion.Summary.Add(new SummaryForTreeView("     Average Hydrophobicity of Shared Peptides: " + Math.Round(sharedPeptides.Select(p => p.GetHydrophobicity()).ToList().Average(), 2)));
-                        thisDigestion.Summary.Add(new SummaryForTreeView("     Average Electrophoretic Mobility of Shared Peptides: " + Math.Round(sharedPeptides.Select(p => p.GetElectrophoreticMobility()).ToList().Average(), 2)));
+                        thisDigestion.Summary.Add(new SummaryForTreeView("     Average Electrophoretic Mobility of Shared Peptides: " + Math.Round(sharedPeptides.Select(p => p.GetElectrophoreticMobility()).ToList().Average(), 3)));
                         thisProtease.Summary.Add(thisDigestion);
                     }
                     SummaryForTreeViewObservableCollection.Add(thisProtease);
