@@ -38,8 +38,8 @@ namespace Tasks
                     peptidesByProtease.Add(protease, inSilicoPeptidesByFile);
                 }
                 PeptideByFile.Add(database.FileName, peptidesByProtease);
-            }         
-            
+            }
+            WritePeptidesToTsv(PeptideByFile, OutputFolder);
             MyTaskResults myRunResults = new MyTaskResults(this);
             return myRunResults;
         }
@@ -202,6 +202,100 @@ namespace Tasks
         public override MyTaskResults RunSpecific(MyTaskResults digestionResults, List<string> peptideFilePaths)
         {
             throw new NotImplementedException();
+        }
+
+        public static List<List<string>> SplitPeptides(List<string> allPeptides, int size)
+        {
+            List<List<string>> allResultsSplit = new List<List<string>>();
+            for (int i = 0; i < allPeptides.Count; i += size)
+            {
+                allResultsSplit.Add(allPeptides.GetRange(i, Math.Min(size, allPeptides.Count - i)));
+            }
+            return allResultsSplit;
+        }
+
+        protected static void WritePeptidesToTsv(Dictionary<string, Dictionary<Protease, Dictionary<Protein, List<InSilicoPeptide>>>> peptideByFile, string filePath)
+        {
+            string tab = "\t";
+            List<string> outputInfo = new List<string>();
+            string header = "Database"+ tab + "Protease" + tab + "Base Sequence" + tab + "Full Sequence" + tab + "Previous Amino Acid" + tab +
+                "Next Amino Acid" + tab + "Length" + tab + "Molecular Weight" + tab + "Protein" + tab + "Unique (in database)" + tab + "Unique (in analysis)" + 
+                tab + "Hydrophobicity" + tab+ "Electrophoretic Mobility";           
+            foreach (var database in peptideByFile)
+            {
+                string databaseName = database.Key;
+                foreach (var protease in database.Value)
+                {
+                    string proteaseName = protease.Key.Name;
+                    foreach (var protein in protease.Value)
+                    {
+                        string proteinName = protein.Key.Accession;
+                        foreach (var peptide in protein.Value)
+                        {
+                            StringBuilder sb = new StringBuilder();
+                            sb.Append(databaseName);
+                            sb.Append(tab);
+                            sb.Append(proteaseName);
+                            sb.Append(tab);
+                            sb.Append(peptide.BaseSequence);
+                            sb.Append(tab);
+                            sb.Append(peptide.FullSequence);
+                            sb.Append(tab);
+                            sb.Append(peptide.PreviousAminoAcid);
+                            sb.Append(tab);
+                            sb.Append(peptide.NextAminoAcid);
+                            sb.Append(tab);
+                            sb.Append(peptide.Length);
+                            sb.Append(tab);
+                            sb.Append(peptide.MonoisotopicMass);
+                            sb.Append(tab);
+                            sb.Append(proteinName);
+                            sb.Append(tab);
+                            sb.Append(peptide.GetUniquePeptide());
+                            sb.Append(tab);
+                            sb.Append("put unique in analysis info here");
+                            sb.Append(tab);
+                            sb.Append(peptide.GetHydrophobicity());
+                            sb.Append(tab);
+                            sb.Append(peptide.GetElectrophoreticMobility());
+                            outputInfo.Add(sb.ToString());                            
+                        }
+                    }
+                }
+            }
+            
+            if (outputInfo.Count() > 1000000)
+            {
+                var excelCompatibleSizedResults = SplitPeptides(outputInfo, 999999);
+                var fileCount = 1;
+                foreach (var entry in excelCompatibleSizedResults)
+                {
+                    using (StreamWriter output = new StreamWriter(filePath + @"\ProteaseGuruPeptides_" + fileCount + ".tsv"))
+                    {
+                        output.WriteLine(header);
+                        foreach (var line in entry)
+                        {
+                            output.WriteLine(line);
+                        }
+                        output.Close();
+                        fileCount++;
+                    }
+                }
+
+            }
+            else 
+            {
+                using (StreamWriter output = new StreamWriter(filePath + @"\ProteaseGuruPeptides.tsv"))
+                {
+                    output.WriteLine(header);
+                    foreach (var entry in outputInfo)
+                    {
+                        output.WriteLine(entry);
+                    }
+                    output.Close();
+                }
+            }
+            
         }
     }
 }

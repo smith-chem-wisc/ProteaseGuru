@@ -109,12 +109,8 @@
 
                 <TabItem Header="Search By Protein" Background="DarkGray" BorderThickness="10" BorderBrush="Black">
                     <Controls:ProteinResultsWindow/>
-                </TabItem>
+                </TabItem>               
                 
-                <TabItem Header="Improve My Data" Background="DarkGray" BorderThickness="10" BorderBrush="Black">
-
-                </TabItem>
-
             </TabControl>
         </ScrollViewer>
     </Grid>

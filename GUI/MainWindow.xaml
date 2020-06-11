@@ -118,7 +118,7 @@
                     <GridSplitter Grid.Column="1" HorizontalAlignment="Center" VerticalAlignment="Stretch" Background="Silver" Height="5" />
                     <Grid Grid.Column="2">
                         <Grid.RowDefinitions>
-                            <RowDefinition Height="235"/>
+                            <RowDefinition Height="300"/>
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="1*"/>
                         </Grid.RowDefinitions>
@@ -146,19 +146,17 @@
                             <Grid>
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="35"/>
-                                    <RowDefinition Height="5"/>
-                                    <RowDefinition Height="40"/>
+                                    <RowDefinition Height="5"/>                                    
                                     <RowDefinition Height="40"/>
                                     <RowDefinition Height="35"/>
                                 </Grid.RowDefinitions>
-                                <Button x:Name="AddDigestionTask" Content="Add Digestion Task" Click="AddDigestionTask_Click" FontSize="20" Grid.Row="0" ></Button>
-                                <Button x:Name="AddPeptidePsmTsvFiles" Content="Optional: Analyze Peptide Results" FontSize="20" Click="AddPeptidePsmTsvFiles_Click" Grid.Row="2"></Button>
-                                <DockPanel Margin="5" Grid.Row="3" LastChildFill="True">
+                                <Button x:Name="AddDigestionTask" Content="Add Digestion Task" Click="AddDigestionTask_Click" FontSize="20" Grid.Row="0" ></Button>                                
+                                <DockPanel Margin="5" Grid.Row="2" LastChildFill="True">
                                     <Button x:Name="OpenOutputFolderButton" Content="Open" Width="40" DockPanel.Dock="Right" Click="OpenOutputFolder_Click"></Button>
                                     <Label Content="Output Folder:"/>
                                     <TextBox x:Name="OutputFolderTextBox"/>
                                 </DockPanel>
-                                <Button x:Name="RunTaskButton" Content="Run!" Click="RunTaskButton_Click" FontSize="24" Grid.Row="4"/>
+                                <Button x:Name="RunTaskButton" Content="Run!" Click="RunTaskButton_Click" FontSize="24" Grid.Row="3"/>
                             </Grid>
                         </GroupBox>
                     </Grid>
