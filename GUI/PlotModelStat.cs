@@ -119,6 +119,8 @@ namespace GUI
         private void histogramPlot(int plotType)
         {
             privateModel.LegendTitle = "Protease";
+            privateModel.LegendPlacement = LegendPlacement.Outside;
+            privateModel.LegendPosition = LegendPosition.RightMiddle;
             string yAxisTitle = "Count";
             string xAxisTitle = "";
             double binSize = -1;
