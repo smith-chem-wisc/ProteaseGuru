@@ -10,8 +10,25 @@ namespace ProteaseGuruGUI
         public ProteaseSummaryForTreeView(string displayName)
         {
             DisplayName = displayName;
-            Summary = new ObservableCollection<SummaryForTreeView>();
+            Summary = new ObservableCollection<DigestionSummaryForTreeView>();
             Expanded = true;
+        }
+
+        public string DisplayName { get; }
+
+        public ObservableCollection<DigestionSummaryForTreeView> Summary { get; }        
+
+        public bool Expanded { get; set; }
+
+    }
+
+    public class DigestionSummaryForTreeView
+    {
+        public DigestionSummaryForTreeView(string displayName)
+        {
+            DisplayName = displayName;
+            Summary = new ObservableCollection<SummaryForTreeView>();
+            Expanded = false;
         }
 
         public string DisplayName { get; }

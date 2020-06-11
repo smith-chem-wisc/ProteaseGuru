@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
@@ -38,9 +39,11 @@ namespace ProteaseGuruGUI
             listOfProteinDbs = new ObservableCollection<string>();
             DBSelected = new List<string>() { };
             SetUpDictionaries();
+            SummaryForTreeViewObservableCollection = new ObservableCollection<ProteaseSummaryForTreeView>();
+            GenerateResultsSummary();
             proteinDBView = CollectionViewSource.GetDefaultView(listOfProteinDbs);
             dataGridProteinDBs.DataContext = proteinDBView;
-            SummaryForTreeViewObservableCollection = new ObservableCollection<ProteaseSummaryForTreeView>();            
+                      
         }
 
         private void SetUpDictionaries()
@@ -61,6 +64,194 @@ namespace ProteaseGuruGUI
             OnDBSelectionChanged(); // update all results tabs
         }
 
+        private void GenerateResultsSummary()
+        {
+            if (PeptideByFile.Count > 1) // if there is more than one database then we need to do all database summary 
+            {
+                ProteaseSummaryForTreeView allDatabases = new ProteaseSummaryForTreeView("Cumulative Database Results:");
+                Dictionary<Protease, Dictionary<Protein, List<InSilicoPeptide>>> allDatabasePeptidesByProtease = new Dictionary<Protease, Dictionary<Protein, List<InSilicoPeptide>>>();                
+                foreach (var database in PeptideByFile)
+                {
+                    foreach (var protease in database.Value)
+                    {                        
+                        if (allDatabasePeptidesByProtease.ContainsKey(protease.Key))
+                        {
+                            foreach (var protein in protease.Value)
+                            {
+                                if (allDatabasePeptidesByProtease[protease.Key].ContainsKey(protein.Key))
+                                {
+                                    allDatabasePeptidesByProtease[protease.Key][protein.Key].AddRange(protein.Value);
+                                }
+                                else 
+                                {
+                                    allDatabasePeptidesByProtease[protease.Key].Add(protein.Key, protein.Value);
+                                }
+                            }
+                        }
+                        else
+                        {
+                            allDatabasePeptidesByProtease.Add(protease.Key, protease.Value);
+                        }                       
+                    }                        
+                }
+
+                foreach (var protease in allDatabasePeptidesByProtease)
+                {
+                    string prot = protease.Key.Name;
+                    DigestionSummaryForTreeView thisDigestion = new DigestionSummaryForTreeView(prot + " Results:");
+
+                    Dictionary<string, (List<InSilicoPeptide>, HashSet<Protein>)> peptidesToProteins = new Dictionary<string, (List<InSilicoPeptide>, HashSet<Protein>)>();
+                    List<InSilicoPeptide> allPeptides = new List<InSilicoPeptide>();                   
+                    HashSet<string> distintPeptides = new HashSet<string>();
+                    foreach (var protein in protease.Value)
+                    {
+                        foreach (var peptide in protein.Value)
+                        {
+                            if (peptidesToProteins.ContainsKey(peptide.BaseSequence))
+                            {
+                                peptidesToProteins[peptide.BaseSequence].Item1.Add(peptide);
+                                peptidesToProteins[peptide.BaseSequence].Item2.Add(protein.Key);
+                            }
+                            else
+                            {
+                                peptidesToProteins.Add(peptide.BaseSequence, (new List<InSilicoPeptide>() { peptide }, new HashSet<Protein>() { protein.Key }));
+                            }
+                            allPeptides.Add(peptide);
+                            distintPeptides.Add(peptide.BaseSequence);
+                        }
+                    }
+                    var sharedPeptides = peptidesToProteins.Select(p => p.Value).Where(p => p.Item2.Count >= 2).Select(p => p.Item1).SelectMany(p => p).ToList();
+                    var uniquePeptides = peptidesToProteins.Select(p => p.Value).Where(p => p.Item2.Count == 1).Select(p => p.Item1).SelectMany(p => p).ToList();
+
+                    thisDigestion.Summary.Add(new SummaryForTreeView("Number of Peptides: " + allPeptides.Count));
+                    thisDigestion.Summary.Add(new SummaryForTreeView("     Number of Distinct Peptide Sequences: " + distintPeptides.Count));
+                    thisDigestion.Summary.Add(new SummaryForTreeView("     Average Peptide Length: " + Math.Round(allPeptides.Select(p => p.Length).ToList().Average(),2)));
+                    thisDigestion.Summary.Add(new SummaryForTreeView("     Average Peptide Hydrophobicity: " + Math.Round(allPeptides.Select(p => p.GetHydrophobicity()).ToList().Average(),2)));
+                    thisDigestion.Summary.Add(new SummaryForTreeView("     Average Peptide Electrophoretic Mobility: " + Math.Round(allPeptides.Select(p => p.GetElectrophoreticMobility()).ToList().Average(),2)));
+                    thisDigestion.Summary.Add(new SummaryForTreeView("Number of Unique Peptides: " + uniquePeptides.Count));
+                    thisDigestion.Summary.Add(new SummaryForTreeView("     Average Length of Unique Peptides: " + Math.Round(uniquePeptides.Select(p => p.Length).ToList().Average(),2)));
+                    thisDigestion.Summary.Add(new SummaryForTreeView("     Average Hydrophobicity of Unique Peptides: " + Math.Round(uniquePeptides.Select(p => p.GetHydrophobicity()).ToList().Average(),2)));
+                    thisDigestion.Summary.Add(new SummaryForTreeView("     Average Electrophoretic Mobility of Unique Peptides: " + Math.Round(uniquePeptides.Select(p => p.GetElectrophoreticMobility()).ToList().Average(),2)));
+                    HashSet<string> sp = new HashSet<string>();
+                    foreach (var pep in sharedPeptides)
+                    {
+                        sp.Add(pep.BaseSequence);
+                    }
+                    thisDigestion.Summary.Add(new SummaryForTreeView("Number of Shared Peptides: " + sp.Count()));
+                    thisDigestion.Summary.Add(new SummaryForTreeView("     Average Length of Shared Peptides: " + Math.Round(sharedPeptides.Select(p => p.Length).ToList().Average(),2)));
+                    thisDigestion.Summary.Add(new SummaryForTreeView("     Average Hydrophobicity of Shared Peptides: " + Math.Round(sharedPeptides.Select(p => p.GetHydrophobicity()).ToList().Average(),2)));
+                    thisDigestion.Summary.Add(new SummaryForTreeView("     Average Electrophoretic Mobility of Shared Peptides: " + Math.Round(sharedPeptides.Select(p => p.GetElectrophoreticMobility()).ToList().Average(),2)));
+                    allDatabases.Summary.Add(thisDigestion);
+
+                }
+
+                SummaryForTreeViewObservableCollection.Add(allDatabases);
+                foreach (var database in PeptideByFile)
+                {
+                    ProteaseSummaryForTreeView thisProtease = new ProteaseSummaryForTreeView(database.Key+ " Results:");
+                    foreach (var protease in database.Value)
+                    {
+                        string prot = protease.Key.Name;
+                        DigestionSummaryForTreeView thisDigestion = new DigestionSummaryForTreeView(prot + " Results:");
+                        List<InSilicoPeptide> allPeptides = new List<InSilicoPeptide>();
+                        HashSet<string> distinctPeptides = new HashSet<string>();
+                        List<InSilicoPeptide> sharedPeptides = new List<InSilicoPeptide>();
+                        List<InSilicoPeptide> uniquePeptides = new List<InSilicoPeptide>();
+                        foreach (var protein in protease.Value)
+                        {
+                            foreach (var peptide in protein.Value)
+                            {
+                                allPeptides.Add(peptide);
+                                distinctPeptides.Add(peptide.BaseSequence);
+                                if (peptide.GetUniquePeptide() == true)
+                                {
+                                    uniquePeptides.Add(peptide);
+                                }
+                                else 
+                                {
+                                    sharedPeptides.Add(peptide);
+                                }
+                            }
+                        }
+                        thisDigestion.Summary.Add(new SummaryForTreeView("Number of Peptides: " + allPeptides.Count));
+                        thisDigestion.Summary.Add(new SummaryForTreeView("     Number of Distinct Peptide Sequences: " + distinctPeptides.Count));
+                        thisDigestion.Summary.Add(new SummaryForTreeView("     Average Peptide Length: " + Math.Round(allPeptides.Select(p => p.Length).ToList().Average(), 2)));
+                        thisDigestion.Summary.Add(new SummaryForTreeView("     Average Peptide Hydrophobicity: " + Math.Round(allPeptides.Select(p => p.GetHydrophobicity()).ToList().Average(), 2)));
+                        thisDigestion.Summary.Add(new SummaryForTreeView("     Average Peptide Electrophoretic Mobility: " + Math.Round(allPeptides.Select(p => p.GetElectrophoreticMobility()).ToList().Average(), 2)));
+                        thisDigestion.Summary.Add(new SummaryForTreeView("Number of Unique Peptides: " + uniquePeptides.Count));
+                        thisDigestion.Summary.Add(new SummaryForTreeView("     Average Length of Unique Peptides: " + Math.Round(uniquePeptides.Select(p => p.Length).ToList().Average(), 2)));
+                        thisDigestion.Summary.Add(new SummaryForTreeView("     Average Hydrophobicity of Unique Peptides: " + Math.Round(uniquePeptides.Select(p => p.GetHydrophobicity()).ToList().Average(), 2)));
+                        thisDigestion.Summary.Add(new SummaryForTreeView("     Average Electrophoretic Mobility of Unique Peptides: " + Math.Round(uniquePeptides.Select(p => p.GetElectrophoreticMobility()).ToList().Average(), 2)));
+                        HashSet<string> sp = new HashSet<string>();
+                        foreach (var pep in sharedPeptides)
+                        {
+                            sp.Add(pep.BaseSequence);
+                        }
+                        thisDigestion.Summary.Add(new SummaryForTreeView("Number of Shared Peptides: " + sp.Count()));
+                        thisDigestion.Summary.Add(new SummaryForTreeView("     Average Length of Shared Peptides: " + Math.Round(sharedPeptides.Select(p => p.Length).ToList().Average(), 2)));
+                        thisDigestion.Summary.Add(new SummaryForTreeView("     Average Hydrophobicity of Shared Peptides: " + Math.Round(sharedPeptides.Select(p => p.GetHydrophobicity()).ToList().Average(), 2)));
+                        thisDigestion.Summary.Add(new SummaryForTreeView("     Average Electrophoretic Mobility of Shared Peptides: " + Math.Round(sharedPeptides.Select(p => p.GetElectrophoreticMobility()).ToList().Average(), 2)));
+                        thisProtease.Summary.Add(thisDigestion);
+                    }
+                    SummaryForTreeViewObservableCollection.Add(thisProtease);
+                }
+                
+            }
+            else // if there is only one database then is results and all database results are the same thing
+            {
+                foreach (var database in PeptideByFile)
+                {
+                    ProteaseSummaryForTreeView thisProtease = new ProteaseSummaryForTreeView(database.Key + " Results:");
+                    foreach (var protease in database.Value)
+                    {
+                        string prot = protease.Key.Name;
+                        DigestionSummaryForTreeView thisDigestion = new DigestionSummaryForTreeView( prot + " Results:");
+                        List<InSilicoPeptide> allPeptides = new List<InSilicoPeptide>();
+                        HashSet<string> distinctPeptides = new HashSet<string>();
+                        List<InSilicoPeptide> sharedPeptides = new List<InSilicoPeptide>();
+                        List<InSilicoPeptide> uniquePeptides = new List<InSilicoPeptide>();
+                        foreach (var protein in protease.Value)
+                        {
+                            foreach (var peptide in protein.Value)
+                            {
+                                allPeptides.Add(peptide);
+                                distinctPeptides.Add(peptide.BaseSequence);
+                                if (peptide.GetUniquePeptide() == true)
+                                {
+                                    uniquePeptides.Add(peptide);
+                                }
+                                else
+                                {
+                                    sharedPeptides.Add(peptide);
+                                }
+                            }
+                        }
+                        thisDigestion.Summary.Add(new SummaryForTreeView("Number of Peptides: " + allPeptides.Count));
+                        thisDigestion.Summary.Add(new SummaryForTreeView("     Number of Distinct Peptide Sequences: " + distinctPeptides.Count));
+                        thisDigestion.Summary.Add(new SummaryForTreeView("     Average Peptide Length: " + Math.Round(allPeptides.Select(p => p.Length).ToList().Average(), 2)));
+                        thisDigestion.Summary.Add(new SummaryForTreeView("     Average Peptide Hydrophobicity: " + Math.Round(allPeptides.Select(p => p.GetHydrophobicity()).ToList().Average(), 2)));
+                        thisDigestion.Summary.Add(new SummaryForTreeView("     Average Peptide Electrophoretic Mobility: " + Math.Round(allPeptides.Select(p => p.GetElectrophoreticMobility()).ToList().Average(), 2)));
+                        thisDigestion.Summary.Add(new SummaryForTreeView("Number of Unique Peptides: " + uniquePeptides.Count));
+                        thisDigestion.Summary.Add(new SummaryForTreeView("     Average Length of Unique Peptides: " + Math.Round(uniquePeptides.Select(p => p.Length).ToList().Average(), 2)));
+                        thisDigestion.Summary.Add(new SummaryForTreeView("     Average Hydrophobicity of Unique Peptides: " + Math.Round(uniquePeptides.Select(p => p.GetHydrophobicity()).ToList().Average(), 2)));
+                        thisDigestion.Summary.Add(new SummaryForTreeView("     Average Electrophoretic Mobility of Unique Peptides: " + Math.Round(uniquePeptides.Select(p => p.GetElectrophoreticMobility()).ToList().Average(), 2)));
+                        HashSet<string> sp = new HashSet<string>();
+                        foreach (var pep in sharedPeptides)
+                        {
+                            sp.Add(pep.BaseSequence);
+                        }
+                        thisDigestion.Summary.Add(new SummaryForTreeView("Number of Shared Peptides: " + sp.Count()));
+                        thisDigestion.Summary.Add(new SummaryForTreeView("     Average Length of Shared Peptides: " + Math.Round(sharedPeptides.Select(p => p.Length).ToList().Average(), 2)));
+                        thisDigestion.Summary.Add(new SummaryForTreeView("     Average Hydrophobicity of Shared Peptides: " + Math.Round(sharedPeptides.Select(p => p.GetHydrophobicity()).ToList().Average(), 2)));
+                        thisDigestion.Summary.Add(new SummaryForTreeView("     Average Electrophoretic Mobility of Shared Peptides: " + Math.Round(sharedPeptides.Select(p => p.GetElectrophoreticMobility()).ToList().Average(), 2)));
+                        thisProtease.Summary.Add(thisDigestion);
+                    }
+                    SummaryForTreeViewObservableCollection.Add(thisProtease);
+                }
+            }
+            ProteaseSummaryTreeView.DataContext = SummaryForTreeViewObservableCollection;          
+        }
+
         private void OnDBSelectionChanged()
         {
             DBSelected.Clear();
@@ -75,34 +266,7 @@ namespace ProteaseGuruGUI
                 var databasePeptides = PeptideByFile[db];                
             }
             
-
-            // SUMMARY
-            // match selected db with task results
-            // change TotalNumberPeptides and TotalNumberDistinctPeptides
-            // change data context for ProteaseSummaryForTreeView
-
-            // dummy code for testing
-            //if (db.FileName.Equals("02-15-17_YL-stnd_old-heat.mzML"))
-            //{
-            //    TotalNumberPeptides.Content = 100;
-            //    TotalNumberDistinctPeptides.Content = 23;
-
-            //    SummaryForTreeViewObservableCollection.Add(new ProteaseSummaryForTreeView("Trypsin"));
-            //    SummaryForTreeViewObservableCollection.Add(new ProteaseSummaryForTreeView("Asp-N"));
-            //    SummaryForTreeViewObservableCollection.Add(new ProteaseSummaryForTreeView("Arg-C"));
-
-            //    foreach (var protease in SummaryForTreeViewObservableCollection)
-            //    {
-            //        protease.Summary.Add(new SummaryForTreeView("Number of Unique Peptides: 30"));
-            //        protease.Summary.Add(new SummaryForTreeView("Number of Shared Peptides: 30"));
-            //        protease.Summary.Add(new SummaryForTreeView("Average Protein Sequence Coverage: 0.609"));
-            //    }
-
-            //    ProteaseSummaryTreeView.DataContext = SummaryForTreeViewObservableCollection;
-            //}
-
-            // TODO PEPTIDE LENGTH DISTRIBUTION
-            // TODO PROTEIN COVERAGE DISTRIBUTION
+            
         }
         
 
