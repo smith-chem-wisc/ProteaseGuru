@@ -500,11 +500,11 @@ namespace GUI
             AllResultsTab.Content = new AllResultsWindow(a.PeptideByFile);
                         
             // prompt user to direct to display window
-            var results = ResultsMsgBox.Show();
-            if (results == MessageBoxResult.Yes)
-            {
+            //var results = ResultsMsgBox.Show();
+            //if (results == MessageBoxResult.Yes)
+            //{
                 AllResultsTab.IsSelected = true;
-            }
+            //}
         }
 
         private void CheckIfNumber(object sender, TextCompositionEventArgs e)

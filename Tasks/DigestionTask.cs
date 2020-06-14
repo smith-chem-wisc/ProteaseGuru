@@ -20,24 +20,22 @@ namespace Tasks
         public static event EventHandler<StringEventArgs> DigestionWarnHandler;
         public Parameters DigestionParameters { get; set; }
 
-        public Dictionary<string, Dictionary<Protease, Dictionary<Protein, List<InSilicoPeptide>>>> PeptideByFile;
+        public Dictionary<string, Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>> PeptideByFile;
 
 
         public override MyTaskResults RunSpecific(string OutputFolder, List<DbForDigestion> dbFileList)
         {                    
             PeptideByFile =
-                new Dictionary<string, Dictionary<Protease, Dictionary<Protein, List<InSilicoPeptide>>>>();
+                new Dictionary<string, Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>>(dbFileList.Count);
             foreach (var database in dbFileList)
             {
-                Dictionary<Protease, Dictionary<Protein, List<InSilicoPeptide>>> peptidesByProtease = new Dictionary<Protease, Dictionary<Protein, List<InSilicoPeptide>>>();
+                PeptideByFile.Add(database.FileName, new Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>(DigestionParameters.ProteasesForDigestion.Count));
+                Dictionary<string, Dictionary<Protein, List<InSilicoPep>>> peptidesByProtease = new Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>();
                 List<Protein> proteins = LoadProteins(database);
                 foreach (var protease in DigestionParameters.ProteasesForDigestion)
-                {
-                    var peptides = DigestDatabase(proteins, protease, DigestionParameters);
-                    var inSilicoPeptidesByFile = DeterminePeptideStatus(peptides, DigestionParameters);
-                    peptidesByProtease.Add(protease, inSilicoPeptidesByFile);
-                }
-                PeptideByFile.Add(database.FileName, peptidesByProtease);
+                {                    
+                    PeptideByFile[database.FileName].Add(protease.Name, DeterminePeptideStatus(DigestDatabase(proteins, protease, DigestionParameters), DigestionParameters));                   
+                }                
             }
             WritePeptidesToTsv(PeptideByFile, OutputFolder);
             MyTaskResults myRunResults = new MyTaskResults(this);
@@ -93,87 +91,110 @@ namespace Tasks
         {           
             DigestionParams dp = new DigestionParams(protease: protease.Name, maxMissedCleavages: userDigestionParams.NumberOfMissedCleavagesAllowed,
                 minPeptideLength: userDigestionParams.MinPeptideLengthAllowed, maxPeptideLength: userDigestionParams.MaxPeptideLengthAllowed);            
-            Dictionary<Protein, List<PeptideWithSetModifications>> peptidesForProtein = new Dictionary<Protein, List<PeptideWithSetModifications>>();
+            Dictionary<Protein, List<PeptideWithSetModifications>> peptidesForProtein = new Dictionary<Protein, List<PeptideWithSetModifications>>(proteinsFromDatabase.Count);
             foreach (var protein in proteinsFromDatabase)
             {
                 List<PeptideWithSetModifications> peptides = protein.Digest(dp, new List<Modification> { }, new List<Modification> { }).ToList();
                 peptidesForProtein.Add(protein, peptides);
             }
             return peptidesForProtein;
-        }
-        //determine if peptides are unique and shared for the speicifc database that they came from (Will do pooled analysis later)
-        Dictionary<Protein, List<InSilicoPeptide>> DeterminePeptideStatus(Dictionary<Protein, List<PeptideWithSetModifications>> databasePeptides, Parameters userParams)
+        }        
+
+        
+        Dictionary<Protein, List<InSilicoPep>> DeterminePeptideStatus(Dictionary<Protein, List<PeptideWithSetModifications>> databasePeptides, Parameters userParams)
         {
             SSRCalc3 RTPrediction = new SSRCalc3("SSRCalc 3.0 (300A)", SSRCalc3.Column.A300);
-            bool treatModPeptidesAsDifferent = userParams.TreatModifiedPeptidesAsDifferent;            
-            Dictionary<string, (List<PeptideWithSetModifications>, HashSet<Protein>)> peptidesToProteins = new Dictionary<string, (List<PeptideWithSetModifications>, HashSet<Protein>)>();
-            foreach (var protein in databasePeptides) 
-             
+            Dictionary<Protein, List<InSilicoPep>> inSilicoPeptides = new Dictionary<Protein, List<InSilicoPep>>();
+            if (userParams.TreatModifiedPeptidesAsDifferent == true)
             {
-                if (treatModPeptidesAsDifferent)
+                foreach (var peptideSequence in databasePeptides.Select(p => p.Value).SelectMany(pep => pep).GroupBy(p => p.FullSequence).ToDictionary(group => group.Key, group => group.ToList()))
                 {
-                    //use full sequences
-                    foreach (var peptide in protein.Value)
+                    if (peptideSequence.Value.Select(p => p.Protein).Distinct().Count() == 1)
                     {
-                        if (peptidesToProteins.ContainsKey(peptide.FullSequence))
-                        {
-                            peptidesToProteins[peptide.FullSequence].Item1.Add(peptide);
-                            peptidesToProteins[peptide.FullSequence].Item2.Add(protein.Key);
-                        }
-                        else
-                        {
-                            peptidesToProteins.Add(peptide.FullSequence, (new List<PeptideWithSetModifications>() { peptide }, new HashSet<Protein>() { protein.Key }));
-                        }
+                        foreach (var peptide in peptideSequence.Value)
+                        {                          
+                            
+                            if (inSilicoPeptides.ContainsKey(peptide.Protein))
+                            {
+                                inSilicoPeptides[peptide.Protein].Add(new InSilicoPep(peptide.BaseSequence, peptide.FullSequence, peptide.PreviousAminoAcid, peptide.NextAminoAcid, true, RTPrediction.ScoreSequence(peptide), GetCifuentesMobility(peptide), peptide.Length, peptide.MonoisotopicMass, "database",
+                                    peptide.Protein.Accession, peptide.OneBasedStartResidueInProtein, peptide.OneBasedEndResidueInProtein, peptide.DigestionParams.Protease.Name));
+                            }
+                            else
+                            {
+                                inSilicoPeptides.Add(peptide.Protein, new List<InSilicoPep>() { new InSilicoPep(peptide.BaseSequence, peptide.FullSequence, peptide.PreviousAminoAcid, peptide.NextAminoAcid, true, RTPrediction.ScoreSequence(peptide), GetCifuentesMobility(peptide), peptide.Length, peptide.MonoisotopicMass, "database",
+                                peptide.Protein.Accession, peptide.OneBasedStartResidueInProtein, peptide.OneBasedEndResidueInProtein, peptide.DigestionParams.Protease.Name)});
+                            }
 
-                    }
-                }
-                else
-                {
-                    //use base sequences
-
-                    foreach (var peptide in protein.Value)
-                    {
-                        if (peptidesToProteins.ContainsKey(peptide.BaseSequence))
-                        {
-                            peptidesToProteins[peptide.BaseSequence].Item1.Add(peptide);
-                            peptidesToProteins[peptide.BaseSequence].Item2.Add(protein.Key);
-                        }
-                        else
-                        {
-                            peptidesToProteins.Add(peptide.BaseSequence, (new List<PeptideWithSetModifications>() { peptide }, new HashSet<Protein>() { protein.Key }));
                         }
                     }
+                    else
+                    {
+                        foreach (var peptide in peptideSequence.Value)
+                        {
+                            
+                            if (inSilicoPeptides.ContainsKey(peptide.Protein))
+                            {
+                                inSilicoPeptides[peptide.Protein].Add(new InSilicoPep(peptide.BaseSequence, peptide.FullSequence, peptide.PreviousAminoAcid, peptide.NextAminoAcid, false, RTPrediction.ScoreSequence(peptide), GetCifuentesMobility(peptide), peptide.Length, peptide.MonoisotopicMass, "database",
+                                    peptide.Protein.Accession, peptide.OneBasedStartResidueInProtein, peptide.OneBasedEndResidueInProtein, peptide.DigestionParams.Protease.Name));
+                            }
+                            else
+                            {
+                                inSilicoPeptides.Add(peptide.Protein, new List<InSilicoPep>() { new InSilicoPep(peptide.BaseSequence, peptide.FullSequence, peptide.PreviousAminoAcid, peptide.NextAminoAcid, false, RTPrediction.ScoreSequence(peptide), GetCifuentesMobility(peptide), peptide.Length, peptide.MonoisotopicMass, "database",
+                                peptide.Protein.Accession, peptide.OneBasedStartResidueInProtein, peptide.OneBasedEndResidueInProtein, peptide.DigestionParams.Protease.Name)});
+                            }
 
+                        }
+                    }
                 }
             }
-            var sharedPeptides = peptidesToProteins.Select(p => p.Value).Where(p => p.Item2.Count >= 2).Select(p => p.Item1).SelectMany(p => p).ToList();
-            var uniquePeptides = peptidesToProteins.Select(p => p.Value).Where(p => p.Item2.Count == 1).Select(p => p.Item1).SelectMany(p => p).ToList();            
-            List<InSilicoPeptide> inSilicoPeptides = new List<InSilicoPeptide>();
-            foreach (var peptide in sharedPeptides)
+            else 
             {
-                var pep = new InSilicoPeptide(peptide.Protein, peptide.DigestionParams, peptide.OneBasedStartResidueInProtein, peptide.OneBasedEndResidueInProtein,
-                                CleavageSpecificity.Full, peptide.PeptideDescription, peptide.MissedCleavages, peptide.AllModsOneIsNterminus, peptide.NumFixedMods,
-                                peptide.BaseSequence, false);
-                var hydrophob = RTPrediction.ScoreSequence(pep);
-                var em = GetCifuentesMobility(peptide);
-                pep.SetHydrophobicity(hydrophob);
-                pep.SetElectrophoreticMobility(em);
-                inSilicoPeptides.Add(pep);
+                foreach (var peptideSequence in databasePeptides.Select(p => p.Value).SelectMany(pep => pep).GroupBy(p => p.BaseSequence).ToDictionary(group => group.Key, group => group.ToList()))
+                {
+                    if (peptideSequence.Value.Select(p => p.Protein).Distinct().Count() == 1)
+                    {
+                        foreach (var peptide in peptideSequence.Value)
+                        {
+                            var hydrophob = RTPrediction.ScoreSequence(peptide);
+                            var em = GetCifuentesMobility(peptide);
+                            if (inSilicoPeptides.ContainsKey(peptide.Protein))
+                            {
+                                inSilicoPeptides[peptide.Protein].Add(new InSilicoPep(peptide.BaseSequence, peptide.FullSequence, peptide.PreviousAminoAcid, peptide.NextAminoAcid, true, hydrophob, em, peptide.Length, peptide.MonoisotopicMass, "database",
+                                    peptide.Protein.Accession, peptide.OneBasedStartResidueInProtein, peptide.OneBasedEndResidueInProtein, peptide.DigestionParams.Protease.Name));
+                            }
+                            else
+                            {
+                                inSilicoPeptides.Add(peptide.Protein, new List<InSilicoPep>() { new InSilicoPep(peptide.BaseSequence, peptide.FullSequence, peptide.PreviousAminoAcid, peptide.NextAminoAcid, true, hydrophob, em, peptide.Length, peptide.MonoisotopicMass, "database",
+                                peptide.Protein.Accession, peptide.OneBasedStartResidueInProtein, peptide.OneBasedEndResidueInProtein, peptide.DigestionParams.Protease.Name)});
+                            }
+
+                        }
+                    }
+                    else
+                    {
+                        foreach (var peptide in peptideSequence.Value)
+                        {
+                            var hydrophob = RTPrediction.ScoreSequence(peptide);
+                            var em = GetCifuentesMobility(peptide);
+                            if (inSilicoPeptides.ContainsKey(peptide.Protein))
+                            {
+                                inSilicoPeptides[peptide.Protein].Add(new InSilicoPep(peptide.BaseSequence, peptide.FullSequence, peptide.PreviousAminoAcid, peptide.NextAminoAcid, false, hydrophob, em, peptide.Length, peptide.MonoisotopicMass, "database",
+                                    peptide.Protein.Accession, peptide.OneBasedStartResidueInProtein, peptide.OneBasedEndResidueInProtein, peptide.DigestionParams.Protease.Name));
+                            }
+                            else
+                            {
+                                inSilicoPeptides.Add(peptide.Protein, new List<InSilicoPep>() { new InSilicoPep(peptide.BaseSequence, peptide.FullSequence, peptide.PreviousAminoAcid, peptide.NextAminoAcid, false, hydrophob, em, peptide.Length, peptide.MonoisotopicMass, "database",
+                                peptide.Protein.Accession, peptide.OneBasedStartResidueInProtein, peptide.OneBasedEndResidueInProtein, peptide.DigestionParams.Protease.Name)});
+                            }
+
+                        }
+                    }
+                }
             }
-            foreach (var peptide in uniquePeptides)
-            {
-                var pep = new InSilicoPeptide(peptide.Protein, peptide.DigestionParams, peptide.OneBasedStartResidueInProtein, peptide.OneBasedEndResidueInProtein,
-                                    CleavageSpecificity.Full, peptide.PeptideDescription, peptide.MissedCleavages, peptide.AllModsOneIsNterminus, peptide.NumFixedMods,
-                                    peptide.BaseSequence, true);
-                var hydrophob = RTPrediction.ScoreSequence(pep);
-                var em = GetCifuentesMobility(peptide);
-                pep.SetHydrophobicity(hydrophob);
-                pep.SetElectrophoreticMobility(em);
-                inSilicoPeptides.Add(pep);
-            }
-            var labeledPeptides = inSilicoPeptides.GroupBy(p => p.Protein).ToDictionary(group => group.Key, group => group.ToList());
-            return labeledPeptides;
+            databasePeptides = null;
+            return inSilicoPeptides;
         }
+
         private static double GetCifuentesMobility(PeptideWithSetModifications pwsm)
         {
             int charge = 1 + pwsm.BaseSequence.Count(f => f == 'K') + pwsm.BaseSequence.Count(f => f == 'R') + pwsm.BaseSequence.Count(f => f == 'H') - CountModificationsThatShiftMobility(pwsm.AllModsOneIsNterminus.Values.AsEnumerable());// the 1 + is for N-terminal
@@ -214,87 +235,30 @@ namespace Tasks
             return allResultsSplit;
         }
 
-        protected static void WritePeptidesToTsv(Dictionary<string, Dictionary<Protease, Dictionary<Protein, List<InSilicoPeptide>>>> peptideByFile, string filePath)
+        protected static void WritePeptidesToTsv(Dictionary<string, Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>> peptideByFile, string filePath)
         {
-            string tab = "\t";
-            List<string> outputInfo = new List<string>();
+            string tab = "\t";            
             string header = "Database"+ tab + "Protease" + tab + "Base Sequence" + tab + "Full Sequence" + tab + "Previous Amino Acid" + tab +
                 "Next Amino Acid" + tab + "Length" + tab + "Molecular Weight" + tab + "Protein" + tab + "Unique (in database)" + tab + "Unique (in analysis)" + 
-                tab + "Hydrophobicity" + tab+ "Electrophoretic Mobility";           
-            foreach (var database in peptideByFile)
+                tab + "Hydrophobicity" + tab+ "Electrophoretic Mobility";
+            using (StreamWriter output = new StreamWriter(filePath + @"\ProteaseGuruPeptides.tsv"))
             {
-                string databaseName = database.Key;
-                foreach (var protease in database.Value)
+                output.WriteLine(header);
+                foreach (var database in peptideByFile)
                 {
-                    string proteaseName = protease.Key.Name;
-                    foreach (var protein in protease.Value)
+                    foreach (var protease in database.Value)
                     {
-                        string proteinName = protein.Key.Accession;
-                        foreach (var peptide in protein.Value)
+                        foreach (var protein in protease.Value)
                         {
-                            StringBuilder sb = new StringBuilder();
-                            sb.Append(databaseName);
-                            sb.Append(tab);
-                            sb.Append(proteaseName);
-                            sb.Append(tab);
-                            sb.Append(peptide.BaseSequence);
-                            sb.Append(tab);
-                            sb.Append(peptide.FullSequence);
-                            sb.Append(tab);
-                            sb.Append(peptide.PreviousAminoAcid);
-                            sb.Append(tab);
-                            sb.Append(peptide.NextAminoAcid);
-                            sb.Append(tab);
-                            sb.Append(peptide.Length);
-                            sb.Append(tab);
-                            sb.Append(peptide.MonoisotopicMass);
-                            sb.Append(tab);
-                            sb.Append(proteinName);
-                            sb.Append(tab);
-                            sb.Append(peptide.GetUniquePeptide());
-                            sb.Append(tab);
-                            sb.Append("put unique in analysis info here");
-                            sb.Append(tab);
-                            sb.Append(peptide.GetHydrophobicity());
-                            sb.Append(tab);
-                            sb.Append(peptide.GetElectrophoreticMobility());
-                            outputInfo.Add(sb.ToString());                            
+                            foreach (var peptide in protein.Value)
+                            {
+                                peptide.Database = database.Key;
+                                output.WriteLine(peptide.ToString());
+                            }                           
                         }
                     }
                 }
-            }
-            
-            if (outputInfo.Count() > 1000000)
-            {
-                var excelCompatibleSizedResults = SplitPeptides(outputInfo, 999999);
-                var fileCount = 1;
-                foreach (var entry in excelCompatibleSizedResults)
-                {
-                    using (StreamWriter output = new StreamWriter(filePath + @"\ProteaseGuruPeptides_" + fileCount + ".tsv"))
-                    {
-                        output.WriteLine(header);
-                        foreach (var line in entry)
-                        {
-                            output.WriteLine(line);
-                        }
-                        output.Close();
-                        fileCount++;
-                    }
-                }
-
-            }
-            else 
-            {
-                using (StreamWriter output = new StreamWriter(filePath + @"\ProteaseGuruPeptides.tsv"))
-                {
-                    output.WriteLine(header);
-                    foreach (var entry in outputInfo)
-                    {
-                        output.WriteLine(entry);
-                    }
-                    output.Close();
-                }
-            }
+            }              
             
         }
     }

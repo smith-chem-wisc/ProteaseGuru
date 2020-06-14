@@ -19,8 +19,8 @@ namespace GUI
     public class PlotModelStat : INotifyPropertyChanged, IPlotModel
     {
         private PlotModel privateModel;
-        private readonly ObservableCollection<InSilicoPeptide> allPeptides;
-        private readonly Dictionary<string, ObservableCollection<InSilicoPeptide>> PeptidesByProtease;
+        private readonly ObservableCollection<InSilicoPep> allPeptides;
+        private readonly Dictionary<string, ObservableCollection<InSilicoPep>> PeptidesByProtease;
         private readonly Dictionary<string, ObservableCollection<double>> SequenceCoverageByProtease = new Dictionary<string, ObservableCollection<double>>();
 
         private static List<OxyColor> columnColors = new List<OxyColor>
@@ -58,7 +58,7 @@ namespace GUI
             }
         }
 
-        public PlotModelStat(string plotName, ObservableCollection<InSilicoPeptide> peptides, Dictionary<string, ObservableCollection<InSilicoPeptide>> peptidesByProtease, Dictionary<string, Dictionary<Protein, double>> sequenceCoverageByProtease)
+        public PlotModelStat(string plotName, ObservableCollection<InSilicoPep> peptides, Dictionary<string, ObservableCollection<InSilicoPep>> peptidesByProtease, Dictionary<string, Dictionary<Protein, double>> sequenceCoverageByProtease)
         {
             privateModel = new PlotModel { Title = plotName, DefaultFontSize = 14 };
             allPeptides = peptides;
@@ -157,7 +157,7 @@ namespace GUI
                     binSize = 0.5;
                     foreach (string key in PeptidesByProtease.Keys)
                     {
-                        numbersByProtease.Add(key, PeptidesByProtease[key].Select(p => p.GetHydrophobicity()));
+                        numbersByProtease.Add(key, PeptidesByProtease[key].Select(p => p.Hydrophobicity));
                         var results = numbersByProtease[key].GroupBy(p => roundToBin(p, binSize)).OrderBy(p => p.Key).Select(p => p);
                         dictsByProtease.Add(key, results.ToDictionary(p => p.Key.ToString(), v => v.Count()));
                     }
@@ -167,7 +167,7 @@ namespace GUI
                     binSize = 0.005;
                     foreach (string key in PeptidesByProtease.Keys)
                     {
-                        numbersByProtease.Add(key, PeptidesByProtease[key].Select(p => p.GetElectrophoreticMobility()));
+                        numbersByProtease.Add(key, PeptidesByProtease[key].Select(p => p.ElectrophoreticMobility));
                         var results = numbersByProtease[key].GroupBy(p => roundToBin(p, binSize)).OrderBy(p => p.Key).Select(p => p);
                         dictsByProtease.Add(key, results.ToDictionary(p => p.Key.ToString(), v => v.Count()));
                     }

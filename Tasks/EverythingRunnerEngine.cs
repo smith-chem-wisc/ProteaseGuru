@@ -35,9 +35,9 @@ namespace Tasks
 
         public static event EventHandler<StringEventArgs> WarnHandler;
 
-        public Dictionary<string, Dictionary<Protease, Dictionary<Protein, List<InSilicoPeptide>>>> PeptideByFile;
+        public Dictionary<string, Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>> PeptideByFile;
 
-        public Dictionary<string, Dictionary<Protease, Dictionary<Protein, List<InSilicoPeptide>>>> Results()
+        public Dictionary<string, Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>> Results()
         {
             return PeptideByFile;
         }
