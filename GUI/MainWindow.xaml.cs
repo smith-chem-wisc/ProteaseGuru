@@ -499,7 +499,7 @@ namespace GUI
             // update results display
             AllResultsTab.Content = new AllResultsWindow(a.PeptideByFile);
                         
-            // prompt user to direct to display window
+            //// prompt user to direct to display window
             //var results = ResultsMsgBox.Show();
             //if (results == MessageBoxResult.Yes)
             //{
