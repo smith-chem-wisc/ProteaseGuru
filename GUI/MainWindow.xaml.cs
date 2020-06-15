@@ -33,9 +33,11 @@ namespace GUI
         private readonly ObservableCollection<ProteinDbForDataGrid> ProteinDbObservableCollection = new ObservableCollection<ProteinDbForDataGrid>();
         private readonly ObservableCollection<PreRunTask> StaticTasksObservableCollection = new ObservableCollection<PreRunTask>();
         private ObservableCollection<InRunTask> DynamicTasksObservableCollection;
+        private Parameters UserParameters;
         public MainWindow()
         {
             InitializeComponent();
+            UserParameters = new Parameters();
             PopulateProteaseList();
             dataGridProteinDatabases.DataContext = ProteinDbObservableCollection;
             EverythingRunnerEngine.NewDbsHandler += AddNewDB;
@@ -160,17 +162,18 @@ namespace GUI
             }
         }
         private void UpdateFieldsFromUser(DigestionTask run)
-        {
-            run.DigestionParameters.NumberOfMissedCleavagesAllowed = Convert.ToInt32(MissedCleavagesTextBox.Text);
-            run.DigestionParameters.MinPeptideLengthAllowed = Convert.ToInt32(MinPeptideLengthTextBox.Text);
-            run.DigestionParameters.MaxPeptideLengthAllowed = Convert.ToInt32(MaxPeptideLengthTextBox.Text);
-            run.DigestionParameters.TreatModifiedPeptidesAsDifferent = Convert.ToBoolean(ModPepsAreUnique.IsChecked);
+        {            
+            UserParameters.NumberOfMissedCleavagesAllowed = Convert.ToInt32(MissedCleavagesTextBox.Text);
+            UserParameters.MinPeptideLengthAllowed = Convert.ToInt32(MinPeptideLengthTextBox.Text);
+            UserParameters.MaxPeptideLengthAllowed = Convert.ToInt32(MaxPeptideLengthTextBox.Text);
+            UserParameters.TreatModifiedPeptidesAsDifferent = Convert.ToBoolean(ModPepsAreUnique.IsChecked);
             List<Protease> proteases = new List<Protease>();
             foreach (var protease in ProteaseSelectedForUse.SelectedItems)
             {
                 proteases.Add(ProteaseDictionary.Dictionary[protease.ToString()]);
             }
-            run.DigestionParameters.ProteasesForDigestion = proteases;
+            UserParameters.ProteasesForDigestion = proteases;
+            run.DigestionParameters = UserParameters;
         }
         private void AddNewDB(object sender, XmlForTaskListEventArgs e)
         {
@@ -497,7 +500,7 @@ namespace GUI
             t.Wait();
             
             // update results display
-            AllResultsTab.Content = new AllResultsWindow(a.PeptideByFile);
+            AllResultsTab.Content = new AllResultsWindow(a.PeptideByFile, UserParameters);
                         
             //// prompt user to direct to display window
             //var results = ResultsMsgBox.Show();
