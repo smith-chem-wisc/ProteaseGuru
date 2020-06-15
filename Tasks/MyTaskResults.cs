@@ -14,7 +14,7 @@ namespace Tasks
 
         private readonly StringBuilder TaskSummaryText = new StringBuilder();
         private readonly StringBuilder PsmPeptideProteinSummaryText = new StringBuilder();
-        public readonly Dictionary<string, Dictionary<Protease, Dictionary<Protein, List<InSilicoPeptide>>>> PeptideByFile;
+        public readonly Dictionary<string, Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>> PeptideByFile;
 
         internal MyTaskResults(ProteaseGuruTask s)
         {

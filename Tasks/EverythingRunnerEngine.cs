@@ -35,9 +35,9 @@ namespace Tasks
 
         public static event EventHandler<StringEventArgs> WarnHandler;
 
-        private Dictionary<string, Dictionary<Protease, Dictionary<Protein, List<InSilicoPeptide>>>> PeptideByFile;
+        public Dictionary<string, Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>> PeptideByFile;
 
-        public Dictionary<string, Dictionary<Protease, Dictionary<Protein, List<InSilicoPeptide>>>> Results()
+        public Dictionary<string, Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>> Results()
         {
             return PeptideByFile;
         }
@@ -80,8 +80,7 @@ namespace Tasks
             stopWatch.Stop();
             var resultsFileName = Path.Combine(OutputFolder, "allResults.txt");
             using (StreamWriter file = new StreamWriter(resultsFileName))
-            {
-                file.WriteLine("MetaMorpheus: version " + GlobalVariables.MetaMorpheusVersion);
+            {                
                 file.WriteLine("Total time: " + stopWatch.Elapsed);
                 file.Write(allResultsText.ToString());
             }
