@@ -12,6 +12,7 @@ namespace Tasks
         public int MaxPeptideLengthAllowed { get; set; }
         public bool TreatModifiedPeptidesAsDifferent { get; set; }
         public List<Protease> ProteasesForDigestion { get; set; }
+        public string OutputFolder;
 
         //default parameters?
         public Parameters()

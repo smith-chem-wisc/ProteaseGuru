@@ -266,10 +266,9 @@ namespace ProteaseGuruGUI
                 return;
             }
 
-            var plotName = selectedItem as string;
-            //var fileDirectory = Directory.GetParent(tsvResultsFilePath).ToString();
-            var fileDirectory = "";
-            var fileName = String.Concat(plotName, ".pdf");
+            var plotName = HistogramComboBox.SelectedItem.ToString().Split(':');
+            var fileDirectory = UserParams.OutputFolder;            
+            var fileName = String.Concat(plotName[1], ".pdf");
 
             // update font sizes to exported PDF's size
             double tmpW = plotViewStat.Width;
