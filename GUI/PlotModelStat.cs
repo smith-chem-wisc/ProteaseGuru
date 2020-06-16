@@ -24,10 +24,11 @@ namespace GUI
         private readonly Dictionary<string, ObservableCollection<double>> SequenceCoverageByProtease = new Dictionary<string, ObservableCollection<double>>();
 
         private static List<OxyColor> columnColors = new List<OxyColor>
-        {
-            OxyColors.Teal, OxyColors.CadetBlue, OxyColors.LightSeaGreen, OxyColors.DarkTurquoise, OxyColors.LightSkyBlue,
-            OxyColors.LightBlue, OxyColors.Aquamarine, OxyColors.PaleGreen, OxyColors.MediumAquamarine, OxyColors.DarkSeaGreen,
-            OxyColors.MediumSeaGreen, OxyColors.SeaGreen, OxyColors.DarkSlateGray, OxyColors.Gray, OxyColors.Gainsboro
+        {           
+           OxyColors.MediumBlue, OxyColors.Goldenrod, OxyColors.ForestGreen, OxyColors.DarkOrchid, OxyColors.Chocolate, OxyColors.Teal, OxyColors.PaleVioletRed, OxyColors.DimGray,
+           OxyColors.LightSkyBlue, OxyColors.PaleGoldenrod, OxyColors.DarkSeaGreen, OxyColors.Thistle, OxyColors.PeachPuff, OxyColors.PaleTurquoise, OxyColors.MistyRose, OxyColors.Gainsboro,
+           OxyColors.Navy, OxyColors.DarkGoldenrod, OxyColors.DarkGreen, OxyColors.Purple, OxyColors.Sienna, OxyColors.DarkSlateGray, OxyColors.MediumVioletRed, OxyColors.Black,
+           OxyColors.CornflowerBlue, OxyColors.Gold, OxyColors.MediumSeaGreen, OxyColors.MediumOrchid, OxyColors.DarkSalmon, OxyColors.LightSeaGreen, OxyColors.LightPink, OxyColors.DarkGray
 
         };
 
@@ -120,7 +121,7 @@ namespace GUI
         {
             privateModel.LegendTitle = "Protease";
             privateModel.LegendPlacement = LegendPlacement.Outside;
-            privateModel.LegendPosition = LegendPosition.RightMiddle;
+            privateModel.LegendPosition = LegendPosition.BottomLeft;            
             string yAxisTitle = "Count";
             string xAxisTitle = "";
             double binSize = -1;
@@ -154,7 +155,7 @@ namespace GUI
                     break;
                 case 3: // Predicted Peptide Hydrophobicity
                     xAxisTitle = "Predicted Peptide Hydrophobicity";
-                    binSize = 0.5;
+                    binSize = 5;
                     foreach (string key in PeptidesByProtease.Keys)
                     {
                         numbersByProtease.Add(key, PeptidesByProtease[key].Select(p => p.Hydrophobicity));
@@ -184,7 +185,7 @@ namespace GUI
             int end = roundToBin(allNumbers.Max(), binSize);  
             int start = roundToBin(allNumbers.Min(), binSize);                        
             int numBins = end - start + 1;
-            int minBinLabels = 22;  // the number of labeled bins will be between minBinLabels and 2 * minBinLabels
+            int minBinLabels = 15;  // the number of labeled bins will be between minBinLabels and 2 * minBinLabels
             int skipBinLabel = numBins < minBinLabels ? 1 : numBins / minBinLabels;
 
             // assign axis labels, skip labels based on skipBinLabel, calculate bin totals across all files
@@ -194,7 +195,7 @@ namespace GUI
             {
                 if (i % skipBinLabel == 0)
                 {
-                    category[i - start] = Math.Round((i * binSize), 2).ToString(CultureInfo.InvariantCulture);
+                    category[i - start] = Math.Round((i * binSize), 3).ToString(CultureInfo.InvariantCulture);
                 }
                 foreach (Dictionary<string, int> dict in dictsByProtease.Values)
                 {
@@ -220,7 +221,7 @@ namespace GUI
                 Position = AxisPosition.Bottom,
                 ItemsSource = category,
                 Title = xAxisTitle,
-                GapWidth = 0.3,
+                GapWidth = .25,
                 Angle = labelAngle,
             });
             privateModel.Axes.Add(new LinearAxis { Title = yAxisTitle, Position = AxisPosition.Left, AbsoluteMinimum = 0 });
