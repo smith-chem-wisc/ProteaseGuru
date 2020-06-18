@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Collections.ObjectModel;
 
 namespace ProteaseGuruGUI
 {
@@ -12,6 +13,7 @@ namespace ProteaseGuruGUI
             UniquePeptides = uniquePep;
             SharedPeptides = sharedPep;
             AllPeptides = allPep;
+            Summary = new ObservableCollection<SummaryForTreeView>();
         }
 
         public List<string> UniquePeptides { get; }
@@ -20,5 +22,6 @@ namespace ProteaseGuruGUI
         public string DisplayName { get; }
         public string Accession { get; }
         public bool Expanded { get; set; }
+        public ObservableCollection<SummaryForTreeView> Summary { get; set; }
     }
 }

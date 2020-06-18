@@ -9,23 +9,23 @@
              xmlns:Controls="clr-namespace:ProteaseGuruGUI"
              d:DesignHeight="450" d:DesignWidth="800">
     <Grid>
-        <ScrollViewer VerticalScrollBarVisibility="Auto">
-            <TabControl>
-                <TabItem Header="All Results" Background="DarkGray" BorderThickness="10" BorderBrush="Black">
-                    <Grid>                    
+        <TabControl>
+            <TabItem Header="All Results" Background="DarkGray" BorderThickness="10" BorderBrush="Black">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <Grid>
 
 
                         <GroupBox Grid.Column="2" Header="Results" Name="gbResults">
                             <TabControl>
                                 <TabItem Header="Summary" Background="DarkGray" BorderThickness="10" BorderBrush="Black">
-                                    <Grid>                                        
+                                    <Grid>
                                         <!--summary by protease-->
                                         <TreeView Grid.Row="1" BorderThickness="0" x:Name="ProteaseSummaryTreeView" ItemsSource="{Binding}" DataContext="{x:Type local:ProteaseSummaryForTreeView}">
                                             <TreeView.Resources>
                                                 <HierarchicalDataTemplate DataType="{x:Type local:ProteaseSummaryForTreeView}" ItemsSource="{Binding Summary}">
                                                     <StackPanel Orientation="Horizontal">
                                                         <TextBlock Text="{Binding DisplayName}" />
-                                                    </StackPanel>                                                    
+                                                    </StackPanel>
                                                 </HierarchicalDataTemplate>
                                                 <HierarchicalDataTemplate DataType="{x:Type local:DigestionSummaryForTreeView}" ItemsSource="{Binding Summary}">
                                                     <StackPanel Orientation="Horizontal">
@@ -62,7 +62,7 @@
                                                         <RowDefinition Height="1*"/>
                                                         <!--<RowDefinition Height="30"/>-->
                                                     </Grid.RowDefinitions>
-                                                        <DataGrid x:Name="dataGridProteinDBs" Grid.Row="0" AutoGenerateColumns="False" VerticalAlignment="Stretch" ItemsSource="{Binding}" 
+                                                    <DataGrid x:Name="dataGridProteinDBs" Grid.Row="0" AutoGenerateColumns="False" VerticalAlignment="Stretch" ItemsSource="{Binding}" 
                                                         IsReadOnly="True" ScrollViewer.CanContentScroll="True" Margin="0,0,0,0" 
                                                          SelectedCellsChanged="summaryProteinDB_SelectedCellsChanged" CanUserDeleteRows="false" CanUserAddRows="false">
                                                         <DataGrid.Columns>
@@ -97,21 +97,21 @@
                                             </Grid>
 
                                         </Grid>
-                                            
+
                                     </DockPanel>
 
-                                </TabItem> 
+                                </TabItem>
                             </TabControl>
                         </GroupBox>
 
                     </Grid>
-                </TabItem>
+                </ScrollViewer>
+            </TabItem>
 
-                <TabItem Header="Search By Protein" Background="DarkGray" BorderThickness="10" BorderBrush="Black">
-                    <Controls:ProteinResultsWindow/>
-                </TabItem>               
-                
-            </TabControl>
-        </ScrollViewer>
+            <TabItem Header="Search By Protein" Background="DarkGray" BorderThickness="10" BorderBrush="Black" Name="ProteinCovMap">
+                <Controls:ProteinResultsWindow/>
+            </TabItem>
+
+        </TabControl>
     </Grid>
 </UserControl>

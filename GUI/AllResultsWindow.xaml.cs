@@ -43,20 +43,17 @@ namespace ProteaseGuruGUI
             GenerateResultsSummary();
             proteinDBView = CollectionViewSource.GetDefaultView(listOfProteinDbs);
             dataGridProteinDBs.DataContext = proteinDBView;
-                      
+
+            ProteinCovMap.Content = new ProteinResultsWindow(PeptideByFile);
         }
 
         private void SetUpDictionaries()
         {
             // populate list of protein DBs
-            // populate summary for tree view for each db?
-
             foreach (var db in PeptideByFile.Keys)
             {
                 listOfProteinDbs.Add(db);
             }
-
-            // populate list of proteins
         }
 
         private void summaryProteinDB_SelectedCellsChanged(object sender, SelectedCellsChangedEventArgs e)

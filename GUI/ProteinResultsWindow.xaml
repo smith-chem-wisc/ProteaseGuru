@@ -4,64 +4,90 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
              mc:Ignorable="d" 
-             xmlns:local="clr-namespace:ProteaseGuruGUI"
+             xmlns:local="clr-namespace:ProteaseGuruGUI"    
              d:DesignHeight="450" d:DesignWidth="800">
     <Grid>
-        <ScrollViewer VerticalScrollBarVisibility="Auto">
-            <Grid Background="White">
+        <Grid Background="White">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="2*"/>
+                <ColumnDefinition Width="5"/>
+                <ColumnDefinition Width="4*"/>
+            </Grid.ColumnDefinitions>
+
+            <Grid Grid.Column="0">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="2*"/>
+                    <RowDefinition Height="25"/>
+                </Grid.RowDefinitions>
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="28*"/>
-                    <ColumnDefinition Width="198*"/>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="565*"/>
-                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"></ColumnDefinition>
                 </Grid.ColumnDefinitions>
 
-                <Grid Grid.Column="0" Grid.ColumnSpan="2">
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="2*"/>
-                    </Grid.RowDefinitions>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"></ColumnDefinition>
-                    </Grid.ColumnDefinitions>
+                <DockPanel Grid.Row="0">
+                    <Label Height="28" DockPanel.Dock="Left">Search</Label>
+                    <TextBox Name="SearchTextBox" TextChanged="Search_TextChanged" DockPanel.Dock="Right"></TextBox>
+                </DockPanel>
 
-                    <DockPanel Grid.Row="0">
-                        <Label Height="28" DockPanel.Dock="Left">Search</Label>
-                        <TextBox Name="SearchTextBox" TextChanged="Search_TextChanged" DockPanel.Dock="Right"></TextBox>
-                    </DockPanel>
+                <GroupBox Header="Proteins" Name="gbProteins" Grid.Row="1">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height=".9*"/>
+                        </Grid.RowDefinitions>
 
-                    <GroupBox Header="Proteins" Name="gbProteins" Grid.Row="1">
-                        <Grid>
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="1*"/>
-                                <!--<RowDefinition Height="30"/>-->
-                            </Grid.RowDefinitions>
+                        <TreeView BorderThickness="0" x:Name="dataGridProteins" ItemsSource="{Binding}" DataContext="{x:Type local:ProteinForTreeView}"
+                                SelectedItemChanged="proteins_SelectedCellsChanged" VirtualizingStackPanel.IsVirtualizing="True" 
+                                  VirtualizingStackPanel.VirtualizationMode="Recycling">
+                            <TreeView.Resources>
+                                <HierarchicalDataTemplate DataType="{x:Type local:ProteinForTreeView}" ItemsSource="{Binding Summary}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="{Binding DisplayName}" />
+                                    </StackPanel>
+                                </HierarchicalDataTemplate>
+                                <HierarchicalDataTemplate DataType="{x:Type local:SummaryForTreeView}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="{Binding DisplayName}" />
+                                    </StackPanel>
+                                </HierarchicalDataTemplate>
+                            </TreeView.Resources>
+                            <TreeView.ItemContainerStyle>
+                                <Style TargetType="TreeViewItem">
+                                    <Setter Property="IsExpanded" Value="{Binding Expanded}"/>
+                                </Style>
+                            </TreeView.ItemContainerStyle>
+                        </TreeView>
+                    </Grid>
+                </GroupBox>
+                <Button Content="Load Proteins" Grid.Row="2" Width="100" Click="LoadProteins_Click" />
+            </Grid>
 
-                            <DataGrid x:Name="dataGridProteins" Grid.Row="2" AutoGenerateColumns="False" VerticalAlignment="Stretch" ItemsSource="{Binding}" 
-                                        IsReadOnly="True" ScrollViewer.CanContentScroll="True" Margin="0,0,0,0" 
-                                        SelectedCellsChanged="proteins_SelectedCellsChanged" CanUserDeleteRows="false" CanUserAddRows="false">
-                                <DataGrid.Columns>
-                                    <DataGridTextColumn Binding="{Binding FileName}" Width="1*"></DataGridTextColumn>
-                                </DataGrid.Columns>
-                            </DataGrid>
-                        </Grid>
-                    </GroupBox>
-                </Grid>
-
-                <GridSplitter Grid.Column="2" 
+            <GridSplitter Grid.Column="1" 
                           HorizontalAlignment="Center"
                           Background="Silver"
                           Width="3"/>
 
-                <GroupBox Grid.Column="3" Header="Results" Name="gbPSM">
-                    <ScrollViewer Name="mapViewer" HorizontalAlignment="Center" VerticalAlignment="Center" CanContentScroll="True" HorizontalScrollBarVisibility="Visible" Height="371" Width="547">
-                        <Grid Name="mapGrid" HorizontalAlignment="Center">
+            <GroupBox Grid.Column="2" Header="Sequence Coverage Maps" Name="gbPSM">
+                <Grid Name="ResultsGrid" SizeChanged="resultsSizeChanged">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height = "30"></RowDefinition>
+                        <RowDefinition Height = "*"></RowDefinition>
+                    </Grid.RowDefinitions>
+
+                    <ScrollViewer Grid.Row="1" Name="mapViewer" HorizontalAlignment="Center" VerticalAlignment="Center" CanContentScroll="True" 
+                                  HorizontalScrollBarVisibility="Visible">
+                        <Grid Name="mapGrid" HorizontalAlignment="Center" Width="485">
                             <Canvas x:Name="map"/>
                         </Grid>
                     </ScrollViewer>
-                </GroupBox>
-            </Grid>
-        </ScrollViewer>
+
+                    <Grid Grid.Row="0">
+                        <ComboBox x:Name="ProteaseCoverageMaps" IsEnabled="True" Width="150" Height="30" 
+                                   Text="Select Protease" SelectionChanged="proteaseComboBox_SelectionChanged" Loaded="proteaseCoverageMaps_loaded"/>
+
+                    </Grid>
+                </Grid>
+
+            </GroupBox>
+        </Grid>
     </Grid>
 </UserControl>
