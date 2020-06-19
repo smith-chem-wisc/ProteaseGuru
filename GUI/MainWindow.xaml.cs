@@ -22,6 +22,7 @@ using System.Globalization;
 using static Tasks.ProteaseGuruTask;
 using MzLibUtil;
 using ProteaseGuruGUI;
+using System.Diagnostics;
 
 namespace GUI
 {
@@ -519,12 +520,15 @@ namespace GUI
             EverythingRunnerEngine a = new EverythingRunnerEngine(DynamicTasksObservableCollection.Select(b => (b.DisplayName, b.Task)).ToList(),
                 ProteinDbObservableCollection.Select(b => new DbForDigestion(b.FilePath)).ToList(),
                 OutputFolderTextBox.Text);
+
+            Stopwatch stopwatch = new Stopwatch();
+            stopwatch.Start();
                      
             var t = new Task(a.Run);
             t.ContinueWith(EverythingRunnerExceptionHandler, TaskContinuationOptions.OnlyOnFaulted);
             t.Start();
             t.Wait();
-            
+            stopwatch.Stop();
             // update results display
             AllResultsTab.Content = new AllResultsWindow(a.PeptideByFile, UserParameters);
                         

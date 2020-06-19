@@ -22,6 +22,8 @@ namespace GUI
         private readonly ObservableCollection<InSilicoPep> allPeptides;
         private readonly Dictionary<string, ObservableCollection<InSilicoPep>> PeptidesByProtease;
         private readonly Dictionary<string, ObservableCollection<double>> SequenceCoverageByProtease = new Dictionary<string, ObservableCollection<double>>();
+        private readonly Dictionary<string, ObservableCollection<double>> SequenceCoverageUniqueByProtease = new Dictionary<string, ObservableCollection<double>>();
+        private readonly Dictionary<string, ObservableCollection<double>> UniquePeptidesPerProtein = new Dictionary<string, ObservableCollection<double>>();
 
         private static List<OxyColor> columnColors = new List<OxyColor>
         {           
@@ -59,7 +61,7 @@ namespace GUI
             }
         }
 
-        public PlotModelStat(string plotName, ObservableCollection<InSilicoPep> peptides, Dictionary<string, ObservableCollection<InSilicoPep>> peptidesByProtease, Dictionary<string, Dictionary<Protein, double>> sequenceCoverageByProtease)
+        public PlotModelStat(string plotName, ObservableCollection<InSilicoPep> peptides, Dictionary<string, ObservableCollection<InSilicoPep>> peptidesByProtease, Dictionary<string, Dictionary<Protein, (double,double)>> sequenceCoverageByProtease)
         {
             privateModel = new PlotModel { Title = plotName, DefaultFontSize = 14 };
             allPeptides = peptides;
@@ -67,12 +69,24 @@ namespace GUI
             foreach (var protease in sequenceCoverageByProtease)
             {
                 ObservableCollection<double> coverages = new ObservableCollection<double>();
+                ObservableCollection<double> uniqueCoverages = new ObservableCollection<double>();
                 foreach (var protein in protease.Value)
                 {
-                    coverages.Add(protein.Value);
+                    coverages.Add(protein.Value.Item1);
+                    uniqueCoverages.Add(protein.Value.Item2);
                 }
                 SequenceCoverageByProtease.Add(protease.Key, coverages);
-            }            
+                SequenceCoverageUniqueByProtease.Add(protease.Key, uniqueCoverages);
+            }
+            foreach (var protease in peptidesByProtease)
+            {
+                ObservableCollection<double> uniquePeptides = new ObservableCollection<double>();
+                foreach (var protein in protease.Value.GroupBy(pep => pep.Protein).ToDictionary(group => group.Key, group => group.ToList()))
+                {
+                    uniquePeptides.Add(protein.Value.Where(pep => pep.Unique).Count());
+                }
+                UniquePeptidesPerProtein.Add(protease.Key, uniquePeptides);
+            }
             createPlot(plotName);
             privateModel.DefaultColors = columnColors;
         }
@@ -87,13 +101,21 @@ namespace GUI
             {
                 histogramPlot(2);
             }
-            else if (plotType.Equals(" Predicted Peptide Hydrophobicity"))
+            else if (plotType.Equals(" Protein Sequence Coverage (Unique Peptides Only)"))
             {
                 histogramPlot(3);
             }
-            else if (plotType.Equals(" Predicted Peptide Electrophoretic Mobility"))
+            else if (plotType.Equals(" Number of Unique Peptides per Protein"))
             {
                 histogramPlot(4);
+            }
+            else if (plotType.Equals(" Predicted Peptide Hydrophobicity"))
+            {
+                histogramPlot(5);
+            }
+            else if (plotType.Equals(" Predicted Peptide Electrophoretic Mobility"))
+            {
+                histogramPlot(6);
             }            
         }
         // returns a bin index of number relative to 0, midpoints are rounded towards zero
@@ -153,7 +175,28 @@ namespace GUI
                         dictsByProtease.Add(key, results.ToDictionary(p => p.Key.ToString(), v => v.Count()));
                     }
                     break;
-                case 3: // Predicted Peptide Hydrophobicity
+                case 3: // Protein Sequence Coverage (unique peptides)
+                    xAxisTitle = "Protein Sequence Coverage (Unique Peptides Only)";
+                    binSize = 0.1;
+                    foreach (string key in SequenceCoverageUniqueByProtease.Keys)
+                    {
+                        numbersByProtease.Add(key, SequenceCoverageUniqueByProtease[key].Select(p => p));
+                        var testList = numbersByProtease[key].Select(p => roundToBin(p, binSize)).ToList();
+                        var results = numbersByProtease[key].GroupBy(p => roundToBin(p, binSize)).OrderBy(p => p.Key).Select(p => p).ToList();
+                        dictsByProtease.Add(key, results.ToDictionary(p => p.Key.ToString(), v => v.Count()));
+                    }
+                    break;
+                case 4: // Predicted Peptide Hydrophobicity
+                    xAxisTitle = "Number of Unique Peptides per Protein";
+                    binSize = 2;
+                    foreach (string key in UniquePeptidesPerProtein.Keys)
+                    {
+                        numbersByProtease.Add(key, UniquePeptidesPerProtein[key].Select(p => p));
+                        var results = numbersByProtease[key].GroupBy(p => roundToBin(p, binSize)).OrderBy(p => p.Key).Select(p => p);
+                        dictsByProtease.Add(key, results.ToDictionary(p => p.Key.ToString(), v => v.Count()));
+                    }
+                    break;
+                case 5: // Predicted Peptide Hydrophobicity
                     xAxisTitle = "Predicted Peptide Hydrophobicity";
                     binSize = 5;
                     foreach (string key in PeptidesByProtease.Keys)
@@ -163,7 +206,7 @@ namespace GUI
                         dictsByProtease.Add(key, results.ToDictionary(p => p.Key.ToString(), v => v.Count()));
                     }
                     break;
-                case 4: // Predicted Peptide Electrophoretic Mobility
+                case 6: // Predicted Peptide Electrophoretic Mobility
                     xAxisTitle = "Predicted Peptide Electrophoretic Mobility";
                     binSize = 0.005;
                     foreach (string key in PeptidesByProtease.Keys)

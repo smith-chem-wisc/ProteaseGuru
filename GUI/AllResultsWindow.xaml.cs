@@ -210,7 +210,7 @@ namespace ProteaseGuruGUI
         {
             ObservableCollection<InSilicoPep> peptides = new ObservableCollection<InSilicoPep>();
             Dictionary<string, ObservableCollection<InSilicoPep>> peptidesByProtease = new Dictionary<string, ObservableCollection<InSilicoPep>>();
-            Dictionary<string, Dictionary<Protein, double>> sequenceCoverageByProtease = new Dictionary<string, Dictionary<Protein, double>>();
+            Dictionary<string, Dictionary<Protein, (double,double)>> sequenceCoverageByProtease = new Dictionary<string, Dictionary<Protein, (double,double)>>();
             var selectedPlot = HistogramComboBox.SelectedItem;
             var objectName = selectedPlot.ToString().Split(':');
             var plotName = objectName[1];
@@ -286,26 +286,33 @@ namespace ProteaseGuruGUI
             MessageBox.Show("PDF Created at " + Path.Combine(fileDirectory, fileName) + "!");
         }
 
-        private Dictionary<string, Dictionary<Protein, double>> CalculateProteinSequenceCoverage( Dictionary<string, Dictionary<Protein, List<InSilicoPep>>> peptidesByProtease)
+        private Dictionary<string, Dictionary<Protein, (double,double)>> CalculateProteinSequenceCoverage( Dictionary<string, Dictionary<Protein, List<InSilicoPep>>> peptidesByProtease)
         {
-            Dictionary<string, Dictionary<Protein, double>> proteinSequenceCoverageByProtease = new Dictionary<string, Dictionary<Protein, double>>();
+            Dictionary<string, Dictionary<Protein, (double,double)>> proteinSequenceCoverageByProtease = new Dictionary<string, Dictionary<Protein, (double,double)>>();
             foreach (var protease in peptidesByProtease)
             {
-                Dictionary<Protein, double> sequenceCoverages = new Dictionary<Protein, double>();
+                Dictionary<Protein, (double,double)> sequenceCoverages = new Dictionary<Protein, (double,double)>();
                 foreach (var protein in protease.Value)
                 {
                     HashSet<int> coveredOneBasesResidues = new HashSet<int>();
+                    HashSet<int> coveredOneBasesResiduesUnique = new HashSet<int>();
                     foreach (var peptide in protein.Value)
                     {
                         for (int i = peptide.StartResidue; i <= peptide.EndResidue; i++)
                         {
                             coveredOneBasesResidues.Add(i);
+                            if (peptide.Unique == true)
+                            {
+                                coveredOneBasesResiduesUnique.Add(i);
+                            }
                         }
-                    }
+                        
 
+                    }
                     double seqCoverageFract = (double)coveredOneBasesResidues.Count / protein.Key.Length;
-                    
-                    sequenceCoverages.Add(protein.Key, seqCoverageFract);
+                    double seqCoverageFractUnique = (double)coveredOneBasesResiduesUnique.Count / protein.Key.Length;
+
+                    sequenceCoverages.Add(protein.Key, (seqCoverageFract,seqCoverageFractUnique));
                 }
                 proteinSequenceCoverageByProtease.Add(protease.Key, sequenceCoverages);
             }            

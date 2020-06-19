@@ -89,6 +89,8 @@
                                                 <ComboBox x:Name="HistogramComboBox" SelectionChanged="PlotSelected">
                                                     <ComboBoxItem Content="Peptide Length"/>
                                                     <ComboBoxItem Content="Protein Sequence Coverage"/>
+                                                    <ComboBoxItem Content="Protein Sequence Coverage (Unique Peptides Only)"/>
+                                                    <ComboBoxItem Content="Number of Unique Peptides per Protein"/>
                                                     <ComboBoxItem Content="Predicted Peptide Hydrophobicity"/>
                                                     <ComboBoxItem Content="Predicted Peptide Electrophoretic Mobility"/>
                                                 </ComboBox>

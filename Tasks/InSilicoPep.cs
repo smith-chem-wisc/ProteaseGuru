@@ -13,6 +13,7 @@ namespace Tasks
         public char PreviousAA;
         public char NextAA;
         public bool Unique;
+        public bool UniqueAllDbs;
         public double Hydrophobicity;
         public double ElectrophoreticMobility;
         public int Length;
@@ -39,10 +40,11 @@ namespace Tasks
             Protein = protein;
             StartResidue = start;
             EndResidue = end;
-            Protease = protease;           
+            Protease = protease;
+            UniqueAllDbs = false;
         }
 
-        public string ToString()
+        override public string ToString()
         {
             string tab = "\t";
             StringBuilder sb = new StringBuilder();
@@ -66,7 +68,7 @@ namespace Tasks
             sb.Append(tab);
             sb.Append(Unique);
             sb.Append(tab);
-            sb.Append("put unique in analysis info here");
+            sb.Append(UniqueAllDbs);
             sb.Append(tab);
             sb.Append(Hydrophobicity);
             sb.Append(tab);
