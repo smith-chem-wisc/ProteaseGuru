@@ -115,7 +115,8 @@
                         </TabControl>
                     </GroupBox>
 
-                </Grid>
+                    </Grid>
+                </ScrollViewer>
             </TabItem>
 
             <TabItem Header="Search By Protein" Background="DarkGray" BorderThickness="10" BorderBrush="Black" Name="ProteinCovMap">
