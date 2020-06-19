@@ -71,8 +71,15 @@
                     <Grid.RowDefinitions>
                         <RowDefinition Height = "30"></RowDefinition>
                         <RowDefinition Height = "*"></RowDefinition>
+                        <RowDefinition Height = "60"></RowDefinition>
                     </Grid.RowDefinitions>
+                    
+                    <Grid Grid.Row="0">
+                        <ComboBox x:Name="ProteaseCoverageMaps" IsEnabled="True" Width="150" Height="30" 
+                                   Text="Select Protease" SelectionChanged="proteaseComboBox_SelectionChanged" Loaded="proteaseCoverageMaps_loaded"/>
 
+                    </Grid>
+                    
                     <ScrollViewer Grid.Row="1" Name="mapViewer" HorizontalAlignment="Center" VerticalAlignment="Center" CanContentScroll="True" 
                                   HorizontalScrollBarVisibility="Visible">
                         <Grid Name="mapGrid" HorizontalAlignment="Center" Width="485">
@@ -80,11 +87,11 @@
                         </Grid>
                     </ScrollViewer>
 
-                    <Grid Grid.Row="0">
-                        <ComboBox x:Name="ProteaseCoverageMaps" IsEnabled="True" Width="150" Height="30" 
-                                   Text="Select Protease" SelectionChanged="proteaseComboBox_SelectionChanged" Loaded="proteaseCoverageMaps_loaded"/>
-
-                    </Grid>
+                    <!--legend for sequence coverage map-->
+                    <Canvas Grid.Row="2" x:Name="legend" Width="500" HorizontalAlignment="Center" VerticalAlignment="Top">
+                        <Grid HorizontalAlignment="Center" VerticalAlignment="Center" Name="legendGrid">
+                        </Grid>
+                    </Canvas>
                 </Grid>
 
             </GroupBox>

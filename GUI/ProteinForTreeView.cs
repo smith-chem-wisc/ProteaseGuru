@@ -1,26 +1,29 @@
-﻿using System.Collections.Generic;
+﻿using Proteomics;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using Tasks;
 
 namespace ProteaseGuruGUI
 {
     class ProteinForTreeView
     {
-        public ProteinForTreeView(string displayName, string accession, List<string> uniquePep, List<string> sharedPep, List<string> allPep)
+        public ProteinForTreeView(Protein protein, string displayName, List<InSilicoPep> uniquePep,
+            List<InSilicoPep> sharedPep, List<InSilicoPep> allPep)
         {
+            Protein = protein;
             Expanded = false;
             DisplayName = displayName;
-            Accession = accession;
             UniquePeptides = uniquePep;
             SharedPeptides = sharedPep;
             AllPeptides = allPep;
             Summary = new ObservableCollection<SummaryForTreeView>();
         }
 
-        public List<string> UniquePeptides { get; }
-        public List<string> SharedPeptides { get; }
-        public List<string> AllPeptides { get; }
+        public Protein Protein { get; }
+        public List<InSilicoPep> UniquePeptides { get; }
+        public List<InSilicoPep> SharedPeptides { get; }
+        public List<InSilicoPep> AllPeptides { get; }
         public string DisplayName { get; }
-        public string Accession { get; }
         public bool Expanded { get; set; }
         public ObservableCollection<SummaryForTreeView> Summary { get; set; }
     }

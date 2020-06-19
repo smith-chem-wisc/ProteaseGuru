@@ -5,29 +5,46 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Shapes;
+using Tasks;
 
 namespace ProteaseGuruGUI
 {
     class SequenceCoverageMap
     {
-        public static void Highlight(int start, int end, Canvas map, Dictionary<int, List<int>> indices, int height, Color clr, bool unique, bool partial = false)
+        private const int spacing = 22;
+
+        public static int Highlight(int start, int end, Canvas map, Dictionary<int, List<int>> indices,
+            int height, Color clr, bool unique, int partial = -1)
         {
-            int spacing = 22;
             int increment = 0;
             int i;
-            //int increment = indices.Where(index => index == start || index == end).Count() * 5;
 
-            for (i = 0; i < indices.Count; ++i)
+            if (partial >= 0) // if partial peptide 
             {
-                if (!indices[i].Any(d => d == start))
+                increment = partial * 5;
+                i = partial;            }
+            else
+            {
+                // determine where to highlight peptide
+                for (i = 0; i < indices.Count; ++i)
                 {
-                    break;
+                    // only does this if partially highlighted peptides dont continue on the first line
+                    if (!indices.ContainsKey(i))
+                    {
+                        indices.Add(i, new List<int>());
+                    }
+
+                    // check if 
+                    if (!indices[i].Any(d => d == start))
+                    {
+                        break;
+                    }
+
+                    increment += 5;
                 }
+            }           
 
-                increment += 5;
-            }
-
-            // update list of indices
+            // update list of drawn/highlighted peptides
             if (indices.ContainsKey(i))
             {
                 indices[i].AddRange(Enumerable.Range(start, end - start + 1));
@@ -37,22 +54,21 @@ namespace ProteaseGuruGUI
                 indices.Add(i, Enumerable.Range(start, end - start + 1).ToList());
             }
 
-            // highlight peptides
-            if (partial) // continue highlight peptides from prev line
-            {
-                peptideLineDrawing(map, new Point((start- 0.7) * spacing + 10, height + increment), new Point((start - 0.5) * spacing + 10, height + increment), Colors.Red, false);
-            }
-
+            // highlight peptide
             if (unique)
             {
-                peptideLineDrawing(map, new Point(start * spacing + 10, height + increment), new Point(end * spacing + 10, height + increment), clr, false);
+                peptideLineDrawing(map, new Point(start * spacing + 10, height + increment), 
+                    new Point(end * spacing + 10, height + increment), clr, false);
             }
             else
             {
-                peptideLineDrawing(map, new Point(start * spacing + 10, height + increment), new Point(end * spacing + 10, height + increment), clr, true);
+                peptideLineDrawing(map, new Point(start * spacing + 10, height + increment), 
+                    new Point(end * spacing + 10, height + increment), clr, true);
             }
-        }
 
+            return i;
+        }
+        
         public static void txtDrawing(Canvas cav, Point loc, string txt, Brush clr)
         {
             TextBlock tb = new TextBlock();
@@ -91,26 +107,23 @@ namespace ProteaseGuruGUI
             Canvas.SetZIndex(top, 1); //on top of any other things in canvas
         }
 
-        public static void drawLegend(Canvas cav, Dictionary<string, Color> proteaseByColor, string[] proteases, Grid legend)
+        public static void drawLegend(Canvas cav, Dictionary<string, Color> proteaseByColor, string protease, Grid legend)
         {
             int i = -1;
-            foreach (var protease in proteases)
-            {
-                legend.ColumnDefinitions.Add(new ColumnDefinition());
-                legend.ColumnDefinitions.Add(new ColumnDefinition());
-                Label proteaseName = new Label();
-                proteaseName.Content = protease;
+            legend.ColumnDefinitions.Add(new ColumnDefinition());
+            legend.ColumnDefinitions.Add(new ColumnDefinition());
+            Label proteaseName = new Label();
+            proteaseName.Content = protease;
 
-                Rectangle proteaseColor = new Rectangle();
-                proteaseColor.Fill = new SolidColorBrush(proteaseByColor[protease]);
-                proteaseColor.Width = 30;
-                proteaseColor.Height = 15;
+            Rectangle proteaseColor = new Rectangle();
+            proteaseColor.Fill = new SolidColorBrush(proteaseByColor[protease]);
+            proteaseColor.Width = 30;
+            proteaseColor.Height = 15;
 
-                legend.Children.Add(proteaseColor);
-                Grid.SetColumn(proteaseColor, ++i);
-                legend.Children.Add(proteaseName);
-                Grid.SetColumn(proteaseName, ++i);
-            }
+            legend.Children.Add(proteaseColor);
+            Grid.SetColumn(proteaseColor, ++i);
+            legend.Children.Add(proteaseName);
+            Grid.SetColumn(proteaseName, ++i);
 
             legend.ColumnDefinitions.Add(new ColumnDefinition());
             legend.ColumnDefinitions.Add(new ColumnDefinition());
