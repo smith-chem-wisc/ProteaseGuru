@@ -8,11 +8,11 @@
              xmlns:local="clr-namespace:ProteaseGuruGUI"           
              xmlns:Controls="clr-namespace:ProteaseGuruGUI"
              d:DesignHeight="450" d:DesignWidth="800">
-    <Grid ScrollViewer.VerticalScrollBarVisibility="Disabled">
-
+    <Grid>
         <TabControl>
             <TabItem Header="All Results" Background="DarkGray" BorderThickness="10" BorderBrush="Black">
-                <Grid>
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <Grid>
 
 
                     <GroupBox Grid.Column="2" Header="Results" Name="gbResults" ScrollViewer.VerticalScrollBarVisibility="Disabled">
@@ -118,7 +118,7 @@
                 </Grid>
             </TabItem>
 
-            <TabItem Header="Search By Protein" Background="DarkGray" BorderThickness="10" BorderBrush="Black">
+            <TabItem Header="Search By Protein" Background="DarkGray" BorderThickness="10" BorderBrush="Black" Name="ProteinCovMap">
                 <Controls:ProteinResultsWindow/>
             </TabItem>
 
