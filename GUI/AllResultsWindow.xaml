@@ -15,94 +15,105 @@
                     <Grid>
 
 
-                        <GroupBox Grid.Column="2" Header="Results" Name="gbResults">
-                            <TabControl>
-                                <TabItem Header="Summary" Background="DarkGray" BorderThickness="10" BorderBrush="Black">
+                    <GroupBox Grid.Column="2" Header="Results" Name="gbResults" ScrollViewer.VerticalScrollBarVisibility="Disabled">
+                        <TabControl>
+                            <TabItem Header="Summary" Background="DarkGray" BorderThickness="10" BorderBrush="Black">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="77*"/>
+                                        <ColumnDefinition Width="181*"/>
+                                        <ColumnDefinition Width="14*"/>
+                                        <ColumnDefinition Width="504*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <!--summary by protease-->
+                                    <TreeView BorderThickness="0" x:Name="ProteaseSummaryTreeView" ItemsSource="{Binding}" DataContext="{x:Type local:ProteaseSummaryForTreeView}" Grid.ColumnSpan="4">
+                                        <TreeView.Resources>
+                                            <HierarchicalDataTemplate DataType="{x:Type local:ProteaseSummaryForTreeView}" ItemsSource="{Binding Summary}">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <TextBlock Text="{Binding DisplayName}" />
+                                                </StackPanel>
+                                            </HierarchicalDataTemplate>
+                                            <HierarchicalDataTemplate DataType="{x:Type local:DigestionSummaryForTreeView}" ItemsSource="{Binding Summary}">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <TextBlock Text="{Binding DisplayName}"/>
+                                                </StackPanel>
+                                            </HierarchicalDataTemplate>
+                                            <DataTemplate DataType="{x:Type local:SummaryForTreeView}">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <TextBlock Text="{Binding DisplayName}" />
+                                                </StackPanel>
+                                            </DataTemplate>
+                                        </TreeView.Resources>
+                                        <TreeView.ItemContainerStyle>
+                                            <Style TargetType="TreeViewItem">
+                                                <Setter Property="IsExpanded" Value="{Binding Expanded}"/>
+                                            </Style>
+                                        </TreeView.ItemContainerStyle>
+                                    </TreeView>
+                                </Grid>
+                            </TabItem>
+                            <TabItem Header="Histograms" Background="DarkGray" BorderThickness="10" BorderBrush="Black" ScrollViewer.VerticalScrollBarVisibility="Disabled">
+                                <DockPanel>
                                     <Grid>
-                                        <!--summary by protease-->
-                                        <TreeView Grid.Row="1" BorderThickness="0" x:Name="ProteaseSummaryTreeView" ItemsSource="{Binding}" DataContext="{x:Type local:ProteaseSummaryForTreeView}">
-                                            <TreeView.Resources>
-                                                <HierarchicalDataTemplate DataType="{x:Type local:ProteaseSummaryForTreeView}" ItemsSource="{Binding Summary}">
-                                                    <StackPanel Orientation="Horizontal">
-                                                        <TextBlock Text="{Binding DisplayName}" />
-                                                    </StackPanel>
-                                                </HierarchicalDataTemplate>
-                                                <HierarchicalDataTemplate DataType="{x:Type local:DigestionSummaryForTreeView}" ItemsSource="{Binding Summary}">
-                                                    <StackPanel Orientation="Horizontal">
-                                                        <TextBlock Text="{Binding DisplayName}"/>
-                                                    </StackPanel>
-                                                </HierarchicalDataTemplate>
-                                                <DataTemplate DataType="{x:Type local:SummaryForTreeView}">
-                                                    <StackPanel Orientation="Horizontal">
-                                                        <TextBlock Text="{Binding DisplayName}" />
-                                                    </StackPanel>
-                                                </DataTemplate>
-                                            </TreeView.Resources>
-                                            <TreeView.ItemContainerStyle>
-                                                <Style TargetType="TreeViewItem">
-                                                    <Setter Property="IsExpanded" Value="{Binding Expanded}"/>
-                                                </Style>
-                                            </TreeView.ItemContainerStyle>
-                                        </TreeView>
-                                    </Grid>
-                                </TabItem>
-                                <TabItem Header="Histograms" Background="DarkGray" BorderThickness="10" BorderBrush="Black">
-                                    <DockPanel>
-                                        <Grid>
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="2*"/>
-                                                <ColumnDefinition Width="Auto"/>
-                                                <ColumnDefinition Width="5*"/>
-                                                <ColumnDefinition Width="Auto"/>
-                                            </Grid.ColumnDefinitions>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="2*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="5*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
 
-                                            <GroupBox Header="Databases" Name="gbDatabases" Grid.Column="0">
-                                                <Grid>
-                                                    <Grid.RowDefinitions>
-                                                        <RowDefinition Height="1*"/>
-                                                        <!--<RowDefinition Height="30"/>-->
-                                                    </Grid.RowDefinitions>
-                                                    <DataGrid x:Name="dataGridProteinDBs" Grid.Row="0" AutoGenerateColumns="False" VerticalAlignment="Stretch" ItemsSource="{Binding}" 
+                                        <GroupBox Header="Databases" Name="gbDatabases" Grid.Column="0">
+                                            <Grid>
+                                                <Grid.RowDefinitions>
+                                                    <RowDefinition Height="1*"/>
+                                                    <!--<RowDefinition Height="30"/>-->
+                                                </Grid.RowDefinitions>
+                                                <DataGrid x:Name="dataGridProteinDBs" Grid.Row="0" AutoGenerateColumns="False" VerticalAlignment="Stretch" ItemsSource="{Binding}" 
                                                         IsReadOnly="True" ScrollViewer.CanContentScroll="True" Margin="0,0,0,0" 
                                                          SelectedCellsChanged="summaryProteinDB_SelectedCellsChanged" CanUserDeleteRows="false" CanUserAddRows="false">
-                                                        <DataGrid.Columns>
-                                                            <DataGridTextColumn Binding="{Binding}" Width="1*"></DataGridTextColumn>
-                                                        </DataGrid.Columns>
-                                                    </DataGrid>
-                                                </Grid>
-                                            </GroupBox>
-                                            <GridSplitter Grid.Column="1" HorizontalAlignment="Center" VerticalAlignment="Stretch" Background="Silver" Width="3"/>
-                                            <Grid Grid.Column="2">
-                                                <Grid.RowDefinitions>
-                                                    <RowDefinition Height="25"/>
-                                                    <RowDefinition Height="*"/>
-                                                    <RowDefinition Height="25"/>
-                                                </Grid.RowDefinitions>
-                                                <StackPanel Orientation="Horizontal" Grid.Row="0">
-                                                    <Label x:Name="HistogramType" Content="Histogram Type:" Width="150"/>
-                                                    <ComboBox x:Name="HistogramComboBox" SelectionChanged="PlotSelected">
-                                                        <ComboBoxItem Content="Peptide Length"/>
-                                                        <ComboBoxItem Content="Protein Sequence Coverage"/>
-                                                        <ComboBoxItem Content="Predicted Peptide Hydrophobicity"/>
-                                                        <ComboBoxItem Content="Predicted Peptide Electrophoretic Mobility"/>
-                                                    </ComboBox>
-                                                </StackPanel>
-                                                <GroupBox Grid.Row="1" Header="Histogram">
-                                                    <oxy:PlotView Grid.Row="1" x:Name="plotViewStat" Model="{Binding Model}" FontSize="16" FontStretch="Expanded" BorderBrush="LightGray" Grid.ColumnSpan="2"/>
-                                                </GroupBox>
-                                                <DockPanel Grid.Row="2" Margin="2">
-                                                    <Button Content="Export to PDF" Width="100" Click="CreatePlotPdf_Click" />
-                                                </DockPanel>
-
+                                                    <DataGrid.Columns>
+                                                        <DataGridTextColumn Binding="{Binding}" Width="1*"></DataGridTextColumn>
+                                                    </DataGrid.Columns>
+                                                </DataGrid>
                                             </Grid>
+                                        </GroupBox>
+                                        <GridSplitter Grid.Column="1" HorizontalAlignment="Center" VerticalAlignment="Stretch" Background="Silver" Width="3"/>
+                                        <Grid Grid.Column="2">
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="25"/>
+                                                <RowDefinition Height="1*"/>
+                                                <RowDefinition Height="25"/>
+                                            </Grid.RowDefinitions>
+                                            <StackPanel Orientation="Horizontal" Grid.Row="0">
+                                                <Label x:Name="HistogramType" Content="Histogram Type:" Width="150"/>
+                                                <ComboBox x:Name="HistogramComboBox" SelectionChanged="PlotSelected">
+                                                    <ComboBoxItem Content="Peptide Length"/>
+                                                    <ComboBoxItem Content="Protein Sequence Coverage"/>
+                                                    <ComboBoxItem Content="Protein Sequence Coverage (Unique Peptides Only)"/>
+                                                    <ComboBoxItem Content="Number of Unique Peptides per Protein"/>
+                                                    <ComboBoxItem Content="Predicted Peptide Hydrophobicity"/>
+                                                    <ComboBoxItem Content="Predicted Peptide Electrophoretic Mobility"/>
+                                                </ComboBox>
+                                            </StackPanel>
+                                            <GroupBox Grid.Row="1" Header="Histogram">
+                                                <ScrollViewer HorizontalScrollBarVisibility="Visible" VerticalScrollBarVisibility="Visible">
+                                                    <oxy:PlotView  x:Name="plotViewStat" Model="{Binding Model}" FontSize="16" FontStretch="Expanded" BorderBrush="LightGray" Grid.ColumnSpan="2" Height="400" Width="900" ></oxy:PlotView>
+                                                </ScrollViewer>
+
+                                            </GroupBox>
+                                            <DockPanel Grid.Row="2" Margin="2">
+                                                <Button Content="Export to PDF" Width="100" Click="CreatePlotPdf_Click" />
+                                            </DockPanel>
 
                                         </Grid>
 
-                                    </DockPanel>
+                                    </Grid>
 
-                                </TabItem>
-                            </TabControl>
-                        </GroupBox>
+                                </DockPanel>
+
+                            </TabItem>
+                        </TabControl>
+                    </GroupBox>
 
                     </Grid>
                 </ScrollViewer>

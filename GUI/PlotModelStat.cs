@@ -22,12 +22,15 @@ namespace GUI
         private readonly ObservableCollection<InSilicoPep> allPeptides;
         private readonly Dictionary<string, ObservableCollection<InSilicoPep>> PeptidesByProtease;
         private readonly Dictionary<string, ObservableCollection<double>> SequenceCoverageByProtease = new Dictionary<string, ObservableCollection<double>>();
+        private readonly Dictionary<string, ObservableCollection<double>> SequenceCoverageUniqueByProtease = new Dictionary<string, ObservableCollection<double>>();
+        private readonly Dictionary<string, ObservableCollection<double>> UniquePeptidesPerProtein = new Dictionary<string, ObservableCollection<double>>();
 
         private static List<OxyColor> columnColors = new List<OxyColor>
-        {
-            OxyColors.Teal, OxyColors.CadetBlue, OxyColors.LightSeaGreen, OxyColors.DarkTurquoise, OxyColors.LightSkyBlue,
-            OxyColors.LightBlue, OxyColors.Aquamarine, OxyColors.PaleGreen, OxyColors.MediumAquamarine, OxyColors.DarkSeaGreen,
-            OxyColors.MediumSeaGreen, OxyColors.SeaGreen, OxyColors.DarkSlateGray, OxyColors.Gray, OxyColors.Gainsboro
+        {           
+           OxyColors.MediumBlue, OxyColors.Goldenrod, OxyColors.ForestGreen, OxyColors.DarkOrchid, OxyColors.Chocolate, OxyColors.Teal, OxyColors.PaleVioletRed, OxyColors.DimGray,
+           OxyColors.LightSkyBlue, OxyColors.PaleGoldenrod, OxyColors.DarkSeaGreen, OxyColors.Thistle, OxyColors.PeachPuff, OxyColors.PaleTurquoise, OxyColors.MistyRose, OxyColors.Gainsboro,
+           OxyColors.Navy, OxyColors.DarkGoldenrod, OxyColors.DarkGreen, OxyColors.Purple, OxyColors.Sienna, OxyColors.DarkSlateGray, OxyColors.MediumVioletRed, OxyColors.Black,
+           OxyColors.CornflowerBlue, OxyColors.Gold, OxyColors.MediumSeaGreen, OxyColors.MediumOrchid, OxyColors.DarkSalmon, OxyColors.LightSeaGreen, OxyColors.LightPink, OxyColors.DarkGray
 
         };
 
@@ -58,7 +61,7 @@ namespace GUI
             }
         }
 
-        public PlotModelStat(string plotName, ObservableCollection<InSilicoPep> peptides, Dictionary<string, ObservableCollection<InSilicoPep>> peptidesByProtease, Dictionary<string, Dictionary<Protein, double>> sequenceCoverageByProtease)
+        public PlotModelStat(string plotName, ObservableCollection<InSilicoPep> peptides, Dictionary<string, ObservableCollection<InSilicoPep>> peptidesByProtease, Dictionary<string, Dictionary<Protein, (double,double)>> sequenceCoverageByProtease)
         {
             privateModel = new PlotModel { Title = plotName, DefaultFontSize = 14 };
             allPeptides = peptides;
@@ -66,12 +69,24 @@ namespace GUI
             foreach (var protease in sequenceCoverageByProtease)
             {
                 ObservableCollection<double> coverages = new ObservableCollection<double>();
+                ObservableCollection<double> uniqueCoverages = new ObservableCollection<double>();
                 foreach (var protein in protease.Value)
                 {
-                    coverages.Add(protein.Value);
+                    coverages.Add(protein.Value.Item1);
+                    uniqueCoverages.Add(protein.Value.Item2);
                 }
                 SequenceCoverageByProtease.Add(protease.Key, coverages);
-            }            
+                SequenceCoverageUniqueByProtease.Add(protease.Key, uniqueCoverages);
+            }
+            foreach (var protease in peptidesByProtease)
+            {
+                ObservableCollection<double> uniquePeptides = new ObservableCollection<double>();
+                foreach (var protein in protease.Value.GroupBy(pep => pep.Protein).ToDictionary(group => group.Key, group => group.ToList()))
+                {
+                    uniquePeptides.Add(protein.Value.Where(pep => pep.Unique).Count());
+                }
+                UniquePeptidesPerProtein.Add(protease.Key, uniquePeptides);
+            }
             createPlot(plotName);
             privateModel.DefaultColors = columnColors;
         }
@@ -86,13 +101,21 @@ namespace GUI
             {
                 histogramPlot(2);
             }
-            else if (plotType.Equals(" Predicted Peptide Hydrophobicity"))
+            else if (plotType.Equals(" Protein Sequence Coverage (Unique Peptides Only)"))
             {
                 histogramPlot(3);
             }
-            else if (plotType.Equals(" Predicted Peptide Electrophoretic Mobility"))
+            else if (plotType.Equals(" Number of Unique Peptides per Protein"))
             {
                 histogramPlot(4);
+            }
+            else if (plotType.Equals(" Predicted Peptide Hydrophobicity"))
+            {
+                histogramPlot(5);
+            }
+            else if (plotType.Equals(" Predicted Peptide Electrophoretic Mobility"))
+            {
+                histogramPlot(6);
             }            
         }
         // returns a bin index of number relative to 0, midpoints are rounded towards zero
@@ -120,7 +143,7 @@ namespace GUI
         {
             privateModel.LegendTitle = "Protease";
             privateModel.LegendPlacement = LegendPlacement.Outside;
-            privateModel.LegendPosition = LegendPosition.RightMiddle;
+            privateModel.LegendPosition = LegendPosition.BottomLeft;            
             string yAxisTitle = "Count";
             string xAxisTitle = "";
             double binSize = -1;
@@ -152,9 +175,30 @@ namespace GUI
                         dictsByProtease.Add(key, results.ToDictionary(p => p.Key.ToString(), v => v.Count()));
                     }
                     break;
-                case 3: // Predicted Peptide Hydrophobicity
+                case 3: // Protein Sequence Coverage (unique peptides)
+                    xAxisTitle = "Protein Sequence Coverage (Unique Peptides Only)";
+                    binSize = 0.1;
+                    foreach (string key in SequenceCoverageUniqueByProtease.Keys)
+                    {
+                        numbersByProtease.Add(key, SequenceCoverageUniqueByProtease[key].Select(p => p));
+                        var testList = numbersByProtease[key].Select(p => roundToBin(p, binSize)).ToList();
+                        var results = numbersByProtease[key].GroupBy(p => roundToBin(p, binSize)).OrderBy(p => p.Key).Select(p => p).ToList();
+                        dictsByProtease.Add(key, results.ToDictionary(p => p.Key.ToString(), v => v.Count()));
+                    }
+                    break;
+                case 4: // Predicted Peptide Hydrophobicity
+                    xAxisTitle = "Number of Unique Peptides per Protein";
+                    binSize = 2;
+                    foreach (string key in UniquePeptidesPerProtein.Keys)
+                    {
+                        numbersByProtease.Add(key, UniquePeptidesPerProtein[key].Select(p => p));
+                        var results = numbersByProtease[key].GroupBy(p => roundToBin(p, binSize)).OrderBy(p => p.Key).Select(p => p);
+                        dictsByProtease.Add(key, results.ToDictionary(p => p.Key.ToString(), v => v.Count()));
+                    }
+                    break;
+                case 5: // Predicted Peptide Hydrophobicity
                     xAxisTitle = "Predicted Peptide Hydrophobicity";
-                    binSize = 0.5;
+                    binSize = 5;
                     foreach (string key in PeptidesByProtease.Keys)
                     {
                         numbersByProtease.Add(key, PeptidesByProtease[key].Select(p => p.Hydrophobicity));
@@ -162,7 +206,7 @@ namespace GUI
                         dictsByProtease.Add(key, results.ToDictionary(p => p.Key.ToString(), v => v.Count()));
                     }
                     break;
-                case 4: // Predicted Peptide Electrophoretic Mobility
+                case 6: // Predicted Peptide Electrophoretic Mobility
                     xAxisTitle = "Predicted Peptide Electrophoretic Mobility";
                     binSize = 0.005;
                     foreach (string key in PeptidesByProtease.Keys)
@@ -184,7 +228,7 @@ namespace GUI
             int end = roundToBin(allNumbers.Max(), binSize);  
             int start = roundToBin(allNumbers.Min(), binSize);                        
             int numBins = end - start + 1;
-            int minBinLabels = 22;  // the number of labeled bins will be between minBinLabels and 2 * minBinLabels
+            int minBinLabels = 15;  // the number of labeled bins will be between minBinLabels and 2 * minBinLabels
             int skipBinLabel = numBins < minBinLabels ? 1 : numBins / minBinLabels;
 
             // assign axis labels, skip labels based on skipBinLabel, calculate bin totals across all files
@@ -194,7 +238,7 @@ namespace GUI
             {
                 if (i % skipBinLabel == 0)
                 {
-                    category[i - start] = Math.Round((i * binSize), 2).ToString(CultureInfo.InvariantCulture);
+                    category[i - start] = Math.Round((i * binSize), 3).ToString(CultureInfo.InvariantCulture);
                 }
                 foreach (Dictionary<string, int> dict in dictsByProtease.Values)
                 {
@@ -220,7 +264,7 @@ namespace GUI
                 Position = AxisPosition.Bottom,
                 ItemsSource = category,
                 Title = xAxisTitle,
-                GapWidth = 0.3,
+                GapWidth = .25,
                 Angle = labelAngle,
             });
             privateModel.Axes.Add(new LinearAxis { Title = yAxisTitle, Position = AxisPosition.Left, AbsoluteMinimum = 0 });

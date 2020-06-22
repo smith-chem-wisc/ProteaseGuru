@@ -22,6 +22,7 @@ using System.Globalization;
 using static Tasks.ProteaseGuruTask;
 using MzLibUtil;
 using ProteaseGuruGUI;
+using System.Diagnostics;
 
 namespace GUI
 {
@@ -33,9 +34,11 @@ namespace GUI
         private readonly ObservableCollection<ProteinDbForDataGrid> ProteinDbObservableCollection = new ObservableCollection<ProteinDbForDataGrid>();
         private readonly ObservableCollection<PreRunTask> StaticTasksObservableCollection = new ObservableCollection<PreRunTask>();
         private ObservableCollection<InRunTask> DynamicTasksObservableCollection;
+        private Parameters UserParameters;
         public MainWindow()
         {
             InitializeComponent();
+            UserParameters = new Parameters();
             PopulateProteaseList();
             dataGridProteinDatabases.DataContext = ProteinDbObservableCollection;
             EverythingRunnerEngine.NewDbsHandler += AddNewDB;
@@ -161,16 +164,26 @@ namespace GUI
         }
         private void UpdateFieldsFromUser(DigestionTask run)
         {
-            run.DigestionParameters.NumberOfMissedCleavagesAllowed = Convert.ToInt32(MissedCleavagesTextBox.Text);
-            run.DigestionParameters.MinPeptideLengthAllowed = Convert.ToInt32(MinPeptideLengthTextBox.Text);
-            run.DigestionParameters.MaxPeptideLengthAllowed = Convert.ToInt32(MaxPeptideLengthTextBox.Text);
-            run.DigestionParameters.TreatModifiedPeptidesAsDifferent = Convert.ToBoolean(ModPepsAreUnique.IsChecked);
+            if (!string.IsNullOrWhiteSpace(MissedCleavagesTextBox.Text))
+            {
+                UserParameters.NumberOfMissedCleavagesAllowed = Convert.ToInt32(MissedCleavagesTextBox.Text);
+            }
+            if (!string.IsNullOrWhiteSpace(MinPeptideLengthTextBox.Text))
+            {
+                UserParameters.MinPeptideLengthAllowed = Convert.ToInt32(MinPeptideLengthTextBox.Text);
+            }
+            if (!string.IsNullOrWhiteSpace(MaxPeptideLengthTextBox.Text))
+            {
+                UserParameters.MaxPeptideLengthAllowed = Convert.ToInt32(MaxPeptideLengthTextBox.Text);
+            }            
+            UserParameters.TreatModifiedPeptidesAsDifferent = Convert.ToBoolean(ModPepsAreUnique.IsChecked);
             List<Protease> proteases = new List<Protease>();
             foreach (var protease in ProteaseSelectedForUse.SelectedItems)
             {
                 proteases.Add(ProteaseDictionary.Dictionary[protease.ToString()]);
             }
-            run.DigestionParameters.ProteasesForDigestion = proteases;
+            UserParameters.ProteasesForDigestion = proteases;
+            run.DigestionParameters = UserParameters;
         }
         private void AddNewDB(object sender, XmlForTaskListEventArgs e)
         {
@@ -247,46 +260,46 @@ namespace GUI
             }
         }
 
-        private void RunAllTasks_Click(object sender, RoutedEventArgs e)
-        {
-            GlobalVariables.StopLoops = false;
+        //private void RunAllTasks_Click(object sender, RoutedEventArgs e)
+        //{
+        //    GlobalVariables.StopLoops = false;
 
-            // check for valid tasks/spectra files/protein databases
+        //    // check for valid tasks/spectra files/protein databases
 
-            if (!ProteinDbObservableCollection.Any())
-            {
-                GuiWarnHandler(null, new StringEventArgs("You need to add at least one protein database!", null));
-                return;
-            }
+        //    if (!ProteinDbObservableCollection.Any())
+        //    {
+        //        GuiWarnHandler(null, new StringEventArgs("You need to add at least one protein database!", null));
+        //        return;
+        //    }
 
-            DynamicTasksObservableCollection = new ObservableCollection<InRunTask>();
+        //    DynamicTasksObservableCollection = new ObservableCollection<InRunTask>();
 
-            for (int i = 0; i < StaticTasksObservableCollection.Count; i++)
-            {
-                DynamicTasksObservableCollection.Add(new InRunTask("Task" + (i + 1) + "-" + StaticTasksObservableCollection[i].proteaseGuruTask.TaskType.ToString(), StaticTasksObservableCollection[i].proteaseGuruTask));
-            }
+        //    for (int i = 0; i < StaticTasksObservableCollection.Count; i++)
+        //    {
+        //        DynamicTasksObservableCollection.Add(new InRunTask("Task" + (i + 1) + "-" + StaticTasksObservableCollection[i].proteaseGuruTask.TaskType.ToString(), StaticTasksObservableCollection[i].proteaseGuruTask));
+        //    }
 
 
-            // output folder
-            if (string.IsNullOrEmpty(OutputFolderTextBox.Text))
-            {
-                var pathOfFirstSpectraFile = System.IO.Path.GetDirectoryName(ProteinDbObservableCollection.First().FilePath);
-                OutputFolderTextBox.Text = System.IO.Path.Combine(pathOfFirstSpectraFile, @"$DATETIME");
-            }
+        //    // output folder
+        //    if (string.IsNullOrWhiteSpace(OutputFolderTextBox.Text))
+        //    {
+        //        var oathOfDatabaseFile = System.IO.Path.GetDirectoryName(ProteinDbObservableCollection.First().FilePath);
+        //        OutputFolderTextBox.Text = System.IO.Path.Combine(oathOfDatabaseFile, @"$DATETIME");
+        //    }
 
-            var startTimeForAllFilenames = DateTime.Now.ToString("yyyy-MM-dd-HH-mm-ss", CultureInfo.InvariantCulture);
-            string outputFolder = OutputFolderTextBox.Text.Replace("$DATETIME", startTimeForAllFilenames);
-            OutputFolderTextBox.Text = outputFolder;
+        //    var startTimeForAllFilenames = DateTime.Now.ToString("yyyy-MM-dd-HH-mm-ss", CultureInfo.InvariantCulture);
+        //    string outputFolder = OutputFolderTextBox.Text.Replace("$DATETIME", startTimeForAllFilenames);
+        //    OutputFolderTextBox.Text = outputFolder;
 
-            // everything is OK to run
-            var taskList = DynamicTasksObservableCollection.Select(b => (b.DisplayName, b.Task)).ToList();
-            var databaseList = ProteinDbObservableCollection.Select(b => new DbForDigestion(b.FilePath)).ToList();
-            EverythingRunnerEngine a = new EverythingRunnerEngine(taskList, databaseList, outputFolder);
+        //    // everything is OK to run
+        //    var taskList = DynamicTasksObservableCollection.Select(b => (b.DisplayName, b.Task)).ToList();
+        //    var databaseList = ProteinDbObservableCollection.Select(b => new DbForDigestion(b.FilePath)).ToList();
+        //    EverythingRunnerEngine a = new EverythingRunnerEngine(taskList, databaseList, outputFolder);
 
-            var t = new Task(a.Run);
-            t.ContinueWith(EverythingRunnerExceptionHandler, TaskContinuationOptions.OnlyOnFaulted);
-            t.Start();
-        }
+        //    var t = new Task(a.Run);
+        //    t.ContinueWith(EverythingRunnerExceptionHandler, TaskContinuationOptions.OnlyOnFaulted);
+        //    t.Start();
+        //}
         private void EverythingRunnerExceptionHandler(Task obj)
         {
             if (!Dispatcher.CheckAccess())
@@ -333,14 +346,13 @@ namespace GUI
                        "%0D%0A" + exception.StackTrace +
                        "%0D%0A" + exception.Source +
                        "%0D%0A %0D%0A %0D%0A %0D%0A SYSTEM INFO: %0D%0A " +
-                        SystemInfo.CompleteSystemInfo() +
-                       "%0D%0A%0D%0A MetaMorpheus: version " + GlobalVariables.MetaMorpheusVersion
-                       + "%0D%0A %0D%0A %0D%0A %0D%0A TOML: %0D%0A " +
+                        SystemInfo.CompleteSystemInfo() +                       
+                        "%0D%0A %0D%0A %0D%0A %0D%0A TOML: %0D%0A " +
                        tomlText;
                     body = body.Replace('&', ' ');
                     body = body.Replace("\n", "%0D%0A");
                     body = body.Replace("\r", "%0D%0A");
-                    string mailto = string.Format("mailto:{0}?Subject=MetaMorpheus. Issue:&Body={1}", "mm_support@chem.wisc.edu", body);
+                    string mailto = string.Format("mailto:{0}?Subject=ProteaseGuru. Issue:&Body={1}", "mm_support@chem.wisc.edu", body);
                     GlobalVariables.StartProcess(mailto);
                     Console.WriteLine(body);
                 }
@@ -353,17 +365,21 @@ namespace GUI
             DigestionTask task = new DigestionTask();
             UpdateFieldsFromUser(task);
             AddTaskToCollection(task);
-        }
+            OutputFolderTextBox.IsEnabled = true;
 
-        private void AddPeptidePsmTsvFiles_Click(object sender, RoutedEventArgs e)
-        {
-            PeptideResultAnalysisTask task = null;
-            var dialog = new PeptideResultAnalysisWindow(task);
-            if (dialog.ShowDialog() == true)
+            // output folder
+            if (string.IsNullOrWhiteSpace(OutputFolderTextBox.Text))
             {
-                AddTaskToCollection(dialog.TheTask);
+                var pathOfFirstSpectraFile = System.IO.Path.GetDirectoryName(ProteinDbObservableCollection.First().FilePath);
+                OutputFolderTextBox.Text = System.IO.Path.Combine(pathOfFirstSpectraFile, @"$DATETIME");
             }
+
+            var startTimeForAllFilenames = DateTime.Now.ToString("yyyy-MM-dd-HH-mm-ss", CultureInfo.InvariantCulture);
+            string outputFolder = OutputFolderTextBox.Text.Replace("$DATETIME", startTimeForAllFilenames);
+            OutputFolderTextBox.Text = outputFolder;
+            UserParameters.OutputFolder = outputFolder;
         }
+        
 
         private void AddTaskToCollection(ProteaseGuruTask task)
         {
@@ -394,6 +410,31 @@ namespace GUI
             }
 
             dataGridProteinDatabases.Items.Refresh();
+        }
+
+        private void Window_Drop(object sender, DragEventArgs e)
+        {
+            string[] files = ((string[])e.Data.GetData(DataFormats.FileDrop)).OrderBy(p => p).ToArray();
+
+            if (files != null)
+            {
+                foreach (var draggedFilePath in files)
+                {
+                    if (Directory.Exists(draggedFilePath))
+                    {
+                        foreach (string file in Directory.EnumerateFiles(draggedFilePath, "*.*", SearchOption.AllDirectories))
+                        {
+                            AddAFile(file);
+                        }
+                    }
+                    else
+                    {
+                        AddAFile(draggedFilePath);
+                    }                    
+                    dataGridProteinDatabases.CommitEdit(DataGridEditingUnit.Row, true);                    
+                    dataGridProteinDatabases.Items.Refresh();
+                }
+            }            
         }
 
         private void SelectDefaultProteases_Click(object sender, RoutedEventArgs e)
@@ -475,29 +516,21 @@ namespace GUI
                 DynamicTasksObservableCollection.Add(new InRunTask("Task" + (i + 1) + "-" + StaticTasksObservableCollection[i].proteaseGuruTask.TaskType, StaticTasksObservableCollection[i].proteaseGuruTask));
             }
             
-            // output folder
-            if (string.IsNullOrEmpty(OutputFolderTextBox.Text))
-            {
-                var pathOfFirstSpectraFile = System.IO.Path.GetDirectoryName(ProteinDbObservableCollection.First().FilePath);
-                OutputFolderTextBox.Text = System.IO.Path.Combine(pathOfFirstSpectraFile, @"$DATETIME");
-            }
-
-            var startTimeForAllFilenames = DateTime.Now.ToString("yyyy-MM-dd-HH-mm-ss", CultureInfo.InvariantCulture);
-            string outputFolder = OutputFolderTextBox.Text.Replace("$DATETIME", startTimeForAllFilenames);
-            OutputFolderTextBox.Text = outputFolder;
-            
             // everything is OK to run
             EverythingRunnerEngine a = new EverythingRunnerEngine(DynamicTasksObservableCollection.Select(b => (b.DisplayName, b.Task)).ToList(),
                 ProteinDbObservableCollection.Select(b => new DbForDigestion(b.FilePath)).ToList(),
-                outputFolder);
+                OutputFolderTextBox.Text);
+
+            Stopwatch stopwatch = new Stopwatch();
+            stopwatch.Start();
                      
             var t = new Task(a.Run);
             t.ContinueWith(EverythingRunnerExceptionHandler, TaskContinuationOptions.OnlyOnFaulted);
             t.Start();
             t.Wait();
-            
+            stopwatch.Stop();
             // update results display
-            AllResultsTab.Content = new AllResultsWindow(a.PeptideByFile);
+            AllResultsTab.Content = new AllResultsWindow(a.PeptideByFile, UserParameters);
                         
             //// prompt user to direct to display window
             //var results = ResultsMsgBox.Show();

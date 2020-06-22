@@ -6,6 +6,7 @@
         xmlns:local="clr-namespace:GUI"
         xmlns:Controls="clr-namespace:ProteaseGuruGUI"
         mc:Ignorable="d"
+        Drop="Window_Drop" AllowDrop="true" 
         WindowStartupLocation="CenterScreen"
         Title="ProteaseGuru" Height="475" Width="825">
     <Grid>
@@ -118,7 +119,7 @@
                     <GridSplitter Grid.Column="1" HorizontalAlignment="Center" VerticalAlignment="Stretch" Background="Silver" Height="5" />
                     <Grid Grid.Column="2">
                         <Grid.RowDefinitions>
-                            <RowDefinition Height="300"/>
+                            <RowDefinition Height="280"/>
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="1*"/>
                         </Grid.RowDefinitions>
