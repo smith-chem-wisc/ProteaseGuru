@@ -151,13 +151,19 @@
                                     <RowDefinition Height="40"/>
                                     <RowDefinition Height="35"/>
                                 </Grid.RowDefinitions>
-                                <Button x:Name="AddDigestionTask" Content="Add Digestion Task" Click="AddDigestionTask_Click" FontSize="20" Grid.Row="0" ></Button>                                
-                                <DockPanel Margin="5" Grid.Row="2" LastChildFill="True">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width=".75*"/>
+                                    <ColumnDefinition Width=".25*"/>
+                                </Grid.ColumnDefinitions>
+                                <Button x:Name="AddDigestionTask" Content="Add Digestion Task" Click="AddDigestionTask_Click" FontSize="20" Grid.Row="0" Grid.Column="0" ></Button>
+                                <Button x:Name="ResetDigestionTask" Content="Reset" Click="ResetDigestionTask_Click" FontSize="20" Grid.Row="0" Grid.Column="1"></Button>
+                                
+                                <DockPanel Margin="5" Grid.Row="2" LastChildFill="True" Grid.ColumnSpan="2">
                                     <Button x:Name="OpenOutputFolderButton" Content="Open" Width="40" DockPanel.Dock="Right" Click="OpenOutputFolder_Click"></Button>
                                     <Label Content="Output Folder:"/>
                                     <TextBox x:Name="OutputFolderTextBox"/>
                                 </DockPanel>
-                                <Button x:Name="RunTaskButton" Content="Run!" Click="RunTaskButton_Click" FontSize="24" Grid.Row="3"/>
+                                <Button x:Name="RunTaskButton" Content="Run!" Click="RunTaskButton_Click" FontSize="24" Grid.Row="3" Grid.ColumnSpan="2"/>
                             </Grid>
                         </GroupBox>
                     </Grid>

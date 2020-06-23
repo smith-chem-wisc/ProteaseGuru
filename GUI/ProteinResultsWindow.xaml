@@ -58,7 +58,7 @@
                         </TreeView>
                     </Grid>
                 </GroupBox>
-                <Button Content="Load Proteins" Grid.Row="2" Width="100" Click="LoadProteins_Click" />
+                <Button Content="Load Proteins" Grid.Row="2" Width="100" Click="LoadProteins_Click" Name="ProteinLoadButton" />
             </Grid>
 
             <GridSplitter Grid.Column="1" 
@@ -80,17 +80,16 @@
 
                     </Grid>
                     
-                    <ScrollViewer Grid.Row="1" Name="mapViewer" HorizontalAlignment="Center" VerticalAlignment="Center" CanContentScroll="True" 
-                                  HorizontalScrollBarVisibility="Visible">
+                    <ScrollViewer Grid.Row="1" Name="mapViewer" HorizontalAlignment="Center" VerticalAlignment="Center" 
+                                  CanContentScroll="True" VerticalScrollBarVisibility="Visible" HorizontalScrollBarVisibility="Visible">
                         <Grid Name="mapGrid" HorizontalAlignment="Center" Width="485">
                             <Canvas x:Name="map"/>
                         </Grid>
                     </ScrollViewer>
 
                     <!--legend for sequence coverage map-->
-                    <Canvas Grid.Row="2" x:Name="legend" Width="500" HorizontalAlignment="Center" VerticalAlignment="Top">
-                        <Grid HorizontalAlignment="Center" VerticalAlignment="Center" Name="legendGrid">
-                        </Grid>
+                    <Canvas Grid.Row="2" x:Name="legend" VerticalAlignment="Top">
+                        <Grid HorizontalAlignment="Center" Name="legendGrid"/>
                     </Canvas>
                 </Grid>
 
