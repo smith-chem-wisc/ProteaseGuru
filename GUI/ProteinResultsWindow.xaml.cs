@@ -33,8 +33,6 @@ namespace ProteaseGuruGUI
         private Dictionary<Protein, ProteinForTreeView> ProteinsForTreeView;
         private Dictionary<InSilicoPep, (int,int)> partialPeptideMatches = new Dictionary<InSilicoPep, (int,int)>();
         private Dictionary<string, Color> ProteaseByColor;
-        private List<Protein> ListOfProteinsOrderedByAccession;
-        private Dictionary<string, ProteinForSeqCoverage> SequenceCoverageDisplays;
         private List<string> Proteases;
 
         public ProteinResultsWindow()
@@ -46,7 +44,6 @@ namespace ProteaseGuruGUI
         {
             InitializeComponent();
             PeptideByFile = peptideByFile;
-            SequenceCoverageDisplays = new Dictionary<string, ProteinForSeqCoverage>();
             PeptideByProteaseAndProtein = new Dictionary<Protein, Dictionary<string, List<InSilicoPep>>>();
             proteinTree = new ObservableCollection<ProteinForTreeView>();
             filteredTree = new ObservableCollection<ProteinForTreeView>();
@@ -66,6 +63,7 @@ namespace ProteaseGuruGUI
             // TODO set colors for each available protease
             ProteaseByColor = new Dictionary<string, Color>();
             ProteaseByColor["trypsin"] = Colors.Blue;
+            ProteaseByColor["Arg-C"] = Colors.Red;
         }
 
         private void Search_TextChanged(object sender, TextChangedEventArgs e)
@@ -104,12 +102,23 @@ namespace ProteaseGuruGUI
 
         private void OnSelectionChanged()
         {
-            // TODO disable selection of summary
-            var protein = (ProteinForTreeView)dataGridProteins.SelectedItem;
-            var protease = (string)ProteaseCoverageMaps.SelectedItem ?? Proteases.First(); // if not selected yet, display default
+            try
+            {
+                var protein = (ProteinForTreeView)dataGridProteins.SelectedItem;
+                var protease = (string)ProteaseCoverageMaps.SelectedItem ?? Proteases.First(); // if not selected yet, display default
 
-            // draw sequence coverage map
-            DrawSequenceCoverageMap(protein, protease);
+                // draw sequence coverage map if exists
+                if (protein != null && PeptideByProteaseAndProtein[protein.Protein].ContainsKey(protease))
+                {
+                    DrawSequenceCoverageMap(protein, protease);
+                }
+            }
+            catch (Exception e)
+            {
+                // user selected summary item
+                // do nothing
+                Console.WriteLine(e.ToString());
+            }
 
         }
 
@@ -119,6 +128,7 @@ namespace ProteaseGuruGUI
             string seqCoverage = protein.Protein.BaseSequence;
             // mapViewer.Visibility = Visibility.Visible;
             map.Children.Clear();
+            legendGrid.Children.Clear();
 
             double spacing = 22;
             int height = 10;
@@ -126,12 +136,8 @@ namespace ProteaseGuruGUI
             int accumIndex = 0;
 
             var splitSeq = Split(seqCoverage, spacing);
-            var allPeptides = new List<InSilicoPep>(protein.AllPeptides);
+            var peptidesToDraw = new List<InSilicoPep>(PeptideByProteaseAndProtein[protein.Protein][protease]);
             var indices = new Dictionary<int, List<int>>();
-
-            // for debug
-            //allPeptides = allPeptides.Where(p => p.BaseSequence.Contains("LFSTSR")).ToList();
-            // allPeptides = allPeptides.Where(p => p.BaseSequence.Contains("KDKSK")).ToList();
 
             // draw sequence
             foreach (var line in splitSeq)
@@ -165,7 +171,7 @@ namespace ProteaseGuruGUI
                 for (int i = 0; i < line.Length; ++i)
                 {
                     // find peptides on this line
-                    var temp = new List<InSilicoPep>(allPeptides.Where(p => p.StartResidue - accumIndex - 1 < line.Length).OrderBy(p => p.StartResidue));
+                    var temp = new List<InSilicoPep>(peptidesToDraw.Where(p => p.StartResidue - accumIndex - 1 < line.Length).OrderBy(p => p.StartResidue));
 
                     foreach (InSilicoPep peptide in temp)
                     {
@@ -182,7 +188,7 @@ namespace ProteaseGuruGUI
                         {
                             partialPeptideMatches.Add(peptide, (partialIndex, highlightIndex));
                         }
-                        allPeptides.Remove(peptide);
+                        peptidesToDraw.Remove(peptide);
                     }
                 }
 
@@ -190,8 +196,8 @@ namespace ProteaseGuruGUI
                 accumIndex += line.Length;
             }
 
-            totalHeight += splitSeq.Count() * 50;
-            mapGrid.Height = totalHeight + 50;
+            totalHeight += splitSeq.Count() * 100;
+            mapGrid.Height = totalHeight + 100;
 
             SequenceCoverageMap.drawLegend(legend, ProteaseByColor, protease, legendGrid);
         }
@@ -216,14 +222,13 @@ namespace ProteaseGuruGUI
             return splitSequence;
         }
                 
-        public void CalculateSequenceCoverage()
+        public IEnumerable<(string, double)> CalculateSequenceCoverage(Protein protein)
         {
-            foreach (var protein in ListOfProteinsOrderedByAccession)
+            foreach(var proteaseKvp in PeptideByProteaseAndProtein[protein])
             {
-                var peptides = PeptideByProteaseAndProtein[protein].Values.SelectMany(p => p);
                 HashSet<int> coveredOneBasedResidues = new HashSet<int>();
+                var peptides = proteaseKvp.Value;
 
-                // get residue numbers of each peptide in the protein and identify them as observed if the sequence is unambiguous
                 foreach (var peptide in peptides)
                 {
                     for (int i = peptide.StartResidue; i <= peptide.EndResidue; i++)
@@ -232,24 +237,15 @@ namespace ProteaseGuruGUI
                     }
                 }
 
-                // convert the observed amino acids to upper case if they are unambiguously observed
-                string seqCoverageMap = protein.BaseSequence.ToLower();
-                var coverageArray = seqCoverageMap.ToCharArray();
-                foreach (var obsResidueLocation in coveredOneBasedResidues)
-                {
-                    coverageArray[obsResidueLocation - 1] = char.ToUpper(coverageArray[obsResidueLocation - 1]);
-                }
-                seqCoverageMap = new string(coverageArray);
-
-                double seqCoverageFract = (double)coveredOneBasedResidues.Count / protein.Length;
-
-                // add the coverage display
-                SequenceCoverageDisplays.Add(protein.Accession, new ProteinForSeqCoverage(protein.Accession, seqCoverageMap, seqCoverageFract));
+                var fract = (double)coveredOneBasedResidues.Count / protein.Length;
+                yield return (proteaseKvp.Key, fract);
             }
         }
 
         private void LoadProteins_Click(object sender, RoutedEventArgs e)
         {
+            ProteinLoadButton.IsEnabled = false;
+
             // populate proteins
             foreach (var db in PeptideByFile)
             {
@@ -287,25 +283,6 @@ namespace ProteaseGuruGUI
                         ProteinsForTreeView[prot].AllPeptides.AddRange(protein.Value);
                         ProteinsForTreeView[prot].UniquePeptides.AddRange(protein.Value.Where(p => p.Unique));
                         ProteinsForTreeView[prot].SharedPeptides.AddRange(protein.Value.Where(p => !p.Unique));
-
-                        // assign peptides
-                        //foreach (var peptide in protein.Value)
-                        //{
-                        //    var ptv = ProteinsForTreeView[prot];
-
-                        //    // add to all peptides
-                        //    ptv.AllPeptides.Add(peptide.BaseSequence);
-                        //    ptv.Children.Add(new PeptideForTreeView(peptide.BaseSequence, ptv));
-
-                        //    if (peptide.Unique)
-                        //    {
-                        //        ptv.UniquePeptides.Add(peptide.BaseSequence);
-                        //    }
-                        //    else
-                        //    {
-                        //        ptv.SharedPeptides.Add(peptide.BaseSequence);
-                        //    }
-                        //}
                     }
                 }
             }
@@ -319,16 +296,11 @@ namespace ProteaseGuruGUI
                 ptv.Summary.Add(new SummaryForTreeView("Number of Shared Peptides: " + ptv.SharedPeptides.Count()));
                 ptv.Summary.Add(new SummaryForTreeView("Sequence Coverage Fraction:")); // break down by protease
 
-                foreach (var protease in protein.Value)
+                foreach (var seqCovKvp in CalculateSequenceCoverage(protein.Key))
                 {
-
-                    ptv.Summary.Add(new SummaryForTreeView("Sequence Coverage: %")); // break down by protease
+                    ptv.Summary.Add(new SummaryForTreeView("     " + seqCovKvp.Item1 + ": " + Math.Round(seqCovKvp.Item2*100, 3) + "%")); // break down by protease
                 }
             }
-
-
-            ListOfProteinsOrderedByAccession = PeptideByProteaseAndProtein.Keys.OrderBy(p => p.Accession).ToList();
-            CalculateSequenceCoverage();
         }
 
         private void ChangeMapScrollViewSize()

@@ -43,6 +43,7 @@ namespace GUI
             dataGridProteinDatabases.DataContext = ProteinDbObservableCollection;
             EverythingRunnerEngine.NewDbsHandler += AddNewDB;
             EverythingRunnerEngine.WarnHandler += GuiWarnHandler;
+            ResetDigestionTask.IsEnabled = false;
         }
 
         private void AddProteinDatabase_Click(object sender, MouseButtonEventArgs e)
@@ -362,6 +363,16 @@ namespace GUI
         }
         private void AddDigestionTask_Click(object sender, RoutedEventArgs e)
         {
+            // disable button so that no more tasks are added
+            AddDigestionTask.IsEnabled = false;
+            ResetDigestionTask.IsEnabled = true;
+
+            // disable fields to show that those parameters are used for the task
+            ProteaseSelectedForUse.IsEnabled = false;
+            MissedCleavagesTextBox.IsEnabled = false;
+            MinPeptideLengthTextBox.IsEnabled = false;
+            MaxPeptideLengthTextBox.IsEnabled = false;
+
             DigestionTask task = new DigestionTask();
             UpdateFieldsFromUser(task);
             AddTaskToCollection(task);
@@ -494,6 +505,8 @@ namespace GUI
         }
         private void RunTaskButton_Click(object sender, RoutedEventArgs e)
         {
+            RunTaskButton.IsEnabled = false; // disable while running
+
             GlobalVariables.StopLoops = false;
             
             // check for valid tasks/spectra files/protein databases
@@ -529,15 +542,12 @@ namespace GUI
             t.Start();
             t.Wait();
             stopwatch.Stop();
-            // update results display
-            AllResultsTab.Content = new AllResultsWindow(a.PeptideByFile, UserParameters);
-                        
-            //// prompt user to direct to display window
-            //var results = ResultsMsgBox.Show();
-            //if (results == MessageBoxResult.Yes)
-            //{
-                AllResultsTab.IsSelected = true;
-            //}
+
+            // when done with tasks
+            StaticTasksObservableCollection.Clear();
+            AllResultsTab.Content = new AllResultsWindow(a.PeptideByFile, UserParameters); // update results display
+            AllResultsTab.IsSelected = true; // switch to results tab
+            RunTaskButton.IsEnabled = true; // allow user to run new task
         }
 
         private void CheckIfNumber(object sender, TextCompositionEventArgs e)
@@ -555,6 +565,20 @@ namespace GUI
                 }
             }
             return result;
+        }
+
+        private void ResetDigestionTask_Click(object sender, RoutedEventArgs e)
+        {
+            // remove all tasks
+            StaticTasksObservableCollection.Clear();
+
+            AddDigestionTask.IsEnabled = true;
+            ResetDigestionTask.IsEnabled = false;
+
+            ProteaseSelectedForUse.IsEnabled = true;
+            MissedCleavagesTextBox.IsEnabled = true;
+            MinPeptideLengthTextBox.IsEnabled = true;
+            MaxPeptideLengthTextBox.IsEnabled = true;
         }
     }
 }
