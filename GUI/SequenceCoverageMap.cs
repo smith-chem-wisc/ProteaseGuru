@@ -1,4 +1,5 @@
 ﻿using SharpLearning.DecisionTrees.Nodes;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Windows;
@@ -107,29 +108,28 @@ namespace ProteaseGuruGUI
             Canvas.SetZIndex(top, 1); //on top of any other things in canvas
         }
 
-        public static void drawLegend(Canvas cav, Dictionary<string, Color> proteaseByColor, string protease, Grid legend)
+        public static void drawLegend(Canvas cav, Dictionary<string, Color> proteaseByColor, List<string> proteases, Grid legend)
         {
             int i = -1;
-            legend.ColumnDefinitions.Add(new ColumnDefinition());
-            legend.ColumnDefinitions.Add(new ColumnDefinition());
-            Label proteaseName = new Label();
-            proteaseName.Content = protease;
+            legend.RowDefinitions.Add(new RowDefinition());
+            Label legendLabel = new Label();
+            legendLabel.Content = "Key: ";
+            legend.Children.Add(legendLabel);
+            Grid.SetRow(legendLabel, 0);
+            legend.RowDefinitions.Add(new RowDefinition());
+            int proteaseRows = Convert.ToInt32(Math.Ceiling((proteases.Count()/3.0)));
+            int j = 0;
+            while (j < proteaseRows)
+            {
+                legend.RowDefinitions.Add(new RowDefinition());
+                j++;
+            }            
+            legend.RowDefinitions.Add(new RowDefinition());
 
-            Rectangle proteaseColor = new Rectangle();
-            proteaseColor.Fill = new SolidColorBrush(proteaseByColor[protease]);
-            proteaseColor.Width = 30;
-            proteaseColor.Height = 15;
-
-            legend.Children.Add(proteaseColor);
-            Grid.SetColumn(proteaseColor, ++i);
-            legend.Children.Add(proteaseName);
-            Grid.SetColumn(proteaseName, ++i);
-
             legend.ColumnDefinitions.Add(new ColumnDefinition());
             legend.ColumnDefinitions.Add(new ColumnDefinition());
             legend.ColumnDefinitions.Add(new ColumnDefinition());
             legend.ColumnDefinitions.Add(new ColumnDefinition());
-
             string[] peptides = new string[2] { "Shared", "Unique" };
             foreach (string peptide in peptides)
             {
@@ -154,8 +154,56 @@ namespace ProteaseGuruGUI
                 legend.Children.Add(pepLine);
                 legend.Children.Add(pepLabel);
                 Grid.SetColumn(pepLine, ++i);
+                Grid.SetRow(pepLine, 1);
                 Grid.SetColumn(pepLabel, ++i);
+                Grid.SetRow(pepLabel, 1);
             }
+            i = -1;
+            j = 1;
+            int proteaseCount = 0;
+            foreach (var protease in proteases)
+            {
+                proteaseCount++;
+                legend.ColumnDefinitions.Add(new ColumnDefinition());
+                legend.ColumnDefinitions.Add(new ColumnDefinition());
+                Label proteaseName = new Label();
+                proteaseName.Content = protease;
+
+                Rectangle proteaseColor = new Rectangle();
+                proteaseColor.Fill = new SolidColorBrush(proteaseByColor[protease]);
+                proteaseColor.Width = 20;
+                proteaseColor.Height = 10;                
+                if (proteaseCount == 1)
+                {
+                    j++;
+                    legend.Children.Add(proteaseColor);
+                    Grid.SetRow(proteaseColor, j);
+                    Grid.SetColumn(proteaseColor, 0);
+                    legend.Children.Add(proteaseName);
+                    Grid.SetRow(proteaseName, j);
+                    Grid.SetColumn(proteaseName, 1);
+                }
+                if (proteaseCount == 2)
+                {
+                    legend.Children.Add(proteaseColor);
+                    Grid.SetRow(proteaseColor, j);
+                    Grid.SetColumn(proteaseColor, 2);
+                    legend.Children.Add(proteaseName);
+                    Grid.SetRow(proteaseName, j);
+                    Grid.SetColumn(proteaseName, 3);
+                }
+                if (proteaseCount == 3)
+                {
+                    legend.Children.Add(proteaseColor);
+                    Grid.SetRow(proteaseColor, j);
+                    Grid.SetColumn(proteaseColor, 4);
+                    legend.Children.Add(proteaseName);
+                    Grid.SetRow(proteaseName, j);
+                    Grid.SetColumn(proteaseName, 5);
+                    proteaseCount = 0;
+                }
+                
+            }            
 
             cav.Visibility = Visibility.Visible;
         }

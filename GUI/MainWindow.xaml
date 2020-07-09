@@ -8,7 +8,7 @@
         mc:Ignorable="d"
         Drop="Window_Drop" AllowDrop="true" 
         WindowStartupLocation="CenterScreen"
-        Title="ProteaseGuru" Height="475" Width="825">
+        Title="ProteaseGuru" Height="600" Width="825">
     <Grid>
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="0*"/>
@@ -26,7 +26,7 @@
                     </Grid.ColumnDefinitions>
                     <Grid>
                         <Grid.RowDefinitions>
-                            <RowDefinition Height="1*" MinHeight="100" />
+                            <RowDefinition Height="1.5*" MinHeight="100" />
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="1*" MinHeight="100" />
                         </Grid.RowDefinitions>
@@ -119,7 +119,7 @@
                     <GridSplitter Grid.Column="1" HorizontalAlignment="Center" VerticalAlignment="Stretch" Background="Silver" Height="5" />
                     <Grid Grid.Column="2">
                         <Grid.RowDefinitions>
-                            <RowDefinition Height="280"/>
+                            <RowDefinition Height="400"/>
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="1*"/>
                         </Grid.RowDefinitions>

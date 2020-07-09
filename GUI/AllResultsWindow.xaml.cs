@@ -46,7 +46,7 @@ namespace ProteaseGuruGUI
             proteinDBView = CollectionViewSource.GetDefaultView(listOfProteinDbs);
             dataGridProteinDBs.DataContext = proteinDBView;
 
-            ProteinCovMap.Content = new ProteinResultsWindow(PeptideByFile);
+            ProteinCovMap.Content = new ProteinResultsWindow(PeptideByFile, userParams);
         }
 
         private void SetUpDictionaries()
