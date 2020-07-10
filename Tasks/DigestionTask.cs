@@ -237,10 +237,11 @@ namespace Tasks
 
         protected static void WritePeptidesToTsv(Dictionary<string, Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>> peptideByFile, string filePath, Parameters userParams)
         {
-            string tab = "\t";            
-            string header = "Database"+ tab + "Protease" + tab + "Base Sequence" + tab + "Full Sequence" + tab + "Previous Amino Acid" + tab +
-                "Next Amino Acid" + tab + "Length" + tab + "Molecular Weight" + tab + "Protein" + tab + "Unique (in database)" + tab + "Unique (in analysis)" + 
-                tab + "Hydrophobicity" + tab+ "Electrophoretic Mobility";
+            string tab = "\t";
+            string header = "Database" + tab + "Protease" + tab + "Base Sequence" + tab + "Full Sequence" + tab + "Previous Amino Acid" + tab +
+                "Next Amino Acid" + tab + "Length" + tab + "Molecular Weight" + tab + "Protein" + tab + "Unique (in database)" + tab + "Unique (in analysis)" +
+                tab + "Hydrophobicity" + tab + "Electrophoretic Mobility";
+            List<InSilicoPep> allPeptides = new List<InSilicoPep>();
             if (peptideByFile.Count > 1)
             {
                 Dictionary<string, List<InSilicoPep>> allDatabasePeptidesByProtease = new Dictionary<string, List<InSilicoPep>>();
@@ -268,30 +269,26 @@ namespace Tasks
                     {
                         peptidesToProteins = protease.Value.GroupBy(p => p.FullSequence).ToDictionary(group => group.Key, group => group.ToList());
                     }
-                    else 
+                    else
                     {
                         peptidesToProteins = protease.Value.GroupBy(p => p.BaseSequence).ToDictionary(group => group.Key, group => group.ToList());
                     }
-                    var unique = allDatabasePeptidesByProtease.Where(p => p.Value.Select(p => p.Protein).Distinct().Count() == 1);
-                    var shared = allDatabasePeptidesByProtease.Where(p => p.Value.Select(p => p.Protein).Distinct().Count() > 1);
-                    using (StreamWriter output = new StreamWriter(filePath + @"\ProteaseGuruPeptides.tsv"))
+                    var unique = peptidesToProteins.Where(p => p.Value.Select(p => p.Protein).Distinct().Count() == 1).ToList();
+                    var shared = peptidesToProteins.Where(p => p.Value.Select(p => p.Protein).Distinct().Count() > 1).ToList();
+                    foreach (var entry in unique)
                     {
-                        output.WriteLine(header);
-                        foreach (var entry in unique)
+                        foreach (var peptide in entry.Value)
                         {
-                            foreach (var peptide in entry.Value)
-                            {
-                                peptide.UniqueAllDbs = true;
-                                output.WriteLine(peptide.ToString());
-                            }
+                            peptide.UniqueAllDbs = true;
+                            allPeptides.Add(peptide);
                         }
-                        foreach (var entry in unique)
+                    }
+                    foreach (var entry in shared)
+                    {
+                        foreach (var peptide in entry.Value)
                         {
-                            foreach (var peptide in entry.Value)
-                            {
-                                peptide.UniqueAllDbs = false;
-                                output.WriteLine(peptide.ToString());
-                            }
+                            peptide.UniqueAllDbs = false;
+                            allPeptides.Add(peptide);
                         }
                     }
 
@@ -299,27 +296,47 @@ namespace Tasks
             }
             else
             {
-                using (StreamWriter output = new StreamWriter(filePath + @"\ProteaseGuruPeptides.tsv"))
+                foreach (var database in peptideByFile)
                 {
-                    output.WriteLine(header);
-                    foreach (var database in peptideByFile)
+                    foreach (var protease in database.Value)
                     {
-                        foreach (var protease in database.Value)
+                        foreach (var protein in protease.Value)
                         {
-                            foreach (var protein in protease.Value)
+                            foreach (var peptide in protein.Value)
                             {
-                                foreach (var peptide in protein.Value)
-                                {
-                                    peptide.UniqueAllDbs = peptide.Unique;
-                                    output.WriteLine(peptide.ToString());
-                                }
+                                peptide.UniqueAllDbs = peptide.Unique;
+                                allPeptides.Add(peptide);
                             }
                         }
                     }
                 }
-            }         
-                          
-            
+            }
+            var numberOfPeptides = allPeptides.Count();
+            double numberOfFiles = Math.Ceiling(numberOfPeptides / 1000000.0);
+            var peptidesInFile = 1;
+            var peptideIndex = 0;
+            var fileCount = 1;           
+
+                while (fileCount <= Convert.ToInt32(numberOfFiles))
+                {
+                    using (StreamWriter output = new StreamWriter(filePath + @"\ProteaseGuruPeptides_" + fileCount + ".tsv"))
+                    {
+                        output.WriteLine(header);
+                        while (peptidesInFile < 1000000)
+                        {
+                            if (peptideIndex < numberOfPeptides)
+                            {
+                                output.WriteLine(allPeptides[peptideIndex].ToString());
+                                peptideIndex++;
+                            }                            
+                            peptidesInFile++;
+                                                        
+                        }
+                        output.Close();
+                        peptidesInFile = 1;
+                    }                    
+                    fileCount++;
+                }   
         }
     }
 }
