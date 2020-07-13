@@ -28,7 +28,7 @@ namespace ProteaseGuruGUI
         {
             DisplayName = displayName;
             Summary = new ObservableCollection<SummaryForTreeView>();
-            Expanded = false;
+            Expanded = true;
         }
 
         public string DisplayName { get; }

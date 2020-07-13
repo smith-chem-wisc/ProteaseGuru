@@ -15,10 +15,10 @@
                     <Grid>
 
 
-                    <GroupBox Grid.Column="2" Header="Results" Name="gbResults" ScrollViewer.VerticalScrollBarVisibility="Disabled">
+                    <GroupBox Grid.Column="2" Header="Results" Name="gbResults" ScrollViewer.VerticalScrollBarVisibility="Hidden">
                         <TabControl>
                             <TabItem Header="Summary" Background="DarkGray" BorderThickness="10" BorderBrush="Black">
-                                <Grid>
+                                <Grid ScrollViewer.VerticalScrollBarVisibility="Visible">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="77*"/>
                                         <ColumnDefinition Width="181*"/>
