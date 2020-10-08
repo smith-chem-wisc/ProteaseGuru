@@ -87,12 +87,73 @@
                                             <StackPanel Orientation="Horizontal" Grid.Row="0">
                                                 <Label x:Name="HistogramType" Content="Histogram Type:" Width="150"/>
                                                 <ComboBox x:Name="HistogramComboBox" SelectionChanged="PlotSelected">
-                                                    <ComboBoxItem Content="Peptide Length"/>
-                                                    <ComboBoxItem Content="Protein Sequence Coverage"/>
-                                                    <ComboBoxItem Content="Protein Sequence Coverage (Unique Peptides Only)"/>
-                                                    <ComboBoxItem Content="Number of Unique Peptides per Protein"/>
-                                                    <ComboBoxItem Content="Predicted Peptide Hydrophobicity"/>
-                                                    <ComboBoxItem Content="Predicted Peptide Electrophoretic Mobility"/>
+                                                    <ComboBoxItem Content="Peptide Length">
+                                                            <ComboBoxItem.ToolTip >
+                                                                <TextBlock>
+                                                                    Histrogram representing the length distribution of all in silico digested peptides.
+                                                                </TextBlock>
+                                                            </ComboBoxItem.ToolTip>
+                                                    </ComboBoxItem>
+                                                    <ComboBoxItem Content="Protein Sequence Coverage">
+                                                            <ComboBoxItem.ToolTip >
+                                                                <TextBlock>
+                                                                    Histrogram representing the distribution of protein seqeunce coverage for all selected proteases.
+                                                                    <LineBreak/>
+                                                                    Protein sequence coverage is calculated by dividing the number of amino acids belonging to peptide sequences by the length of the peptide.
+                                                                </TextBlock>
+                                                            </ComboBoxItem.ToolTip>
+                                                    </ComboBoxItem>
+
+                                                        <ComboBoxItem Content="Protein Sequence Coverage (Unique Peptides Only)">
+                                                            <ComboBoxItem.ToolTip >
+                                                                <TextBlock>
+                                                                    Histrogram representing the distribution of protein seqeunce coverage values when only unique peptides are used. 
+                                                                    <LineBreak/>
+                                                                    Protein sequence coverage is calculated by dividing the number of amino acids belonging to unique peptide sequences by the length of the peptide.
+                                                                </TextBlock>
+                                                            </ComboBoxItem.ToolTip>
+                                                        </ComboBoxItem>
+                                                        <ComboBoxItem Content="Number of Unique Peptides per Protein">
+                                                            <ComboBoxItem.ToolTip >
+                                                                <TextBlock>
+                                                                    Histrogram representing the distribution of unique peptides across the proteins present in the selected database.
+                                                                </TextBlock>
+                                                            </ComboBoxItem.ToolTip>
+                                                        </ComboBoxItem>
+                                                        <ComboBoxItem Content="Predicted Peptide Hydrophobicity">
+                                                            <ComboBoxItem.ToolTip >
+                                                                <TextBlock>
+                                                                    Histrogram representing the distribution of predicted peptide hydrophobicity values.
+                                                                    <LineBreak/>
+                                                                    <LineBreak/>
+                                                                    The hydrophobicity prediction algorithm was adapted from the following publication:                                                                    
+                                                                    <LineBreak/>
+                                                                    O. V. Krokhin, R. Craig, V. Spicer, W. Ens, K. G. Standing, R. C. Beavis, J. A. Wilkin
+                                                                    <LineBreak/>
+                                                                    An improved model for prediction of retention times of tryptic peptides in ion-pair reverse-phase HPLC:
+                                                                    <LineBreak/>
+                                                                    its application to protein peptide mapping by off-line HPLC-MALDI MS
+                                                                    <LineBreak/>
+                                                                    Molecular and Cellular Proteomics 2004 Sep;3(9):908-19.
+                                                                </TextBlock>
+                                                            </ComboBoxItem.ToolTip>
+                                                        </ComboBoxItem>
+                                                        <ComboBoxItem Content="Predicted Peptide Electrophoretic Mobility">
+                                                            <ComboBoxItem.ToolTip >
+                                                                <TextBlock>
+                                                                    Histrogram representing the distribution of predicted peptide electrophoretic mobility values.
+                                                                    <LineBreak/>
+                                                                    <LineBreak/>
+                                                                    The electrophoretic mobility prediction algorithm was adapted from the following publication: 
+                                                                    <LineBreak/>                                                                    
+                                                                    A. Cifuentes, H. Poppe.
+                                                                    <LineBreak/>
+                                                                    Simulation and optimization of peptide separation by capillary electrophoresis
+                                                                    <LineBreak/>
+                                                                    Journal of Chromatography,A 1994; 680(1):321-40.
+                                                                </TextBlock>
+                                                            </ComboBoxItem.ToolTip>
+                                                        </ComboBoxItem> 
                                                 </ComboBox>
                                             </StackPanel>
                                             <GroupBox Grid.Row="1" Header="Histogram">
@@ -102,7 +163,8 @@
 
                                             </GroupBox>
                                             <DockPanel Grid.Row="2" Margin="2">
-                                                <Button Content="Export to PDF" Width="100" Click="CreatePlotPdf_Click" />
+                                                <Button Content="Export to PDF" Width="150" Click="CreatePlotPdf_Click" HorizontalAlignment="Center"/>
+                                                <Button Content="Export Data to CSV" Width="150" Click="CreateTable_Click" HorizontalAlignment="Center"/>
                                             </DockPanel>
 
                                         </Grid>

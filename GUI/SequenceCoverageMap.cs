@@ -108,6 +108,46 @@ namespace ProteaseGuruGUI
             Canvas.SetZIndex(top, 1); //on top of any other things in canvas
         }
 
+        public static void circledTxtDraw(Canvas cav, Point loc, SolidColorBrush clr)
+        {
+            Ellipse circle = new Ellipse()
+            {
+                Width = 17,
+                Height = 17,
+                Stroke = clr,
+                StrokeThickness = 1,
+                Fill = clr,
+                Opacity = 0.85
+            };
+            Canvas.SetLeft(circle, loc.X+3);
+            Canvas.SetTop(circle, loc.Y-.75);
+            Panel.SetZIndex(circle, 1);
+            cav.Children.Add(circle);
+        }
+
+        public static void stackedCircledTxtDraw(Canvas cav, Point loc, List<SolidColorBrush> clr)
+        {
+            int circleCount = 0;
+            foreach (var mod in clr)
+            {
+                Ellipse circle = new Ellipse()
+                {
+                    Width = 17,
+                    Height = 17,
+                    Stroke = mod,
+                    StrokeThickness = 1,
+                    Fill = mod,
+                    Opacity = 0.85
+                };
+                Canvas.SetLeft(circle, loc.X + 3);
+                Canvas.SetTop(circle, ((loc.Y - .75)-(circleCount*18)));
+                Panel.SetZIndex(circle, 1);
+                cav.Children.Add(circle);
+                circleCount++;
+            }
+            
+        }
+
         public static void drawLegend(Canvas cav, Dictionary<string, Color> proteaseByColor, List<string> proteases, Grid legend)
         {
             int i = -1;
@@ -207,7 +247,166 @@ namespace ProteaseGuruGUI
 
             cav.Visibility = Visibility.Visible;
         }
+        public static void drawLegendMods(Canvas cav, Dictionary<string, Color> proteaseByColor, Dictionary<string, SolidColorBrush> modsByColor, List<string> proteases, Grid legend)
+        {
+            int i = -1;
+            legend.RowDefinitions.Add(new RowDefinition());
+            Label legendLabel = new Label();
+            legendLabel.Content = "Key: ";                       
+            legend.Children.Add(legendLabel);
+            Grid.SetRow(legendLabel, 0);
+            legend.RowDefinitions.Add(new RowDefinition());
+            int proteaseRows = Convert.ToInt32(Math.Ceiling((proteases.Count() / 3.0)));
+            int j = 0;
+            while (j < proteaseRows)
+            {
+                legend.RowDefinitions.Add(new RowDefinition());
+                j++;
+            }
+            legend.RowDefinitions.Add(new RowDefinition());
+
+            legend.ColumnDefinitions.Add(new ColumnDefinition());
+            legend.ColumnDefinitions.Add(new ColumnDefinition());
+            legend.ColumnDefinitions.Add(new ColumnDefinition());
+            legend.ColumnDefinitions.Add(new ColumnDefinition());
+            string[] peptides = new string[2] { "Shared", "Unique" };
+            foreach (string peptide in peptides)
+            {
+                Line pepLine = new Line();
+                pepLine.X1 = 0;
+                pepLine.X2 = 50;
+                pepLine.Y1 = 0;
+                pepLine.Y2 = 0;
+                pepLine.StrokeThickness = 1;
+                pepLine.Stroke = Brushes.Black;
+                pepLine.HorizontalAlignment = HorizontalAlignment.Center;
+                pepLine.VerticalAlignment = VerticalAlignment.Center;
+
+                Label pepLabel = new Label();
+                pepLabel.Content = peptide + " peptides";
+
+                if (peptide.Equals("Shared"))
+                {
+                    pepLine.StrokeDashArray = new DoubleCollection() { 2 };
+                }
+
+                legend.Children.Add(pepLine);
+                legend.Children.Add(pepLabel);
+                Grid.SetColumn(pepLine, ++i);
+                Grid.SetRow(pepLine, 1);
+                Grid.SetColumn(pepLabel, ++i);
+                Grid.SetRow(pepLabel, 1);
+            }
+            i = -1;
+                     
+            j = 1;
+            int proteaseCount = 0;
+            foreach (var protease in proteases)
+            {
+                proteaseCount++;
+                legend.ColumnDefinitions.Add(new ColumnDefinition());
+                legend.ColumnDefinitions.Add(new ColumnDefinition());
+                Label proteaseName = new Label();
+                proteaseName.Content = protease;
+
+                Rectangle proteaseColor = new Rectangle();
+                proteaseColor.Fill = new SolidColorBrush(proteaseByColor[protease]);
+                proteaseColor.Width = 20;
+                proteaseColor.Height = 10;
+                if (proteaseCount == 1)
+                {
+                    j++;
+                    legend.Children.Add(proteaseColor);
+                    Grid.SetRow(proteaseColor, j);
+                    Grid.SetColumn(proteaseColor, 0);
+                    legend.Children.Add(proteaseName);
+                    Grid.SetRow(proteaseName, j);
+                    Grid.SetColumn(proteaseName, 1);
+                }
+                if (proteaseCount == 2)
+                {
+                    legend.Children.Add(proteaseColor);
+                    Grid.SetRow(proteaseColor, j);
+                    Grid.SetColumn(proteaseColor, 2);
+                    legend.Children.Add(proteaseName);
+                    Grid.SetRow(proteaseName, j);
+                    Grid.SetColumn(proteaseName, 3);
+                }
+                if (proteaseCount == 3)
+                {
+                    legend.Children.Add(proteaseColor);
+                    Grid.SetRow(proteaseColor, j);
+                    Grid.SetColumn(proteaseColor, 4);
+                    legend.Children.Add(proteaseName);
+                    Grid.SetRow(proteaseName, j);
+                    Grid.SetColumn(proteaseName, 5);
+                    proteaseCount = 0;
+                }
+
+            }
+            
+            int modCount = 0;
+           
+            foreach (var mod in modsByColor)
+            {
+                modCount++;
+                
+                Ellipse circle = new Ellipse()
+                {
+                    Width = 17,
+                    Height = 17,                    
+                    StrokeThickness = 1,
+                    Opacity = 0.85
+                    
+                };
+                circle.Fill = mod.Value;
+                circle.Stroke = mod.Value;
+                
+                if (modCount == 1)
+                {
+                    j++;
+                    legend.RowDefinitions.Add(new RowDefinition());
+                    legend.Children.Add(circle);
+                    Grid.SetRow(circle, j);
+                    Grid.SetColumn(circle, 0);
+                    Label modName = new Label();
+                    modName.Content = mod.Key;
+                    legend.Children.Add(modName);
+                    Grid.SetRow(modName, j);
+                    Grid.SetColumn(modName, 1);
+                }
+
+                if (modCount == 2)
+                {
+                    legend.Children.Add(circle);
+                    Grid.SetRow(circle, j);
+                    Grid.SetColumn(circle, 2);
+                    Label modName = new Label();
+                    modName.Content = mod.Key;
+                    legend.Children.Add(modName);
+                    Grid.SetRow(modName, j);
+                    Grid.SetColumn(modName, 3);
+                }
+                if (modCount == 3)
+                {
+                    legend.Children.Add(circle);
+                    Grid.SetRow(circle, j);
+                    Grid.SetColumn(circle, 4);
+                    Label modName = new Label();
+                    modName.Content = mod.Key;
+                    legend.Children.Add(modName);
+                    Grid.SetRow(modName, j);
+                    Grid.SetColumn(modName, 5);
+                    modCount = 0;
+                }
+
+            }
+
+            cav.Visibility = Visibility.Visible;
+        }
     }
+
+
 
     class ProteinForSeqCoverage
     {

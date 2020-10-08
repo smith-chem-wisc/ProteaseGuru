@@ -75,6 +75,25 @@ namespace Tasks
             sb.Append(ElectrophoreticMobility);
            return sb.ToString();
         }
+        public override bool Equals(object obj)
+        {
+            var q = obj as InSilicoPep;
+            if (BaseSequence == q.BaseSequence && Protease == q.Protease)
+            {
+                return true;
+            }
+            else
+            {
+                return false;
+            }
+        }
+
+        public override int GetHashCode()
+        {
+            return BaseSequence.GetHashCode() + Protease.GetHashCode();
+
+        }
+
 
     }
 }

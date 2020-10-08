@@ -1,4 +1,5 @@
-﻿using Proteomics;
+﻿using Engine;
+using Proteomics;
 using Proteomics.ProteolyticDigestion;
 using System;
 using System.Collections.Generic;
@@ -32,6 +33,7 @@ namespace ProteaseGuruGUI
         private Dictionary<Protein, ProteinForTreeView> ProteinsForTreeView;
         private Dictionary<InSilicoPep, (int,int)> partialPeptideMatches = new Dictionary<InSilicoPep, (int,int)>();
         private Dictionary<string, Color> ProteaseByColor;
+        private Dictionary<string, SolidColorBrush> ModsByColor;
         private List<string> Proteases;
         private List<string> SelectedProteases;
         private ProteinForTreeView SelectedProtein;
@@ -73,6 +75,7 @@ namespace ProteaseGuruGUI
                 Colors.CadetBlue, Colors.DarkMagenta, Colors.DarkOliveGreen, Colors.DeepPink, Colors.GreenYellow, Colors.Maroon, Colors.Yellow,
                 Colors.Plum, Colors.PowderBlue};
             ProteaseByColor = new Dictionary<string, Color>();
+            ModsByColor = new Dictionary<string, SolidColorBrush>();
             var proteases = PeptideByFile.SelectMany(p => p.Value.Keys).ToList();
             foreach (var protease in proteases)
             {
@@ -151,24 +154,101 @@ namespace ProteaseGuruGUI
             }
 
         }
-
+        private List<Dictionary<int, List<Modification>>> SplitMods(IDictionary<int, List<Modification>> mods, int proteinLength, int spacing)
+        {
+            double round = proteinLength / spacing;
+            var remainder = proteinLength % spacing;
+            if (remainder > 0)
+            {
+                round = round + 1;
+            }
+            var splitCount = Convert.ToInt32(round);
+            var splitMods = new List<Dictionary<int, List<Modification>>>();
+            for (int j = 0; j < splitCount; j++)
+            {
+                Dictionary<int, List<Modification>> modsInArea = new Dictionary<int, List<Modification>>();
+                int min = 1 + (j*spacing);
+                int max = spacing + (j * spacing);
+                foreach (var entry in mods)
+                {
+                    if (entry.Key >= min && entry.Key <= max)
+                    {
+                        modsInArea.Add((entry.Key - (j * spacing)), entry.Value);
+                    }
+                }
+                splitMods.Add(modsInArea);
+            }            
+            return splitMods;
+        }
         private void DrawSequenceCoverageMap(ProteinForTreeView protein, List<string> proteases) //string accession, Dictionary<string, PeptideForTreeView> uniquePeptides, Dictionary<string, PeptideForTreeView> sharedPeptides)
-        {            
-            string seqCoverage = protein.Protein.BaseSequence;            
-            map.Children.Clear();
-            legendGrid.Children.Clear();
-
+        {
             double spacing = 22;
             int height = 10;
             int totalHeight = 0;
             int accumIndex = 0;
 
+            string seqCoverage = protein.Protein.BaseSequence;
+            IDictionary<int, List<Modification>> mods = protein.Protein.OneBasedPossibleLocalizedModifications;
+            var modsSplitByLine = new List<Dictionary<int, List<Modification>>>();
+            var allModsInDb = GlobalVariables.AllModsKnown;
+            var modColors = new Dictionary<string, SolidColorBrush>();
+            var modWeight = new Dictionary<double, string>();
+            modWeight.Add(42.0106, "Acetylation");
+            modColors.Add("Acetylation", Brushes.Aqua);
+            modWeight.Add(541.0611, "ADP-Ribosylation");
+            modColors.Add("ADP-Ribosylation", Brushes.MediumAquamarine);
+            modWeight.Add(70.0419, "Butyrylation");
+            modColors.Add("Butyrylation", Brushes.LimeGreen);
+            modWeight.Add(43.9898, "Carboxylation");
+            modColors.Add("Carboxylation",Brushes.Lavender);
+            modWeight.Add(0.9840, "Citrullination");
+            modColors.Add("Citrullination",Brushes.MediumSlateBlue);
+            modWeight.Add(68.0262, "Crotonylation");
+            modColors.Add("Crotonylation", Brushes.LightSalmon);
+            modWeight.Add(28.0313, "Dimethylation");
+            modColors.Add("Dimethylation", Brushes.PaleVioletRed);
+            modWeight.Add(27.9949, "Formylation");
+            modColors.Add("Formylation", Brushes.Yellow);
+            modWeight.Add(114.0317, "Glutarylation");
+            modColors.Add("Glutarylation", Brushes.DarkKhaki);
+            modWeight.Add(203.0794, "HexNAc");
+            modColors.Add("HexNAc", Brushes.PowderBlue);
+            modWeight.Add(87.0446, "Hydroxybutyrylation");
+            modColors.Add("Hydroxybutyrylation", Brushes.MediumPurple);
+            modWeight.Add(15.9949, "Hydroxylation");
+            modColors.Add("Hydroxylation", Brushes.Tomato);
+            modWeight.Add(86.0004, "Malonylation");
+            modColors.Add("Malonylation", Brushes.LightSteelBlue);
+            modWeight.Add(14.0157, "Methylation");
+            modColors.Add("Methylation", Brushes.Pink);
+            modWeight.Add(28.9902, "Nitrosylation");
+            modColors.Add("Nitrosylation", Brushes.Plum);
+            modWeight.Add(79.9663, "Phosphorylation");
+            modColors.Add("Phosphorylation", Brushes.Chartreuse);
+            modWeight.Add(229.0140, "Pyridoxal Phosphate");
+            modColors.Add("Pyridoxal Phosphate", Brushes.LightCoral);
+            modWeight.Add(100.0160, "Succinylation");
+            modColors.Add("Succinylation", Brushes.DodgerBlue);
+            modWeight.Add(79.9568, "Sulfonation");
+            modColors.Add("Sulfonation", Brushes.PaleGreen);
+            modWeight.Add(42.0470, "Trimethylation");
+            modColors.Add("Trimethylation", Brushes.MediumVioletRed);
+            if (mods.Count() != 0)
+            {
+                modsSplitByLine = SplitMods(mods, protein.Protein.Length, Convert.ToInt32(map.Width / spacing));
+            }            
+            map.Children.Clear();
+            legendGrid.Children.Clear();
+
+            
             var splitSeq = Split(seqCoverage, spacing);
             var peptidesToDraw = new List<InSilicoPep>();
             foreach (var protease in proteases)
             {
                 peptidesToDraw.AddRange(PeptideByProteaseAndProtein[protein.Protein][protease]);
-            }            
+            }
+
+            peptidesToDraw = peptidesToDraw.Distinct().ToList();
             var indices = new Dictionary<int, List<int>>();
 
             // draw sequence
@@ -179,6 +259,113 @@ namespace ProteaseGuruGUI
                 {
                     SequenceCoverageMap.txtDrawing(map, new Point(r * spacing + 10, height), line[r].ToString().ToUpper(), Brushes.Black);
                 }
+                if (mods.Count() > 0)
+                {
+                    var modsForLine = modsSplitByLine[splitSeq.IndexOf(line)];
+                    foreach (var mod in modsForLine)
+                    {
+                        SolidColorBrush color = Brushes.Orange;
+                        if (mod.Value.Count() > 1)
+                        {
+                            List<SolidColorBrush> colors = new List<SolidColorBrush>();
+                            foreach (var m in mod.Value)
+                            {
+                                double roundedMass = Math.Round(Convert.ToDouble(m.MonoisotopicMass), 4, MidpointRounding.AwayFromZero);
+
+                                if (modWeight.ContainsKey(roundedMass))
+                                {
+                                    if (roundedMass == 15.9949)
+                                    {
+                                        if (modWeight[roundedMass].Contains("hydroxy"))
+                                        {
+                                            color = modColors[modWeight[roundedMass]];
+                                            colors.Add(color);
+                                            if (!ModsByColor.ContainsKey(modWeight[roundedMass]))
+                                            {
+                                                ModsByColor.Add(modWeight[roundedMass], modColors[modWeight[roundedMass]]);
+                                            }
+                                        }
+                                        else
+                                        {
+                                            if (!ModsByColor.ContainsKey("Other"))
+                                            {
+                                                ModsByColor.Add("Other", Brushes.Orange);
+                                            }
+                                            colors.Add(Brushes.Orange);
+                                        }
+                                    } 
+                                    else
+                                    {
+                                        color = modColors[modWeight[roundedMass]];
+                                        colors.Add(color);
+                                        if (!ModsByColor.ContainsKey(modWeight[roundedMass]))
+                                        {
+                                            ModsByColor.Add(modWeight[roundedMass], modColors[modWeight[roundedMass]]);
+                                        }
+                                    }                                  
+
+                                }
+                                else
+                                {
+                                    if (!ModsByColor.ContainsKey("Other"))
+                                    {
+                                        ModsByColor.Add("Other", Brushes.Orange);
+                                    }
+                                    colors.Add(Brushes.Orange);
+
+                                }
+                            }
+                            SequenceCoverageMap.stackedCircledTxtDraw(map, new Point((mod.Key) * spacing - 17, height), colors);
+
+                        }
+                        else
+                        {
+                            double roundedMass = Math.Round(Convert.ToDouble(mod.Value.FirstOrDefault().MonoisotopicMass), 4, MidpointRounding.AwayFromZero);
+                            if (modWeight.ContainsKey(roundedMass))
+                            {
+                                if (roundedMass == 15.9949)
+                                {
+                                    if (modWeight[roundedMass].Contains("hydroxy"))
+                                    {
+                                        color = modColors[modWeight[roundedMass]];
+                                        if (!ModsByColor.ContainsKey(modWeight[roundedMass]))
+                                        {
+                                            ModsByColor.Add(modWeight[roundedMass], modColors[modWeight[roundedMass]]);
+                                        }
+                                    }
+                                    else
+                                    {
+                                        if (!ModsByColor.ContainsKey("Other"))
+                                        {
+                                            ModsByColor.Add("Other", Brushes.Orange);
+                                        }
+                                    }
+                                }
+                                else
+                                {
+                                    color = modColors[modWeight[roundedMass]];
+                                    if (!ModsByColor.ContainsKey(modWeight[roundedMass]))
+                                    {
+                                        ModsByColor.Add(modWeight[roundedMass], modColors[modWeight[roundedMass]]);
+                                    }
+
+                                }
+                            }
+                            else
+                            {
+                                if (!ModsByColor.ContainsKey("Other"))
+                                {
+                                    ModsByColor.Add("Other", Brushes.Orange);
+                                }
+
+                            }
+                            SequenceCoverageMap.circledTxtDraw(map, new Point((mod.Key) * spacing - 17, height), color);
+                        }
+                        
+                    }
+                    
+                }              
+                
 
                 // highlight partial peptide sequences (broken off into multiple lines)
                 if (partialPeptideMatches.Count > 0)
@@ -246,9 +433,17 @@ namespace ProteaseGuruGUI
             {
                 totalHeight += splitSeq.Count() * (proteases.Count() * 50);
                 map.Height = totalHeight + (proteases.Count() * 50);
-            }            
+            }
 
-            SequenceCoverageMap.drawLegend(legend, ProteaseByColor, proteases, legendGrid);
+            if (mods.Count > 0)
+            {
+                SequenceCoverageMap.drawLegendMods(legend, ProteaseByColor, ModsByColor, proteases, legendGrid);
+            }
+            else 
+            {
+                SequenceCoverageMap.drawLegend(legend, ProteaseByColor, proteases, legendGrid);
+            }
+            
         }
         
         private int CheckPartialMatch(InSilicoPep peptide, string line, int accumIndex)
@@ -381,8 +576,8 @@ namespace ProteaseGuruGUI
 
         private void ChangeMapScrollViewSize()
         {
-            mapViewer.Height = 0.75 * ResultsGrid.ActualHeight;
-            mapViewer.Width = 0.75 * ResultsGrid.ActualWidth;
+            mapViewer.Height = .75 * ResultsGrid.ActualHeight;
+            mapViewer.Width = .75 * ResultsGrid.ActualWidth;
 
             ChangeMapScrollViewVisibility();
         }
@@ -436,7 +631,7 @@ namespace ProteaseGuruGUI
         private void exportCoverageMap(object sender, RoutedEventArgs e)
         {
             var fileDirectory = UserParams.OutputFolder;
-            var fileName = String.Concat("SequenceCoverageMap.png");
+            var fileName = String.Concat("SequenceCoverageMap_"+SelectedProtein.DisplayName+".png");
             Rect bounds = VisualTreeHelper.GetDescendantBounds(map);
             double dpi = 96d;
             RenderTargetBitmap rtb = new RenderTargetBitmap((int)bounds.Width, (int)bounds.Height, dpi, dpi, System.Windows.Media.PixelFormats.Default);
@@ -455,7 +650,27 @@ namespace ProteaseGuruGUI
             pngEncoder.Save(ms);
             ms.Close();
             var filePath = System.IO.Path.Combine(fileDirectory, fileName);
-            System.IO.File.WriteAllBytes(filePath, ms.ToArray());            
+            System.IO.File.WriteAllBytes(filePath, ms.ToArray());
+                        
+            var fileNameLegend = String.Concat("SequenceCoverageMapLegend_" + SelectedProtein.DisplayName + ".png");
+            Rect boundsLegend = VisualTreeHelper.GetDescendantBounds(legend);           
+            RenderTargetBitmap rtbLegend = new RenderTargetBitmap((int)boundsLegend.Width, (int)boundsLegend.Height, dpi, dpi, System.Windows.Media.PixelFormats.Default);
+            DrawingVisual dvLegend = new DrawingVisual();
+            using (DrawingContext dc = dvLegend.RenderOpen())
+            {
+                VisualBrush vb = new VisualBrush(legend);
+                dc.DrawRectangle(vb, null, new Rect(new Point(), boundsLegend.Size));
+            }
+            rtbLegend.Render(dvLegend);
+
+            BitmapEncoder pngEncoderLegend = new PngBitmapEncoder();
+            pngEncoderLegend.Frames.Add(BitmapFrame.Create(rtbLegend));
+
+            System.IO.MemoryStream msLegend = new System.IO.MemoryStream();
+            pngEncoderLegend.Save(msLegend);
+            ms.Close();
+            var filePathLegend = System.IO.Path.Combine(fileDirectory, fileNameLegend);
+            System.IO.File.WriteAllBytes(filePathLegend, msLegend.ToArray());
         }
     }
 }

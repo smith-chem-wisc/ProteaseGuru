@@ -69,6 +69,7 @@ namespace GUI
         private void ClearXML_Click(object sender, MouseButtonEventArgs e)
         {
             ProteinDbObservableCollection.Clear();
+            dataGridProteinDatabases.Items.Clear();
         }
 
         private void Row_DoubleClick(object sender, MouseButtonEventArgs e)

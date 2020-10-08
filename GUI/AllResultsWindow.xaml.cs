@@ -6,8 +6,10 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Data;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
@@ -28,6 +30,7 @@ namespace ProteaseGuruGUI
         private readonly Dictionary<string, Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>> PeptideByFile;
         List<string> DBSelected;
         Parameters UserParams;
+        public Dictionary<string, Dictionary<string, string>> HistogramDataTable = new Dictionary<string, Dictionary<string, string>>();
 
         public AllResultsWindow()
         {
@@ -188,16 +191,29 @@ namespace ProteaseGuruGUI
         private void OnDBSelectionChanged()
         {
             DBSelected.Clear();
-            var dbs = dataGridProteinDBs.SelectedItems;
-            foreach (var db in dbs)
+            if (dataGridProteinDBs.SelectedItem == null)
             {
-                DBSelected.Add(db.ToString());
-            }
+                DBSelected.Add(listOfProteinDbs.First());
 
-            foreach (var db in DBSelected)
-            {
-                var databasePeptides = PeptideByFile[db];                
+                foreach (var db in DBSelected)
+                {
+                    var databasePeptides = PeptideByFile[db];
+                }
             }
+            else 
+            {
+                var dbs = dataGridProteinDBs.SelectedItems;
+                foreach (var db in dbs)
+                {
+                    DBSelected.Add(db.ToString());
+                }
+
+                foreach (var db in DBSelected)
+                {
+                    var databasePeptides = PeptideByFile[db];
+                }
+            }
+            
             
             
         }
@@ -205,6 +221,17 @@ namespace ProteaseGuruGUI
 
         private async void PlotSelected(object sender, SelectionChangedEventArgs e)
         {
+            HistogramDataTable.Clear();
+            if (dataGridProteinDBs.SelectedItem == null)
+            {
+                DBSelected.Add(listOfProteinDbs.First());
+
+                foreach (var db in DBSelected)
+                {
+                    var databasePeptides = PeptideByFile[db];
+                }
+            }
+
             ObservableCollection<InSilicoPep> peptides = new ObservableCollection<InSilicoPep>();
             Dictionary<string, ObservableCollection<InSilicoPep>> peptidesByProtease = new Dictionary<string, ObservableCollection<InSilicoPep>>();
             Dictionary<string, Dictionary<Protein, (double,double)>> sequenceCoverageByProtease = new Dictionary<string, Dictionary<Protein, (double,double)>>();
@@ -249,9 +276,61 @@ namespace ProteaseGuruGUI
                 }
             }            
             PlotModelStat plot = await Task.Run(() => new PlotModelStat(plotName, peptides, peptidesByProtease, sequenceCoverageByProtease));
-            plotViewStat.DataContext = plot;            
+            plotViewStat.DataContext = plot;
+            HistogramDataTable = plot.DataTable;           
         }
 
+        private void CreateTable_Click(object sender, RoutedEventArgs e)
+        {
+            DataTable table = new DataTable();
+            table.Columns.Add("Bin Value", typeof(string));
+            var proteaseList = HistogramDataTable.First().Value.Keys.ToList();
+            foreach (var protease in proteaseList)
+            {
+                table.Columns.Add(protease, typeof(string));
+            }
+            foreach (var entry in HistogramDataTable)
+            {
+                string[] row = new string[proteaseList.Count()+1];
+                int j = 0;
+                row[j] = entry.Key;                
+                foreach (var subentry in entry.Value)
+                {
+                    j++;
+                    row[j] = subentry.Value;
+                                        
+                }
+                table.Rows.Add(row);
+            }
+
+            StringBuilder sb = new StringBuilder();
+            for (int i = 0; i < table.Columns.Count; i++)
+            {
+                sb.Append(table.Columns[i]);
+                if (i < table.Columns.Count - 1)
+                    sb.Append(',');
+            }
+            sb.AppendLine();
+            foreach (DataRow dr in table.Rows)
+            {
+                for (int i = 0; i < table.Columns.Count; i++)
+                {
+                    sb.Append(dr[i].ToString());
+
+                    if (i < table.Columns.Count - 1)
+                        sb.Append(',');
+                }
+                sb.AppendLine();
+            }
+
+            var dataTable = sb.ToString();
+            var plotName = HistogramComboBox.SelectedItem.ToString().Split(':');
+            var fileDirectory = UserParams.OutputFolder;
+            var fileName = String.Concat(plotName[1],"_DataTable", ".csv");
+            File.WriteAllText(Path.Combine(fileDirectory, fileName), dataTable);
+            MessageBox.Show("Data table Created at " + Path.Combine(fileDirectory, fileName) + "!");
+
+        }
 
         private void CreatePlotPdf_Click(object sender, RoutedEventArgs e)
         {
