@@ -5,6 +5,7 @@ using System.Text;
 
 namespace Tasks
 {
+    //digestion parameters provided by the user
     public class Parameters
     {
         public int NumberOfMissedCleavagesAllowed { get; set; }

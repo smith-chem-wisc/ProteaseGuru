@@ -6,6 +6,7 @@ using System.Text;
 
 namespace Tasks
 {
+    //ProteaseGuru peptide object that stores the necessary information form mzlib pwsm
     public class InSilicoPep
     {
         public string BaseSequence;

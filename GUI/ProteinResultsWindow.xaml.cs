@@ -65,6 +65,7 @@ namespace ProteaseGuruGUI
             SearchModifications.Timer.Tick += new EventHandler(searchBox_TextChangedHandler);
         }
 
+        //set up protease to color dictionary for peptides as well as mods
         public void SetUpDictionaries()
         {
             List<Color> colors = new List<Color>(){Colors.MediumBlue, Colors.Goldenrod, Colors.ForestGreen, Colors.DarkOrchid, Colors.Chocolate,
@@ -84,11 +85,13 @@ namespace ProteaseGuruGUI
             } 
         }
 
+        //update search when a new accession is provided
         private void Search_TextChanged(object sender, TextChangedEventArgs e)
         {
             SearchModifications.SetTimer();
         }
 
+        //clear proteaes selected from the sequence coverage mapp
         private void ClearSelectedProteases_Click(object sender, RoutedEventArgs e)
         {
             ProteaseSelectedForUse.SelectedItems.Clear();
@@ -96,6 +99,7 @@ namespace ProteaseGuruGUI
             DrawSequenceCoverageMap(SelectedProtein, SelectedProteases);
         }
 
+        //select proteases and display their peptides on the sequence coverage map
         private void SelectProteases_Click(object sender, RoutedEventArgs e)
         {
             SelectedProteases.Clear();
@@ -135,6 +139,7 @@ namespace ProteaseGuruGUI
             }
         }
 
+        // updat when the protein selected is changed
         private void OnSelectionChanged()
         {
             if (dataGridProteins.SelectedItem != null)
@@ -157,6 +162,8 @@ namespace ProteaseGuruGUI
                           
 
         }
+
+        //splits the list of modifcations to lines and gives them the proper index to line up to the same amino acid
         private List<Dictionary<int, List<Modification>>> SplitMods(IDictionary<int, List<Modification>> mods, int proteinLength, int spacing)
         {
             double round = proteinLength / spacing;
@@ -183,7 +190,9 @@ namespace ProteaseGuruGUI
             }            
             return splitMods;
         }
-        private void DrawSequenceCoverageMap(ProteinForTreeView protein, List<string> proteases) //string accession, Dictionary<string, PeptideForTreeView> uniquePeptides, Dictionary<string, PeptideForTreeView> sharedPeptides)
+
+        //draw the sequence coverage map, write out the protein seqeunce, overlay modifications, and display peptides for all proteases
+        private void DrawSequenceCoverageMap(ProteinForTreeView protein, List<string> proteases) 
         {
             double spacing = 22;
             int height = 10;
@@ -451,7 +460,9 @@ namespace ProteaseGuruGUI
             }
             
         }
-        
+
+
+        //check to see if peptide spans accross multiple lines (if so it will partially match on one line)
         private int CheckPartialMatch(InSilicoPep peptide, string line, int accumIndex)
         {
             int remaining = peptide.EndResidue - accumIndex - line.Length - 1;
@@ -463,6 +474,7 @@ namespace ProteaseGuruGUI
             return -1;
         }
 
+        //split the protein sequence into lines for the coverage map
         private List<string> Split(string sequence, double spacing)
         {
             int size = Convert.ToInt32(map.Width / spacing);
@@ -471,7 +483,8 @@ namespace ProteaseGuruGUI
 
             return splitSequence;
         }
-                
+       
+        //caluclate protein sequence coverage for the individual protein summaries
         public IEnumerable<(string, double)> CalculateSequenceCoverage(Protein protein)
         {
             foreach(var proteaseKvp in PeptideByProteaseAndProtein[protein])
@@ -492,6 +505,7 @@ namespace ProteaseGuruGUI
             }
         }
 
+        //populate the search space with all proteins from all databases digested
         private void LoadProteins_Click(object sender, RoutedEventArgs e)
         {
             ProteinLoadButton.IsEnabled = false;
@@ -633,7 +647,8 @@ namespace ProteaseGuruGUI
             ListBox combo = sender as ListBox;
             combo.ItemsSource = Proteases;            
         }
-
+        
+        // export the coverage map and legend as separate .png files
         private void exportCoverageMap(object sender, RoutedEventArgs e)
         {
             var fileDirectory = UserParams.OutputFolder;

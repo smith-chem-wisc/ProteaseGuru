@@ -11,6 +11,7 @@ using UsefulProteomicsDatabases;
 
 namespace Tasks
 {
+    //digest the provided databases with the proteases and parameters provided by the user
     public class DigestionTask : ProteaseGuruTask
     {
         public DigestionTask(): base(MyTask.Digestion)
@@ -100,7 +101,7 @@ namespace Tasks
             return peptidesForProtein;
         }        
 
-        
+        //determine if a peptide is unqiue or shared. Also generates in silico peptide objects
         Dictionary<Protein, List<InSilicoPep>> DeterminePeptideStatus(string databaseName, Dictionary<Protein, List<PeptideWithSetModifications>> databasePeptides, Parameters userParams)
         {
             SSRCalc3 RTPrediction = new SSRCalc3("SSRCalc 3.0 (300A)", SSRCalc3.Column.A300);
@@ -194,7 +195,8 @@ namespace Tasks
             databasePeptides = null;
             return inSilicoPeptides;
         }
-
+        
+        //calculate electrophoretic mobility of a peptide
         private static double GetCifuentesMobility(PeptideWithSetModifications pwsm)
         {
             int charge = 1 + pwsm.BaseSequence.Count(f => f == 'K') + pwsm.BaseSequence.Count(f => f == 'R') + pwsm.BaseSequence.Count(f => f == 'H') - CountModificationsThatShiftMobility(pwsm.AllModsOneIsNterminus.Values.AsEnumerable());// the 1 + is for N-terminal
@@ -206,6 +208,7 @@ namespace Tasks
             }
             return mobility;
         }
+
         public static int CountModificationsThatShiftMobility(IEnumerable<Modification> modifications)
         {
             List<string> shiftingModifications = new List<string> { "Acetylation", "Ammonia loss", "Carbamyl", "Deamidation", "Formylation",
@@ -224,17 +227,8 @@ namespace Tasks
         {
             throw new NotImplementedException();
         }
-
-        public static List<List<string>> SplitPeptides(List<string> allPeptides, int size)
-        {
-            List<List<string>> allResultsSplit = new List<List<string>>();
-            for (int i = 0; i < allPeptides.Count; i += size)
-            {
-                allResultsSplit.Add(allPeptides.GetRange(i, Math.Min(size, allPeptides.Count - i)));
-            }
-            return allResultsSplit;
-        }
-
+        
+        // write peptides to tsv files as results
         protected static void WritePeptidesToTsv(Dictionary<string, Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>> peptideByFile, string filePath, Parameters userParams)
         {
             string tab = "\t";

@@ -5,6 +5,7 @@ using Tasks;
 
 namespace ProteaseGuruGUI
 {
+    //gives structure for protein information in protein search window
     class ProteinForTreeView
     {
         public ProteinForTreeView(Protein protein, string displayName, List<InSilicoPep> uniquePep,

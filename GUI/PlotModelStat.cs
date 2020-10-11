@@ -16,6 +16,7 @@ using Proteomics;
 
 namespace GUI
 {
+    // code for histogram generation
     public class PlotModelStat : INotifyPropertyChanged, IPlotModel
     {
         private PlotModel privateModel;
@@ -27,6 +28,8 @@ namespace GUI
         //access series stuff here
         public Dictionary<string, Dictionary<string, string>> DataTable = new Dictionary<string, Dictionary<string, string>>();
 
+        //colors for histgrams (different color for each protease). Order of protease selection dictates its color not the protease itself
+        //can change in future to allow more user input
         private static List<OxyColor> columnColors = new List<OxyColor>
         {           
            OxyColors.MediumBlue, OxyColors.Goldenrod, OxyColors.ForestGreen, OxyColors.DarkOrchid, OxyColors.Chocolate, OxyColors.Teal, OxyColors.PaleVioletRed, OxyColors.DimGray,
@@ -35,20 +38,8 @@ namespace GUI
            OxyColors.CornflowerBlue, OxyColors.Gold, OxyColors.MediumSeaGreen, OxyColors.MediumOrchid, OxyColors.DarkSalmon, OxyColors.LightSeaGreen, OxyColors.LightPink, OxyColors.DarkGray
 
         };
-
-        
-        public PlotModel Model
-        {
-            get
-            {
-                return privateModel;
-            }
-            private set
-            {
-                privateModel = value;
-                NotifyPropertyChanged("Model");
-            }
-        }
+              
+       
 
         public OxyColor Background => OxyColors.White;
 

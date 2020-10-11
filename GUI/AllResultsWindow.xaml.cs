@@ -24,11 +24,8 @@ namespace ProteaseGuruGUI
     /// </summary>
     public partial class AllResultsWindow : UserControl
     {
-        private readonly ObservableCollection<ProteaseSummaryForTreeView> SummaryForTreeViewObservableCollection;
-        private readonly ObservableCollection<string> listOfProteinDbs; 
-        ICollectionView proteinDBView;
-        private readonly Dictionary<string, Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>> PeptideByFile;
-        List<string> DBSelected;
+        private readonly ObservableCollection<ProteaseSummaryForTreeView> SummaryForTreeViewObservableCollection;           
+        private readonly Dictionary<string, Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>> PeptideByFile;        
         Parameters UserParams;
         public Dictionary<string, Dictionary<string, string>> HistogramDataTable = new Dictionary<string, Dictionary<string, string>>();
 
@@ -36,35 +33,25 @@ namespace ProteaseGuruGUI
         {
         }
 
+        //Sets up the All ResultsWindow
         public AllResultsWindow(Dictionary<string, Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>> peptideByFile, Parameters userParams) // change constructor to receive analysis information
         {
             InitializeComponent();
             PeptideByFile = peptideByFile;
-            UserParams = userParams;
-            listOfProteinDbs = new ObservableCollection<string>();
-            DBSelected = new List<string>() { };
-            SetUpDictionaries();
+            UserParams = userParams;  
             SummaryForTreeViewObservableCollection = new ObservableCollection<ProteaseSummaryForTreeView>();
             GenerateResultsSummary();
-            proteinDBView = CollectionViewSource.GetDefaultView(listOfProteinDbs);            
+                     
             
-        }
-
-        private void SetUpDictionaries()
-        {
-            // populate list of protein DBs
-            foreach (var db in PeptideByFile.Keys)
-            {
-                listOfProteinDbs.Add(db);
-            }
-        }
-
+        } 
         
+        //Code for the generation of the digestion results summary that is displayed in TreeView        
         private void GenerateResultsSummary()
         {
             if (PeptideByFile.Count > 1) // if there is more than one database then we need to do all database summary 
             {
-                ProteaseSummaryForTreeView allDatabases = new ProteaseSummaryForTreeView("Cumulative Database Results:");                
+                ProteaseSummaryForTreeView allDatabases = new ProteaseSummaryForTreeView("Cumulative Database Results:");
+                //get all the peptides from all the databases together
                 Dictionary<string, List<InSilicoPep>> allDatabasePeptidesByProtease = new Dictionary<string, List<InSilicoPep>>();              
                 foreach (var database in PeptideByFile)
                 {
@@ -83,7 +70,8 @@ namespace ProteaseGuruGUI
                         }                       
                     }                        
                 }
-
+               
+                // if we want modified peptides to be treated differently than unmodified peptides we must use the FullSequence for unique peptide determination
                 if (UserParams.TreatModifiedPeptidesAsDifferent)
                 {
                     foreach (var protease in allDatabasePeptidesByProtease)
@@ -100,6 +88,7 @@ namespace ProteaseGuruGUI
 
                     }
                 }
+                // We don't care about distinguishing modified and unmodified peptides so we use BaseSequence
                 else 
                 {
                     foreach (var protease in allDatabasePeptidesByProtease)
@@ -115,11 +104,10 @@ namespace ProteaseGuruGUI
                         allDatabases.Summary.Add(thisDigestion);
 
                     }
-                }
-
-                
-
+                }               
+                //put the results summary in the GUI for users to view
                 SummaryForTreeViewObservableCollection.Add(allDatabases);
+                //Now do a similar results summary for each individual database on its own
                 foreach (var database in PeptideByFile)
                 {
                     ProteaseSummaryForTreeView thisProtease = new ProteaseSummaryForTreeView(database.Key+ " Results:");
@@ -145,6 +133,7 @@ namespace ProteaseGuruGUI
                         
                         thisProtease.Summary.Add(thisDigestion);
                     }
+                    //Put the database specific results summary in the GUI
                     SummaryForTreeViewObservableCollection.Add(thisProtease);
                 }
                 
@@ -179,6 +168,7 @@ namespace ProteaseGuruGUI
                     SummaryForTreeViewObservableCollection.Add(thisProtease);
                 }
             }
+            //Results are provided to the user at this point
             ProteaseSummaryTreeView.DataContext = SummaryForTreeViewObservableCollection;          
         }       
 

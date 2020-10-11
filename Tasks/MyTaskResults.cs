@@ -26,6 +26,7 @@ namespace Tasks
             resultTexts = new List<string>();
         }
 
+        // results sumary for file output
         private List<string> writeSummary(Dictionary<string, Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>> peptideByFile)
         {
             List<string> summary = new List<string>();

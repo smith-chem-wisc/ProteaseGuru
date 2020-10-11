@@ -20,11 +20,11 @@ using Tasks;
 namespace ProteaseGuruGUI
 {
     /// <summary>
-    /// Interaction logic for AllResultsWindow.xaml
+    /// Interaction logic for HistogramWindow.xaml
+    /// Users can interact witht heir data using histograms
     /// </summary>
     public partial class HistogramWindow : UserControl
-    {
-        private readonly ObservableCollection<ProteaseSummaryForTreeView> SummaryForTreeViewObservableCollection;
+    {        
         private readonly ObservableCollection<string> listOfProteinDbs; 
         ICollectionView proteinDBView;
         private readonly Dictionary<string, Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>> PeptideByFile;
@@ -43,12 +43,12 @@ namespace ProteaseGuruGUI
             UserParams = userParams;
             listOfProteinDbs = new ObservableCollection<string>();
             DBSelected = new List<string>() { };
-            SetUpDictionaries();
-            SummaryForTreeViewObservableCollection = new ObservableCollection<ProteaseSummaryForTreeView>();            
+            SetUpDictionaries();                      
             proteinDBView = CollectionViewSource.GetDefaultView(listOfProteinDbs);
             dataGridProteinDBs.DataContext = proteinDBView;
         }
 
+        //populate the database options for the user
         private void SetUpDictionaries()
         {
             // populate list of protein DBs
@@ -57,9 +57,8 @@ namespace ProteaseGuruGUI
                 listOfProteinDbs.Add(db);
             }
         }
-
-               
-
+        
+        //saves the database selection of the user and gives that information to the code for plot generation
         private void ProteinDBSelected_Click(object sender, RoutedEventArgs e)
         {
             DBSelected.Clear();
@@ -82,11 +81,13 @@ namespace ProteaseGuruGUI
 
         }
         
-
+        //determine which histogram the user wants to make and what peptides should be used to make it
         private async void PlotSelected(object sender, SelectionChangedEventArgs e)
         {
+            //clear the exportable data table when a new plot is selected
             HistogramDataTable.Clear();
             Dictionary<string, Dictionary<Protein, List<InSilicoPep>>> databasePeptides = new Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>();
+            //figure out which proteases should be used to make the plot
             if (dataGridProteinDBs.SelectedItems == null)
             {
                 DBSelected.Add(listOfProteinDbs.First());
@@ -133,10 +134,11 @@ namespace ProteaseGuruGUI
             ObservableCollection<InSilicoPep> peptides = new ObservableCollection<InSilicoPep>();
             Dictionary<string, ObservableCollection<InSilicoPep>> peptidesByProtease = new Dictionary<string, ObservableCollection<InSilicoPep>>();
             Dictionary<string, Dictionary<Protein, (double,double)>> sequenceCoverageByProtease = new Dictionary<string, Dictionary<Protein, (double,double)>>();
+            //parse the GUI selection for interpretation here
             var selectedPlot = HistogramComboBox.SelectedItem;
             var objectName = selectedPlot.ToString().Split(':');
             var plotName = objectName[1];
-
+            
             sequenceCoverageByProtease = CalculateProteinSequenceCoverage(databasePeptides);
             foreach (var protease in databasePeptides)
             {
@@ -166,12 +168,15 @@ namespace ProteaseGuruGUI
                     peptidesByProtease.Add(protease.Key, proteasePeptides);
                 }
             }
-                   
+            //make the plot       
             PlotModelStat plot = await Task.Run(() => new PlotModelStat(plotName, peptides, peptidesByProtease, sequenceCoverageByProtease));
+            //send the plot to GUI
             plotViewStat.DataContext = plot;
+            //send the data table with plto info to GUI for export if desired
             HistogramDataTable = plot.DataTable;           
         }
 
+        //if database selection is changed, refresh what is shown in the plot if that is not changed, similar code to PlotSelected(), but isnt triggered by user
         private async void RefreshPlot()
         {
             HistogramDataTable.Clear();
@@ -216,9 +221,6 @@ namespace ProteaseGuruGUI
 
                 }
             }
-
-
-
             ObservableCollection<InSilicoPep> peptides = new ObservableCollection<InSilicoPep>();
             Dictionary<string, ObservableCollection<InSilicoPep>> peptidesByProtease = new Dictionary<string, ObservableCollection<InSilicoPep>>();
             Dictionary<string, Dictionary<Protein, (double, double)>> sequenceCoverageByProtease = new Dictionary<string, Dictionary<Protein, (double, double)>>();
@@ -260,7 +262,7 @@ namespace ProteaseGuruGUI
             plotViewStat.DataContext = plot;
             HistogramDataTable = plot.DataTable;
         }
-
+        //create a data table with all of the information formt he histogram so useres can make their own plots using proteaseguru calculaitons
         private void CreateTable_Click(object sender, RoutedEventArgs e)
         {
             DataTable table = new DataTable();
@@ -312,7 +314,7 @@ namespace ProteaseGuruGUI
             MessageBox.Show("Data table Created at " + Path.Combine(fileDirectory, fileName) + "!");
 
         }
-
+        //be able to expot the plots made as pdf files
         private void CreatePlotPdf_Click(object sender, RoutedEventArgs e)
         {
             var selectedItem = HistogramComboBox.SelectedItem;
@@ -342,7 +344,7 @@ namespace ProteaseGuruGUI
             plotViewStat.Height = tmpH;
             MessageBox.Show("PDF Created at " + Path.Combine(fileDirectory, fileName) + "!");
         }
-
+        //calculate the protein seqeunce coverage of each protein based on its digested peptides (for all peptides and unique peptides)
         private Dictionary<string, Dictionary<Protein, (double,double)>> CalculateProteinSequenceCoverage( Dictionary<string, Dictionary<Protein, List<InSilicoPep>>> peptidesByProtease)
         {
             Dictionary<string, Dictionary<Protein, (double,double)>> proteinSequenceCoverageByProtease = new Dictionary<string, Dictionary<Protein, (double,double)>>();
@@ -351,6 +353,7 @@ namespace ProteaseGuruGUI
                 Dictionary<Protein, (double,double)> sequenceCoverages = new Dictionary<Protein, (double,double)>();
                 foreach (var protein in protease.Value)
                 {
+                    //count which residues are covered at least one time by a peptide
                     HashSet<int> coveredOneBasesResidues = new HashSet<int>();
                     HashSet<int> coveredOneBasesResiduesUnique = new HashSet<int>();
                     foreach (var peptide in protein.Value)
@@ -366,6 +369,7 @@ namespace ProteaseGuruGUI
                         
 
                     }
+                    //divide the number of covered residues by the total residues in the protein
                     double seqCoverageFract = (double)coveredOneBasesResidues.Count / protein.Key.Length;
                     double seqCoverageFractUnique = (double)coveredOneBasesResiduesUnique.Count / protein.Key.Length;
 

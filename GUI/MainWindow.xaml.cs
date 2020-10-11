@@ -40,6 +40,7 @@ namespace GUI
         private ObservableCollection<InRunTask> DynamicTasksObservableCollection;
         private readonly ObservableCollection<RunSummaryForTreeView> SummaryForTreeViewObservableCollection;
         private Parameters UserParameters;
+        //set up the main window that users interact with
         public MainWindow()
         {
             InitializeComponent();
@@ -53,30 +54,8 @@ namespace GUI
             EverythingRunnerEngine.WarnHandler += GuiWarnHandler;
             SummaryForTreeViewObservableCollection = new ObservableCollection<RunSummaryForTreeView>();
             ResetDigestionTask.IsEnabled = false;
-        }
-
-
-        private void AddResults_Click(object sender, MouseButtonEventArgs e)
-        {
-            Microsoft.Win32.OpenFileDialog openPicker = new Microsoft.Win32.OpenFileDialog()
-            {
-                Filter = "Results Files|*.tsv",
-                FilterIndex = 1,
-                RestoreDirectory = true,
-                Multiselect = true
-            };
-            if (openPicker.ShowDialog() == true)
-            {
-                foreach (var filepath in openPicker.FileNames.OrderBy(p => p))
-                {
-                    ReloadAFile(filepath);
-                }
-            }
-
-            dataGridResults.Items.Refresh();
-
-        }
-
+        }        
+        //the add button for loading previous peptide result files
         private void AddResults_Click(object sender, RoutedEventArgs e)
         {
             Microsoft.Win32.OpenFileDialog openPicker = new Microsoft.Win32.OpenFileDialog()
@@ -98,27 +77,7 @@ namespace GUI
 
         }
 
-        private void AddParameters_Click(object sender, MouseButtonEventArgs e)
-        {
-            Microsoft.Win32.OpenFileDialog openPicker = new Microsoft.Win32.OpenFileDialog()
-            {
-                Filter = "Results Files|*.txt",
-                FilterIndex = 1,
-                RestoreDirectory = true,
-                Multiselect = true
-            };
-            if (openPicker.ShowDialog() == true)
-            {
-                foreach (var filepath in openPicker.FileNames.OrderBy(p => p))
-                {
-                    ReloadAFile(filepath);
-                }
-            }
-
-            dataGridParameters.Items.Refresh();
-
-        }
-
+        //add button for digestion parameters from previous results
         private void AddParameters_Click(object sender, RoutedEventArgs e)
         {
             Microsoft.Win32.OpenFileDialog openPicker = new Microsoft.Win32.OpenFileDialog()
@@ -140,6 +99,7 @@ namespace GUI
 
         }
 
+        //add a protein database file
         private void AddAFile(string draggedFilePath)
         {
             // this line is NOT used because .xml.gz (extensions with two dots) mess up with Path.GetExtension
@@ -184,7 +144,7 @@ namespace GUI
                     break;
             }
         }
-
+        // add a previous results, prarmeters or database file
         private void ReloadAFile(string draggedFilePath)
         {
             // this line is NOT used because .xml.gz (extensions with two dots) mess up with Path.GetExtension
@@ -244,6 +204,7 @@ namespace GUI
             }
         }
 
+        //make sure database file has correct path
         private bool DatabaseExists(ObservableCollection<ProteinDbForDataGrid> pDOC, ProteinDbForDataGrid uuu)
         {
             foreach (ProteinDbForDataGrid pdoc in pDOC)
@@ -253,7 +214,8 @@ namespace GUI
 
             return false;
         }
-
+        
+        //make sure results file has correct path
         private bool ResultsFileExists(ObservableCollection<ResultsForDataGrid> ROC, ResultsForDataGrid uuu)
         {
             foreach (var roc in ROC)
@@ -263,7 +225,8 @@ namespace GUI
 
             return false;
         }
-
+        
+        //make sure parameters file has correct path
         private bool ParametersFileExists(ObservableCollection<ParametersForDataGrid> POC, ParametersForDataGrid uuu)
         {
             foreach (var poc in POC)
@@ -291,6 +254,8 @@ namespace GUI
                 Dispatcher.BeginInvoke(new Action(() => GuiWarnHandler(sender, e)));
             }
         }
+
+        // when user changes the proteases selected, or the digestion parameters, make sure this is saved internally
         private void UpdateFieldsFromUser(DigestionTask run)
         {
             if (!string.IsNullOrWhiteSpace(MissedCleavagesTextBox.Text))
@@ -411,26 +376,7 @@ namespace GUI
                 Exception exception = e;
                 //Find Output Folder
                 string outputFolder = e.Data["folder"].ToString();
-                string tomlText = "";
-                if (Directory.Exists(outputFolder))
-                {
-                    var tomls = Directory.GetFiles(outputFolder, "*.toml");
-                    //will only be 1 toml per task
-                    foreach (var tomlFile in tomls)
-                    {
-                        tomlText += "\n" + File.ReadAllText(tomlFile);
-                    }
-
-                    if (!tomls.Any())
-                    {
-                        tomlText = "TOML not found";
-                    }
-                }
-                else
-                {
-                    tomlText = "Directory not found";
-                }
-
+                
                 if (messageBoxResult == MessageBoxResult.Yes)
                 {
                     string body = exception.Message + "%0D%0A" + exception.Data +
@@ -438,8 +384,7 @@ namespace GUI
                        "%0D%0A" + exception.Source +
                        "%0D%0A %0D%0A %0D%0A %0D%0A SYSTEM INFO: %0D%0A " +
                         SystemInfo.CompleteSystemInfo() +                       
-                        "%0D%0A %0D%0A %0D%0A %0D%0A TOML: %0D%0A " +
-                       tomlText;
+                        "%0D%0A %0D%0A %0D%0A %0D%0A TOML: %0D%0A ";
                     body = body.Replace('&', ' ');
                     body = body.Replace("\n", "%0D%0A");
                     body = body.Replace("\r", "%0D%0A");
@@ -451,6 +396,8 @@ namespace GUI
             }
 
         }
+
+        //takes all information provided by the user for the digestion (databases, parameters etc) and make sure it is up to date and prepares for the run
         private void AddDigestionTask_Click(object sender, RoutedEventArgs e)
         {
             // disable button so that no more tasks are added
@@ -481,8 +428,6 @@ namespace GUI
             string outputFolder = OutputFolderTextBox.Text.Replace("$DATETIME", startTimeForAllFilenames);
             OutputFolderTextBox.Text = outputFolder;
             UserParameters.OutputFolder = outputFolder;
-
-            
         }
         
 
@@ -493,30 +438,35 @@ namespace GUI
             StaticTasksObservableCollection.Add(pre);            
         }
 
+        //clear the list of databases in code and in the GUI
         private void ClearXML_Click(object sender, RoutedEventArgs e)
         {
             ProteinDbObservableCollection.Clear();
             dataGridProteinDatabases.Items.Clear();
         }
 
+        //clear the list of previous analyzed databases in code and in GUI
         private void ClearReloadedXML_Click(object sender, RoutedEventArgs e)
         {
             ReloadProteinDbObservableCollection.Clear();
             dataGridReloadDb.Items.Clear();
         }
 
+        //Clear the list of results files in code and in GUI
         private void ClearResults_Click(object sender, RoutedEventArgs e)
         {
             ResultsObservableCollection.Clear();
             dataGridResults.Items.Clear();
         }
 
+        //Clear the list of parameters in code and in GUI
         private void ClearParameters_Click(object sender, RoutedEventArgs e)
         {
             ParametersObservableCollection.Clear();
             dataGridParameters.Items.Clear();
         }
 
+        //Add protein database for Digestion
         private void AddProteinDatabase_Click(object sender, RoutedEventArgs e)
         {
             Microsoft.Win32.OpenFileDialog openPicker = new Microsoft.Win32.OpenFileDialog()
@@ -537,6 +487,7 @@ namespace GUI
             dataGridProteinDatabases.Items.Refresh();            
         }
 
+        //add previously analyzed database for data reload process
         private void ReloadProteinDatabase_Click(object sender, RoutedEventArgs e)
         {
             Microsoft.Win32.OpenFileDialog openPicker = new Microsoft.Win32.OpenFileDialog()
@@ -557,6 +508,7 @@ namespace GUI
             dataGridReloadDb.Items.Refresh();
         }
 
+        //allows files to be dragged and dropped not just added by button selection
         private void Window_Drop(object sender, DragEventArgs e)
         {
             string[] files = ((string[])e.Data.GetData(DataFormats.FileDrop)).OrderBy(p => p).ToArray();
@@ -570,11 +522,13 @@ namespace GUI
                         foreach (string file in Directory.EnumerateFiles(draggedFilePath, "*.*", SearchOption.AllDirectories))
                         {
                             AddAFile(file);
+                            ReloadAFile(file);
                         }
                     }
                     else
-                    {
+                    {                        
                         AddAFile(draggedFilePath);
+                        ReloadAFile(draggedFilePath);
                     }                    
                     dataGridProteinDatabases.CommitEdit(DataGridEditingUnit.Row, true);                    
                     dataGridProteinDatabases.Items.Refresh();
@@ -591,6 +545,7 @@ namespace GUI
             }            
         }
 
+        //button allowing for selection of the 6 most commonly used proteases
         private void SelectDefaultProteases_Click(object sender, RoutedEventArgs e)
         {
             ProteaseSelectedForUse.SelectedItems.Clear();
@@ -600,10 +555,9 @@ namespace GUI
             ProteaseSelectedForUse.SelectedItems.Add(ProteaseSelectedForUse.Items.GetItemAt(6));
             ProteaseSelectedForUse.SelectedItems.Add(ProteaseSelectedForUse.Items.GetItemAt(7));
             ProteaseSelectedForUse.SelectedItems.Add(ProteaseSelectedForUse.Items.GetItemAt(10));
-
-
         }
 
+        //read int he protease file to populate lsit of all possible proteases for digestion
         private void PopulateProteaseList()
         {
             string proteaseDirectory = System.IO.Path.Combine(GlobalVariables.DataDir, @"ProteolyticDigestion");
@@ -632,12 +586,13 @@ namespace GUI
             }
         }
         
-
+        //clear the list of proteases selected for use
         private void ClearSelectedProteases_Click(object sender, RoutedEventArgs e)
         {
             ProteaseSelectedForUse.SelectedItems.Clear();
         }
 
+        //triggers the opening of the customprotease window
         private void AddCustomProtease_Click(object sender, RoutedEventArgs e)
         {
             var dialog = new CustomProteaseWindow();
@@ -647,6 +602,8 @@ namespace GUI
                 PopulateProteaseList();
             }
         }
+
+        //run in silico digestion and trigger result windows after complete
         private void RunTaskButton_Click(object sender, RoutedEventArgs e)
         {
             RunTaskButton.IsEnabled = false; // disable while running
@@ -696,6 +653,7 @@ namespace GUI
             RunTaskButton.IsEnabled = true; // allow user to run new task
         }
 
+        //logic for loading in resutls from previous runs and opening up the results windows
         private void LoadResults_Click(object sender, RoutedEventArgs e)
         {
             Dictionary<string, Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>> PeptidesByFileSetUp = new Dictionary<string, Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>>();
@@ -878,11 +836,13 @@ namespace GUI
             AllResultsTab.IsSelected = true; // switch to results tab
         }
 
+        //be able to use hyperlinks to webpages
         private void Hyperlink_RequestNavigate(object sender, RequestNavigateEventArgs e)
         {
             GlobalVariables.StartProcess(e.Uri.ToString());
         }
-
+        
+        // ensure digestion parameters that are supposed to be numbers are numbers
         private void CheckIfNumber(object sender, TextCompositionEventArgs e)
         {
             e.Handled = !CheckIsNumber(e.Text);
@@ -899,7 +859,8 @@ namespace GUI
             }
             return result;
         }
-
+        
+        //clear all digestion conditions for reset
         private void ResetDigestionTask_Click(object sender, RoutedEventArgs e)
         {
             // remove all tasks
@@ -915,38 +876,8 @@ namespace GUI
 
             SummaryForTreeViewObservableCollection.Clear();
         }
-
-        private void OpenFile(string filePath)
-        {
-            if (File.Exists(filePath))
-            {
-                GlobalVariables.StartProcess(filePath);
-            }
-            else
-            {
-                MessageBox.Show("File does not exist: " + filePath);
-            }
-        }
-        
-
-        
-
-        private void DatabaseOrSpectraFile_DoubleClick(object sender, MouseButtonEventArgs e)
-        {
-            var dataGridCell = sender as DataGridCell;
-            
-            // open the file with the default process for this file format
-            if (dataGridCell.Content is TextBlock filePath && filePath != null && !string.IsNullOrEmpty(filePath.Text))
-            {
-                OpenFile(filePath.Text);
-            }
-        }
-
-        private void proteinDbSummaryDataGrid_SelectionChanged(object sender, SelectionChangedEventArgs e)
-        {
-
-        }
-
+                
+        // generate summary for users to see all the databases, proteases and parameters that were selected before the run is started
         private void GenerateRunSummary()
         {
             RunSummaryForTreeView runSummary = new RunSummaryForTreeView("Digestion Plan:");
@@ -978,12 +909,14 @@ namespace GUI
 
         }
 
+        //make it easy for users to email us with issues
         private void MenuItem_EmailHelp_Click(object sender, RequestNavigateEventArgs e)
         {
-            string mailto = string.Format("mailto:{0}?Subject=MetaMorpheus. Issue:", "mm_support@chem.wisc.edu");
+            string mailto = string.Format("mailto:{0}?Subject=ProteaseGuru. Issue:", "mm_support@chem.wisc.edu");
             GlobalVariables.StartProcess(mailto);
         }
-
+        
+        //load proteins from reloaded databases
         protected List<Protein> LoadProteins(DbForDigestion database)
         {
             List<string> dbErrors = new List<string>();

@@ -15,12 +15,6 @@ namespace GUI
             FileName = System.IO.Path.GetFileName(FilePath);
         }
 
-        //public ParametersForDataGrid(DbForDigestion uu)
-        //{                        
-        //    FilePath = uu.FilePath;
-        //    FileName = uu.FileName;
-        //}
-
         #endregion Public Constructors
 
         #region Public Properties

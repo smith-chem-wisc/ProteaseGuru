@@ -26,7 +26,8 @@ using System.ComponentModel;
 namespace GUI
 {
     /// <summary>
-    /// Interaction logic for MainWindow.xaml
+    /// Interaction logic for CustomProteaseWindow.xaml
+    /// Allows users to make custom proteases for digestion
     /// </summary>
     public partial class CustomProteaseWindow : Window
     {
@@ -36,6 +37,7 @@ namespace GUI
             InitializeComponent();
             PopulateListBoxes();            
         }
+        //Fill in list boxes with options
         private void PopulateListBoxes()
         {
             cleavageSpecificityListBox.Items.Add("Full");
@@ -43,6 +45,7 @@ namespace GUI
             cleavageTerminusListBox.Items.Add("C");
             cleavageTerminusListBox.Items.Add("N");
         }
+        //Save all the user provided information in the proteases file for future use
         private void SaveCustomProtease_Click(object sender, RoutedEventArgs e)
         {
             string proteaseDirectory = System.IO.Path.Combine(GlobalVariables.DataDir, @"ProteolyticDigestion");
@@ -50,6 +53,7 @@ namespace GUI
             List<string> proteaseFileText = new List<string>();
             proteaseFileText = File.ReadAllLines(proteaseFilePath).ToList();
 
+            //all of the protease properties that the user provided
             string name = proteaseNameTextBox.Text;
             string allCleavageResidues = sequencesInducingCleavageTextBox.Text;
             string allResiduesStoppingCleavage = sequencesPreventingCleavageBox.Text;
@@ -57,7 +61,8 @@ namespace GUI
             var cleavageSpecificity = (string)cleavageSpecificityListBox.SelectedItem;
             string psiAccession = psiAccessionNumber.Text;
             string psiNames = psiName.Text;
-
+            
+            //formatting these properties for writing to the protease file, so they can be read in each time ProteaseGuru is used
             string proteaseInfo = name + "\t" ;
 
             var singleCleavageSites = new List<string>();
