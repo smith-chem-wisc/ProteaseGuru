@@ -46,10 +46,8 @@ namespace ProteaseGuruGUI
             SetUpDictionaries();
             SummaryForTreeViewObservableCollection = new ObservableCollection<ProteaseSummaryForTreeView>();
             GenerateResultsSummary();
-            proteinDBView = CollectionViewSource.GetDefaultView(listOfProteinDbs);
-            dataGridProteinDBs.DataContext = proteinDBView;
-
-            ProteinCovMap.Content = new ProteinResultsWindow(PeptideByFile, userParams);
+            proteinDBView = CollectionViewSource.GetDefaultView(listOfProteinDbs);            
+            
         }
 
         private void SetUpDictionaries()
@@ -61,11 +59,7 @@ namespace ProteaseGuruGUI
             }
         }
 
-        private void summaryProteinDB_SelectedCellsChanged(object sender, SelectedCellsChangedEventArgs e)
-        {
-            OnDBSelectionChanged(); // update all results tabs
-        }
-
+        
         private void GenerateResultsSummary()
         {
             if (PeptideByFile.Count > 1) // if there is more than one database then we need to do all database summary 
@@ -186,214 +180,7 @@ namespace ProteaseGuruGUI
                 }
             }
             ProteaseSummaryTreeView.DataContext = SummaryForTreeViewObservableCollection;          
-        }
+        }       
 
-        private void OnDBSelectionChanged()
-        {
-            DBSelected.Clear();
-            if (dataGridProteinDBs.SelectedItem == null)
-            {
-                DBSelected.Add(listOfProteinDbs.First());
-
-                foreach (var db in DBSelected)
-                {
-                    var databasePeptides = PeptideByFile[db];
-                }
-            }
-            else 
-            {
-                var dbs = dataGridProteinDBs.SelectedItems;
-                foreach (var db in dbs)
-                {
-                    DBSelected.Add(db.ToString());
-                }
-
-                foreach (var db in DBSelected)
-                {
-                    var databasePeptides = PeptideByFile[db];
-                }
-            }
-            
-            
-            
-        }
-        
-
-        private async void PlotSelected(object sender, SelectionChangedEventArgs e)
-        {
-            HistogramDataTable.Clear();
-            if (dataGridProteinDBs.SelectedItem == null)
-            {
-                DBSelected.Add(listOfProteinDbs.First());
-
-                foreach (var db in DBSelected)
-                {
-                    var databasePeptides = PeptideByFile[db];
-                }
-            }
-
-            ObservableCollection<InSilicoPep> peptides = new ObservableCollection<InSilicoPep>();
-            Dictionary<string, ObservableCollection<InSilicoPep>> peptidesByProtease = new Dictionary<string, ObservableCollection<InSilicoPep>>();
-            Dictionary<string, Dictionary<Protein, (double,double)>> sequenceCoverageByProtease = new Dictionary<string, Dictionary<Protein, (double,double)>>();
-            var selectedPlot = HistogramComboBox.SelectedItem;
-            var objectName = selectedPlot.ToString().Split(':');
-            var plotName = objectName[1];
-
-            //var comboBox = HistogramComboBox as ComboBox;
-            //var plotName = comboBox.SelectedItem as string;
-
-            foreach (var db in DBSelected)
-            {
-                var PeptidesForAllProteases = PeptideByFile[db];
-                sequenceCoverageByProtease = CalculateProteinSequenceCoverage(PeptidesForAllProteases);
-                foreach (var protease in PeptidesForAllProteases)
-                {
-                    ObservableCollection<InSilicoPep> proteasePeptides = new ObservableCollection<InSilicoPep>();
-                    if (peptidesByProtease.ContainsKey(protease.Key))
-                    {
-                        foreach (var protein in protease.Value)
-                        {
-                            foreach (var peptide in protein.Value)
-                            {
-                                proteasePeptides.Add(peptide);
-                                peptides.Add(peptide);
-                            }
-                        }
-                        peptidesByProtease[protease.Key] = proteasePeptides;
-                    }
-                    else 
-                    {
-                        foreach (var protein in protease.Value)
-                        {
-                            foreach (var peptide in protein.Value)
-                            {
-                                proteasePeptides.Add(peptide);
-                                peptides.Add(peptide);
-                            }
-                        }
-                        peptidesByProtease.Add(protease.Key, proteasePeptides);
-                    }
-                }
-            }            
-            PlotModelStat plot = await Task.Run(() => new PlotModelStat(plotName, peptides, peptidesByProtease, sequenceCoverageByProtease));
-            plotViewStat.DataContext = plot;
-            HistogramDataTable = plot.DataTable;           
-        }
-
-        private void CreateTable_Click(object sender, RoutedEventArgs e)
-        {
-            DataTable table = new DataTable();
-            table.Columns.Add("Bin Value", typeof(string));
-            var proteaseList = HistogramDataTable.First().Value.Keys.ToList();
-            foreach (var protease in proteaseList)
-            {
-                table.Columns.Add(protease, typeof(string));
-            }
-            foreach (var entry in HistogramDataTable)
-            {
-                string[] row = new string[proteaseList.Count()+1];
-                int j = 0;
-                row[j] = entry.Key;                
-                foreach (var subentry in entry.Value)
-                {
-                    j++;
-                    row[j] = subentry.Value;
-                                        
-                }
-                table.Rows.Add(row);
-            }
-
-            StringBuilder sb = new StringBuilder();
-            for (int i = 0; i < table.Columns.Count; i++)
-            {
-                sb.Append(table.Columns[i]);
-                if (i < table.Columns.Count - 1)
-                    sb.Append(',');
-            }
-            sb.AppendLine();
-            foreach (DataRow dr in table.Rows)
-            {
-                for (int i = 0; i < table.Columns.Count; i++)
-                {
-                    sb.Append(dr[i].ToString());
-
-                    if (i < table.Columns.Count - 1)
-                        sb.Append(',');
-                }
-                sb.AppendLine();
-            }
-
-            var dataTable = sb.ToString();
-            var plotName = HistogramComboBox.SelectedItem.ToString().Split(':');
-            var fileDirectory = UserParams.OutputFolder;
-            var fileName = String.Concat(plotName[1],"_DataTable", ".csv");
-            File.WriteAllText(Path.Combine(fileDirectory, fileName), dataTable);
-            MessageBox.Show("Data table Created at " + Path.Combine(fileDirectory, fileName) + "!");
-
-        }
-
-        private void CreatePlotPdf_Click(object sender, RoutedEventArgs e)
-        {
-            var selectedItem = HistogramComboBox.SelectedItem;
-
-            if (selectedItem == null)
-            {
-                MessageBox.Show("Select a plot type to export!");
-                return;
-            }
-
-            var plotName = HistogramComboBox.SelectedItem.ToString().Split(':');
-            var fileDirectory = UserParams.OutputFolder;            
-            var fileName = String.Concat(plotName[1], ".pdf");
-
-            // update font sizes to exported PDF's size
-            double tmpW = plotViewStat.Width;
-            double tmpH = plotViewStat.Height;
-            plotViewStat.Width = 1000;
-            plotViewStat.Height = 700;
-            plotViewStat.UpdateLayout();            
-
-            using (Stream writePDF = File.Create(Path.Combine(fileDirectory, fileName)))
-            {
-                PdfExporter.Export(plotViewStat.Model, writePDF, 1000, 700);
-            }
-            plotViewStat.Width = tmpW;
-            plotViewStat.Height = tmpH;
-            MessageBox.Show("PDF Created at " + Path.Combine(fileDirectory, fileName) + "!");
-        }
-
-        private Dictionary<string, Dictionary<Protein, (double,double)>> CalculateProteinSequenceCoverage( Dictionary<string, Dictionary<Protein, List<InSilicoPep>>> peptidesByProtease)
-        {
-            Dictionary<string, Dictionary<Protein, (double,double)>> proteinSequenceCoverageByProtease = new Dictionary<string, Dictionary<Protein, (double,double)>>();
-            foreach (var protease in peptidesByProtease)
-            {
-                Dictionary<Protein, (double,double)> sequenceCoverages = new Dictionary<Protein, (double,double)>();
-                foreach (var protein in protease.Value)
-                {
-                    HashSet<int> coveredOneBasesResidues = new HashSet<int>();
-                    HashSet<int> coveredOneBasesResiduesUnique = new HashSet<int>();
-                    foreach (var peptide in protein.Value)
-                    {
-                        for (int i = peptide.StartResidue; i <= peptide.EndResidue; i++)
-                        {
-                            coveredOneBasesResidues.Add(i);
-                            if (peptide.Unique == true)
-                            {
-                                coveredOneBasesResiduesUnique.Add(i);
-                            }
-                        }
-                        
-
-                    }
-                    double seqCoverageFract = (double)coveredOneBasesResidues.Count / protein.Key.Length;
-                    double seqCoverageFractUnique = (double)coveredOneBasesResiduesUnique.Count / protein.Key.Length;
-
-                    sequenceCoverages.Add(protein.Key, (seqCoverageFract,seqCoverageFractUnique));
-                }
-                proteinSequenceCoverageByProtease.Add(protease.Key, sequenceCoverages);
-            }            
-
-            return proteinSequenceCoverageByProtease;
-        }
     }
 }

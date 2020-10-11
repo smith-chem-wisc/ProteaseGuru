@@ -65,7 +65,7 @@ namespace Tasks
                 }
                 var ok = RunList[i];
                 
-                var outputFolderForThisTask = System.IO.Path.Combine(OutputFolder, "ProteaseGuruResults_"+ i);
+                var outputFolderForThisTask = System.IO.Path.Combine(OutputFolder, "ProteaseGuruDigestionResults");
 
                 if (!Directory.Exists(outputFolderForThisTask))
                     Directory.CreateDirectory(outputFolderForThisTask);

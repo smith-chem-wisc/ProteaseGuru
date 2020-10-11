@@ -1,0 +1,151 @@
+﻿<UserControl x:Class="ProteaseGuruGUI.HistogramWindow"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:oxy ="http://oxyplot.org/wpf"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             mc:Ignorable="d" 
+             xmlns:local="clr-namespace:ProteaseGuruGUI"           
+             xmlns:Controls="clr-namespace:ProteaseGuruGUI"
+             d:DesignHeight="600" d:DesignWidth="800">
+    <Grid Style="{StaticResource PageGridStyle}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="50"/>
+            <RowDefinition Height="30"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+        <!--Header label-->
+        <Label Content="Histograms" Grid.Row="0" Style="{StaticResource HeaderLabelStyle}" />
+
+        <!--Detail text-->
+        <TextBlock Grid.Row="1" Style="{StaticResource TextBlockStyle}">
+          Explore proteome-wide digestion trends using histograms. Select a database and a histogram type to visualize the data.
+            
+        </TextBlock>
+
+        <GroupBox Grid.Row="2" Grid.Column="2" Name="gbResults" ScrollViewer.VerticalScrollBarVisibility="Hidden" Background="{StaticResource DataGridBackgroundColor}">
+                       
+            <DockPanel>
+                <Grid Background="{StaticResource DataGridBackgroundColor}">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="1.5*"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="5*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    
+                        <Grid Grid.Column="0" Background="{StaticResource DataGridBackgroundColor}">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="35"/>
+                                <RowDefinition Height="1*"/>
+                                <RowDefinition Height="30"/>
+                            </Grid.RowDefinitions>
+                            <!--Header label-->
+                            <Label Content="Database" Grid.Row="0" Style="{StaticResource SmallHeaderLabelStyle}" />
+                            <DataGrid x:Name="dataGridProteinDBs" Grid.Row="1" AutoGenerateColumns="False" VerticalAlignment="Stretch" ItemsSource="{Binding}" 
+                                                        IsReadOnly="True" ScrollViewer.CanContentScroll="True" Margin="0,0,0,0" 
+                                                        CanUserDeleteRows="false" CanUserAddRows="false">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Binding="{Binding}" Width="1*"></DataGridTextColumn>
+                                </DataGrid.Columns>
+                            </DataGrid>
+                        <Button Grid.Row="2" Content="Use Selected Databases" Width="150" Click="ProteinDBSelected_Click" HorizontalAlignment="Center" Style="{StaticResource ImportantButtonStyle}"></Button>
+                        </Grid>                    
+                    <GridSplitter Grid.Column="1" HorizontalAlignment="Center" VerticalAlignment="Stretch" Background="Silver" Width="3"/>
+                    <Grid Grid.Column="2" Background="{StaticResource DataGridBackgroundColor}">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="35"/>
+                            <RowDefinition Height="1*"/>
+                            <RowDefinition Height="25"/>
+                        </Grid.RowDefinitions>
+                        <StackPanel Orientation="Horizontal" Grid.Row="0" Background="{StaticResource DataGridBackgroundColor}">
+                            <Label x:Name="HistogramType" Content="Histogram Type:" Width="150" Style="{StaticResource SmallHeaderLabelStyle}"/>
+                            <ComboBox x:Name="HistogramComboBox" SelectionChanged="PlotSelected" Background="{StaticResource DataGridBackgroundColor}">
+                                <ComboBoxItem Content="Peptide Length">
+                                    <ComboBoxItem.ToolTip >
+                                        <TextBlock>
+                                                                    Histrogram representing the length distribution of all in silico digested peptides.
+                                        </TextBlock>
+                                    </ComboBoxItem.ToolTip>
+                                </ComboBoxItem>
+                                <ComboBoxItem Content="Protein Sequence Coverage">
+                                    <ComboBoxItem.ToolTip >
+                                        <TextBlock>
+                                                                    Histrogram representing the distribution of protein seqeunce coverage for all selected proteases.
+                                                                    <LineBreak/>
+                                                                    Protein sequence coverage is calculated by dividing the number of amino acids belonging to peptide sequences by the length of the peptide.
+                                        </TextBlock>
+                                    </ComboBoxItem.ToolTip>
+                                </ComboBoxItem>
+
+                                <ComboBoxItem Content="Protein Sequence Coverage (Unique Peptides Only)">
+                                    <ComboBoxItem.ToolTip >
+                                        <TextBlock>
+                                                                    Histrogram representing the distribution of protein seqeunce coverage values when only unique peptides are used. 
+                                                                    <LineBreak/>
+                                                                    Protein sequence coverage is calculated by dividing the number of amino acids belonging to unique peptide sequences by the length of the peptide.
+                                        </TextBlock>
+                                    </ComboBoxItem.ToolTip>
+                                </ComboBoxItem>
+                                <ComboBoxItem Content="Number of Unique Peptides per Protein">
+                                    <ComboBoxItem.ToolTip >
+                                        <TextBlock>
+                                                                    Histrogram representing the distribution of unique peptides across the proteins present in the selected database.
+                                        </TextBlock>
+                                    </ComboBoxItem.ToolTip>
+                                </ComboBoxItem>
+                                <ComboBoxItem Content="Predicted Peptide Hydrophobicity">
+                                    <ComboBoxItem.ToolTip >
+                                        <TextBlock>
+                                                                    Histrogram representing the distribution of predicted peptide hydrophobicity values.
+                                                                    <LineBreak/>
+                                                                    <LineBreak/>
+                                                                    The hydrophobicity prediction algorithm was adapted from the following publication:                                                                    
+                                                                    <LineBreak/>
+                                                                    O. V. Krokhin, R. Craig, V. Spicer, W. Ens, K. G. Standing, R. C. Beavis, J. A. Wilkin
+                                                                    <LineBreak/>
+                                                                    An improved model for prediction of retention times of tryptic peptides in ion-pair reverse-phase HPLC:
+                                                                    <LineBreak/>
+                                                                    its application to protein peptide mapping by off-line HPLC-MALDI MS
+                                                                    <LineBreak/>
+                                                                    Molecular and Cellular Proteomics 2004 Sep;3(9):908-19.
+                                        </TextBlock>
+                                    </ComboBoxItem.ToolTip>
+                                </ComboBoxItem>
+                                <ComboBoxItem Content="Predicted Peptide Electrophoretic Mobility">
+                                    <ComboBoxItem.ToolTip >
+                                        <TextBlock>
+                                                                    Histrogram representing the distribution of predicted peptide electrophoretic mobility values.
+                                                                    <LineBreak/>
+                                                                    <LineBreak/>
+                                                                    The electrophoretic mobility prediction algorithm was adapted from the following publication: 
+                                                                    <LineBreak/>                                                                    
+                                                                    A. Cifuentes, H. Poppe.
+                                                                    <LineBreak/>
+                                                                    Simulation and optimization of peptide separation by capillary electrophoresis
+                                                                    <LineBreak/>
+                                                                    Journal of Chromatography,A 1994; 680(1):321-40.
+                                        </TextBlock>
+                                    </ComboBoxItem.ToolTip>
+                                </ComboBoxItem>
+                            </ComboBox>
+                        </StackPanel>
+                        
+                            <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Visible" VerticalScrollBarVisibility="Visible">
+                                <oxy:PlotView  x:Name="plotViewStat" Model="{Binding Model}" FontSize="16" FontStretch="Expanded" BorderBrush="LightGray" Grid.ColumnSpan="2" Height="400" Width="900" ></oxy:PlotView>
+                            </ScrollViewer>
+                       
+                        <DockPanel Grid.Row="2" Margin="2" Background="{StaticResource DataGridBackgroundColor}">
+                            <Button Content="Export to PDF" Width="150" Click="CreatePlotPdf_Click" HorizontalAlignment="Left" Style="{StaticResource ImportantButtonStyle}"/>
+                            <Button Content="Export Data to CSV" Width="150" Click="CreateTable_Click" HorizontalAlignment="Right" Style="{StaticResource ImportantButtonStyle}"/>
+                        </DockPanel>
+
+                    </Grid>
+
+                </Grid>
+
+            </DockPanel>                           
+        </GroupBox>                   
+               
+    </Grid>
+</UserControl>

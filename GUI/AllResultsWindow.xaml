@@ -7,184 +7,61 @@
              mc:Ignorable="d" 
              xmlns:local="clr-namespace:ProteaseGuruGUI"           
              xmlns:Controls="clr-namespace:ProteaseGuruGUI"
-             d:DesignHeight="600" d:DesignWidth="800">
-    <Grid>
-        <TabControl>
-            <TabItem Header="All Results" Background="DarkGray" BorderThickness="10" BorderBrush="Black">
-                <ScrollViewer VerticalScrollBarVisibility="Auto">
-                    <Grid>
+             d:DesignHeight="600" d:DesignWidth="800">    
+    <Grid Style="{StaticResource PageGridStyle}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="50"/>
+            <RowDefinition Height="50"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
 
+        <!--Header label-->
+        <Label Content="Digestion Results Summary" Grid.Row="0" Style="{StaticResource HeaderLabelStyle}" />
 
-                    <GroupBox Grid.Column="2" Header="Results" Name="gbResults" ScrollViewer.VerticalScrollBarVisibility="Hidden">
-                        <TabControl>
-                            <TabItem Header="Summary" Background="DarkGray" BorderThickness="10" BorderBrush="Black">
-                                <Grid ScrollViewer.VerticalScrollBarVisibility="Visible">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="77*"/>
-                                        <ColumnDefinition Width="181*"/>
-                                        <ColumnDefinition Width="14*"/>
-                                        <ColumnDefinition Width="504*"/>
-                                    </Grid.ColumnDefinitions>
-                                    <!--summary by protease-->
-                                    <TreeView BorderThickness="0" x:Name="ProteaseSummaryTreeView" ItemsSource="{Binding}" DataContext="{x:Type local:ProteaseSummaryForTreeView}" Grid.ColumnSpan="4">
-                                        <TreeView.Resources>
-                                            <HierarchicalDataTemplate DataType="{x:Type local:ProteaseSummaryForTreeView}" ItemsSource="{Binding Summary}">
-                                                <StackPanel Orientation="Horizontal">
-                                                    <TextBlock Text="{Binding DisplayName}" />
-                                                </StackPanel>
-                                            </HierarchicalDataTemplate>
-                                            <HierarchicalDataTemplate DataType="{x:Type local:DigestionSummaryForTreeView}" ItemsSource="{Binding Summary}">
-                                                <StackPanel Orientation="Horizontal">
-                                                    <TextBlock Text="{Binding DisplayName}"/>
-                                                </StackPanel>
-                                            </HierarchicalDataTemplate>
-                                            <DataTemplate DataType="{x:Type local:SummaryForTreeView}">
-                                                <StackPanel Orientation="Horizontal">
-                                                    <TextBlock Text="{Binding DisplayName}" />
-                                                </StackPanel>
-                                            </DataTemplate>
-                                        </TreeView.Resources>
-                                        <TreeView.ItemContainerStyle>
-                                            <Style TargetType="TreeViewItem">
-                                                <Setter Property="IsExpanded" Value="{Binding Expanded}"/>
-                                            </Style>
-                                        </TreeView.ItemContainerStyle>
-                                    </TreeView>
-                                </Grid>
-                            </TabItem>
-                            <TabItem Header="Histograms" Background="DarkGray" BorderThickness="10" BorderBrush="Black" ScrollViewer.VerticalScrollBarVisibility="Disabled">
-                                <DockPanel>
-                                    <Grid>
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="2*"/>
-                                            <ColumnDefinition Width="Auto"/>
-                                            <ColumnDefinition Width="5*"/>
-                                            <ColumnDefinition Width="Auto"/>
-                                        </Grid.ColumnDefinitions>
+        <!--Detail text-->
+        <TextBlock Grid.Row="1" Style="{StaticResource TextBlockStyle}">
+           A brief summary of the in silico digestion results that are broken down by both database and protease.
+            <LineBreak/>
+            The number of shared and unique peptides are highlighted for each digestion.
+        </TextBlock>
+        <GroupBox Grid.Row="2" Grid.Column="2" Name="gbResults" ScrollViewer.VerticalScrollBarVisibility="Hidden" Background="{StaticResource DataGridBackgroundColor}">
 
-                                        <GroupBox Header="Databases" Name="gbDatabases" Grid.Column="0">
-                                            <Grid>
-                                                <Grid.RowDefinitions>
-                                                    <RowDefinition Height="1*"/>
-                                                    <!--<RowDefinition Height="30"/>-->
-                                                </Grid.RowDefinitions>
-                                                <DataGrid x:Name="dataGridProteinDBs" Grid.Row="0" AutoGenerateColumns="False" VerticalAlignment="Stretch" ItemsSource="{Binding}" 
-                                                        IsReadOnly="True" ScrollViewer.CanContentScroll="True" Margin="0,0,0,0" 
-                                                         SelectedCellsChanged="summaryProteinDB_SelectedCellsChanged" CanUserDeleteRows="false" CanUserAddRows="false">
-                                                    <DataGrid.Columns>
-                                                        <DataGridTextColumn Binding="{Binding}" Width="1*"></DataGridTextColumn>
-                                                    </DataGrid.Columns>
-                                                </DataGrid>
-                                            </Grid>
-                                        </GroupBox>
-                                        <GridSplitter Grid.Column="1" HorizontalAlignment="Center" VerticalAlignment="Stretch" Background="Silver" Width="3"/>
-                                        <Grid Grid.Column="2">
-                                            <Grid.RowDefinitions>
-                                                <RowDefinition Height="25"/>
-                                                <RowDefinition Height="1*"/>
-                                                <RowDefinition Height="25"/>
-                                            </Grid.RowDefinitions>
-                                            <StackPanel Orientation="Horizontal" Grid.Row="0">
-                                                <Label x:Name="HistogramType" Content="Histogram Type:" Width="150"/>
-                                                <ComboBox x:Name="HistogramComboBox" SelectionChanged="PlotSelected">
-                                                    <ComboBoxItem Content="Peptide Length">
-                                                            <ComboBoxItem.ToolTip >
-                                                                <TextBlock>
-                                                                    Histrogram representing the length distribution of all in silico digested peptides.
-                                                                </TextBlock>
-                                                            </ComboBoxItem.ToolTip>
-                                                    </ComboBoxItem>
-                                                    <ComboBoxItem Content="Protein Sequence Coverage">
-                                                            <ComboBoxItem.ToolTip >
-                                                                <TextBlock>
-                                                                    Histrogram representing the distribution of protein seqeunce coverage for all selected proteases.
-                                                                    <LineBreak/>
-                                                                    Protein sequence coverage is calculated by dividing the number of amino acids belonging to peptide sequences by the length of the peptide.
-                                                                </TextBlock>
-                                                            </ComboBoxItem.ToolTip>
-                                                    </ComboBoxItem>
+            <Grid ScrollViewer.VerticalScrollBarVisibility="Visible">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="77*"/>
+                    <ColumnDefinition Width="181*"/>
+                    <ColumnDefinition Width="14*"/>
+                    <ColumnDefinition Width="504*"/>
+                </Grid.ColumnDefinitions>
+                <!--summary by protease-->
+                <TreeView BorderThickness="0" x:Name="ProteaseSummaryTreeView" ItemsSource="{Binding}" DataContext="{x:Type local:ProteaseSummaryForTreeView}" Grid.ColumnSpan="4">
+                    <TreeView.Resources>
+                        <HierarchicalDataTemplate DataType="{x:Type local:ProteaseSummaryForTreeView}" ItemsSource="{Binding Summary}">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="{Binding DisplayName}" />
+                            </StackPanel>
+                        </HierarchicalDataTemplate>
+                        <HierarchicalDataTemplate DataType="{x:Type local:DigestionSummaryForTreeView}" ItemsSource="{Binding Summary}">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="{Binding DisplayName}"/>
+                            </StackPanel>
+                        </HierarchicalDataTemplate>
+                        <DataTemplate DataType="{x:Type local:SummaryForTreeView}">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="{Binding DisplayName}" />
+                            </StackPanel>
+                        </DataTemplate>
+                    </TreeView.Resources>
+                    <TreeView.ItemContainerStyle>
+                        <Style TargetType="TreeViewItem">
+                            <Setter Property="IsExpanded" Value="{Binding Expanded}"/>
+                        </Style>
+                    </TreeView.ItemContainerStyle>
+                </TreeView>
+            </Grid>
 
-                                                        <ComboBoxItem Content="Protein Sequence Coverage (Unique Peptides Only)">
-                                                            <ComboBoxItem.ToolTip >
-                                                                <TextBlock>
-                                                                    Histrogram representing the distribution of protein seqeunce coverage values when only unique peptides are used. 
-                                                                    <LineBreak/>
-                                                                    Protein sequence coverage is calculated by dividing the number of amino acids belonging to unique peptide sequences by the length of the peptide.
-                                                                </TextBlock>
-                                                            </ComboBoxItem.ToolTip>
-                                                        </ComboBoxItem>
-                                                        <ComboBoxItem Content="Number of Unique Peptides per Protein">
-                                                            <ComboBoxItem.ToolTip >
-                                                                <TextBlock>
-                                                                    Histrogram representing the distribution of unique peptides across the proteins present in the selected database.
-                                                                </TextBlock>
-                                                            </ComboBoxItem.ToolTip>
-                                                        </ComboBoxItem>
-                                                        <ComboBoxItem Content="Predicted Peptide Hydrophobicity">
-                                                            <ComboBoxItem.ToolTip >
-                                                                <TextBlock>
-                                                                    Histrogram representing the distribution of predicted peptide hydrophobicity values.
-                                                                    <LineBreak/>
-                                                                    <LineBreak/>
-                                                                    The hydrophobicity prediction algorithm was adapted from the following publication:                                                                    
-                                                                    <LineBreak/>
-                                                                    O. V. Krokhin, R. Craig, V. Spicer, W. Ens, K. G. Standing, R. C. Beavis, J. A. Wilkin
-                                                                    <LineBreak/>
-                                                                    An improved model for prediction of retention times of tryptic peptides in ion-pair reverse-phase HPLC:
-                                                                    <LineBreak/>
-                                                                    its application to protein peptide mapping by off-line HPLC-MALDI MS
-                                                                    <LineBreak/>
-                                                                    Molecular and Cellular Proteomics 2004 Sep;3(9):908-19.
-                                                                </TextBlock>
-                                                            </ComboBoxItem.ToolTip>
-                                                        </ComboBoxItem>
-                                                        <ComboBoxItem Content="Predicted Peptide Electrophoretic Mobility">
-                                                            <ComboBoxItem.ToolTip >
-                                                                <TextBlock>
-                                                                    Histrogram representing the distribution of predicted peptide electrophoretic mobility values.
-                                                                    <LineBreak/>
-                                                                    <LineBreak/>
-                                                                    The electrophoretic mobility prediction algorithm was adapted from the following publication: 
-                                                                    <LineBreak/>                                                                    
-                                                                    A. Cifuentes, H. Poppe.
-                                                                    <LineBreak/>
-                                                                    Simulation and optimization of peptide separation by capillary electrophoresis
-                                                                    <LineBreak/>
-                                                                    Journal of Chromatography,A 1994; 680(1):321-40.
-                                                                </TextBlock>
-                                                            </ComboBoxItem.ToolTip>
-                                                        </ComboBoxItem> 
-                                                </ComboBox>
-                                            </StackPanel>
-                                            <GroupBox Grid.Row="1" Header="Histogram">
-                                                <ScrollViewer HorizontalScrollBarVisibility="Visible" VerticalScrollBarVisibility="Visible">
-                                                    <oxy:PlotView  x:Name="plotViewStat" Model="{Binding Model}" FontSize="16" FontStretch="Expanded" BorderBrush="LightGray" Grid.ColumnSpan="2" Height="400" Width="900" ></oxy:PlotView>
-                                                </ScrollViewer>
+        </GroupBox>
 
-                                            </GroupBox>
-                                            <DockPanel Grid.Row="2" Margin="2">
-                                                <Button Content="Export to PDF" Width="150" Click="CreatePlotPdf_Click" HorizontalAlignment="Center"/>
-                                                <Button Content="Export Data to CSV" Width="150" Click="CreateTable_Click" HorizontalAlignment="Center"/>
-                                            </DockPanel>
-
-                                        </Grid>
-
-                                    </Grid>
-
-                                </DockPanel>
-
-                            </TabItem>
-                        </TabControl>
-                    </GroupBox>
-
-                    </Grid>
-                </ScrollViewer>
-            </TabItem>
-
-            <TabItem Header="Search By Protein" Background="DarkGray" BorderThickness="10" BorderBrush="Black" Name="ProteinCovMap">
-                <Controls:ProteinResultsWindow/>
-            </TabItem>
-
-        </TabControl>
     </Grid>
+            
 </UserControl>

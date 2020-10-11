@@ -6,17 +6,34 @@
              mc:Ignorable="d" 
              xmlns:local="clr-namespace:ProteaseGuruGUI"    
              d:DesignHeight="600" d:DesignWidth="800">
-    <Grid>
-        <Grid Background="White">
+    <Grid Style="{StaticResource PageGridStyle}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="50"/>
+            <RowDefinition Height="30"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!--Header label-->
+        <Label Content="Protein Search" Grid.Row="0" Style="{StaticResource HeaderLabelStyle}" />
+
+        <!--Detail text-->
+        <TextBlock Grid.Row="1" Style="{StaticResource TextBlockStyle}">
+            Search for a specific protein accessions to view its digestion results both numerically and as a protein sequence coverage map.            
+        </TextBlock>
+
+        <Grid Grid.Row ="2" Style="{StaticResource InternalGridStyle}">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="1.5*"/>
+                <ColumnDefinition Width="5"/>
+                <ColumnDefinition Width="1.13*"/>
                 <ColumnDefinition Width="5"/>
                 <ColumnDefinition Width="4*"/>
             </Grid.ColumnDefinitions>
 
-            <Grid Grid.Column="0">
+            <Grid Grid.Column="0" Style="{StaticResource InternalGridStyle}">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="35"/>
                     <RowDefinition Height="2*"/>
                     <RowDefinition Height="25"/>
                 </Grid.RowDefinitions>
@@ -24,29 +41,30 @@
                     <ColumnDefinition Width="*"></ColumnDefinition>
                 </Grid.ColumnDefinitions>
 
-                <DockPanel Grid.Row="0">
-                    <Label Height="28" DockPanel.Dock="Left">Search</Label>
+                <DockPanel Grid.Row="0" Background="{StaticResource DataGridBackgroundColor}">
+                    <Label Height="30" DockPanel.Dock="Left">Search</Label>
                     <TextBox Name="SearchTextBox" TextChanged="Search_TextChanged" DockPanel.Dock="Right"></TextBox>
                 </DockPanel>
+                <Label Content="Proteins" Grid.Row="1" Style="{StaticResource SmallHeaderLabelStyle}" />
 
-                <GroupBox Header="Proteins" Name="gbProteins" Grid.Row="1">
-                    <Grid>
-                        <Grid.RowDefinitions>
+                <Grid Grid.Row="2" Style="{StaticResource InternalGridStyle}">
+                        <Grid.RowDefinitions>                            
                             <RowDefinition Height=".9*"/>
                         </Grid.RowDefinitions>
-
-                        <TreeView BorderThickness="0" x:Name="dataGridProteins" ItemsSource="{Binding}" DataContext="{x:Type local:ProteinForTreeView}"
+                        <!--Header label-->
+                        
+                        <TreeView BorderThickness="1" x:Name="dataGridProteins" ItemsSource="{Binding}" DataContext="{x:Type local:ProteinForTreeView}"
                                 SelectedItemChanged="proteins_SelectedCellsChanged" VirtualizingStackPanel.IsVirtualizing="True" 
                                   VirtualizingStackPanel.VirtualizationMode="Recycling">
                             <TreeView.Resources>
                                 <HierarchicalDataTemplate DataType="{x:Type local:ProteinForTreeView}" ItemsSource="{Binding Summary}">
                                     <StackPanel Orientation="Horizontal">
-                                        <TextBlock Text="{Binding DisplayName}" />
+                                        <TextBlock Text="{Binding DisplayName}" FontSize="15"/>
                                     </StackPanel>
                                 </HierarchicalDataTemplate>
                                 <HierarchicalDataTemplate DataType="{x:Type local:SummaryForTreeView}">
                                     <StackPanel Orientation="Horizontal">
-                                        <TextBlock Text="{Binding DisplayName}" />
+                                        <TextBlock Text="{Binding DisplayName}" FontSize="12"/>
                                     </StackPanel>
                                 </HierarchicalDataTemplate>
                             </TreeView.Resources>
@@ -56,76 +74,64 @@
                                 </Style>
                             </TreeView.ItemContainerStyle>
                         </TreeView>
-                    </Grid>
-                </GroupBox>
-                <Button Content="Load Proteins" Grid.Row="2" Width="100" Click="LoadProteins_Click" Name="ProteinLoadButton" />
+                    </Grid>                
+                <Button Content="Load Proteins" Grid.Row="3" Width="100" Click="LoadProteins_Click" Name="ProteinLoadButton" Style="{StaticResource ImportantButtonStyle}" />
             </Grid>
 
             <GridSplitter Grid.Column="1" 
                           HorizontalAlignment="Center"
-                          Background="Silver"
+                          Background="{StaticResource BackgroundColor}"
+                          Width="3"/>
+          
+                <Grid Grid.Column="2" Style="{StaticResource InternalGridStyle}">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="35"></RowDefinition>
+                        <RowDefinition Height = "*"></RowDefinition>
+                        <RowDefinition Height = "30"></RowDefinition>
+                        <RowDefinition Height="1"></RowDefinition>
+                        <RowDefinition Height="30"></RowDefinition>
+                    </Grid.RowDefinitions>
+                <!--Header label-->
+                <Label Content="Protease Selections" Grid.Row="0" Style="{StaticResource SmallHeaderLabelStyle}"  HorizontalContentAlignment="Center"/>
+                <ScrollViewer VerticalScrollBarVisibility="Visible" HorizontalScrollBarVisibility="Auto" Grid.Row="1" Grid.Column="1">
+                        <ListBox Name ="ProteaseSelectedForUse" SelectionMode="Multiple" Loaded="proteaseCoverageMaps_loaded" >
+                        </ListBox>
+                    </ScrollViewer>
+                <Button x:Name="viewSelectedProteases" Grid.Row ="2" Content="View Selected Proteases" Click="SelectProteases_Click" Width ="170" Style="{StaticResource ImportantButtonStyle}" />
+                    <Button x:Name="clearProteasesButton" Grid.Row="4" Content="Clear Selected Proteases" Click="ClearSelectedProteases_Click" Width="170" Style="{StaticResource ImportantButtonStyle}" />
+                </Grid>            
+
+            <GridSplitter Grid.Column="3" 
+                          HorizontalAlignment="Center"
+                          Background="{StaticResource BackgroundColor}"
                           Width="3"/>
 
-            <GroupBox Grid.Column="2" Header="Sequence Coverage Maps" Name="gbPSM">
-                <Grid Name="ResultsGrid" SizeChanged="resultsSizeChanged">
+            
+                <Grid Grid.Column="4" Name="ResultsGrid" SizeChanged="resultsSizeChanged" Style="{StaticResource InternalGridStyle}">
                     <Grid.RowDefinitions>
-                        <RowDefinition Height= "1"></RowDefinition>
-                        <RowDefinition Height = "50"></RowDefinition>                        
-                        <RowDefinition Height = "*"></RowDefinition>
-                        <RowDefinition Height = "20"></RowDefinition>
+                    <RowDefinition Height = "35"></RowDefinition>
+                    <RowDefinition Height = "*"></RowDefinition>
+                    <RowDefinition Height="5"></RowDefinition>
+                    <RowDefinition Height="65"></RowDefinition>
+                    <RowDefinition Height="5"></RowDefinition>
+                    <RowDefinition Height = "30"></RowDefinition>
                     </Grid.RowDefinitions>
-                    
-                    <Grid Grid.Row="1">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="50"></ColumnDefinition>
-                            <ColumnDefinition Width="300"></ColumnDefinition>
-                            <ColumnDefinition Width="10"></ColumnDefinition>
-                            <ColumnDefinition Width="150"></ColumnDefinition>                                             
-                        </Grid.ColumnDefinitions>
-                        <ScrollViewer VerticalScrollBarVisibility="Visible" HorizontalScrollBarVisibility="Auto" Grid.Row="0" Grid.Column="1">
-                            <ListBox Name ="ProteaseSelectedForUse" SelectionMode="Multiple" Loaded="proteaseCoverageMaps_loaded" >                                
-                            </ListBox>
 
-                        </ScrollViewer>
-                        <StackPanel Orientation="Vertical" VerticalAlignment="Center" Grid.Row="1" Grid.Column="3">
-                            <Button x:Name="viewSelectedProteases" Content="View Selected Proteases" Click="SelectProteases_Click" />
-                            <Button x:Name="clearProteasesButton" Content="Clear Selected Proteases" Click="ClearSelectedProteases_Click" />
-                            
-                        </StackPanel>
-                    </Grid>
-                    <Canvas x:Name="mapAndLegend"  Width="800" Grid.Row="2">
-                        <Grid>
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="*"></RowDefinition>
-                                <RowDefinition Height="50"></RowDefinition>
-                            </Grid.RowDefinitions>
-                                <ScrollViewer Grid.Row="0" Name="mapViewer" HorizontalAlignment="Center" VerticalAlignment="Center" 
-                                  CanContentScroll="True" VerticalScrollBarVisibility="Visible" HorizontalScrollBarVisibility="Visible" Width="550" Height="300">
-                                    <Canvas x:Name="map" Width="800" Height="300"></Canvas>
-                                </ScrollViewer>
-                                <ScrollViewer Grid.Row="1" Name="legendViewer" HorizontalAlignment="Center" VerticalAlignment="Center" 
-                                  CanContentScroll="True" VerticalScrollBarVisibility="Visible">
-                                     <Canvas x:Name="legend" Grid.Row="3" Width="550" Height="300">
-                                        <Grid HorizontalAlignment="Center" Name="legendGrid"/>
-                                     </Canvas>
-                                </ScrollViewer>
-                            
-                        </Grid>
-                            
+                <!--Header label-->
+                <Label Content="Protein Sequence Coverage Map" Grid.Row="0" Style="{StaticResource SmallHeaderLabelStyle}" />
+                <ScrollViewer Grid.Row="1" Name="mapViewer" HorizontalAlignment="Center" VerticalAlignment="Center" 
+                                  CanContentScroll="True" VerticalScrollBarVisibility="Visible" HorizontalScrollBarVisibility="Visible">
+                    <Canvas x:Name="map" Width="800" Background="White"></Canvas>
+                </ScrollViewer>
+                <ScrollViewer Grid.Row="3" Name="legendViewer" HorizontalAlignment="Center" VerticalAlignment="Center" 
+                                  CanContentScroll="True" Width="605" VerticalScrollBarVisibility="Visible">
+                    <Canvas x:Name="legend" Width ="700" Height="300" Background="White">
+                        <Grid HorizontalAlignment="Center" Name="legendGrid" Background="White"/>
                     </Canvas>
-                    <Button x:Name="exportPngButton" Content="Export Coverage Map" Click="exportCoverageMap" Grid.Row="3" Width="150"/>
-
-                    <!--legend for sequence coverage map-->
-                    <!--<ScrollViewer Grid.Row="3" Name="legendViewer" HorizontalAlignment="Center" VerticalAlignment="Center" 
-                                  CanContentScroll="True" VerticalScrollBarVisibility="Visible">
-                        <Canvas x:Name="legend" Grid.Row="3" Width="550" Height="300">
-                            <Grid HorizontalAlignment="Center" Name="legendGrid"/>
-                        </Canvas>
-                    </ScrollViewer>-->
+                </ScrollViewer>                
+                <Button x:Name="exportPngButton" Content="Export Coverage Map" Click="exportCoverageMap" Grid.Row="5" Width="150" Style="{StaticResource ImportantButtonStyle}"/>                   
                    
                 </Grid>
-
-            </GroupBox>
         </Grid>
     </Grid>
 </UserControl>

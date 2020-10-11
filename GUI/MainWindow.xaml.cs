@@ -23,6 +23,7 @@ using static Tasks.ProteaseGuruTask;
 using MzLibUtil;
 using ProteaseGuruGUI;
 using System.Diagnostics;
+using UsefulProteomicsDatabases;
 
 namespace GUI
 {
@@ -32,25 +33,34 @@ namespace GUI
     public partial class MainWindow : Window
     {
         private readonly ObservableCollection<ProteinDbForDataGrid> ProteinDbObservableCollection = new ObservableCollection<ProteinDbForDataGrid>();
+        private readonly ObservableCollection<ProteinDbForDataGrid> ReloadProteinDbObservableCollection = new ObservableCollection<ProteinDbForDataGrid>();
+        private readonly ObservableCollection<ResultsForDataGrid> ResultsObservableCollection = new ObservableCollection<ResultsForDataGrid>();
+        private readonly ObservableCollection<ParametersForDataGrid> ParametersObservableCollection = new ObservableCollection<ParametersForDataGrid>();
         private readonly ObservableCollection<PreRunTask> StaticTasksObservableCollection = new ObservableCollection<PreRunTask>();
         private ObservableCollection<InRunTask> DynamicTasksObservableCollection;
+        private readonly ObservableCollection<RunSummaryForTreeView> SummaryForTreeViewObservableCollection;
         private Parameters UserParameters;
         public MainWindow()
         {
             InitializeComponent();
             UserParameters = new Parameters();
-            PopulateProteaseList();
+            PopulateProteaseList();            
             dataGridProteinDatabases.DataContext = ProteinDbObservableCollection;
+            dataGridResults.DataContext = ResultsObservableCollection;
+            dataGridParameters.DataContext = ParametersObservableCollection;
+            dataGridReloadDb.DataContext = ReloadProteinDbObservableCollection;
             EverythingRunnerEngine.NewDbsHandler += AddNewDB;
             EverythingRunnerEngine.WarnHandler += GuiWarnHandler;
+            SummaryForTreeViewObservableCollection = new ObservableCollection<RunSummaryForTreeView>();
             ResetDigestionTask.IsEnabled = false;
         }
 
-        private void AddProteinDatabase_Click(object sender, MouseButtonEventArgs e)
+
+        private void AddResults_Click(object sender, MouseButtonEventArgs e)
         {
             Microsoft.Win32.OpenFileDialog openPicker = new Microsoft.Win32.OpenFileDialog()
             {
-                Filter = "Database Files|*.xml;*.xml.gz;*.fasta;*.fa",
+                Filter = "Results Files|*.tsv",
                 FilterIndex = 1,
                 RestoreDirectory = true,
                 Multiselect = true
@@ -59,41 +69,77 @@ namespace GUI
             {
                 foreach (var filepath in openPicker.FileNames.OrderBy(p => p))
                 {
-                    AddAFile(filepath);
+                    ReloadAFile(filepath);
                 }
             }
 
-            dataGridProteinDatabases.Items.Refresh();
+            dataGridResults.Items.Refresh();
+
         }
 
-        private void ClearXML_Click(object sender, MouseButtonEventArgs e)
+        private void AddResults_Click(object sender, RoutedEventArgs e)
         {
-            ProteinDbObservableCollection.Clear();
-            dataGridProteinDatabases.Items.Clear();
+            Microsoft.Win32.OpenFileDialog openPicker = new Microsoft.Win32.OpenFileDialog()
+            {
+                Filter = "Results Files|*.tsv",
+                FilterIndex = 1,
+                RestoreDirectory = true,
+                Multiselect = true
+            };
+            if (openPicker.ShowDialog() == true)
+            {
+                foreach (var filepath in openPicker.FileNames.OrderBy(p => p))
+                {
+                    ReloadAFile(filepath);
+                }
+            }
+
+            dataGridResults.Items.Refresh();
+
         }
 
-        private void Row_DoubleClick(object sender, MouseButtonEventArgs e)
+        private void AddParameters_Click(object sender, MouseButtonEventArgs e)
         {
-            var ye = sender as DataGridCell;
+            Microsoft.Win32.OpenFileDialog openPicker = new Microsoft.Win32.OpenFileDialog()
+            {
+                Filter = "Results Files|*.txt",
+                FilterIndex = 1,
+                RestoreDirectory = true,
+                Multiselect = true
+            };
+            if (openPicker.ShowDialog() == true)
+            {
+                foreach (var filepath in openPicker.FileNames.OrderBy(p => p))
+                {
+                    ReloadAFile(filepath);
+                }
+            }
 
-            //// prevent opening protein DB or spectra files if a run is in progress
-            //if ((ye.DataContext is ProteinDbForDataGrid || ye.DataContext is RawDataForDataGrid) && !LoadTaskButton.IsEnabled)
-            //{
-            //    return;
-            //}
+            dataGridParameters.Items.Refresh();
 
-            //// open the file with the default process for this file format
-            //if (ye.Content is TextBlock hm && hm != null && !string.IsNullOrEmpty(hm.Text))
-            //{
-            //    try
-            //    {
-            //        GlobalVariables.StartProcess(hm.Text);
-            //    }
-            //    catch (Exception)
-            //    {
-            //    }
-            //}
         }
+
+        private void AddParameters_Click(object sender, RoutedEventArgs e)
+        {
+            Microsoft.Win32.OpenFileDialog openPicker = new Microsoft.Win32.OpenFileDialog()
+            {
+                Filter = "Results Files|*.txt",
+                FilterIndex = 1,
+                RestoreDirectory = true,
+                Multiselect = true
+            };
+            if (openPicker.ShowDialog() == true)
+            {
+                foreach (var filepath in openPicker.FileNames.OrderBy(p => p))
+                {
+                    ReloadAFile(filepath);
+                }
+            }
+
+            dataGridParameters.Items.Refresh();
+
+        }
+
         private void AddAFile(string draggedFilePath)
         {
             // this line is NOT used because .xml.gz (extensions with two dots) mess up with Path.GetExtension
@@ -115,7 +161,7 @@ namespace GUI
                     ProteinDbForDataGrid uu = new ProteinDbForDataGrid(draggedFilePath);
                     if (!DatabaseExists(ProteinDbObservableCollection, uu))
                     {
-                        ProteinDbObservableCollection.Add(uu);
+                        ProteinDbObservableCollection.Add(uu);                        
                         if (theExtension.Equals(".xml"))
                         {
                             try
@@ -132,12 +178,72 @@ namespace GUI
                             }
                         }
                     }
+                    break;                
+                default:
+                    GuiWarnHandler(null, new StringEventArgs("Unrecognized file type: " + theExtension, null));
+                    break;
+            }
+        }
+
+        private void ReloadAFile(string draggedFilePath)
+        {
+            // this line is NOT used because .xml.gz (extensions with two dots) mess up with Path.GetExtension
+            //var theExtension = Path.GetExtension(draggedFilePath).ToLowerInvariant();
+
+            // we need to get the filename before parsing out the extension because if we assume that everything after the dot
+            // is the extension and there are dots in the file path (i.e. in a folder name), this will mess up
+            var filename = System.IO.Path.GetFileName(draggedFilePath);
+            var theExtension = System.IO.Path.GetExtension(filename).ToLowerInvariant();
+            bool compressed = theExtension.EndsWith("gz"); // allows for .bgz and .tgz, too which are used on occasion
+            theExtension = compressed ? System.IO.Path.GetExtension(System.IO.Path.GetFileNameWithoutExtension(filename)).ToLowerInvariant() : theExtension;
+
+            switch (theExtension)
+            {
+
+                case ".xml":
+                case ".fasta":
+                case ".fa":
+                    ProteinDbForDataGrid uu = new ProteinDbForDataGrid(draggedFilePath);
+                    if (!DatabaseExists(ReloadProteinDbObservableCollection, uu))
+                    {
+                        ReloadProteinDbObservableCollection.Add(uu);
+                        if (theExtension.Equals(".xml"))
+                        {
+                            try
+                            {
+                                GlobalVariables.AddMods(UsefulProteomicsDatabases.ProteinDbLoader.GetPtmListFromProteinXml(draggedFilePath).OfType<Modification>(), true);
+
+                                PrintErrorsReadingMods();
+                            }
+                            catch (Exception ee)
+                            {
+                                MessageBox.Show(ee.ToString());
+                                GuiWarnHandler(null, new StringEventArgs("Cannot parse modification info from: " + draggedFilePath, null));
+                                ReloadProteinDbObservableCollection.Remove(uu);
+                            }
+                        }
+                    }
+                    break;
+                case ".tsv":
+                    ResultsForDataGrid file = new ResultsForDataGrid(draggedFilePath);
+                    if (!ResultsFileExists(ResultsObservableCollection, file))
+                    {
+                        ResultsObservableCollection.Add(file);
+                    }
+                    break;
+                case ".txt":
+                    ParametersForDataGrid parameters = new ParametersForDataGrid(draggedFilePath);
+                    if (!ParametersFileExists(ParametersObservableCollection, parameters))
+                    {
+                        ParametersObservableCollection.Add(parameters);
+                    }
                     break;
                 default:
                     GuiWarnHandler(null, new StringEventArgs("Unrecognized file type: " + theExtension, null));
                     break;
             }
         }
+
         private bool DatabaseExists(ObservableCollection<ProteinDbForDataGrid> pDOC, ProteinDbForDataGrid uuu)
         {
             foreach (ProteinDbForDataGrid pdoc in pDOC)
@@ -147,6 +253,27 @@ namespace GUI
 
             return false;
         }
+
+        private bool ResultsFileExists(ObservableCollection<ResultsForDataGrid> ROC, ResultsForDataGrid uuu)
+        {
+            foreach (var roc in ROC)
+            {
+                if (roc.FilePath == uuu.FilePath) { return true; }
+            }
+
+            return false;
+        }
+
+        private bool ParametersFileExists(ObservableCollection<ParametersForDataGrid> POC, ParametersForDataGrid uuu)
+        {
+            foreach (var poc in POC)
+            {
+                if (poc.FilePath == uuu.FilePath) { return true; }
+            }
+
+            return false;
+        }
+
         private void PrintErrorsReadingMods()
         {
             // print any error messages reading the mods to the notifications area
@@ -199,9 +326,11 @@ namespace GUI
                 foreach (var uu in e.NewDatabases)
                 {
                     ProteinDbObservableCollection.Add(new ProteinDbForDataGrid(uu));
+                    ReloadProteinDbObservableCollection.Add(new ProteinDbForDataGrid(uu));
                 }
 
                 dataGridProteinDatabases.Items.Refresh();
+                dataGridReloadDb.Items.Refresh();
             }
         }
 
@@ -262,46 +391,6 @@ namespace GUI
             }
         }
 
-        //private void RunAllTasks_Click(object sender, RoutedEventArgs e)
-        //{
-        //    GlobalVariables.StopLoops = false;
-
-        //    // check for valid tasks/spectra files/protein databases
-
-        //    if (!ProteinDbObservableCollection.Any())
-        //    {
-        //        GuiWarnHandler(null, new StringEventArgs("You need to add at least one protein database!", null));
-        //        return;
-        //    }
-
-        //    DynamicTasksObservableCollection = new ObservableCollection<InRunTask>();
-
-        //    for (int i = 0; i < StaticTasksObservableCollection.Count; i++)
-        //    {
-        //        DynamicTasksObservableCollection.Add(new InRunTask("Task" + (i + 1) + "-" + StaticTasksObservableCollection[i].proteaseGuruTask.TaskType.ToString(), StaticTasksObservableCollection[i].proteaseGuruTask));
-        //    }
-
-
-        //    // output folder
-        //    if (string.IsNullOrWhiteSpace(OutputFolderTextBox.Text))
-        //    {
-        //        var oathOfDatabaseFile = System.IO.Path.GetDirectoryName(ProteinDbObservableCollection.First().FilePath);
-        //        OutputFolderTextBox.Text = System.IO.Path.Combine(oathOfDatabaseFile, @"$DATETIME");
-        //    }
-
-        //    var startTimeForAllFilenames = DateTime.Now.ToString("yyyy-MM-dd-HH-mm-ss", CultureInfo.InvariantCulture);
-        //    string outputFolder = OutputFolderTextBox.Text.Replace("$DATETIME", startTimeForAllFilenames);
-        //    OutputFolderTextBox.Text = outputFolder;
-
-        //    // everything is OK to run
-        //    var taskList = DynamicTasksObservableCollection.Select(b => (b.DisplayName, b.Task)).ToList();
-        //    var databaseList = ProteinDbObservableCollection.Select(b => new DbForDigestion(b.FilePath)).ToList();
-        //    EverythingRunnerEngine a = new EverythingRunnerEngine(taskList, databaseList, outputFolder);
-
-        //    var t = new Task(a.Run);
-        //    t.ContinueWith(EverythingRunnerExceptionHandler, TaskContinuationOptions.OnlyOnFaulted);
-        //    t.Start();
-        //}
         private void EverythingRunnerExceptionHandler(Task obj)
         {
             if (!Dispatcher.CheckAccess())
@@ -379,6 +468,8 @@ namespace GUI
             AddTaskToCollection(task);
             OutputFolderTextBox.IsEnabled = true;
 
+            GenerateRunSummary();
+
             // output folder
             if (string.IsNullOrWhiteSpace(OutputFolderTextBox.Text))
             {
@@ -390,18 +481,40 @@ namespace GUI
             string outputFolder = OutputFolderTextBox.Text.Replace("$DATETIME", startTimeForAllFilenames);
             OutputFolderTextBox.Text = outputFolder;
             UserParameters.OutputFolder = outputFolder;
+
+            
         }
         
 
         private void AddTaskToCollection(ProteaseGuruTask task)
         {
             PreRunTask pre = new PreRunTask(task);
-            StaticTasksObservableCollection.Add(pre);
+
+            StaticTasksObservableCollection.Add(pre);            
         }
 
         private void ClearXML_Click(object sender, RoutedEventArgs e)
         {
             ProteinDbObservableCollection.Clear();
+            dataGridProteinDatabases.Items.Clear();
+        }
+
+        private void ClearReloadedXML_Click(object sender, RoutedEventArgs e)
+        {
+            ReloadProteinDbObservableCollection.Clear();
+            dataGridReloadDb.Items.Clear();
+        }
+
+        private void ClearResults_Click(object sender, RoutedEventArgs e)
+        {
+            ResultsObservableCollection.Clear();
+            dataGridResults.Items.Clear();
+        }
+
+        private void ClearParameters_Click(object sender, RoutedEventArgs e)
+        {
+            ParametersObservableCollection.Clear();
+            dataGridParameters.Items.Clear();
         }
 
         private void AddProteinDatabase_Click(object sender, RoutedEventArgs e)
@@ -421,7 +534,27 @@ namespace GUI
                 }
             }
 
-            dataGridProteinDatabases.Items.Refresh();
+            dataGridProteinDatabases.Items.Refresh();            
+        }
+
+        private void ReloadProteinDatabase_Click(object sender, RoutedEventArgs e)
+        {
+            Microsoft.Win32.OpenFileDialog openPicker = new Microsoft.Win32.OpenFileDialog()
+            {
+                Filter = "Database Files|*.xml;*.xml.gz;*.fasta;*.fa",
+                FilterIndex = 1,
+                RestoreDirectory = true,
+                Multiselect = true
+            };
+            if (openPicker.ShowDialog() == true)
+            {
+                foreach (var filepath in openPicker.FileNames.OrderBy(p => p))
+                {
+                    ReloadAFile(filepath);
+                }
+            }
+
+            dataGridReloadDb.Items.Refresh();
         }
 
         private void Window_Drop(object sender, DragEventArgs e)
@@ -445,6 +578,15 @@ namespace GUI
                     }                    
                     dataGridProteinDatabases.CommitEdit(DataGridEditingUnit.Row, true);                    
                     dataGridProteinDatabases.Items.Refresh();
+
+                    dataGridReloadDb.CommitEdit(DataGridEditingUnit.Row, true);
+                    dataGridReloadDb.Items.Refresh();                    
+
+                    dataGridResults.CommitEdit(DataGridEditingUnit.Row, true);
+                    dataGridResults.Items.Refresh();
+
+                    dataGridParameters.CommitEdit(DataGridEditingUnit.Row, true);
+                    dataGridParameters.Items.Refresh();
                 }
             }            
         }
@@ -489,6 +631,7 @@ namespace GUI
                 ProteaseSelectedForUse.Items.Add(protease);
             }
         }
+        
 
         private void ClearSelectedProteases_Click(object sender, RoutedEventArgs e)
         {
@@ -547,8 +690,197 @@ namespace GUI
             // when done with tasks
             StaticTasksObservableCollection.Clear();
             AllResultsTab.Content = new AllResultsWindow(a.PeptideByFile, UserParameters); // update results display
+            ProteinCovMap.Content = new ProteinResultsWindow(a.PeptideByFile, UserParameters);
+            AllHistogramsTab.Content = new HistogramWindow(a.PeptideByFile, UserParameters);
             AllResultsTab.IsSelected = true; // switch to results tab
             RunTaskButton.IsEnabled = true; // allow user to run new task
+        }
+
+        private void LoadResults_Click(object sender, RoutedEventArgs e)
+        {
+            Dictionary<string, Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>> PeptidesByFileSetUp = new Dictionary<string, Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>>();
+            Dictionary<string, Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>> PeptidesByFile = new Dictionary<string, Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>>();
+
+            Parameters loadedParams = new Parameters();
+
+            string proteaseDirectory = System.IO.Path.Combine(GlobalVariables.DataDir, @"ProteolyticDigestion");
+            string proteaseFilePath = System.IO.Path.Combine(proteaseDirectory, @"proteases.tsv");
+            var myLines = File.ReadAllLines(proteaseFilePath);
+            myLines = myLines.Skip(1).ToArray();
+            Dictionary<string, Protease> dict = new Dictionary<string, Protease>();
+            foreach (string line in myLines)
+            {
+                if (line.Trim() != string.Empty) // skip empty lines
+                {
+                    string[] fields = line.Split('\t');
+                    List<DigestionMotif> motifList = DigestionMotif.ParseDigestionMotifsFromString(fields[1]);
+
+                    string name = fields[0];
+                    var cleavageSpecificity = ((CleavageSpecificity)Enum.Parse(typeof(CleavageSpecificity), fields[4], true));
+                    string psiMsAccessionNumber = fields[5];
+                    string psiMsName = fields[6];
+                    var protease = new Protease(name, cleavageSpecificity, psiMsAccessionNumber, psiMsName, motifList);
+                    dict.Add(protease.Name, protease);
+                }
+            }
+
+            foreach (var parameterFile in ParametersObservableCollection)
+            {
+                var fileData = File.ReadAllLines(parameterFile.FilePath);
+                List<Protease> proteases = new List<Protease>();
+                int missedCleavages = 0;
+                int minPeptideLength = 0;
+                int maxPeptideLength = 0;
+                bool treatModPeps = false;
+                foreach (var parameter in fileData)
+                {
+                    var info = parameter.Split(": ");
+                    if (info[0] == "Proteases")
+                    {
+                        var proteaseNames = info[1].Split(",");
+                        foreach (var protease in proteaseNames)
+                        {
+                            if (dict.ContainsKey(protease))
+                            {
+                                proteases.Add(dict[protease]);
+                            }
+                            
+                        }
+                    }
+                    if (info[0] == "Max Missed Cleavages")
+                    {
+                        missedCleavages = Convert.ToInt32(info[1]);
+                    }
+                    if (info[0] == "Min Peptide Length")
+                    {
+                        minPeptideLength = Convert.ToInt32(info[1]);
+                    }
+                    if (info[0] == "Max Peptide Length")
+                    {
+                        maxPeptideLength = Convert.ToInt32(info[1]);
+                    }
+                    if (info[0] == "Treat modified peptides as different peptides")
+                    {
+                        if (info[1] == "TRUE")
+                        {
+                            treatModPeps = true;
+                        }
+                    }
+                }
+
+                loadedParams.ProteasesForDigestion = proteases;
+                loadedParams.NumberOfMissedCleavagesAllowed = missedCleavages;
+                loadedParams.MinPeptideLengthAllowed = minPeptideLength;
+                loadedParams.MaxPeptideLengthAllowed = maxPeptideLength;
+                loadedParams.TreatModifiedPeptidesAsDifferent = treatModPeps;
+            }
+
+            List<InSilicoPep> allpeptides = new List<InSilicoPep>();
+            foreach (var resultFile in ResultsObservableCollection)
+            {
+                var fileData = File.ReadAllLines(resultFile.FilePath);
+                int peptideCount = 0;
+                foreach (var peptide in fileData)
+                {
+                    if (peptideCount != 0)
+                    {
+                        var info = peptide.Split('\t');
+                        string database = info[0];
+                        string protease = info[1];
+                        string baseSeq = info[2];
+                        string fullSeq = info[3];
+                        char previousAA = Convert.ToChar(info[4]);
+                        char nextAA = Convert.ToChar(info[5]);
+                        int start = Convert.ToInt32(info[6]);
+                        int end = Convert.ToInt32(info[7]);
+                        int length = Convert.ToInt32(info[8]);
+                        double molecularWeight = Convert.ToDouble(info[9]);
+                        string protein = info[10];
+                        bool unique = false;
+                        if (info[11] == "True")
+                        {
+                            unique = true;
+                        }
+                        bool uniqueAll = false;
+                        if (info[12] == "True")
+                        {
+                            uniqueAll = true;
+                        }
+                        double hydrophobicity = Convert.ToDouble(info[13]);
+                        double electrophoreticMobility = Convert.ToDouble(info[14]);
+                        InSilicoPep pep = new InSilicoPep(baseSeq, fullSeq, previousAA, nextAA, unique, hydrophobicity, electrophoreticMobility, length,
+                            molecularWeight, database, protein, start, end, protease);
+                        pep.UniqueAllDbs = uniqueAll;
+                        allpeptides.Add(pep);
+                    }
+                    peptideCount++;
+                                   
+
+                }
+
+                foreach (var db in ReloadProteinDbObservableCollection)
+                {
+                    var dbName = db.FileName;
+                    var proteinsFromDb = LoadProteins(new DbForDigestion(db.FilePath));
+                    var proteases = loadedParams.ProteasesForDigestion;
+
+                    Dictionary<Protein, List<InSilicoPep>> proteinDic = new Dictionary<Protein, List<InSilicoPep>>();
+
+                    foreach (var protein in proteinsFromDb)
+                    {
+                        if (!proteinDic.ContainsKey(protein))
+                        {
+                            proteinDic.Add(protein, new List<InSilicoPep>() { });
+                        }                        
+                    }
+                    Dictionary<string, Dictionary<Protein, List<InSilicoPep>>> proteaseDic = new Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>();
+                    foreach (var protease in proteases)
+                    {
+                        if (!proteaseDic.ContainsKey(protease.Name))
+                        {
+                            proteaseDic.Add(protease.Name, proteinDic);
+                        }
+                    }
+                    if (!PeptidesByFileSetUp.ContainsKey(dbName))
+                    {
+                        PeptidesByFileSetUp.Add(dbName, proteaseDic);
+                    }                    
+                }
+
+                foreach (var entry in PeptidesByFileSetUp)
+                {
+                    var pepByDb = allpeptides.Where(p => p.Database == entry.Key).ToList();
+                    Dictionary<string, Dictionary<Protein, List<InSilicoPep>>> proteaseComplete = new Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>();
+                    foreach (var protease in entry.Value)
+                    {
+                        var pepByProtease = pepByDb.Where(p => p.Protease == protease.Key).ToList();
+
+                        Dictionary<Protein, List<InSilicoPep>> proteinComplete = new Dictionary<Protein, List<InSilicoPep>>();
+
+                        foreach (var protein in protease.Value)
+                        {
+                            var pepByProtein = pepByProtease.Where(p => p.Protein == protein.Key.Accession).ToList();
+                            proteinComplete.Add(protein.Key, pepByProtein);                            
+                        }
+
+                        proteaseComplete.Add(protease.Key, proteinComplete);
+
+                    }
+
+                    PeptidesByFile.Add(entry.Key, proteaseComplete);
+                }
+
+            }
+
+            AllResultsTab.Content = new AllResultsWindow(PeptidesByFile, loadedParams); // update results display
+            ProteinCovMap.Content = new ProteinResultsWindow(PeptidesByFile, loadedParams);
+            AllHistogramsTab.Content = new HistogramWindow(PeptidesByFile, loadedParams);
+            AllResultsTab.IsSelected = true; // switch to results tab
+        }
+
+        private void Hyperlink_RequestNavigate(object sender, RequestNavigateEventArgs e)
+        {
+            GlobalVariables.StartProcess(e.Uri.ToString());
         }
 
         private void CheckIfNumber(object sender, TextCompositionEventArgs e)
@@ -580,6 +912,109 @@ namespace GUI
             MissedCleavagesTextBox.IsEnabled = true;
             MinPeptideLengthTextBox.IsEnabled = true;
             MaxPeptideLengthTextBox.IsEnabled = true;
+
+            SummaryForTreeViewObservableCollection.Clear();
         }
+
+        private void OpenFile(string filePath)
+        {
+            if (File.Exists(filePath))
+            {
+                GlobalVariables.StartProcess(filePath);
+            }
+            else
+            {
+                MessageBox.Show("File does not exist: " + filePath);
+            }
+        }
+        
+
+        
+
+        private void DatabaseOrSpectraFile_DoubleClick(object sender, MouseButtonEventArgs e)
+        {
+            var dataGridCell = sender as DataGridCell;
+            
+            // open the file with the default process for this file format
+            if (dataGridCell.Content is TextBlock filePath && filePath != null && !string.IsNullOrEmpty(filePath.Text))
+            {
+                OpenFile(filePath.Text);
+            }
+        }
+
+        private void proteinDbSummaryDataGrid_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+
+        }
+
+        private void GenerateRunSummary()
+        {
+            RunSummaryForTreeView runSummary = new RunSummaryForTreeView("Digestion Plan:");
+            CategorySummaryForTreeView databases = new CategorySummaryForTreeView("Databases:");
+            foreach (var db in ProteinDbObservableCollection)
+            {
+                databases.Summary.Add(new FeatureForTreeView(db.FileName));
+            }
+            runSummary.Summary.Add(databases);
+            CategorySummaryForTreeView proteases = new CategorySummaryForTreeView("Proteases:");
+            foreach (var prot in UserParameters.ProteasesForDigestion)
+            {
+                proteases.Summary.Add(new FeatureForTreeView(prot.Name));
+            }
+            runSummary.Summary.Add(proteases);
+            CategorySummaryForTreeView parameters = new CategorySummaryForTreeView("Digestion Parameters:");
+            FeatureForTreeView missedCleavages = new FeatureForTreeView("Number of Missed Cleavages: " + UserParameters.NumberOfMissedCleavagesAllowed);
+            FeatureForTreeView minPep = new FeatureForTreeView("Minimum Peptide Length: " + UserParameters.MinPeptideLengthAllowed);
+            FeatureForTreeView maxPep = new FeatureForTreeView("Maximum Peptide Length: " + UserParameters.MaxPeptideLengthAllowed);
+            FeatureForTreeView modPep = new FeatureForTreeView("Treat Modified Peptides as Different Peptides: " + UserParameters.TreatModifiedPeptidesAsDifferent);
+            parameters.Summary.Add(missedCleavages);
+            parameters.Summary.Add(minPep);
+            parameters.Summary.Add(maxPep);
+            parameters.Summary.Add(modPep);
+            runSummary.Summary.Add(parameters);
+
+            SummaryForTreeViewObservableCollection.Add(runSummary);
+            RunSummaryTreeView.DataContext = SummaryForTreeViewObservableCollection;
+
+        }
+
+        private void MenuItem_EmailHelp_Click(object sender, RequestNavigateEventArgs e)
+        {
+            string mailto = string.Format("mailto:{0}?Subject=MetaMorpheus. Issue:", "mm_support@chem.wisc.edu");
+            GlobalVariables.StartProcess(mailto);
+        }
+
+        protected List<Protein> LoadProteins(DbForDigestion database)
+        {
+            List<string> dbErrors = new List<string>();
+            List<Protein> proteinList = new List<Protein>();
+
+            string theExtension = System.IO.Path.GetExtension(database.FilePath).ToLowerInvariant();
+            bool compressed = theExtension.EndsWith("gz"); // allows for .bgz and .tgz, too which are used on occasion
+            theExtension = compressed ? System.IO.Path.GetExtension(System.IO.Path.GetFileNameWithoutExtension(database.FilePath)).ToLowerInvariant() : theExtension;
+
+            if (theExtension.Equals(".fasta") || theExtension.Equals(".fa"))
+            {
+                proteinList = ProteinDbLoader.LoadProteinFasta(database.FilePath, true, DecoyType.None, false, ProteinDbLoader.UniprotAccessionRegex,
+                    ProteinDbLoader.UniprotFullNameRegex, ProteinDbLoader.UniprotFullNameRegex, ProteinDbLoader.UniprotGeneNameRegex,
+                    ProteinDbLoader.UniprotOrganismRegex, out dbErrors, -1);
+                
+                    return proteinList;
+                
+
+            }
+            else
+            {
+                List<string> modTypesToExclude = new List<string> { };
+                proteinList = ProteinDbLoader.LoadProteinXML(database.FilePath, true, DecoyType.None, GlobalVariables.AllModsKnown, false, modTypesToExclude,
+                    out Dictionary<string, Modification> um, -1, 4, 1);
+                
+                    return proteinList;
+                
+            }
+
+
+        }
+
     }
 }

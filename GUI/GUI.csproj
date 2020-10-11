@@ -4,7 +4,12 @@
     <OutputType>WinExe</OutputType>
     <TargetFramework>netcoreapp3.1</TargetFramework>
     <UseWPF>true</UseWPF>
+    <ApplicationIcon>Icons\proteaseGuru.ico</ApplicationIcon>
   </PropertyGroup>
+
+  <ItemGroup>   
+    <None Remove="proteaseGuru.ico" /> 
+  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="mzLib" Version="1.0.472" />
@@ -22,6 +27,22 @@
     <Page Update="CustomProteaseWindow.xaml">
       <SubType>Designer</SubType>
     </Page>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Icons\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Resource Include="proteaseGuru.ico" />
+  </ItemGroup>
+
+  <ItemGroup>
+
+    <None Update="Icons\proteaseGuru.ico">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+
   </ItemGroup>
 
 </Project>

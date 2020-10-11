@@ -76,9 +76,10 @@ namespace ProteaseGuruGUI
                 Colors.Plum, Colors.PowderBlue};
             ProteaseByColor = new Dictionary<string, Color>();
             ModsByColor = new Dictionary<string, SolidColorBrush>();
-            var proteases = PeptideByFile.SelectMany(p => p.Value.Keys).ToList();
+            var proteases = PeptideByFile.SelectMany(p => p.Value.Keys).Distinct().ToList();
             foreach (var protease in proteases)
             {
+                
                 ProteaseByColor.Add(protease, colors.ElementAt(proteases.IndexOf(protease)));
             } 
         }
@@ -136,22 +137,24 @@ namespace ProteaseGuruGUI
 
         private void OnSelectionChanged()
         {
-            try
+            if (dataGridProteins.SelectedItem != null)
             {
-                var protein = (ProteinForTreeView)dataGridProteins.SelectedItem;                
+                var protein = (ProteinForTreeView)dataGridProteins.SelectedItem;
                 // draw sequence coverage map if exists
                 if (protein != null)
                 {
-                    SelectedProtein = protein;                    
+                    SelectedProtein = protein;
                 }
-                
             }
-            catch (Exception e)
+            else
             {
-                // user selected summary item
-                // do nothing
-                Console.WriteLine(e.ToString());
+                var protein = (ProteinForTreeView)ProteinsForTreeView.FirstOrDefault().Value;
+                if (protein != null)
+                {
+                    SelectedProtein = protein;
+                }
             }
+                          
 
         }
         private List<Dictionary<int, List<Modification>>> SplitMods(IDictionary<int, List<Modification>> mods, int proteinLength, int spacing)
@@ -245,7 +248,10 @@ namespace ProteaseGuruGUI
             var peptidesToDraw = new List<InSilicoPep>();
             foreach (var protease in proteases)
             {
-                peptidesToDraw.AddRange(PeptideByProteaseAndProtein[protein.Protein][protease]);
+                if (PeptideByProteaseAndProtein[protein.Protein].ContainsKey(protease))
+                {
+                    peptidesToDraw.AddRange(PeptideByProteaseAndProtein[protein.Protein][protease]);
+                }                
             }
 
             peptidesToDraw = peptidesToDraw.Distinct().ToList();
@@ -535,7 +541,7 @@ namespace ProteaseGuruGUI
             foreach (var protein in PeptideByProteaseAndProtein)
             {
                 var ptv = ProteinsForTreeView[protein.Key];
-                var proteaseList = ptv.AllPeptides.Select(p => p.Protease).Distinct().ToList();
+                var proteaseList = UserParams.ProteasesForDigestion.Select(p=>p.Name).ToList();
                 var uniquePeps = ptv.UniquePeptides.GroupBy(p => p.Protease).ToDictionary(group => group.Key, group => group.ToList());
                 var sharedPeps = ptv.SharedPeptides.GroupBy(p => p.Protease).ToDictionary(group => group.Key, group => group.ToList());
                 ptv.Summary.Add(new SummaryForTreeView("Number of Unique Peptides: "));
@@ -576,8 +582,8 @@ namespace ProteaseGuruGUI
 
         private void ChangeMapScrollViewSize()
         {
-            mapViewer.Height = .75 * ResultsGrid.ActualHeight;
-            mapViewer.Width = .75 * ResultsGrid.ActualWidth;
+            mapViewer.Height = .70 * ResultsGrid.ActualHeight;
+            mapViewer.Width = .99 * ResultsGrid.ActualWidth;
 
             ChangeMapScrollViewVisibility();
         }
@@ -622,8 +628,8 @@ namespace ProteaseGuruGUI
 
         private void proteaseCoverageMaps_loaded(object sender, RoutedEventArgs e)
         {
-            // get list of proteases to generate cov maps
-            Proteases = PeptideByFile.SelectMany(p => p.Value.Keys).ToList();
+            // get list of proteases to generate cov maps           
+            Proteases = PeptideByFile.SelectMany(p => p.Value.Keys).Distinct().ToList();
             ListBox combo = sender as ListBox;
             combo.ItemsSource = Proteases;            
         }

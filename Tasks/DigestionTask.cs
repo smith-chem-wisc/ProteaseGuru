@@ -239,7 +239,7 @@ namespace Tasks
         {
             string tab = "\t";
             string header = "Database" + tab + "Protease" + tab + "Base Sequence" + tab + "Full Sequence" + tab + "Previous Amino Acid" + tab +
-                "Next Amino Acid" + tab + "Length" + tab + "Molecular Weight" + tab + "Protein" + tab + "Unique (in database)" + tab + "Unique (in analysis)" +
+                "Next Amino Acid" + tab +"Start Residue"+tab+"End Residue"+ "Length" + tab + "Molecular Weight" + tab + "Protein" + tab + "Unique (in database)" + tab + "Unique (in analysis)" +
                 tab + "Hydrophobicity" + tab + "Electrophoretic Mobility";
             List<InSilicoPep> allPeptides = new List<InSilicoPep>();
             if (peptideByFile.Count > 1)
@@ -336,7 +336,17 @@ namespace Tasks
                         peptidesInFile = 1;
                     }                    
                     fileCount++;
-                }   
+                }
+
+            List<string> parameters = new List<string>();
+            parameters.Add("Digestion Conditions:");
+            parameters.Add("Proteases: " + string.Join(',', userParams.ProteasesForDigestion.Select(p => p.Name).ToList()));
+            parameters.Add("Max Missed Cleavages: " + userParams.NumberOfMissedCleavagesAllowed);
+            parameters.Add("Min Peptide Length: " + userParams.MinPeptideLengthAllowed);
+            parameters.Add("Max Peptide Length: " + userParams.MaxPeptideLengthAllowed);
+            parameters.Add("Treat modified peptides as different peptides: " + userParams.TreatModifiedPeptidesAsDifferent);
+
+            File.WriteAllLines(filePath + @"\DigestionConditions.txt", parameters);
         }
     }
 }

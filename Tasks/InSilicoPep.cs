@@ -60,6 +60,10 @@ namespace Tasks
             sb.Append(tab);
             sb.Append(NextAA);
             sb.Append(tab);
+            sb.Append(StartResidue);
+            sb.Append(tab);
+            sb.Append(EndResidue);
+            sb.Append(tab);
             sb.Append(Length);
             sb.Append(tab);
             sb.Append(MolecularWeight);

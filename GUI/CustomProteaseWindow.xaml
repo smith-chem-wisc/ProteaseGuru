@@ -6,11 +6,11 @@
         xmlns:local="clr-namespace:GUI"
         mc:Ignorable="d"
         Title="Add Custom Protease" Height="290" Width="375">
-    <Grid>
+    <Grid Style="{StaticResource PageGridStyle}">
         <StackPanel Orientation="Vertical" VerticalAlignment="Top" HorizontalAlignment="Center" Margin="5">
             <!--Modification name-->
             <StackPanel Orientation="Horizontal">
-                <Label Content="Name" Width="180"></Label>
+                <Label Content="Name" Width="180" Style="{StaticResource xSmallHeaderLabelStyle}"></Label>
                 <Label Content="*" Foreground="Red" FontWeight="Bold" />
                 <TextBox x:Name="proteaseNameTextBox" Width="155" Height="20">
                     <ToolTipService.ToolTip>
@@ -42,7 +42,7 @@
             </StackPanel>
             <!--Where Protease Cleaves-->
             <StackPanel Orientation="Horizontal">
-                <Label Content="Sequences Inducing Cleavage" Width="180"></Label>
+                <Label Content="Sequences Inducing Cleavage" Width="180" Style="{StaticResource xSmallHeaderLabelStyle}"></Label>
                 <Label Content="*" Foreground="Red" FontWeight="Bold" />
                 <TextBox Name="sequencesInducingCleavageTextBox" Width="155" Height="20">
                     <ToolTipService.ToolTip>
@@ -74,7 +74,7 @@
             </StackPanel>
             <!--What Stops it from Cleaving there-->
             <StackPanel Orientation="Horizontal">
-                <Label Content="Sequences Preventing Cleavage" Width="180"></Label>
+                <Label Content="Sequences Preventing Cleavage" Width="180" Style="{StaticResource xSmallHeaderLabelStyle}"></Label>
                 <Label Content="*" Foreground="Red" FontWeight="Bold" />
                 <TextBox Name="sequencesPreventingCleavageBox" Width="155" Height="20">
                     <ToolTipService.ToolTip>
@@ -106,19 +106,19 @@
             </StackPanel>            
             <!--Location Restriction-->
             <StackPanel Orientation="Horizontal">
-                <Label Content="Cleavage Terminus" Width="180"></Label>
+                <Label Content="Cleavage Terminus" Width="180" Style="{StaticResource xSmallHeaderLabelStyle}"></Label>
                 <Label Content="*" Foreground="Red" FontWeight="Bold" />
                 <ListBox Name="cleavageTerminusListBox" Width="155" Height="46">                    
                 </ListBox>
             </StackPanel>
             <StackPanel Orientation="Horizontal">
-                <Label Content="Cleavage Specificity" Width="180"></Label>
+                <Label Content="Cleavage Specificity" Width="180" Style="{StaticResource xSmallHeaderLabelStyle}"></Label>
                 <Label Content="*" Foreground="Red" FontWeight="Bold" />
                 <ListBox Name="cleavageSpecificityListBox" Width="155" Height="46">                    
                 </ListBox>
             </StackPanel>
             <StackPanel Orientation="Horizontal">
-                <Label Content="PSI-MS Accession Number" Width="195"></Label>
+                <Label Content="PSI-MS Accession Number" Width="195" Style="{StaticResource xSmallHeaderLabelStyle}"></Label>
                 <TextBox Name="psiAccessionNumber" Width="155" Height="20">                   
                     <TextBox.Style>
                         <Style TargetType="TextBox" xmlns:sys="clr-namespace:System;assembly=mscorlib">                            
@@ -132,7 +132,7 @@
                 </TextBox>
             </StackPanel>
             <StackPanel Orientation="Horizontal">
-                <Label Content="PSI-MS Name" Width="195"></Label>
+                <Label Content="PSI-MS Name" Width="195" Style="{StaticResource xSmallHeaderLabelStyle}"></Label>
                 <TextBox Name="psiName" Width="155" Height="20">
                     <TextBox.Style>
                         <Style TargetType="TextBox" xmlns:sys="clr-namespace:System;assembly=mscorlib">
@@ -148,8 +148,8 @@
         </StackPanel>
         <!--Save and cancel buttons-->
         <StackPanel Orientation="Horizontal" Height="35" VerticalAlignment="Bottom" HorizontalAlignment="Center"  >
-            <Button Name="saveButton" Content="Save Protease" FontSize="13" Margin="5" Width="100" Click="SaveCustomProtease_Click" />
-            <Button Name="clearButton" Content="Clear" FontSize="13" Margin="5" Width="100" Click="ClearCustomProtease_Click" />
+            <Button Name="saveButton" Content="Save Protease" FontSize="13" Margin="5" Width="100" Click="SaveCustomProtease_Click" Style="{StaticResource ImportantButtonStyle}" />
+            <Button Name="clearButton" Content="Clear" FontSize="13" Margin="5" Width="100" Click="ClearCustomProtease_Click" Style="{StaticResource ImportantButtonStyle}" />
         </StackPanel>
     </Grid>
 </Window>
