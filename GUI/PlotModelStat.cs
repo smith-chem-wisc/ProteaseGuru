@@ -38,8 +38,19 @@ namespace GUI
            OxyColors.CornflowerBlue, OxyColors.Gold, OxyColors.MediumSeaGreen, OxyColors.MediumOrchid, OxyColors.DarkSalmon, OxyColors.LightSeaGreen, OxyColors.LightPink, OxyColors.DarkGray
 
         };
-              
-       
+
+        public PlotModel Model
+        {
+            get
+            {
+                return privateModel;
+            }
+            private set
+            {
+                privateModel = value;
+                NotifyPropertyChanged("Model");
+            }
+        }
 
         public OxyColor Background => OxyColors.White;
 
@@ -246,19 +257,39 @@ namespace GUI
                 
                 foreach (var d in dictsByProtease[key])
                 {
-                    int bin = int.Parse(d.Key);
-                    var hist = new HistItem(d.Value, bin - start, (bin * binSize).ToString(CultureInfo.InvariantCulture), totalCounts[bin - start]);
-                    column.Items.Add(hist);
-                    if (DataTable.ContainsKey(hist.bin))
+                    if (d.Key == "Arg-C")
                     {
-                        DataTable[hist.bin].Add(key, hist.Value.ToString());
+                        int bin = int.Parse(d.Key);
+                        var hist = new HistItem(d.Value, bin - start, (bin * binSize).ToString(CultureInfo.InvariantCulture), totalCounts[bin - start]);
+                        column.Items.Add(hist);
+                        if (DataTable.ContainsKey(hist.bin))
+                        {
+                            DataTable[hist.bin].Add(key, hist.Value.ToString());
+                        }
+                        else
+                        {
+                            var data = new Dictionary<string, string>();
+                            data.Add(key, hist.Value.ToString());
+                            DataTable.Add(hist.bin, data);
+                        }
                     }
-                    else 
+                    else
                     {
-                        var data = new Dictionary<string, string>();
-                        data.Add(key, hist.Value.ToString());
-                        DataTable.Add(hist.bin, data);
-                    }                    
+                        int bin = int.Parse(d.Key);
+                        var hist = new HistItem(d.Value, bin - start, (bin * binSize).ToString(CultureInfo.InvariantCulture), totalCounts[bin - start]);
+                        column.Items.Add(hist);
+                        if (DataTable.ContainsKey(hist.bin))
+                        {
+                            DataTable[hist.bin].Add(key, hist.Value.ToString());
+                        }
+                        else
+                        {
+                            var data = new Dictionary<string, string>();
+                            data.Add(key, hist.Value.ToString());
+                            DataTable.Add(hist.bin, data);
+                        }
+                    }
+                   
                 }                
                 privateModel.Series.Add(column);
 

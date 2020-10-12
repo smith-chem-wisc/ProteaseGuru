@@ -88,48 +88,33 @@ namespace ProteaseGuruGUI
             HistogramDataTable.Clear();
             Dictionary<string, Dictionary<Protein, List<InSilicoPep>>> databasePeptides = new Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>();
             //figure out which proteases should be used to make the plot
-            if (dataGridProteinDBs.SelectedItems == null)
+            
+            foreach (var db in DBSelected)
             {
-                DBSelected.Add(listOfProteinDbs.First());
-
-                foreach (var db in DBSelected)
+                var pep = PeptideByFile[db];
+                foreach (var entry in pep)
                 {
-                    databasePeptides = PeptideByFile[db];
-                }
-            }
-            else
-            {
-                DBSelected.Clear();
-                foreach (var db in dataGridProteinDBs.SelectedItems)
-                {
-                    DBSelected.Add(db.ToString());
-                    var pep = PeptideByFile[db.ToString()];
-                    foreach (var entry in pep)
+                    if (databasePeptides.ContainsKey(entry.Key))
                     {
-                        if (databasePeptides.ContainsKey(entry.Key))
+                        foreach (var prot in pep[entry.Key])
                         {
-                            foreach (var prot in pep[entry.Key])
+                            if (databasePeptides[entry.Key].ContainsKey(prot.Key))
                             {
-                                if (databasePeptides[entry.Key].ContainsKey(prot.Key))
-                                {
-                                    databasePeptides[entry.Key][prot.Key].AddRange(prot.Value);
-                                }
-                                else
-                                {
-                                    databasePeptides[entry.Key].Add(prot.Key, prot.Value);
-                                }
+                                databasePeptides[entry.Key][prot.Key].AddRange(prot.Value);
+                            }
+                            else
+                            {
+                                databasePeptides[entry.Key].Add(prot.Key, prot.Value);
                             }
                         }
-                        else
-                        {
-                            databasePeptides.Add(entry.Key, entry.Value);
-                        }
                     }
-                    
+                    else
+                    {
+                        databasePeptides.Add(entry.Key, entry.Value);
+                    }
                 }
+
             }
-
-
 
             ObservableCollection<InSilicoPep> peptides = new ObservableCollection<InSilicoPep>();
             Dictionary<string, ObservableCollection<InSilicoPep>> peptidesByProtease = new Dictionary<string, ObservableCollection<InSilicoPep>>();
@@ -172,7 +157,7 @@ namespace ProteaseGuruGUI
             PlotModelStat plot = await Task.Run(() => new PlotModelStat(plotName, peptides, peptidesByProtease, sequenceCoverageByProtease));
             //send the plot to GUI
             plotViewStat.DataContext = plot;
-            //send the data table with plto info to GUI for export if desired
+            //send the data table with plot info to GUI for export if desired
             HistogramDataTable = plot.DataTable;           
         }
 
@@ -181,45 +166,32 @@ namespace ProteaseGuruGUI
         {
             HistogramDataTable.Clear();
             Dictionary<string, Dictionary<Protein, List<InSilicoPep>>> databasePeptides = new Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>();
-            if (dataGridProteinDBs.SelectedItems == null)
+            
+            foreach (var db in DBSelected)
             {
-                DBSelected.Add(listOfProteinDbs.First());
-
-                foreach (var db in DBSelected)
+                var pep = PeptideByFile[db.ToString()];
+                foreach (var entry in pep)
                 {
-                    databasePeptides = PeptideByFile[db];
-                }
-            }
-            else
-            {
-                DBSelected.Clear();
-                foreach (var db in dataGridProteinDBs.SelectedItems)
-                {
-                    DBSelected.Add(db.ToString());
-                    var pep = PeptideByFile[db.ToString()];
-                    foreach (var entry in pep)
+                    if (databasePeptides.ContainsKey(entry.Key))
                     {
-                        if (databasePeptides.ContainsKey(entry.Key))
+                        foreach (var prot in pep[entry.Key])
                         {
-                            foreach (var prot in pep[entry.Key])
+                            if (databasePeptides[entry.Key].ContainsKey(prot.Key))
                             {
-                                if (databasePeptides[entry.Key].ContainsKey(prot.Key))
-                                {
-                                    databasePeptides[entry.Key][prot.Key].AddRange(prot.Value);
-                                }
-                                else
-                                {
-                                    databasePeptides[entry.Key].Add(prot.Key, prot.Value);
-                                }
+                                databasePeptides[entry.Key][prot.Key].AddRange(prot.Value);
+                            }
+                            else
+                            {
+                                databasePeptides[entry.Key].Add(prot.Key, prot.Value);
                             }
                         }
-                        else
-                        {
-                            databasePeptides.Add(entry.Key, entry.Value);
-                        }
                     }
-
+                    else
+                    {
+                        databasePeptides.Add(entry.Key, entry.Value);
+                    }
                 }
+
             }
             ObservableCollection<InSilicoPep> peptides = new ObservableCollection<InSilicoPep>();
             Dictionary<string, ObservableCollection<InSilicoPep>> peptidesByProtease = new Dictionary<string, ObservableCollection<InSilicoPep>>();
