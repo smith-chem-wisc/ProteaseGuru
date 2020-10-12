@@ -257,8 +257,7 @@ namespace GUI
                 
                 foreach (var d in dictsByProtease[key])
                 {
-                    if (d.Key == "Arg-C")
-                    {
+                    
                         int bin = int.Parse(d.Key);
                         var hist = new HistItem(d.Value, bin - start, (bin * binSize).ToString(CultureInfo.InvariantCulture), totalCounts[bin - start]);
                         column.Items.Add(hist);
@@ -271,24 +270,7 @@ namespace GUI
                             var data = new Dictionary<string, string>();
                             data.Add(key, hist.Value.ToString());
                             DataTable.Add(hist.bin, data);
-                        }
-                    }
-                    else
-                    {
-                        int bin = int.Parse(d.Key);
-                        var hist = new HistItem(d.Value, bin - start, (bin * binSize).ToString(CultureInfo.InvariantCulture), totalCounts[bin - start]);
-                        column.Items.Add(hist);
-                        if (DataTable.ContainsKey(hist.bin))
-                        {
-                            DataTable[hist.bin].Add(key, hist.Value.ToString());
-                        }
-                        else
-                        {
-                            var data = new Dictionary<string, string>();
-                            data.Add(key, hist.Value.ToString());
-                            DataTable.Add(hist.bin, data);
-                        }
-                    }
+                        }                   
                    
                 }                
                 privateModel.Series.Add(column);

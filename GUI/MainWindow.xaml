@@ -154,20 +154,30 @@
                     <!--Text content-->
                     <TextBlock Grid.Row="2" Grid.RowSpan="2" Style="{StaticResource TextBlockStyle}"> 
                        
-                        ProteaseGuru is a in silico digestion program for the comparison of proteolytic digests. 
+                        ProteaseGuru is a in silico digestion program facilitating the comparison of proteolytic digests. 
                         <LineBreak />
-                        It accepts protein databases (.xml or .fasta) as input and allows users to set digestion conditions and proteases for digestion.
+                        It accepts protein databases (.xml or .fasta) as input and allows users to set digestion conditions and proteases for digestion.                       
                         
-                        
                         <LineBreak />
                         <LineBreak />
+                        ProteaseGuru provides:
+                        <LineBreak />                        
+                        <LineBreak />
+                        ● The ability to analyze more than one database enabling its use with samples containing multiple species (e.g. xenografts).
+                        <LineBreak />                        
+                        <LineBreak />
+                        ● Result files containing various biophysical properties of theoretical peptides such as their molecular weight,
+                        <LineBreak />
+                        hydrophobicity and electrophoretic mobility.
                         <LineBreak />
                         <LineBreak />
+                        ● Determination of the uniqueness of a theoretical sequence (both in a single database and all databases used for analysis).
+                        <LineBreak /> 
                         <LineBreak />
+                        ● Histograms of whole proteome proteolytic digests for the direct comparison of proteases.
+                        <LineBreak /> 
                         <LineBreak />
-                        <LineBreak />
-                        <LineBreak />                       
-                      
+                        ● Protein sequence coverage maps for visualization of the in silico digestion of targeted proteins.
                     </TextBlock>
                 </Grid>
             </TabItem>
@@ -659,6 +669,64 @@
                             mm_support@chem.wisc.edu
                         </Hyperlink>.
                     </TextBlock>
+
+                    <Grid Grid.Row="3" Style="{StaticResource PageGridStyle}" Margin="5,0,0,0">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="22"/>
+                            <RowDefinition Height="22"/>
+                            <RowDefinition Height="22"/>
+                            <RowDefinition Height="22"/>
+                            <RowDefinition Height="22"/>
+                            <RowDefinition Height="22"/>
+                            <RowDefinition Height="22"/>
+                            <RowDefinition Height="22"/>
+                        </Grid.RowDefinitions>
+
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="20"/>
+                            <ColumnDefinition Width="330"/>
+                        </Grid.ColumnDefinitions>
+
+                        <TextBlock Grid.Row="0" Grid.Column="1" Style="{StaticResource TextBlockStyle}" Margin="0">
+                            You may also want to:
+                        </TextBlock>                        
+                        
+                        <Button Grid.Row="1" Grid.Column="1" HorizontalContentAlignment="Left" BorderThickness="0" Click="MenuItem_Twitter_Click">
+                            <StackPanel Orientation="Horizontal">
+                                <Image Source="Icons/Twitter_Logo_Blue.bmp" Width="20" Height="20" Margin="0,0,5,0"/>
+                                <TextBlock Text="Follow us on Twitter" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Button>
+
+                        <!--<Button Grid.Row="2" Grid.Column="1" HorizontalContentAlignment="Left" BorderThickness="0" Click="MenuItem_YouTube_Click">
+                            <StackPanel Orientation="Horizontal">
+                                <Image Source="Icons/youtube_20.bmp" Width="20" Height="20" Margin="0,0,5,0"/>
+                                <TextBlock Text="Watch YouTube help videos" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Button>-->
+
+                        <Button Grid.Row="2" Grid.Column="1" HorizontalContentAlignment="Left" BorderThickness="0" Click="MenuItem_MetaMorpheus_Click">
+                            <StackPanel Orientation="Horizontal">
+                                <Image Source="Icons/proxl-ms.bmp" Width="20" Height="20" Margin="0,0,5,0"/>
+                                <TextBlock Text="Search proteomic data with MetaMorpheus" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Button>
+
+                        <Button Grid.Row="3" Grid.Column="1" HorizontalContentAlignment="Left" BorderThickness="0" Click="MenuItem_Spritz_Click">
+                            <StackPanel Orientation="Horizontal">
+                                <Image Width="20" Height="20" Margin="0,0,5,0"/>
+                                <TextBlock Text="Create sample-specific database with Spritz" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Button>
+
+                        <Button Grid.Row="4" Grid.Column="1" HorizontalContentAlignment="Left" BorderThickness="0" Click="MenuItem_ProteomicsNewsBlog_Click">
+                            <StackPanel Orientation="Horizontal">
+                                <Image Source="Icons/Blogger_20.bmp" Width="20" Height="20" Margin="0,0,5,0"/>
+                                <TextBlock Text="Read News in Proteomics Research" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Button>
+                    </Grid>
+
                 </Grid>
             </TabItem>
         </TabControl>

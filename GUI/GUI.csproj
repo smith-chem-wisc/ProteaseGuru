@@ -34,12 +34,22 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Resource Include="proteaseGuru.ico" />
+    <Resource Include="proteaseGuru.ico">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Resource>
   </ItemGroup>
 
   <ItemGroup>
 
     <None Update="Icons\proteaseGuru.ico">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+
+    <None Update="Twitter_Logo_Blue.bmp">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+
+    <None Update="youtube_20.bmp">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
 

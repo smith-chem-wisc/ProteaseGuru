@@ -949,5 +949,29 @@ namespace GUI
 
         }
 
+        private void MenuItem_Spritz_Click(object sender, RoutedEventArgs e)
+        {
+            GlobalVariables.StartProcess(@"https://smith-chem-wisc.github.io/Spritz/");
+        }
+
+        private void MenuItem_MetaMorpheus_Click(object sender, RoutedEventArgs e)
+        {
+            GlobalVariables.StartProcess(@"https://github.com/smith-chem-wisc/MetaMorpheus");
+        }
+
+        private void MenuItem_Twitter_Click(object sender, RoutedEventArgs e)
+        {
+            GlobalVariables.StartProcess(@"https://twitter.com/Smith_Chem_Wisc");
+        }
+
+        private void MenuItem_ProteomicsNewsBlog_Click(object sender, RoutedEventArgs e)
+        {
+            GlobalVariables.StartProcess(@"https://proteomicsnews.blogspot.com/");
+        }
+
+        //private void MenuItem_YouTube_Click(object sender, RoutedEventArgs e)
+        //{
+        //    GlobalVariables.StartProcess(@"https://www.youtube.com/channel/UCwPeeXcYSQBdbfXt-SdYhEg");
+        //}
     }
 }
