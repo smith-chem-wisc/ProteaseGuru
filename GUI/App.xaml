@@ -16,6 +16,31 @@
         <SolidColorBrush x:Key="TextColor2" Color="#EEEEEE" />
         <SolidColorBrush x:Key="TextColorDelete" Color="#c23616" />
         
+        <!--Change ListBox Selection Style-->
+        <Style x:Key="ListBoxItem" TargetType="ListBoxItem">
+            <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ListBoxItem">
+                        <Border Name="Border" Padding="2" SnapsToDevicePixels="True">
+                            <ContentPresenter/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="Border" Property="Background" Value="#fdd8c1"></Setter>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!--Styling for the datagrid headers-->
+        <Style x:Key="DataGridColumnHeaderStyle" TargetType="DataGridColumnHeader">
+            <Setter Property="Background" Value="{StaticResource DataGridHeaderColor}"/>
+            <Setter Property="FontSize" Value="13" />
+        </Style>
+
         <!--Styling for the big text header at the top of each page-->
         <Style x:Key="HeaderLabelStyle" TargetType="Label">
             <Setter Property="HorizontalAlignment" Value="Left"/>

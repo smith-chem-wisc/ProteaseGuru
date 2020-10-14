@@ -54,9 +54,8 @@ namespace ProteaseGuruGUI
             PeptideByProteaseAndProtein = new Dictionary<Protein, Dictionary<string, List<InSilicoPep>>>();
             proteinTree = new ObservableCollection<ProteinForTreeView>();
             filteredTree = new ObservableCollection<ProteinForTreeView>();
-            ProteinsForTreeView = new Dictionary<Protein, ProteinForTreeView>();
-            dataGridProteins.DataContext = proteinTree;
-
+            ProteinsForTreeView = new Dictionary<Protein, ProteinForTreeView>();            
+            dataGridProteins.DataContext = proteinTree;            
             SetUpDictionaries();
 
             this.Loaded += results_Loaded;
@@ -263,9 +262,13 @@ namespace ProteaseGuruGUI
                 }                
             }
 
+            var mapTitle = "Sequence Coverage Map of " + protein.Protein.Accession +":";
+
             peptidesToDraw = peptidesToDraw.Distinct().ToList();
             var indices = new Dictionary<int, List<int>>();
 
+            SequenceCoverageMap.txtDrawing(map, new Point(5,height), mapTitle, Brushes.Black);
+            height = height + 30;
             // draw sequence
             foreach (var line in splitSeq)
             {

@@ -88,7 +88,10 @@ namespace ProteaseGuruGUI
             HistogramDataTable.Clear();
             Dictionary<string, Dictionary<Protein, List<InSilicoPep>>> databasePeptides = new Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>();
             //figure out which proteases should be used to make the plot
-            
+            if (dataGridProteinDBs.SelectedItems == null)
+            {
+                DBSelected.Add(listOfProteinDbs.First());
+            }
             foreach (var db in DBSelected)
             {
                 var pep = PeptideByFile[db];
@@ -174,7 +177,12 @@ namespace ProteaseGuruGUI
         {
             HistogramDataTable.Clear();
             Dictionary<string, Dictionary<Protein, List<InSilicoPep>>> databasePeptides = new Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>();
-            
+
+            if (dataGridProteinDBs.SelectedItems == null)
+            {
+                DBSelected.Add(listOfProteinDbs.First());
+            }
+
             foreach (var db in DBSelected)
             {
                 var pep = PeptideByFile[db.ToString()];
@@ -238,9 +246,20 @@ namespace ProteaseGuruGUI
                 }
             }
 
+            ProgressBar progressBar = new ProgressBar();
+            progressBar.Orientation = Orientation.Horizontal;
+            progressBar.Width = 200;
+            progressBar.Height = 30;
+            progressBar.IsIndeterminate = true;
+            HistogramLoading.Items.Add(progressBar);
+            //make the plot       
             PlotModelStat plot = await Task.Run(() => new PlotModelStat(plotName, peptides, peptidesByProtease, sequenceCoverageByProtease));
+            progressBar.IsIndeterminate = false;
+            //send the plot to GUI
             plotViewStat.DataContext = plot;
+            //send the data table with plot info to GUI for export if desired
             HistogramDataTable = plot.DataTable;
+            HistogramLoading.Items.Clear();
         }
         //create a data table with all of the information formt he histogram so useres can make their own plots using proteaseguru calculaitons
         private void CreateTable_Click(object sender, RoutedEventArgs e)

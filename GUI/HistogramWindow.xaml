@@ -35,18 +35,29 @@
                     </Grid.ColumnDefinitions>
                     
                         <Grid Grid.Column="0" Background="{StaticResource DataGridBackgroundColor}">
-                            <Grid.RowDefinitions>
+                        <Grid.Resources>
+                            <Style TargetType="DataGridCell">
+                                <Style.Triggers>
+                                    <Trigger Property="DataGridCell.IsSelected" Value="True">
+                                        <Setter Property="Background" Value="#fdd8c1"></Setter>
+                                    </Trigger>
+                                </Style.Triggers>
+                            </Style>
+
+                        </Grid.Resources>
+                        <Grid.RowDefinitions>
                                 <RowDefinition Height="35"/>
                                 <RowDefinition Height="1*"/>
                                 <RowDefinition Height="30"/>
                             </Grid.RowDefinitions>
                             <!--Header label-->
                             <Label Content="Database" Grid.Row="0" Style="{StaticResource SmallHeaderLabelStyle}" />
+                            
                             <DataGrid x:Name="dataGridProteinDBs" Grid.Row="1" AutoGenerateColumns="False" VerticalAlignment="Stretch" ItemsSource="{Binding}" 
                                                         IsReadOnly="True" ScrollViewer.CanContentScroll="True" Margin="0,0,0,0" 
-                                                        CanUserDeleteRows="false" CanUserAddRows="false">
+                                                        CanUserDeleteRows="false" CanUserAddRows="false" Style="{StaticResource x:DataGridStyle}" ColumnHeaderStyle="{StaticResource DataGridColumnHeaderStyle}">
                                 <DataGrid.Columns>
-                                    <DataGridTextColumn Binding="{Binding}" Width="1*"></DataGridTextColumn>
+                                    <DataGridTextColumn Header="File" Binding="{Binding}" Width="450" />                                
                                 </DataGrid.Columns>
                             </DataGrid>
                         <Button Grid.Row="2" Content="Use Selected Databases" Width="150" Click="ProteinDBSelected_Click" HorizontalAlignment="Center" Style="{StaticResource ImportantButtonStyle}"></Button>

@@ -56,7 +56,8 @@
                         <TreeView BorderThickness="1" x:Name="dataGridProteins" ItemsSource="{Binding}" DataContext="{x:Type local:ProteinForTreeView}"
                                 SelectedItemChanged="proteins_SelectedCellsChanged" VirtualizingStackPanel.IsVirtualizing="True" 
                                   VirtualizingStackPanel.VirtualizationMode="Recycling">
-                            <TreeView.Resources>
+                        
+                        <TreeView.Resources>                            
                                 <HierarchicalDataTemplate DataType="{x:Type local:ProteinForTreeView}" ItemsSource="{Binding Summary}">
                                     <StackPanel Orientation="Horizontal">
                                         <TextBlock Text="{Binding DisplayName}" FontSize="15"/>
@@ -70,6 +71,12 @@
                             </TreeView.Resources>
                             <TreeView.ItemContainerStyle>
                                 <Style TargetType="TreeViewItem">
+                                <Style.Resources>
+                                    <SolidColorBrush x:Key="{x:Static SystemColors.ControlBrushKey}" Color="#fdd8c1"/>
+                                    <SolidColorBrush x:Key="{x:Static SystemColors.HighlightBrushKey}" Color="#fdd8c1"/>
+                                    <SolidColorBrush x:Key="{x:Static SystemColors.HighlightTextBrushKey}" Color="#131313"/>
+                                    <SolidColorBrush x:Key="{x:Static SystemColors.InactiveSelectionHighlightBrushKey}" Color="#fdd8c1"/>                                    
+                                </Style.Resources>
                                     <Setter Property="IsExpanded" Value="{Binding Expanded}"/>
                                 </Style>
                             </TreeView.ItemContainerStyle>
@@ -94,7 +101,7 @@
                 <!--Header label-->
                 <Label Content="Protease Selections" Grid.Row="0" Style="{StaticResource SmallHeaderLabelStyle}"  HorizontalContentAlignment="Center"/>
                 <ScrollViewer VerticalScrollBarVisibility="Visible" HorizontalScrollBarVisibility="Auto" Grid.Row="1" Grid.Column="1">
-                        <ListBox Name ="ProteaseSelectedForUse" SelectionMode="Multiple" Loaded="proteaseCoverageMaps_loaded" >
+                    <ListBox Name ="ProteaseSelectedForUse" SelectionMode="Multiple" Loaded="proteaseCoverageMaps_loaded" ItemContainerStyle="{StaticResource ListBoxItem}">
                         </ListBox>
                     </ScrollViewer>
                 <Button x:Name="viewSelectedProteases" Grid.Row ="2" Content="View Selected Proteases" Click="SelectProteases_Click" Width ="170" Style="{StaticResource ImportantButtonStyle}" />
