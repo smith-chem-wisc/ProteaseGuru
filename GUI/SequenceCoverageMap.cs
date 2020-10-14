@@ -256,7 +256,7 @@ namespace ProteaseGuruGUI
             legend.Children.Add(legendLabel);
             Grid.SetRow(legendLabel, 0);
             legend.RowDefinitions.Add(new RowDefinition());
-            int proteaseRows = Convert.ToInt32(Math.Ceiling((proteases.Count() / 3.0)));
+            int proteaseRows = Convert.ToInt32(Math.Ceiling((proteases.Count() / 2.0)));
             int j = 0;
             while (j < proteaseRows)
             {
@@ -321,7 +321,7 @@ namespace ProteaseGuruGUI
                     Grid.SetColumn(proteaseColor, 0);
                     legend.Children.Add(proteaseName);
                     Grid.SetRow(proteaseName, j);
-                    Grid.SetColumn(proteaseName, 1);
+                    Grid.SetColumn(proteaseName, 1);                    
                 }
                 if (proteaseCount == 2)
                 {
@@ -373,7 +373,7 @@ namespace ProteaseGuruGUI
                     modName.Content = mod.Key;
                     legend.Children.Add(modName);
                     Grid.SetRow(modName, j);
-                    Grid.SetColumn(modName, 1);
+                    Grid.SetColumn(modName, 1);                    
                 }
 
                 if (modCount == 2)
@@ -385,7 +385,7 @@ namespace ProteaseGuruGUI
                     modName.Content = mod.Key;
                     legend.Children.Add(modName);
                     Grid.SetRow(modName, j);
-                    Grid.SetColumn(modName, 3);
+                    Grid.SetColumn(modName, 3);                    
                 }
                 if (modCount == 3)
                 {

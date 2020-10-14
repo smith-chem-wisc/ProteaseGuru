@@ -62,7 +62,7 @@ namespace ProteaseGuruGUI
         private void ProteinDBSelected_Click(object sender, RoutedEventArgs e)
         {
             DBSelected.Clear();
-            if (dataGridProteinDBs.SelectedItems == null)
+            if (dataGridProteinDBs.SelectedItems.Count == 0)
             {
                 DBSelected.Add(listOfProteinDbs.First());                
             }
@@ -88,7 +88,7 @@ namespace ProteaseGuruGUI
             HistogramDataTable.Clear();
             Dictionary<string, Dictionary<Protein, List<InSilicoPep>>> databasePeptides = new Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>();
             //figure out which proteases should be used to make the plot
-            if (dataGridProteinDBs.SelectedItems == null)
+            if (dataGridProteinDBs.SelectedItems.Count == 0)
             {
                 DBSelected.Add(listOfProteinDbs.First());
             }

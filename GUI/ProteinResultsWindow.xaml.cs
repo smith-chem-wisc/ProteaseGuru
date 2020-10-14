@@ -655,14 +655,14 @@ namespace ProteaseGuruGUI
         private void exportCoverageMap(object sender, RoutedEventArgs e)
         {
             var fileDirectory = UserParams.OutputFolder;
-            var fileName = String.Concat("SequenceCoverageMap_"+SelectedProtein.DisplayName+".png");
-            Rect bounds = VisualTreeHelper.GetDescendantBounds(map);
+            var fileName = String.Concat("SequenceCoverageMap_"+SelectedProtein.DisplayName+".png");            
+            Rect bounds = VisualTreeHelper.GetDescendantBounds(mapGrid);
             double dpi = 96d;
             RenderTargetBitmap rtb = new RenderTargetBitmap((int)bounds.Width, (int)bounds.Height, dpi, dpi, System.Windows.Media.PixelFormats.Default);
             DrawingVisual dv = new DrawingVisual();
             using (DrawingContext dc = dv.RenderOpen())
             {
-                VisualBrush vb = new VisualBrush(map);
+                VisualBrush vb = new VisualBrush(mapGrid);
                 dc.DrawRectangle(vb, null, new Rect(new Point(), bounds.Size));
             }
             rtb.Render(dv);
@@ -676,25 +676,25 @@ namespace ProteaseGuruGUI
             var filePath = System.IO.Path.Combine(fileDirectory, fileName);
             System.IO.File.WriteAllBytes(filePath, ms.ToArray());
                         
-            var fileNameLegend = String.Concat("SequenceCoverageMapLegend_" + SelectedProtein.DisplayName + ".png");
-            Rect boundsLegend = VisualTreeHelper.GetDescendantBounds(legend);           
-            RenderTargetBitmap rtbLegend = new RenderTargetBitmap((int)boundsLegend.Width, (int)boundsLegend.Height, dpi, dpi, System.Windows.Media.PixelFormats.Default);
-            DrawingVisual dvLegend = new DrawingVisual();
-            using (DrawingContext dc = dvLegend.RenderOpen())
-            {
-                VisualBrush vb = new VisualBrush(legend);
-                dc.DrawRectangle(vb, null, new Rect(new Point(), boundsLegend.Size));
-            }
-            rtbLegend.Render(dvLegend);
+            //var fileNameLegend = String.Concat("SequenceCoverageMapLegend_" + SelectedProtein.DisplayName + ".png");
+            //Rect boundsLegend = VisualTreeHelper.GetDescendantBounds(legend);           
+            //RenderTargetBitmap rtbLegend = new RenderTargetBitmap((int)boundsLegend.Width, (int)boundsLegend.Height, dpi, dpi, System.Windows.Media.PixelFormats.Default);
+            //DrawingVisual dvLegend = new DrawingVisual();
+            //using (DrawingContext dc = dvLegend.RenderOpen())
+            //{
+            //    VisualBrush vb = new VisualBrush(legend);
+            //    dc.DrawRectangle(vb, null, new Rect(new Point(), boundsLegend.Size));
+            //}
+            //rtbLegend.Render(dvLegend);
 
-            BitmapEncoder pngEncoderLegend = new PngBitmapEncoder();
-            pngEncoderLegend.Frames.Add(BitmapFrame.Create(rtbLegend));
+            //BitmapEncoder pngEncoderLegend = new PngBitmapEncoder();
+            //pngEncoderLegend.Frames.Add(BitmapFrame.Create(rtbLegend));
 
-            System.IO.MemoryStream msLegend = new System.IO.MemoryStream();
-            pngEncoderLegend.Save(msLegend);
-            ms.Close();
-            var filePathLegend = System.IO.Path.Combine(fileDirectory, fileNameLegend);
-            System.IO.File.WriteAllBytes(filePathLegend, msLegend.ToArray());
+            //System.IO.MemoryStream msLegend = new System.IO.MemoryStream();
+            //pngEncoderLegend.Save(msLegend);
+            //ms.Close();
+            //var filePathLegend = System.IO.Path.Combine(fileDirectory, fileNameLegend);
+            //System.IO.File.WriteAllBytes(filePathLegend, msLegend.ToArray());
         }
     }
 }
