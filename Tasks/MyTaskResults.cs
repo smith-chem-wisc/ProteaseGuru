@@ -61,8 +61,42 @@ namespace Tasks
                         List<InSilicoPep> allPeptides = peptidesToProteins.SelectMany(p => p.Value).ToList();
                         summary.Add("       Number of Peptides: " + allPeptides.Count);
                         summary.Add("            Number of Distinct Peptide Sequences: " + allPeptides.Select(p => p.FullSequence).Distinct().Count());
-                        summary.Add("       Number of Unique Peptides: " + peptidesToProteins.Where(p => p.Value.Select(p => p.Protein).Distinct().Count() == 1).Count());
-                        summary.Add("       Number of Shared Peptides: " + peptidesToProteins.Where(p => p.Value.Select(p => p.Protein).Distinct().Count() > 1).Count());
+                        var uniquePeptides = peptidesToProteins.Where(p => p.Value.Select(p => p.Protein).Distinct().Count() == 1);
+                        var sharedPeptides = peptidesToProteins.Where(p => p.Value.Select(p => p.Protein).Distinct().Count() > 1);
+                        var sharedPeptidesInOneDb = sharedPeptides.Where(p => p.Value.Select(p => p.Database).Distinct().Count() == 1);
+                        Dictionary<string, List<string>> peptidesForSingleDatabase = new Dictionary<string, List<string>>();
+                        foreach (var entry in uniquePeptides)
+                        {
+                            var database = entry.Value.Select(p => p.Database).Distinct().FirstOrDefault();
+                            if (peptidesForSingleDatabase.ContainsKey(database))
+                            {
+                                peptidesForSingleDatabase[database].Add(entry.Key);
+                            }
+                            else
+                            {
+                                peptidesForSingleDatabase.Add(database, new List<string>() { entry.Key });
+                            }
+                        }
+                        foreach (var entry in sharedPeptidesInOneDb)
+                        {
+                            var database = entry.Value.Select(p => p.Database).Distinct().FirstOrDefault();
+                            if (peptidesForSingleDatabase.ContainsKey(database))
+                            {
+                                peptidesForSingleDatabase[database].Add(entry.Key);
+                            }
+                            else
+                            {
+                                peptidesForSingleDatabase.Add(database, new List<string>() { entry.Key });
+                            }
+                        }
+
+                        summary.Add("Number of Unique Peptide Sequences: " + uniquePeptides.Count());
+                        summary.Add("Number of Shared Peptide Sequences: " + sharedPeptides.Count());
+
+                        foreach (var db in peptidesForSingleDatabase)
+                        {
+                            summary.Add("Number of Peptide Sequences Found Only in " + db.Key + ": " + db.Value.Count());
+                        }
                     }
                 }
                 else 
@@ -75,8 +109,42 @@ namespace Tasks
                         List<InSilicoPep> allPeptides = peptidesToProteins.SelectMany(p => p.Value).ToList();
                         summary.Add("       Number of Peptides: " + allPeptides.Count);
                         summary.Add("           Number of Distinct Peptide Sequences: " + allPeptides.Select(p => p.BaseSequence).Distinct().Count());
-                        summary.Add("       Number of Unique Peptides: " + peptidesToProteins.Where(p => p.Value.Select(p => p.Protein).Distinct().Count() == 1).Count());
-                        summary.Add("       Number of Shared Peptides: " + peptidesToProteins.Where(p => p.Value.Select(p => p.Protein).Distinct().Count() > 1).Count());
+                        var uniquePeptides = peptidesToProteins.Where(p => p.Value.Select(p => p.Protein).Distinct().Count() == 1);
+                        var sharedPeptides = peptidesToProteins.Where(p => p.Value.Select(p => p.Protein).Distinct().Count() > 1);
+                        var sharedPeptidesInOneDb = sharedPeptides.Where(p => p.Value.Select(p => p.Database).Distinct().Count() == 1);
+                        Dictionary<string, List<string>> peptidesForSingleDatabase = new Dictionary<string, List<string>>();
+                        foreach (var entry in uniquePeptides)
+                        {
+                            var database = entry.Value.Select(p => p.Database).Distinct().FirstOrDefault();
+                            if (peptidesForSingleDatabase.ContainsKey(database))
+                            {
+                                peptidesForSingleDatabase[database].Add(entry.Key);
+                            }
+                            else
+                            {
+                                peptidesForSingleDatabase.Add(database, new List<string>() { entry.Key });
+                            }
+                        }
+                        foreach (var entry in sharedPeptidesInOneDb)
+                        {
+                            var database = entry.Value.Select(p => p.Database).Distinct().FirstOrDefault();
+                            if (peptidesForSingleDatabase.ContainsKey(database))
+                            {
+                                peptidesForSingleDatabase[database].Add(entry.Key);
+                            }
+                            else
+                            {
+                                peptidesForSingleDatabase.Add(database, new List<string>() { entry.Key });
+                            }
+                        }
+
+                        summary.Add("Number of Unique Peptide Sequences: " + uniquePeptides.Count());
+                        summary.Add("Number of Shared Peptide Sequences: " + sharedPeptides.Count());
+
+                        foreach (var db in peptidesForSingleDatabase)
+                        {
+                            summary.Add("Number of Peptide Sequences Found Only in " + db.Key + ": " + db.Value.Count());
+                        }
                     }
                 }
                 foreach (var database in PeptideByFile)

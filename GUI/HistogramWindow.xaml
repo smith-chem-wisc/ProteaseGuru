@@ -58,45 +58,50 @@
                             <RowDefinition Height="1*"/>
                             <RowDefinition Height="25"/>
                         </Grid.RowDefinitions>
-                        <StackPanel Orientation="Horizontal" Grid.Row="0" Background="{StaticResource DataGridBackgroundColor}">
-                            <Label x:Name="HistogramType" Content="Histogram Type:" Width="150" Style="{StaticResource SmallHeaderLabelStyle}"/>
-                            <ComboBox x:Name="HistogramComboBox" SelectionChanged="PlotSelected" Background="{StaticResource DataGridBackgroundColor}">
-                                <ComboBoxItem Content="Peptide Length">
-                                    <ComboBoxItem.ToolTip >
-                                        <TextBlock>
+                        <Grid Grid.Row="0" Background="{StaticResource DataGridBackgroundColor}">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="300"/>
+                                <ColumnDefinition Width="500"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Orientation="Horizontal" Grid.Column="0" Background="{StaticResource DataGridBackgroundColor}">
+                                <Label x:Name="HistogramType" Content="Histogram Type:" Width="125" Style="{StaticResource SmallHeaderLabelStyle}"/>
+                                <ComboBox x:Name="HistogramComboBox" SelectionChanged="PlotSelected" Background="{StaticResource DataGridBackgroundColor}" Width="150">
+                                    <ComboBoxItem Content="Peptide Length">
+                                        <ComboBoxItem.ToolTip >
+                                            <TextBlock>
                                                                     Histrogram representing the length distribution of all in silico digested peptides.
-                                        </TextBlock>
-                                    </ComboBoxItem.ToolTip>
-                                </ComboBoxItem>
-                                <ComboBoxItem Content="Protein Sequence Coverage">
-                                    <ComboBoxItem.ToolTip >
-                                        <TextBlock>
+                                            </TextBlock>
+                                        </ComboBoxItem.ToolTip>
+                                    </ComboBoxItem>
+                                    <ComboBoxItem Content="Protein Sequence Coverage">
+                                        <ComboBoxItem.ToolTip >
+                                            <TextBlock>
                                                                     Histrogram representing the distribution of protein seqeunce coverage for all selected proteases.
                                                                     <LineBreak/>
                                                                     Protein sequence coverage is calculated by dividing the number of amino acids belonging to peptide sequences by the length of the peptide.
-                                        </TextBlock>
-                                    </ComboBoxItem.ToolTip>
-                                </ComboBoxItem>
+                                            </TextBlock>
+                                        </ComboBoxItem.ToolTip>
+                                    </ComboBoxItem>
 
-                                <ComboBoxItem Content="Protein Sequence Coverage (Unique Peptides Only)">
-                                    <ComboBoxItem.ToolTip >
-                                        <TextBlock>
+                                    <ComboBoxItem Content="Protein Sequence Coverage (Unique Peptides Only)">
+                                        <ComboBoxItem.ToolTip >
+                                            <TextBlock>
                                                                     Histrogram representing the distribution of protein seqeunce coverage values when only unique peptides are used. 
                                                                     <LineBreak/>
                                                                     Protein sequence coverage is calculated by dividing the number of amino acids belonging to unique peptide sequences by the length of the peptide.
-                                        </TextBlock>
-                                    </ComboBoxItem.ToolTip>
-                                </ComboBoxItem>
-                                <ComboBoxItem Content="Number of Unique Peptides per Protein">
-                                    <ComboBoxItem.ToolTip >
-                                        <TextBlock>
+                                            </TextBlock>
+                                        </ComboBoxItem.ToolTip>
+                                    </ComboBoxItem>
+                                    <ComboBoxItem Content="Number of Unique Peptides per Protein">
+                                        <ComboBoxItem.ToolTip >
+                                            <TextBlock>
                                                                     Histrogram representing the distribution of unique peptides across the proteins present in the selected database.
-                                        </TextBlock>
-                                    </ComboBoxItem.ToolTip>
-                                </ComboBoxItem>
-                                <ComboBoxItem Content="Predicted Peptide Hydrophobicity">
-                                    <ComboBoxItem.ToolTip >
-                                        <TextBlock>
+                                            </TextBlock>
+                                        </ComboBoxItem.ToolTip>
+                                    </ComboBoxItem>
+                                    <ComboBoxItem Content="Predicted Peptide Hydrophobicity">
+                                        <ComboBoxItem.ToolTip >
+                                            <TextBlock>
                                                                     Histrogram representing the distribution of predicted peptide hydrophobicity values.
                                                                     <LineBreak/>
                                                                     <LineBreak/>
@@ -109,12 +114,12 @@
                                                                     its application to protein peptide mapping by off-line HPLC-MALDI MS
                                                                     <LineBreak/>
                                                                     Molecular and Cellular Proteomics 2004 Sep;3(9):908-19.
-                                        </TextBlock>
-                                    </ComboBoxItem.ToolTip>
-                                </ComboBoxItem>
-                                <ComboBoxItem Content="Predicted Peptide Electrophoretic Mobility">
-                                    <ComboBoxItem.ToolTip >
-                                        <TextBlock>
+                                            </TextBlock>
+                                        </ComboBoxItem.ToolTip>
+                                    </ComboBoxItem>
+                                    <ComboBoxItem Content="Predicted Peptide Electrophoretic Mobility">
+                                        <ComboBoxItem.ToolTip >
+                                            <TextBlock>
                                                                     Histrogram representing the distribution of predicted peptide electrophoretic mobility values.
                                                                     <LineBreak/>
                                                                     <LineBreak/>
@@ -125,11 +130,18 @@
                                                                     Simulation and optimization of peptide separation by capillary electrophoresis
                                                                     <LineBreak/>
                                                                     Journal of Chromatography,A 1994; 680(1):321-40.
-                                        </TextBlock>
-                                    </ComboBoxItem.ToolTip>
-                                </ComboBoxItem>
-                            </ComboBox>
-                        </StackPanel>
+                                            </TextBlock>
+                                        </ComboBoxItem.ToolTip>
+                                    </ComboBoxItem>
+                                </ComboBox>
+                            </StackPanel>
+                            <StatusBar Name="HistogramLoading" Grid.Column="1" Background="{StaticResource BackgroundColor}">
+                                <StatusBarItem>
+                                    <TextBlock Style="{StaticResource StatusBarTextStyle}">Histogram Loading:</TextBlock>
+                                </StatusBarItem>
+                            </StatusBar>
+                        </Grid>
+                        
                         
                             <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Visible" VerticalScrollBarVisibility="Visible">
                                 <oxy:PlotView  x:Name="plotViewStat" Model="{Binding Model}" FontSize="16" FontStretch="Expanded" BorderBrush="LightGray" Grid.ColumnSpan="2" Height="400" Width="900" ></oxy:PlotView>

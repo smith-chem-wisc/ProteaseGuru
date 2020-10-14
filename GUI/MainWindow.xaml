@@ -437,6 +437,8 @@
                         <RowDefinition Height=" 50"/>
                         <RowDefinition Height="2.7*" />
                         <RowDefinition Height="1*" />
+                        <RowDefinition Height="2"/>
+                        <RowDefinition Height="50"/>
                     </Grid.RowDefinitions>
 
                     <!--Header label-->
@@ -450,7 +452,7 @@
                     </TextBlock>
 
 
-                    <Grid Grid.Row="2" Background="{StaticResource BackgroundColor}">
+                    <Grid Grid.Row="2" Background="{StaticResource BackgroundColor}" ScrollViewer.VerticalScrollBarVisibility="Auto">
                         <TreeView BorderThickness="0" x:Name="RunSummaryTreeView" ItemsSource="{Binding}" DataContext="{x:Type local:RunSummaryForTreeView}" Grid.ColumnSpan="4">
                             <TreeView.Resources>
                                 <HierarchicalDataTemplate DataType="{x:Type local:RunSummaryForTreeView}" ItemsSource="{Binding Summary}">
@@ -477,12 +479,9 @@
                         </TreeView>
                     </Grid>
 
-
-
-                    <GroupBox Grid.Row="3" Background="{StaticResource DataGridBackgroundColor}">
-                        <Grid Background="{StaticResource DataGridBackgroundColor}" >
+                        <Grid Grid.Row="3" Background="{StaticResource DataGridBackgroundColor}" >
                             <Grid.RowDefinitions>
-                                <RowDefinition Height="35"/>
+                                <RowDefinition Height="20"/>
                                 <RowDefinition Height="5"/>
                                 <RowDefinition Height="40"/>
                                 <RowDefinition Height="35"/>
@@ -498,9 +497,14 @@
                                 <TextBox x:Name="OutputFolderTextBox"/>
                             </DockPanel>
                             <Button x:Name="RunTaskButton" Content="Run!" Click="RunTaskButton_Click" FontSize="24" Grid.Row="3" Grid.ColumnSpan="2" Width="400" Style="{StaticResource ImportantButtonStyle}"/>
-
+                            
                         </Grid>
-                    </GroupBox>
+                    <StatusBar Name="RunStatus" Grid.Row="5" Background="{StaticResource BackgroundColor}">
+                        <StatusBarItem>
+                            <TextBlock Style="{StaticResource StatusBarTextStyle}">Running:</TextBlock>
+                        </StatusBarItem>                        
+                    </StatusBar>
+                   
                 </Grid>
             </TabItem>
             <TabItem Header="Load Previous Results" Style="{StaticResource TabItemStyle}" Name="LoadTab">

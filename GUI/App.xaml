@@ -97,6 +97,15 @@
             <Setter Property="Margin" Value="15,0,10,0"/>
         </Style>
 
+        <!--Styling for the "main" text in the About + Help pages-->
+        <Style x:Key="StatusBarTextStyle" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{StaticResource TextColor1}"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="FontSize" Value="15"/>
+            <Setter Property="TextWrapping" Value="WrapWithOverflow" />
+            <Setter Property="Margin" Value="5,0,5,0"/>
+        </Style>
+
         <!--Styling for the datagrids that store spectra/databases-->
         <Style x:Key="x:DataGridStyle" TargetType="DataGrid">
             <Setter Property="Foreground" Value="{StaticResource TextColor1}"/>

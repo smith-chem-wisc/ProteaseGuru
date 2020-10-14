@@ -42,7 +42,7 @@ namespace Tasks
             return PeptideByFile;
         }
 
-        public void Run()
+        public Dictionary<string, Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>> Run()
         {
             StartingAllTasks();
             var stopWatch = new Stopwatch();
@@ -61,7 +61,7 @@ namespace Tasks
                 {
                     Warn("Cannot proceed. No protein database files selected.");
                     FinishedAllTasks(OutputFolder);
-                    return;
+                    break;
                 }
                 var ok = RunList[i];
                 
@@ -71,7 +71,7 @@ namespace Tasks
                     Directory.CreateDirectory(outputFolderForThisTask);
 
                 // Actual task running code
-                var myTaskResults = ok.Item2.RunSpecific(outputFolderForThisTask, CurrentXmlDbFilenameList);
+                var myTaskResults = ok.Item2.RunSpecific(outputFolderForThisTask, CurrentXmlDbFilenameList);                
 
                 PeptideByFile = myTaskResults.PeptideByFile;
 
@@ -87,6 +87,7 @@ namespace Tasks
             }
             FinishedWritingAllResultsFileHandler?.Invoke(this, new StringEventArgs(resultsFileName, null));
             FinishedAllTasks(OutputFolder);
+            return PeptideByFile;
         }
 
         private void Warn(string v)

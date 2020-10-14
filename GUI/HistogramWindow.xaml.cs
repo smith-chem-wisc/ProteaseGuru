@@ -153,12 +153,20 @@ namespace ProteaseGuruGUI
                     peptidesByProtease.Add(protease.Key, proteasePeptides);
                 }
             }
+            ProgressBar progressBar = new ProgressBar();
+            progressBar.Orientation = Orientation.Horizontal;
+            progressBar.Width = 200;
+            progressBar.Height = 30;
+            progressBar.IsIndeterminate = true;
+            HistogramLoading.Items.Add(progressBar);
             //make the plot       
             PlotModelStat plot = await Task.Run(() => new PlotModelStat(plotName, peptides, peptidesByProtease, sequenceCoverageByProtease));
+            progressBar.IsIndeterminate = false;
             //send the plot to GUI
             plotViewStat.DataContext = plot;
             //send the data table with plot info to GUI for export if desired
-            HistogramDataTable = plot.DataTable;           
+            HistogramDataTable = plot.DataTable;
+            HistogramLoading.Items.Clear();
         }
 
         //if database selection is changed, refresh what is shown in the plot if that is not changed, similar code to PlotSelected(), but isnt triggered by user

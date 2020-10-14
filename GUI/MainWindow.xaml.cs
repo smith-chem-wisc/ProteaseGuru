@@ -604,7 +604,7 @@ namespace GUI
         }
 
         //run in silico digestion and trigger result windows after complete
-        private void RunTaskButton_Click(object sender, RoutedEventArgs e)
+        private async void RunTaskButton_Click(object sender, RoutedEventArgs e)
         {
             RunTaskButton.IsEnabled = false; // disable while running
 
@@ -629,26 +629,29 @@ namespace GUI
             {
                 DynamicTasksObservableCollection.Add(new InRunTask("Task" + (i + 1) + "-" + StaticTasksObservableCollection[i].proteaseGuruTask.TaskType, StaticTasksObservableCollection[i].proteaseGuruTask));
             }
-            
+
             // everything is OK to run
             EverythingRunnerEngine a = new EverythingRunnerEngine(DynamicTasksObservableCollection.Select(b => (b.DisplayName, b.Task)).ToList(),
                 ProteinDbObservableCollection.Select(b => new DbForDigestion(b.FilePath)).ToList(),
                 OutputFolderTextBox.Text);
 
+            ProgressBar runProgressBar = new ProgressBar();
+            runProgressBar.Orientation = Orientation.Horizontal;
+            runProgressBar.Width = 300;
+            runProgressBar.Height = 30;
+            runProgressBar.IsIndeterminate = true;
             Stopwatch stopwatch = new Stopwatch();
             stopwatch.Start();
-                     
-            var t = new Task(a.Run);
-            t.ContinueWith(EverythingRunnerExceptionHandler, TaskContinuationOptions.OnlyOnFaulted);
-            t.Start();
-            t.Wait();
+            RunStatus.Items.Add(runProgressBar);
+            Dictionary<string, Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>> peptidesByFile = await Task.Run(() => a.Run());            
             stopwatch.Stop();
 
+            runProgressBar.IsIndeterminate = false;
             // when done with tasks
             StaticTasksObservableCollection.Clear();
-            AllResultsTab.Content = new AllResultsWindow(a.PeptideByFile, UserParameters); // update results display
-            ProteinCovMap.Content = new ProteinResultsWindow(a.PeptideByFile, UserParameters);
-            AllHistogramsTab.Content = new HistogramWindow(a.PeptideByFile, UserParameters);
+            AllResultsTab.Content = new AllResultsWindow(peptidesByFile, UserParameters); // update results display
+            ProteinCovMap.Content = new ProteinResultsWindow(peptidesByFile, UserParameters);
+            AllHistogramsTab.Content = new HistogramWindow(peptidesByFile, UserParameters);
             AllResultsTab.IsSelected = true; // switch to results tab
             RunTaskButton.IsEnabled = true; // allow user to run new task
         }
