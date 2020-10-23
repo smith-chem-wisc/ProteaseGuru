@@ -40,6 +40,7 @@
                                 <Style.Triggers>
                                     <Trigger Property="DataGridCell.IsSelected" Value="True">
                                         <Setter Property="Background" Value="#fdd8c1"></Setter>
+                                        <Setter Property="Foreground" Value="Black"></Setter>
                                     </Trigger>
                                 </Style.Triggers>
                             </Style>
@@ -55,7 +56,7 @@
                             
                             <DataGrid x:Name="dataGridProteinDBs" Grid.Row="1" AutoGenerateColumns="False" VerticalAlignment="Stretch" ItemsSource="{Binding}" 
                                                         IsReadOnly="True" ScrollViewer.CanContentScroll="True" Margin="0,0,0,0" 
-                                                        CanUserDeleteRows="false" CanUserAddRows="false" Style="{StaticResource x:DataGridStyle}" ColumnHeaderStyle="{StaticResource DataGridColumnHeaderStyle}">
+                                                        CanUserDeleteRows="false" CanUserAddRows="false" Style="{StaticResource x:DataGridStyle}" ColumnHeaderStyle="{StaticResource DataGridColumnHeaderStyle}" SelectedCellsChanged="DatabaseSelectionChanged">
                                 <DataGrid.Columns>
                                     <DataGridTextColumn Header="File" Binding="{Binding}" Width="450" />                                
                                 </DataGrid.Columns>
@@ -77,6 +78,14 @@
                             <StackPanel Orientation="Horizontal" Grid.Column="0" Background="{StaticResource DataGridBackgroundColor}">
                                 <Label x:Name="HistogramType" Content="Histogram Type:" Width="125" Style="{StaticResource SmallHeaderLabelStyle}"/>
                                 <ComboBox x:Name="HistogramComboBox" SelectionChanged="PlotSelected" Background="{StaticResource DataGridBackgroundColor}" Width="150">
+
+                                    <ComboBoxItem Content="Amino Acid Distribution">
+                                        <ComboBoxItem.ToolTip >
+                                            <TextBlock>
+                                                                    Distribution of amino acids for all in silico digested peptides.
+                                            </TextBlock>
+                                        </ComboBoxItem.ToolTip>
+                                    </ComboBoxItem>
                                     <ComboBoxItem Content="Peptide Length">
                                         <ComboBoxItem.ToolTip >
                                             <TextBlock>

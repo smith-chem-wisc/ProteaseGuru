@@ -69,7 +69,16 @@ namespace GUI
             {
                 foreach (var filepath in openPicker.FileNames.OrderBy(p => p))
                 {
-                    ReloadAFile(filepath);
+                    if (System.IO.Path.GetExtension(filepath) != ".tsv")
+                    {
+                        MessageBox.Show("Error: Only ProteaseGuru results files in .tsv format should be loaded here. Please remove '"+ filepath +"' before proceeding with analysis");
+                        return;
+                    }
+                    else
+                    {
+                        ReloadAFile(filepath);
+                    }
+                    
                 }
             }
 
@@ -91,7 +100,15 @@ namespace GUI
             {
                 foreach (var filepath in openPicker.FileNames.OrderBy(p => p))
                 {
-                    ReloadAFile(filepath);
+                    if (System.IO.Path.GetExtension(filepath) != ".txt")
+                    {
+                        MessageBox.Show("Error: Only ProteaseGuru digestion parameters in .txt format should be loaded here. Please remove '" + filepath + "' before proceeding with analysis");
+                        return;
+                    }
+                    else
+                    {
+                        ReloadAFile(filepath);
+                    }
                 }
             }
 
@@ -260,15 +277,46 @@ namespace GUI
         {
             if (!string.IsNullOrWhiteSpace(MissedCleavagesTextBox.Text))
             {
-                UserParameters.NumberOfMissedCleavagesAllowed = Convert.ToInt32(MissedCleavagesTextBox.Text);
+                try
+                {
+                    int value = Convert.ToInt32(MissedCleavagesTextBox.Text);
+                    UserParameters.NumberOfMissedCleavagesAllowed = value;
+
+                }
+                catch (FormatException)
+                {
+                    MessageBox.Show("Error: The value provided for the 'Number of Missed Cleavages' is invalid, please replace with an integer value before proceeding with analysis.");
+                    return;
+                }
+                
             }
             if (!string.IsNullOrWhiteSpace(MinPeptideLengthTextBox.Text))
             {
-                UserParameters.MinPeptideLengthAllowed = Convert.ToInt32(MinPeptideLengthTextBox.Text);
+                try
+                {
+                    int value = Convert.ToInt32(MinPeptideLengthTextBox.Text);
+                    UserParameters.MinPeptideLengthAllowed = value;
+
+                }
+                catch (FormatException)
+                {
+                    MessageBox.Show("Error: The value provided for the 'Min Peptide Length' is invalid, please replace with an integer value before proceeding with analysis.");
+                    return;
+                }
             }
             if (!string.IsNullOrWhiteSpace(MaxPeptideLengthTextBox.Text))
             {
-                UserParameters.MaxPeptideLengthAllowed = Convert.ToInt32(MaxPeptideLengthTextBox.Text);
+                try
+                {
+                    int value = Convert.ToInt32(MaxPeptideLengthTextBox.Text);
+                    UserParameters.MaxPeptideLengthAllowed = value;
+
+                }
+                catch (FormatException)
+                {
+                    MessageBox.Show("Error: The value provided for the 'Max Peptide Length' is invalid, please replace with an integer value before proceeding with analysis.");
+                    return;
+                }
             }            
             UserParameters.TreatModifiedPeptidesAsDifferent = Convert.ToBoolean(ModPepsAreUnique.IsChecked);
             List<Protease> proteases = new List<Protease>();
@@ -442,28 +490,32 @@ namespace GUI
         private void ClearXML_Click(object sender, RoutedEventArgs e)
         {
             ProteinDbObservableCollection.Clear();
-            dataGridProteinDatabases.Items.Clear();
+            dataGridProteinDatabases.ItemsSource = ProteinDbObservableCollection;
+            dataGridProteinDatabases.Items.Refresh();
         }
 
         //clear the list of previous analyzed databases in code and in GUI
         private void ClearReloadedXML_Click(object sender, RoutedEventArgs e)
         {
             ReloadProteinDbObservableCollection.Clear();
-            dataGridReloadDb.Items.Clear();
+            dataGridReloadDb.ItemsSource = ReloadProteinDbObservableCollection;
+            dataGridReloadDb.Items.Refresh();
         }
 
         //Clear the list of results files in code and in GUI
         private void ClearResults_Click(object sender, RoutedEventArgs e)
         {
             ResultsObservableCollection.Clear();
-            dataGridResults.Items.Clear();
+            dataGridResults.ItemsSource = ResultsObservableCollection;
+            dataGridResults.Items.Refresh();
         }
 
         //Clear the list of parameters in code and in GUI
         private void ClearParameters_Click(object sender, RoutedEventArgs e)
         {
             ParametersObservableCollection.Clear();
-            dataGridParameters.Items.Clear();
+            dataGridParameters.ItemsSource = ParametersObservableCollection;
+            dataGridParameters.Items.Refresh();
         }
 
         //Add protein database for Digestion
@@ -480,7 +532,20 @@ namespace GUI
             {
                 foreach (var filepath in openPicker.FileNames.OrderBy(p => p))
                 {
-                    AddAFile(filepath);
+                    string theExtension = System.IO.Path.GetExtension(filepath).ToLowerInvariant();
+                    bool compressed = theExtension.EndsWith("gz"); // allows for .bgz and .tgz, too which are used on occasion
+                    theExtension = compressed ? System.IO.Path.GetExtension(System.IO.Path.GetFileNameWithoutExtension(filepath)).ToLowerInvariant() : theExtension;
+                    var extension = System.IO.Path.GetExtension(filepath);
+                    if (theExtension == ".xml" || theExtension == ".fasta" || theExtension == ".fa" )
+                    {                       
+                        AddAFile(filepath);
+                    }
+                    else
+                    {
+                        MessageBox.Show("Error: Database provided is not an acceptable file format. Please remove '" + filepath + "' before proceeding with analysis");
+                        return;
+                        
+                    }
                 }
             }
 
@@ -501,7 +566,20 @@ namespace GUI
             {
                 foreach (var filepath in openPicker.FileNames.OrderBy(p => p))
                 {
-                    ReloadAFile(filepath);
+                    string theExtension = System.IO.Path.GetExtension(filepath).ToLowerInvariant();
+                    bool compressed = theExtension.EndsWith("gz"); // allows for .bgz and .tgz, too which are used on occasion
+                    theExtension = compressed ? System.IO.Path.GetExtension(System.IO.Path.GetFileNameWithoutExtension(filepath)).ToLowerInvariant() : theExtension;
+                    var extension = System.IO.Path.GetExtension(filepath);
+                    if (theExtension == ".xml" || theExtension == ".fasta" || theExtension == ".fa")
+                    {
+                        ReloadAFile(filepath);
+                    }
+                    else
+                    {
+                        MessageBox.Show("Error: Database provided is not an acceptable file format. Please remove '" + filepath + "' before proceeding with analysis");
+                        return;
+
+                    }
                 }
             }
 
@@ -613,13 +691,22 @@ namespace GUI
             // check for valid tasks/spectra files/protein databases
             if (!StaticTasksObservableCollection.Any())
             {
-                GuiWarnHandler(null, new StringEventArgs("You need to add at least one task!", null));
+                MessageBox.Show("Warning: No digestion conditions have been saved. Set and save digestion conditions before proceeding with analysis.");
+                RunTaskButton.IsEnabled = true;
                 return;
             }
             
             if (!ProteinDbObservableCollection.Any())
             {
-                GuiWarnHandler(null, new StringEventArgs("You need to add at least one protein database!", null));
+                MessageBox.Show("Warning: No protein databases have been provided for digestion. Add at least one protein database before proceeding with analysis.");
+                RunTaskButton.IsEnabled = true;
+                return;
+            }
+
+            if (!UserParameters.ProteasesForDigestion.Any())
+            {
+                MessageBox.Show("Warning: No proteases have been selected for digestion. Select at least one protease and save the updated digestion conditions before proceeding with analysis.");
+                RunTaskButton.IsEnabled = true;
                 return;
             }
 
@@ -705,20 +792,40 @@ namespace GUI
                             {
                                 proteases.Add(dict[protease]);
                             }
-                            
+
                         }
+                    }
+                    else
+                    {
+                        MessageBox.Show("Error: Parameters file provided is not from a previous ProteaseGuru run.");
+                        return;
                     }
                     if (info[0] == "Max Missed Cleavages")
                     {
                         missedCleavages = Convert.ToInt32(info[1]);
                     }
+                    else
+                    {
+                        MessageBox.Show("Error: Parameters file provided is not from a previous ProteaseGuru run.");
+                        return;
+                    }
                     if (info[0] == "Min Peptide Length")
                     {
                         minPeptideLength = Convert.ToInt32(info[1]);
                     }
+                    else
+                    {
+                        MessageBox.Show("Error: Parameters file provided is not from a previous ProteaseGuru run.");
+                        return;
+                    }
                     if (info[0] == "Max Peptide Length")
                     {
                         maxPeptideLength = Convert.ToInt32(info[1]);
+                    }
+                    else
+                    {
+                        MessageBox.Show("Error: Parameters file provided is not from a previous ProteaseGuru run.");
+                        return;
                     }
                     if (info[0] == "Treat modified peptides as different peptides")
                     {
@@ -726,6 +833,11 @@ namespace GUI
                         {
                             treatModPeps = true;
                         }
+                    }
+                    else
+                    {
+                        MessageBox.Show("Error: Parameters file provided is not from a previous ProteaseGuru run.");
+                        return;
                     }
                 }
 
@@ -741,6 +853,12 @@ namespace GUI
             {
                 var fileData = File.ReadAllLines(resultFile.FilePath);
                 int peptideCount = 0;
+                var header = fileData[0].Split('\t');
+                if (header[0] != "Database" && header[1] != "Protease" && header[2] != "Base Sequence" && header[3] != "Full Sequence")
+                {
+                    MessageBox.Show("Error: Results file provided is not from a previous ProteaseGuru run.");
+                    return;
+                }
                 foreach (var peptide in fileData)
                 {
                     if (peptideCount != 0)

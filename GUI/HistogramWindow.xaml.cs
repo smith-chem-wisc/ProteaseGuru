@@ -80,6 +80,28 @@ namespace ProteaseGuruGUI
             }          
 
         }
+
+        private void DatabaseSelectionChanged(object sender, SelectedCellsChangedEventArgs e)
+        {
+            DBSelected.Clear();
+            if (dataGridProteinDBs.SelectedItems.Count == 0)
+            {
+                DBSelected.Add(listOfProteinDbs.First());
+            }
+            else
+            {
+                var dbs = dataGridProteinDBs.SelectedItems;
+                foreach (var db in dbs)
+                {
+                    DBSelected.Add(db.ToString());
+                }
+                if (HistogramComboBox.SelectedItem != null)
+                {
+                    RefreshPlot();
+                }
+            }
+
+        }
         
         //determine which histogram the user wants to make and what peptides should be used to make it
         private async void PlotSelected(object sender, SelectionChangedEventArgs e)
@@ -92,28 +114,158 @@ namespace ProteaseGuruGUI
             {
                 DBSelected.Add(listOfProteinDbs.First());
             }
+            if (DBSelected.Count() > 1)
+            {
+                MessageBox.Show("Note: More than one protein database has been selected. Unique peptides are defined as being unique to a single protein in all selected databases.");
+            }
+            else
+            {
+                MessageBox.Show("Note: One protein database has been selected. Unique peptides are defined as being unique to a single protein in this database.");
+            }
+            List<InSilicoPep> allPeptides = new List<InSilicoPep>();
+
             foreach (var db in DBSelected)
             {
                 var pep = PeptideByFile[db];
                 foreach (var entry in pep)
                 {
+                    foreach (var protein in entry.Value)
+                    {
+                        allPeptides.AddRange(protein.Value);
+                    }
+                }
+            }
+            Dictionary<string, List<InSilicoPep>> peptidesToProteins = new Dictionary<string, List<InSilicoPep>>();
+            if (UserParams.TreatModifiedPeptidesAsDifferent)
+            {
+                peptidesToProteins = allPeptides.GroupBy(p => p.FullSequence).ToDictionary(group => group.Key, group => group.ToList());
+            }
+            else
+            {
+                peptidesToProteins = allPeptides.GroupBy(p => p.BaseSequence).ToDictionary(group => group.Key, group => group.ToList());
+            }
+            var unique = peptidesToProteins.Where(p => p.Value.Select(p => p.Protein).Distinct().Count() == 1).ToDictionary(group => group.Key, group=> group.Value);
+            var shared = peptidesToProteins.Where(p => p.Value.Select(p => p.Protein).Distinct().Count() > 1).ToDictionary(group => group.Key, group => group.Value);
+
+            foreach (var db in DBSelected)
+            {
+                var pep = PeptideByFile[db];
+                foreach (var entry in pep)
+                {
+
                     if (databasePeptides.ContainsKey(entry.Key))
                     {
                         foreach (var prot in pep[entry.Key])
                         {
                             if (databasePeptides[entry.Key].ContainsKey(prot.Key))
                             {
-                                databasePeptides[entry.Key][prot.Key].AddRange(prot.Value);
+                                List<InSilicoPep> proteinSpecificPeptides = new List<InSilicoPep>();
+                                foreach (var peptide in prot.Value)
+                                {
+                                    if (UserParams.TreatModifiedPeptidesAsDifferent)
+                                    {
+                                        if (unique.ContainsKey(peptide.FullSequence))
+                                        {
+                                            peptide.Unique = true;
+                                            proteinSpecificPeptides.Add(peptide);
+                                        }
+                                        else
+                                        {
+                                            peptide.Unique = false;
+                                            proteinSpecificPeptides.Add(peptide);
+                                        }
+                                    }
+                                    else
+                                    {
+                                        if (unique.ContainsKey(peptide.BaseSequence))
+                                        {
+                                            peptide.Unique = true;
+                                            proteinSpecificPeptides.Add(peptide);
+                                        }
+                                        else
+                                        {
+                                            peptide.Unique = false;
+                                            proteinSpecificPeptides.Add(peptide);
+                                        }
+                                    }
+                                }
+                                
+                                databasePeptides[entry.Key][prot.Key].AddRange(proteinSpecificPeptides);
                             }
                             else
                             {
-                                databasePeptides[entry.Key].Add(prot.Key, prot.Value);
+                                List<InSilicoPep> proteinSpecificPeptides = new List<InSilicoPep>();
+                                foreach (var peptide in prot.Value)
+                                {
+                                    if (UserParams.TreatModifiedPeptidesAsDifferent)
+                                    {
+                                        if (unique.ContainsKey(peptide.FullSequence))
+                                        {
+                                            peptide.Unique = true;
+                                            proteinSpecificPeptides.Add(peptide);
+                                        }
+                                        else
+                                        {
+                                            peptide.Unique = false;
+                                            proteinSpecificPeptides.Add(peptide);
+                                        }
+                                    }
+                                    else
+                                    {
+                                        if (unique.ContainsKey(peptide.BaseSequence))
+                                        {
+                                            peptide.Unique = true;
+                                            proteinSpecificPeptides.Add(peptide);
+                                        }
+                                        else
+                                        {
+                                            peptide.Unique = false;
+                                            proteinSpecificPeptides.Add(peptide);
+                                        }
+                                    }
+                                }
+                                databasePeptides[entry.Key].Add(prot.Key, proteinSpecificPeptides);
                             }
                         }
                     }
                     else
                     {
-                        databasePeptides.Add(entry.Key, entry.Value);
+                        Dictionary<Protein, List<InSilicoPep>> proteinDic = new Dictionary<Protein, List<InSilicoPep>>();
+                        foreach (var prot in entry.Value)
+                        {
+                            List<InSilicoPep> proteinSpecificPeptides = new List<InSilicoPep>();
+                            foreach (var peptide in prot.Value)
+                            {
+                                if (UserParams.TreatModifiedPeptidesAsDifferent)
+                                {
+                                    if (unique.ContainsKey(peptide.FullSequence))
+                                    {
+                                        peptide.Unique = true;
+                                        proteinSpecificPeptides.Add(peptide);
+                                    }
+                                    else
+                                    {
+                                        peptide.Unique = false;
+                                        proteinSpecificPeptides.Add(peptide);
+                                    }
+                                }
+                                else
+                                {
+                                    if (unique.ContainsKey(peptide.BaseSequence))
+                                    {
+                                        peptide.Unique = true;
+                                        proteinSpecificPeptides.Add(peptide);
+                                    }
+                                    else
+                                    {
+                                        peptide.Unique = false;
+                                        proteinSpecificPeptides.Add(peptide);
+                                    }
+                                }
+                            }
+                            proteinDic.Add(prot.Key, proteinSpecificPeptides);
+                        }
+                        databasePeptides.Add(entry.Key, proteinDic);
                     }
                 }
 
@@ -183,28 +335,158 @@ namespace ProteaseGuruGUI
                 DBSelected.Add(listOfProteinDbs.First());
             }
 
+            if (DBSelected.Count() > 1)
+            {
+                MessageBox.Show("Note: More than one protein database has been selected. Unique peptides are defined as being unique to a single protein in all selected databases.");
+            }
+            else
+            {
+                MessageBox.Show("Note: One protein database has been selected. Unique peptides are defined as being unique to a single protein in this database.");
+            }
+            List<InSilicoPep> allPeptides = new List<InSilicoPep>();
+
             foreach (var db in DBSelected)
             {
-                var pep = PeptideByFile[db.ToString()];
+                var pep = PeptideByFile[db];
                 foreach (var entry in pep)
                 {
+                    foreach (var protein in entry.Value)
+                    {
+                        allPeptides.AddRange(protein.Value);
+                    }
+                }
+            }
+            Dictionary<string, List<InSilicoPep>> peptidesToProteins = new Dictionary<string, List<InSilicoPep>>();
+            if (UserParams.TreatModifiedPeptidesAsDifferent)
+            {
+                peptidesToProteins = allPeptides.GroupBy(p => p.FullSequence).ToDictionary(group => group.Key, group => group.ToList());
+            }
+            else
+            {
+                peptidesToProteins = allPeptides.GroupBy(p => p.BaseSequence).ToDictionary(group => group.Key, group => group.ToList());
+            }
+            var unique = peptidesToProteins.Where(p => p.Value.Select(p => p.Protein).Distinct().Count() == 1).ToDictionary(group => group.Key, group => group.Value);
+            var shared = peptidesToProteins.Where(p => p.Value.Select(p => p.Protein).Distinct().Count() > 1).ToDictionary(group => group.Key, group => group.Value);
+
+            foreach (var db in DBSelected)
+            {
+                var pep = PeptideByFile[db];
+                foreach (var entry in pep)
+                {
+
                     if (databasePeptides.ContainsKey(entry.Key))
                     {
                         foreach (var prot in pep[entry.Key])
                         {
                             if (databasePeptides[entry.Key].ContainsKey(prot.Key))
                             {
-                                databasePeptides[entry.Key][prot.Key].AddRange(prot.Value);
+                                List<InSilicoPep> proteinSpecificPeptides = new List<InSilicoPep>();
+                                foreach (var peptide in prot.Value)
+                                {
+                                    if (UserParams.TreatModifiedPeptidesAsDifferent)
+                                    {
+                                        if (unique.ContainsKey(peptide.FullSequence))
+                                        {
+                                            peptide.Unique = true;
+                                            proteinSpecificPeptides.Add(peptide);
+                                        }
+                                        else
+                                        {
+                                            peptide.Unique = false;
+                                            proteinSpecificPeptides.Add(peptide);
+                                        }
+                                    }
+                                    else
+                                    {
+                                        if (unique.ContainsKey(peptide.BaseSequence))
+                                        {
+                                            peptide.Unique = true;
+                                            proteinSpecificPeptides.Add(peptide);
+                                        }
+                                        else
+                                        {
+                                            peptide.Unique = false;
+                                            proteinSpecificPeptides.Add(peptide);
+                                        }
+                                    }
+                                }
+
+                                databasePeptides[entry.Key][prot.Key].AddRange(proteinSpecificPeptides);
                             }
                             else
                             {
-                                databasePeptides[entry.Key].Add(prot.Key, prot.Value);
+                                List<InSilicoPep> proteinSpecificPeptides = new List<InSilicoPep>();
+                                foreach (var peptide in prot.Value)
+                                {
+                                    if (UserParams.TreatModifiedPeptidesAsDifferent)
+                                    {
+                                        if (unique.ContainsKey(peptide.FullSequence))
+                                        {
+                                            peptide.Unique = true;
+                                            proteinSpecificPeptides.Add(peptide);
+                                        }
+                                        else
+                                        {
+                                            peptide.Unique = false;
+                                            proteinSpecificPeptides.Add(peptide);
+                                        }
+                                    }
+                                    else
+                                    {
+                                        if (unique.ContainsKey(peptide.BaseSequence))
+                                        {
+                                            peptide.Unique = true;
+                                            proteinSpecificPeptides.Add(peptide);
+                                        }
+                                        else
+                                        {
+                                            peptide.Unique = false;
+                                            proteinSpecificPeptides.Add(peptide);
+                                        }
+                                    }
+                                }
+                                databasePeptides[entry.Key].Add(prot.Key, proteinSpecificPeptides);
                             }
                         }
                     }
                     else
                     {
-                        databasePeptides.Add(entry.Key, entry.Value);
+                        Dictionary<Protein, List<InSilicoPep>> proteinDic = new Dictionary<Protein, List<InSilicoPep>>();
+                        foreach (var prot in entry.Value)
+                        {
+                            List<InSilicoPep> proteinSpecificPeptides = new List<InSilicoPep>();
+                            foreach (var peptide in prot.Value)
+                            {
+                                if (UserParams.TreatModifiedPeptidesAsDifferent)
+                                {
+                                    if (unique.ContainsKey(peptide.FullSequence))
+                                    {
+                                        peptide.Unique = true;
+                                        proteinSpecificPeptides.Add(peptide);
+                                    }
+                                    else
+                                    {
+                                        peptide.Unique = false;
+                                        proteinSpecificPeptides.Add(peptide);
+                                    }
+                                }
+                                else
+                                {
+                                    if (unique.ContainsKey(peptide.BaseSequence))
+                                    {
+                                        peptide.Unique = true;
+                                        proteinSpecificPeptides.Add(peptide);
+                                    }
+                                    else
+                                    {
+                                        peptide.Unique = false;
+                                        proteinSpecificPeptides.Add(peptide);
+                                    }
+                                }
+                            }
+                            proteinDic.Add(prot.Key, proteinSpecificPeptides);
+                        }
+                        databasePeptides.Add(entry.Key, proteinDic);
                     }
                 }
 
@@ -261,7 +543,7 @@ namespace ProteaseGuruGUI
             HistogramDataTable = plot.DataTable;
             HistogramLoading.Items.Clear();
         }
-        //create a data table with all of the information formt he histogram so useres can make their own plots using proteaseguru calculaitons
+        //create a data table with all of the information from the histogram so useres can make their own plots using proteaseguru calculaitons
         private void CreateTable_Click(object sender, RoutedEventArgs e)
         {
             DataTable table = new DataTable();

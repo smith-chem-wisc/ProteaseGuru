@@ -61,7 +61,7 @@ namespace ProteaseGuruGUI
             this.Loaded += results_Loaded;
 
             SearchModifications.SetUp();
-            SearchModifications.Timer.Tick += new EventHandler(searchBox_TextChangedHandler);
+            SearchModifications.Timer.Tick += new EventHandler(searchBox_TextChangedHandler);           
         }
 
         //set up protease to color dictionary for peptides as well as mods
@@ -106,7 +106,15 @@ namespace ProteaseGuruGUI
             {
                 SelectedProteases.Add(protease.ToString());
             }
-            DrawSequenceCoverageMap(SelectedProtein, SelectedProteases);
+            if (SelectedProtein == null)
+            {
+                DrawSequenceCoverageMap(ProteinsForTreeView.FirstOrDefault().Value, SelectedProteases);
+            }
+            else 
+            {
+                DrawSequenceCoverageMap(SelectedProtein, SelectedProteases);
+            }
+            
         }
 
         // handler for searching through tree
@@ -158,7 +166,8 @@ namespace ProteaseGuruGUI
                     SelectedProtein = protein;
                 }
             }
-                          
+            DrawSequenceCoverageMap(SelectedProtein, SelectedProteases);
+
 
         }
 
@@ -508,6 +517,34 @@ namespace ProteaseGuruGUI
             }
         }
 
+        public IEnumerable<(string, double)> CalculateSequenceCoverageUnique(Protein protein)
+        {
+            List<InSilicoPep> peptides = new List<InSilicoPep>();
+            foreach (var proteaseKvp in PeptideByProteaseAndProtein[protein])
+            {
+                HashSet<int> coveredOneBasedResidues = new HashSet<int>();
+                if (PeptideByFile.Keys.Count() > 1)
+                {
+                    peptides = proteaseKvp.Value.Where(p => p.UniqueAllDbs == true).ToList();
+                }
+                else
+                {
+                    peptides = proteaseKvp.Value.Where(p => p.Unique == true).ToList();
+                }
+                
+                foreach (var peptide in peptides)
+                {
+                    for (int i = peptide.StartResidue; i <= peptide.EndResidue; i++)
+                    {
+                        coveredOneBasedResidues.Add(i);
+                    }
+                }
+
+                var fract = (double)coveredOneBasedResidues.Count / protein.Length;
+                yield return (proteaseKvp.Key, fract);
+            }
+        }
+
         //populate the search space with all proteins from all databases digested
         private void LoadProteins_Click(object sender, RoutedEventArgs e)
         {
@@ -546,10 +583,23 @@ namespace ProteaseGuruGUI
                             proteinTree.Add(newPtv);
                         }
 
-                        // define peptides for protein for tree view
-                        ProteinsForTreeView[prot].AllPeptides.AddRange(protein.Value);
-                        ProteinsForTreeView[prot].UniquePeptides.AddRange(protein.Value.Where(p => p.Unique));
-                        ProteinsForTreeView[prot].SharedPeptides.AddRange(protein.Value.Where(p => !p.Unique));
+                        if (PeptideByFile.Keys.Count > 1)
+                        {
+                            // define peptides for protein for tree view
+                            ProteinsForTreeView[prot].AllPeptides.AddRange(protein.Value);
+                            ProteinsForTreeView[prot].UniquePeptides.AddRange(protein.Value.Where(p => p.UniqueAllDbs));
+                            ProteinsForTreeView[prot].SharedPeptides.AddRange(protein.Value.Where(p => !p.UniqueAllDbs));                           
+                            MessageBox.Show("Note: More than one protein database was analyzed. Unique peptides are defined as being unique to a single protein in all analyzed databases."); 
+                        }
+                        else
+                        {
+                            // define peptides for protein for tree view
+                            ProteinsForTreeView[prot].AllPeptides.AddRange(protein.Value);
+                            ProteinsForTreeView[prot].UniquePeptides.AddRange(protein.Value.Where(p => p.Unique));
+                            ProteinsForTreeView[prot].SharedPeptides.AddRange(protein.Value.Where(p => !p.Unique));
+                            MessageBox.Show("Note: One protein database was analyzed. Unique peptides are defined as being unique to a single protein in the analyzed database.");
+                        }
+                        
                     }
                 }
             }
@@ -561,6 +611,7 @@ namespace ProteaseGuruGUI
                 var proteaseList = UserParams.ProteasesForDigestion.Select(p=>p.Name).ToList();
                 var uniquePeps = ptv.UniquePeptides.GroupBy(p => p.Protease).ToDictionary(group => group.Key, group => group.ToList());
                 var sharedPeps = ptv.SharedPeptides.GroupBy(p => p.Protease).ToDictionary(group => group.Key, group => group.ToList());
+               
                 ptv.Summary.Add(new SummaryForTreeView("Number of Unique Peptides: "));
                 foreach (var protease in proteaseList)
                 {
@@ -588,13 +639,22 @@ namespace ProteaseGuruGUI
 
                 }
                                 
-                ptv.Summary.Add(new SummaryForTreeView("Sequence Coverage Fraction:")); // break down by protease
+                ptv.Summary.Add(new SummaryForTreeView("Percent Sequence Coverage (all peptides):")); // break down by protease
 
                 foreach (var seqCovKvp in CalculateSequenceCoverage(protein.Key))
                 {
                     ptv.Summary.Add(new SummaryForTreeView("     " + seqCovKvp.Item1 + ": " + Math.Round(seqCovKvp.Item2*100, 3) + "%")); // break down by protease
                 }
+
+                ptv.Summary.Add(new SummaryForTreeView("Percent Sequence Coverage (unique peptides):")); // break down by protease
+
+                foreach (var seqCovKvp in CalculateSequenceCoverageUnique(protein.Key))
+                {
+                    ptv.Summary.Add(new SummaryForTreeView("     " + seqCovKvp.Item1 + ": " + Math.Round(seqCovKvp.Item2 * 100, 3) + "%")); // break down by protease
+                }
             }
+
+            DrawSequenceCoverageMap(ProteinsForTreeView.FirstOrDefault().Value, SelectedProteases);
         }
 
         private void ChangeMapScrollViewSize()
@@ -627,20 +687,13 @@ namespace ProteaseGuruGUI
         }
 
         private void proteins_SelectedCellsChanged(object sender, RoutedPropertyChangedEventArgs<object> e)
-        {
-            // if protease selected item is null, dont draw map
-            if (ProteaseSelectedForUse.SelectedItems != null)
-            {
-                OnSelectionChanged();
-            }
+        {  
+                OnSelectionChanged();            
         }
 
         private void proteaseComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
-        {
-            if (dataGridProteins.SelectedItem != null)
-            {
-                OnSelectionChanged();
-            }
+        {            
+                OnSelectionChanged();            
         }
 
         private void proteaseCoverageMaps_loaded(object sender, RoutedEventArgs e)
@@ -675,26 +728,8 @@ namespace ProteaseGuruGUI
             ms.Close();
             var filePath = System.IO.Path.Combine(fileDirectory, fileName);
             System.IO.File.WriteAllBytes(filePath, ms.ToArray());
-                        
-            //var fileNameLegend = String.Concat("SequenceCoverageMapLegend_" + SelectedProtein.DisplayName + ".png");
-            //Rect boundsLegend = VisualTreeHelper.GetDescendantBounds(legend);           
-            //RenderTargetBitmap rtbLegend = new RenderTargetBitmap((int)boundsLegend.Width, (int)boundsLegend.Height, dpi, dpi, System.Windows.Media.PixelFormats.Default);
-            //DrawingVisual dvLegend = new DrawingVisual();
-            //using (DrawingContext dc = dvLegend.RenderOpen())
-            //{
-            //    VisualBrush vb = new VisualBrush(legend);
-            //    dc.DrawRectangle(vb, null, new Rect(new Point(), boundsLegend.Size));
-            //}
-            //rtbLegend.Render(dvLegend);
 
-            //BitmapEncoder pngEncoderLegend = new PngBitmapEncoder();
-            //pngEncoderLegend.Frames.Add(BitmapFrame.Create(rtbLegend));
-
-            //System.IO.MemoryStream msLegend = new System.IO.MemoryStream();
-            //pngEncoderLegend.Save(msLegend);
-            //ms.Close();
-            //var filePathLegend = System.IO.Path.Combine(fileDirectory, fileNameLegend);
-            //System.IO.File.WriteAllBytes(filePathLegend, msLegend.ToArray());
+            MessageBox.Show("PNG Created at " + filePath + "!");
         }
     }
 }

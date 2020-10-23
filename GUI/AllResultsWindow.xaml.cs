@@ -83,42 +83,16 @@ namespace ProteaseGuruGUI
                         var peptidesToProteins = protease.Value.GroupBy(p => p.FullSequence).ToDictionary(group => group.Key, group => group.ToList());
                         List<InSilicoPep> allPeptides = peptidesToProteins.SelectMany(p => p.Value).ToList();
                         thisDigestion.Summary.Add(new SummaryForTreeView("Number of Peptides: " + allPeptides.Count));
-                        thisDigestion.Summary.Add(new SummaryForTreeView("     Number of Distinct Peptide Sequences: " + allPeptides.Select(p => p.FullSequence).Distinct().Count()));
-                        var uniquePeptides = peptidesToProteins.Where(p => p.Value.Select(p => p.Protein).Distinct().Count() == 1);
-                        var sharedPeptides = peptidesToProteins.Where(p => p.Value.Select(p => p.Protein).Distinct().Count() > 1);
-                        var sharedPeptidesInOneDb = sharedPeptides.Where(p => p.Value.Select(p => p.Database).Distinct().Count() == 1);
-                        Dictionary<string, List<string>> peptidesForSingleDatabase = new Dictionary<string, List<string>>();
-                        foreach (var entry in uniquePeptides)
-                        {
-                            var database = entry.Value.Select(p => p.Database).Distinct().FirstOrDefault();
-                            if (peptidesForSingleDatabase.ContainsKey(database))
-                            {
-                                peptidesForSingleDatabase[database].Add(entry.Key);
-                            }
-                            else
-                            {
-                                peptidesForSingleDatabase.Add(database, new List<string>() { entry.Key });
-                            }
-                        }
-                        foreach (var entry in sharedPeptidesInOneDb)
-                        {
-                            var database = entry.Value.Select(p => p.Database).Distinct().FirstOrDefault();
-                            if (peptidesForSingleDatabase.ContainsKey(database))
-                            {
-                                peptidesForSingleDatabase[database].Add(entry.Key);
-                            }
-                            else
-                            {
-                                peptidesForSingleDatabase.Add(database, new List<string>() { entry.Key });
-                            }
-                        }
+                        thisDigestion.Summary.Add(new SummaryForTreeView("     Number of Distinct Peptide Sequences: " + allPeptides.Select(p => p.FullSequence).Distinct().Count()));                       
+                        var peptidesForSingleDatabase = allPeptides.Where(p => p.SeqOnlyInThisDb == true).GroupBy(p => p.Database).ToDictionary(group => group.Key, group => group.ToList());
 
-                        thisDigestion.Summary.Add(new SummaryForTreeView("Number of Unique Peptide Sequences: " + uniquePeptides.Count()));                        
-                        thisDigestion.Summary.Add(new SummaryForTreeView("Number of Shared Peptide Sequences: " + sharedPeptides.Count()));
+                        
+                        thisDigestion.Summary.Add(new SummaryForTreeView("Number of Unique Peptide Sequences: " + allPeptides.Where(p => p.UniqueAllDbs == true).Select(p => p.FullSequence).Distinct().Count()));                        
+                        thisDigestion.Summary.Add(new SummaryForTreeView("Number of Shared Peptide Sequences: " + allPeptides.Where(p => p.UniqueAllDbs == false).Select(p => p.FullSequence).Distinct().Count()));
 
                         foreach (var db in peptidesForSingleDatabase)
                         {
-                            thisDigestion.Summary.Add(new SummaryForTreeView("Number of Peptide Sequences Found Only in "+db.Key+": " + db.Value.Count()));
+                            thisDigestion.Summary.Add(new SummaryForTreeView("Number of Peptide Sequences Found Only in "+db.Key+": " + db.Value.Select(p => p.FullSequence).Distinct().Count()));
                         }
 
 
@@ -137,42 +111,16 @@ namespace ProteaseGuruGUI
                         List<InSilicoPep> allPeptides = peptidesToProteins.SelectMany(p => p.Value).ToList();
                         thisDigestion.Summary.Add(new SummaryForTreeView("Number of Peptides: " + allPeptides.Count));
                         thisDigestion.Summary.Add(new SummaryForTreeView("     Number of Distinct Peptide Sequences: " + allPeptides.Select(p => p.BaseSequence).Distinct().Count()));
-                        var uniquePeptides = peptidesToProteins.Where(p => p.Value.Select(p => p.Protein).Distinct().Count() == 1);
-                        var sharedPeptides = peptidesToProteins.Where(p => p.Value.Select(p => p.Protein).Distinct().Count() > 1);
-                        var sharedPeptidesInOneDb = sharedPeptides.Where(p => p.Value.Select(p => p.Database).Distinct().Count() == 1);                        
-                        Dictionary<string, List<string>> peptidesForSingleDatabase = new Dictionary<string, List<string>>();
-                        foreach (var entry in uniquePeptides)
-                        {
-                            var database = entry.Value.Select(p => p.Database).Distinct().FirstOrDefault();
-                            if (peptidesForSingleDatabase.ContainsKey(database))
-                            {
-                                peptidesForSingleDatabase[database].Add(entry.Key);
-                            }
-                            else
-                            {
-                                peptidesForSingleDatabase.Add(database, new List<string>() { entry.Key });
-                            }
-                        }
-                        foreach (var entry in sharedPeptidesInOneDb)
-                        {
-                            var database = entry.Value.Select(p => p.Database).Distinct().FirstOrDefault();
-                            if (peptidesForSingleDatabase.ContainsKey(database))
-                            {
-                                peptidesForSingleDatabase[database].Add(entry.Key);
-                            }
-                            else
-                            {
-                                peptidesForSingleDatabase.Add(database, new List<string>() { entry.Key });
-                            }
-                        }
-
-                        thisDigestion.Summary.Add(new SummaryForTreeView("Number of Unique Peptide Sequences: " + uniquePeptides.Count()));
-                        thisDigestion.Summary.Add(new SummaryForTreeView("Number of Shared Peptide Sequences: " + sharedPeptides.Count()));
+                        var peptidesForSingleDatabase = allPeptides.Where(p => p.SeqOnlyInThisDb == true).GroupBy(p => p.Database).ToDictionary(group => group.Key, group => group.ToList());
+                        
+                        thisDigestion.Summary.Add(new SummaryForTreeView("Number of Unique Peptide Sequences: " + allPeptides.Where(p => p.UniqueAllDbs == true).Select(p => p.BaseSequence).Distinct().Count()));
+                        thisDigestion.Summary.Add(new SummaryForTreeView("Number of Shared Peptide Sequences: " + allPeptides.Where(p => p.UniqueAllDbs == false).Select(p => p.BaseSequence).Distinct().Count()));
 
                         foreach (var db in peptidesForSingleDatabase)
                         {
-                            thisDigestion.Summary.Add(new SummaryForTreeView("Number of Peptide Sequences Found Only in " + db.Key + ": " + db.Value.Count()));
-                        }
+                            thisDigestion.Summary.Add(new SummaryForTreeView("Number of Peptide Sequences Found Only in " + db.Key + ": " + db.Value.Select(p=>p.BaseSequence).Distinct().Count()));
+                        }                        
+
                         allDatabases.Summary.Add(thisDigestion);
 
                     }

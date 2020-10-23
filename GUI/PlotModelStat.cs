@@ -25,6 +25,7 @@ namespace GUI
         private readonly Dictionary<string, ObservableCollection<double>> SequenceCoverageByProtease = new Dictionary<string, ObservableCollection<double>>();
         private readonly Dictionary<string, ObservableCollection<double>> SequenceCoverageUniqueByProtease = new Dictionary<string, ObservableCollection<double>>();
         private readonly Dictionary<string, ObservableCollection<double>> UniquePeptidesPerProtein = new Dictionary<string, ObservableCollection<double>>();
+        List<string> Proteases = new List<string>();
         //access series stuff here
         public Dictionary<string, Dictionary<string, string>> DataTable = new Dictionary<string, Dictionary<string, string>>();
 
@@ -120,7 +121,11 @@ namespace GUI
             else if (plotType.Equals(" Predicted Peptide Electrophoretic Mobility"))
             {
                 histogramPlot(6);
-            }            
+            }
+            else if (plotType.Equals(" Amino Acid Distribution"))
+            {
+                columnPlot();
+            }
         }
         // returns a bin index of number relative to 0, midpoints are rounded towards zero
         private static int roundToBin(double number, double binSize)
@@ -141,6 +146,105 @@ namespace GUI
             {
                 this.total = total;
                 this.bin = bin;
+            }
+        }
+
+        private class BarItem : ColumnItem
+        {
+            public int total { get; set; }
+            public string label { get; set; }
+            public BarItem(double value, int categoryIndex, string label, int total) : base(value, categoryIndex)
+            {
+                this.total = total;
+                this.label = label;
+            }
+        }
+
+        private void columnPlot()
+        {
+            privateModel.LegendTitle = "Protease";
+            privateModel.LegendPlacement = LegendPlacement.Outside;
+            privateModel.LegendPosition = LegendPosition.BottomLeft;
+            string yAxisTitle = "Count";
+            string xAxisTitle = "Amino Acid";
+            Dictionary<string, Dictionary<char, int>> dictsByProtease = new Dictionary<string, Dictionary<char, int>>();
+            List<char> aminoAcids = new List<char>() { 'A', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'K', 'L', 'M', 'N', 'P', 'Q', 'R', 'S', 'T', 'V', 'W', 'Y' };
+            foreach (var protease in PeptidesByProtease)
+            {
+                Dictionary<char, int> aminoAcidCount = new Dictionary<char, int>();
+                foreach (var peptide in protease.Value)
+                {
+                    foreach (var aa in aminoAcids)
+                    {
+                        int aaCount = 0;
+                        if (peptide.BaseSequence.Contains(aa))
+                        {
+                            aaCount = peptide.BaseSequence.Where(x => x == aa).Count();
+                        }
+                        if (aminoAcidCount.ContainsKey(aa))
+                        {
+                            aminoAcidCount[aa] += aaCount;
+                        }
+                        else
+                        {
+                            aminoAcidCount.Add(aa, aaCount);
+                        }
+                    }
+                }
+                dictsByProtease.Add(protease.Key, aminoAcidCount);
+            }
+
+            var categoryAxis = new CategoryAxis { Position = AxisPosition.Bottom, Title =xAxisTitle, GapWidth = .25 };
+            foreach (var aa in aminoAcids)
+            {
+                categoryAxis.Labels.Add(aa.ToString());
+            }
+
+            // add axes
+            privateModel.Axes.Add(categoryAxis);
+            privateModel.Axes.Add(new LinearAxis { Title = yAxisTitle, Position = AxisPosition.Left, AbsoluteMinimum = 0 });
+
+            foreach (string key in dictsByProtease.Keys)
+            {
+                var columns = new ColumnSeries { ColumnWidth = 200, IsStacked = false, Title = key/*, TrackerFormatString = "Bin: {bin}\n{0}: {2}\nTotal: {total}" */};
+
+                foreach (var d in dictsByProtease[key])
+                {
+                    var column = new ColumnItem(d.Value);
+                    
+                    columns.Items.Add(column);
+                    if (DataTable.ContainsKey(d.Key.ToString()))
+                    {
+                        if (DataTable[d.Key.ToString()].ContainsKey(key))
+                        {
+                            DataTable[d.Key.ToString()][key] = d.Value.ToString();
+                        }
+                        else
+                        {
+                            DataTable[d.Key.ToString()].Add(key, d.Value.ToString());
+                        }
+                    }
+                    else
+                    {
+                        var data = new Dictionary<string, string>();
+                        foreach (var protease in dictsByProtease.Keys)
+                        {
+                            if (protease == key)
+                            {
+                                data.Add(key, d.Value.ToString());
+                            }
+                            else
+                            {
+                                data.Add(protease, "0");
+                            }
+                        }
+
+                        DataTable.Add(d.Key.ToString(), data);
+                    }
+
+                }
+                privateModel.Series.Add(columns);
+
             }
         }
         private void histogramPlot(int plotType)
@@ -250,27 +354,44 @@ namespace GUI
                 }
             }
 
-                // add a column series for each file
+                // add a column series for each protease
             foreach (string key in dictsByProtease.Keys)
             {
                 var column = new ColumnSeries { ColumnWidth = 200, IsStacked = false, Title = key, TrackerFormatString = "Bin: {bin}\n{0}: {2}\nTotal: {total}" };
                 
                 foreach (var d in dictsByProtease[key])
-                {
-                    
-                        int bin = int.Parse(d.Key);
-                        var hist = new HistItem(d.Value, bin - start, (bin * binSize).ToString(CultureInfo.InvariantCulture), totalCounts[bin - start]);
-                        column.Items.Add(hist);
-                        if (DataTable.ContainsKey(hist.bin))
+                {                    
+                    int bin = int.Parse(d.Key);
+                    var hist = new HistItem(d.Value, bin - start, (bin * binSize).ToString(CultureInfo.InvariantCulture), totalCounts[bin - start]);
+                    column.Items.Add(hist);
+                    if (DataTable.ContainsKey(hist.bin))
+                    {
+                        if (DataTable[hist.bin].ContainsKey(key))
                         {
-                            DataTable[hist.bin].Add(key, hist.Value.ToString());
+                            DataTable[hist.bin][key] = hist.Value.ToString();
                         }
                         else
                         {
-                            var data = new Dictionary<string, string>();
-                            data.Add(key, hist.Value.ToString());
-                            DataTable.Add(hist.bin, data);
-                        }                   
+                            DataTable[hist.bin].Add(key, hist.Value.ToString());
+                        }                        
+                    }
+                    else
+                    {
+                        var data = new Dictionary<string, string>();
+                        foreach (var protease in dictsByProtease.Keys)
+                        {
+                            if (protease == key)
+                            {
+                                data.Add(key, hist.Value.ToString());
+                            }
+                            else
+                            {
+                                data.Add(protease, "0");
+                            }
+                        }
+                        
+                        DataTable.Add(hist.bin, data);
+                    }                   
                    
                 }                
                 privateModel.Series.Add(column);

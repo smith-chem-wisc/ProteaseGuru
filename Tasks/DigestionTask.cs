@@ -38,7 +38,7 @@ namespace Tasks
                     PeptideByFile[database.FileName].Add(protease.Name, DeterminePeptideStatus(database.FileName, DigestDatabase(proteins, protease, DigestionParameters), DigestionParameters));                   
                 }                
             }
-            WritePeptidesToTsv(PeptideByFile, OutputFolder, DigestionParameters);
+            PeptideByFile = WritePeptidesToTsv(PeptideByFile, OutputFolder, DigestionParameters);
             MyTaskResults myRunResults = new MyTaskResults(this);
             return myRunResults;
         }
@@ -229,13 +229,14 @@ namespace Tasks
         }
         
         // write peptides to tsv files as results
-        protected static void WritePeptidesToTsv(Dictionary<string, Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>> peptideByFile, string filePath, Parameters userParams)
+        protected static Dictionary<string, Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>> WritePeptidesToTsv(Dictionary<string, Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>> peptideByFile, string filePath, Parameters userParams)
         {
             string tab = "\t";
             string header = "Database" + tab + "Protease" + tab + "Base Sequence" + tab + "Full Sequence" + tab + "Previous Amino Acid" + tab +
-                "Next Amino Acid" + tab +"Start Residue"+tab+"End Residue"+ "Length" + tab + "Molecular Weight" + tab + "Protein" + tab + "Unique (in database)" + tab + "Unique (in analysis)" +
-                tab + "Hydrophobicity" + tab + "Electrophoretic Mobility";
+                "Next Amino Acid" + tab +"Start Residue"+tab+"End Residue"+ tab+ "Length" + tab + "Molecular Weight" + tab + "Protein" + tab + "Unique Peptide (in this database)" + tab + "Unique Peptide (in all databases)" + tab+ "Peptide sequence exclusive to this Database" +tab+
+                "Hydrophobicity" + tab + "Electrophoretic Mobility";
             List<InSilicoPep> allPeptides = new List<InSilicoPep>();
+            Dictionary<string, Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>> peptideByFileUpdated = new Dictionary<string, Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>>();
             if (peptideByFile.Count > 1)
             {
                 Dictionary<string, List<InSilicoPep>> allDatabasePeptidesByProtease = new Dictionary<string, List<InSilicoPep>>();
@@ -269,23 +270,40 @@ namespace Tasks
                     }
                     var unique = peptidesToProteins.Where(p => p.Value.Select(p => p.Protein).Distinct().Count() == 1).ToList();
                     var shared = peptidesToProteins.Where(p => p.Value.Select(p => p.Protein).Distinct().Count() > 1).ToList();
+                    var sharedPeptidesInOneDb = shared.Where(p => p.Value.Select(p => p.Database).Distinct().Count() == 1);                 
+                    
                     foreach (var entry in unique)
                     {
                         foreach (var peptide in entry.Value)
                         {
                             peptide.UniqueAllDbs = true;
+                            peptide.SeqOnlyInThisDb = true;
                             allPeptides.Add(peptide);
-                        }
+
+                        }                        
                     }
                     foreach (var entry in shared)
                     {
-                        foreach (var peptide in entry.Value)
-                        {
-                            peptide.UniqueAllDbs = false;
-                            allPeptides.Add(peptide);
-                        }
-                    }
 
+                        if (entry.Value.Select(p => p.Database).Distinct().Count() == 1)
+                        {
+                            foreach (var peptide in entry.Value)
+                            {
+                                peptide.UniqueAllDbs = false;
+                                peptide.SeqOnlyInThisDb = true;
+                                allPeptides.Add(peptide);
+                            }
+                        }
+                        else
+                        {
+                            foreach (var peptide in entry.Value)
+                            {
+                                peptide.UniqueAllDbs = false;
+                                peptide.SeqOnlyInThisDb = false;
+                                allPeptides.Add(peptide);
+                            }
+                        }                        
+                    }   
                 }
             }
             else
@@ -299,12 +317,53 @@ namespace Tasks
                             foreach (var peptide in protein.Value)
                             {
                                 peptide.UniqueAllDbs = peptide.Unique;
+                                peptide.SeqOnlyInThisDb = true;
                                 allPeptides.Add(peptide);
                             }
                         }
                     }
                 }
             }
+
+            foreach (var peptide in allPeptides)
+            {
+                var protein = peptideByFile[peptide.Database][peptide.Protease].Keys.ToList().Where(p => p.Accession == peptide.Protein).First();
+
+                if (peptideByFileUpdated.ContainsKey(peptide.Database))
+                {
+                    if (peptideByFileUpdated[peptide.Database].ContainsKey(peptide.Protease))
+                    {
+                        if (peptideByFileUpdated[peptide.Database][peptide.Protease].ContainsKey(protein))
+                        {
+                            peptideByFileUpdated[peptide.Database][peptide.Protease][protein].Add(peptide);
+                        }
+                        else
+                        {
+                            peptideByFileUpdated[peptide.Database][peptide.Protease].Add(protein, new List<InSilicoPep>() { peptide });
+                        }
+                    }
+                    else
+                    {
+                        Dictionary<Protein, List<InSilicoPep>> proteinDic = new Dictionary<Protein, List<InSilicoPep>>();
+                        proteinDic.Add(protein, new List<InSilicoPep>() { peptide });
+
+                        peptideByFileUpdated[peptide.Database].Add(peptide.Protease, proteinDic);
+                    }
+                }
+                else
+                {
+                    Dictionary<Protein, List<InSilicoPep>> proteinDic = new Dictionary<Protein, List<InSilicoPep>>();
+                    proteinDic.Add(protein, new List<InSilicoPep>() { peptide });
+                    Dictionary<string, Dictionary<Protein, List<InSilicoPep>>> proteaseDic = new Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>();
+                    proteaseDic.Add(peptide.Protease, proteinDic);
+
+                    peptideByFileUpdated.Add(peptide.Database, proteaseDic);
+                }
+            }
+            
+
+            var initalDictionary = allPeptides.GroupBy(p => p.Database).ToDictionary(group => group.Key, group => group.ToList());
+            
             var numberOfPeptides = allPeptides.Count();
             double numberOfFiles = Math.Ceiling(numberOfPeptides / 1000000.0);
             var peptidesInFile = 1;
@@ -341,6 +400,8 @@ namespace Tasks
             parameters.Add("Treat modified peptides as different peptides: " + userParams.TreatModifiedPeptidesAsDifferent);
 
             File.WriteAllLines(filePath + @"\DigestionConditions.txt", parameters);
+
+            return peptideByFileUpdated;
         }
     }
 }

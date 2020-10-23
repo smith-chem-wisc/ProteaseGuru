@@ -15,6 +15,7 @@ namespace Tasks
         public char NextAA;
         public bool Unique;
         public bool UniqueAllDbs;
+        public bool SeqOnlyInThisDb;
         public double Hydrophobicity;
         public double ElectrophoreticMobility;
         public int Length;
@@ -43,6 +44,7 @@ namespace Tasks
             EndResidue = end;
             Protease = protease;
             UniqueAllDbs = false;
+            SeqOnlyInThisDb = true;
         }
 
         override public string ToString()
@@ -74,6 +76,8 @@ namespace Tasks
             sb.Append(Unique);
             sb.Append(tab);
             sb.Append(UniqueAllDbs);
+            sb.Append(tab);
+            sb.Append(SeqOnlyInThisDb);
             sb.Append(tab);
             sb.Append(Hydrophobicity);
             sb.Append(tab);
