@@ -76,7 +76,14 @@ namespace ProteaseGuruGUI
             tb.Foreground = clr;
             tb.Text = txt;
             tb.FontSize = 15;
-            tb.FontWeight = FontWeights.Bold;
+            if (clr == Brushes.Black)
+            {
+                tb.FontWeight = FontWeights.Bold;
+            }
+            else
+            {
+                tb.FontWeight = FontWeights.ExtraBold;
+            }
             tb.FontFamily = new FontFamily("Arial"); // monospaced font
 
             Canvas.SetTop(tb, loc.Y);
@@ -148,7 +155,7 @@ namespace ProteaseGuruGUI
             
         }
 
-        public static void drawLegend(Canvas cav, Dictionary<string, Color> proteaseByColor, List<string> proteases, Grid legend)
+        public static void drawLegend(Canvas cav, Dictionary<string, Color> proteaseByColor, List<string> proteases, Grid legend, bool variants)
         {
             int i = -1;
             legend.RowDefinitions.Add(new RowDefinition());
@@ -197,6 +204,17 @@ namespace ProteaseGuruGUI
                 Grid.SetRow(pepLine, 1);
                 Grid.SetColumn(pepLabel, ++i);
                 Grid.SetRow(pepLabel, 1);
+            }
+            if (variants == true)
+            {
+                legend.ColumnDefinitions.Add(new ColumnDefinition());
+                Label variantLabel = new Label();
+                variantLabel.Content = "Sequence Variants";
+                variantLabel.Foreground = Brushes.Tomato;
+                variantLabel.FontWeight = FontWeights.ExtraBold;
+                legend.Children.Add(variantLabel);
+                Grid.SetColumn(variantLabel, ++i);
+                Grid.SetRow(variantLabel, 1);
             }
             i = -1;
             j = 1;
@@ -247,7 +265,7 @@ namespace ProteaseGuruGUI
 
             cav.Visibility = Visibility.Visible;
         }
-        public static void drawLegendMods(Canvas cav, Dictionary<string, Color> proteaseByColor, Dictionary<string, SolidColorBrush> modsByColor, List<string> proteases, Grid legend)
+        public static void drawLegendMods(Canvas cav, Dictionary<string, Color> proteaseByColor, Dictionary<string, SolidColorBrush> modsByColor, List<string> proteases, Grid legend, bool variants)
         {
             int i = -1;
             legend.RowDefinitions.Add(new RowDefinition());
@@ -297,6 +315,19 @@ namespace ProteaseGuruGUI
                 Grid.SetColumn(pepLabel, ++i);
                 Grid.SetRow(pepLabel, 1);
             }
+
+            if (variants == true)
+            {
+                legend.ColumnDefinitions.Add(new ColumnDefinition());
+                Label variantLabel = new Label();
+                variantLabel.Content = "Sequence Variants";
+                variantLabel.Foreground = Brushes.Tomato;
+                variantLabel.FontWeight = FontWeights.ExtraBold;
+                legend.Children.Add(variantLabel);
+                Grid.SetColumn(variantLabel, ++i);
+                Grid.SetRow(variantLabel, 1);
+            }
+
             i = -1;
                      
             j = 1;

@@ -69,7 +69,7 @@ namespace ProteaseGuruGUI
         {
             List<Color> colors = new List<Color>(){Colors.MediumBlue, Colors.Goldenrod, Colors.ForestGreen, Colors.DarkOrchid, Colors.Chocolate,
                 Colors.Teal, Colors.PaleVioletRed, Colors.DimGray, Colors.LightSkyBlue, Colors.PaleGoldenrod, Colors.DarkSeaGreen, Colors.Thistle,
-                Colors.PeachPuff, Colors.PaleTurquoise, Colors.MistyRose, Colors.Gainsboro, Colors.Navy, Colors.DarkGoldenrod, Colors.DarkGreen, Colors.Purple,
+                Colors.PeachPuff, Colors.PaleTurquoise, Colors.MistyRose, Colors.Gainsboro, Colors.Navy, Colors.DarkGoldenrod, Colors.DarkGreen, 
                 Colors.Sienna, Colors.DarkSlateGray, Colors.MediumVioletRed, Colors.Black, Colors.CornflowerBlue, Colors.Gold, Colors.MediumSeaGreen, 
                 Colors.MediumOrchid, Colors.DarkSalmon, Colors.LightSeaGreen, Colors.LightPink, Colors.DarkGray, Colors.Aquamarine, Colors.Coral, 
                 Colors.CadetBlue, Colors.DarkMagenta, Colors.DarkOliveGreen, Colors.DeepPink, Colors.GreenYellow, Colors.Maroon, Colors.Yellow,
@@ -198,6 +198,85 @@ namespace ProteaseGuruGUI
             }            
             return splitMods;
         }
+        private List<List<int>> SplitVariations(List<SequenceVariation> variants, int proteinLength, int spacing)
+        {
+            double round = proteinLength / spacing;
+            var remainder = proteinLength % spacing;
+            if (remainder > 0)
+            {
+                round = round + 1;
+            }
+            var splitCount = Convert.ToInt32(round);
+            var splitVariants = new List<List<int>>();
+            for (int j = 0; j < splitCount; j++)
+            {
+                List<int> variantsInArea = new List<int>();
+                int min = 1 + (j * spacing);
+                int max = spacing + (j * spacing);
+                foreach (var entry in variants)
+                {
+                    //varaint start and end is all on this line
+                    if (entry.OneBasedBeginPosition >= min && entry.OneBasedBeginPosition <= max && entry.OneBasedEndPosition >= min && entry.OneBasedEndPosition <= max)
+                    {
+                        // add all numbers from start position to end position
+                        int numberToAdd = (entry.OneBasedBeginPosition - (j * spacing));
+                        variantsInArea.Add(numberToAdd);
+                        numberToAdd++;
+                        while (numberToAdd > (entry.OneBasedBeginPosition - (j * spacing)) && numberToAdd < (entry.OneBasedEndPosition - (j * spacing)))
+                        {
+                            variantsInArea.Add(numberToAdd);
+                            numberToAdd++;
+                        }
+                        variantsInArea.Add((entry.OneBasedEndPosition - (j * spacing)));
+                    }
+                    // variant starts on this line but ends on another line
+                    if (entry.OneBasedBeginPosition >= min && entry.OneBasedBeginPosition <= max && entry.OneBasedEndPosition > max)
+                    {
+                        // add all numbers from start position to end of line (max)
+                        int numberToAdd = (entry.OneBasedBeginPosition - (j * spacing));
+                        variantsInArea.Add(numberToAdd);
+                        numberToAdd++;
+                        while (numberToAdd > (entry.OneBasedBeginPosition - (j * spacing)) && numberToAdd < (max - (j * spacing)))
+                        {
+                            variantsInArea.Add(numberToAdd);
+                            numberToAdd++;
+                        }
+                        variantsInArea.Add((max - (j * spacing)));
+
+                    }
+                    // variant ends on this line but started on another line
+                    if (entry.OneBasedEndPosition >= min && entry.OneBasedEndPosition <= max && entry.OneBasedBeginPosition < min)
+                    {
+                        // add all numbers from start of line (min) to end position
+                        int numberToAdd = (min - (j * spacing));
+                        variantsInArea.Add(numberToAdd);
+                        numberToAdd++;
+                        while (numberToAdd > (min - (j * spacing)) && numberToAdd < (entry.OneBasedEndPosition - (j * spacing)))
+                        {
+                            variantsInArea.Add(numberToAdd);
+                            numberToAdd++;
+                        }
+                        variantsInArea.Add((entry.OneBasedEndPosition - (j * spacing)));
+                    }
+                    // variant covers all residues in this line but starts on a previous line and ends on a future line
+                    if(entry.OneBasedBeginPosition< min && entry.OneBasedEndPosition > max)
+                    {
+                        // add all numbers from start of line (min) to end of line (max)
+                        int numberToAdd = (min - (j * spacing));
+                        variantsInArea.Add(numberToAdd);
+                        numberToAdd++;
+                        while (numberToAdd > (min - (j * spacing)) && numberToAdd < (max - (j * spacing)))
+                        {
+                            variantsInArea.Add(numberToAdd);
+                            numberToAdd++;
+                        }
+                        variantsInArea.Add((max - (j * spacing)));
+                    }
+                }
+                splitVariants.Add(variantsInArea.Distinct().ToList());
+            }
+            return splitVariants;
+        }
 
         //draw the sequence coverage map, write out the protein seqeunce, overlay modifications, and display peptides for all proteases
         private void DrawSequenceCoverageMap(ProteinForTreeView protein, List<string> proteases) 
@@ -209,7 +288,9 @@ namespace ProteaseGuruGUI
 
             string seqCoverage = protein.Protein.BaseSequence;
             IDictionary<int, List<Modification>> mods = protein.Protein.OneBasedPossibleLocalizedModifications;
+            var variants = protein.Protein.AppliedSequenceVariations;            
             var modsSplitByLine = new List<Dictionary<int, List<Modification>>>();
+            var variantsByLine = new List<List<int>>();
             var allModsInDb = GlobalVariables.AllModsKnown;
             var modColors = new Dictionary<string, SolidColorBrush>();
             var modWeight = new Dictionary<double, string>();
@@ -256,7 +337,12 @@ namespace ProteaseGuruGUI
             if (mods.Count() != 0)
             {
                 modsSplitByLine = SplitMods(mods, protein.Protein.Length, Convert.ToInt32(map.Width / spacing));
-            }            
+            }
+
+            if (variants.Count() != 0)
+            {
+                variantsByLine = SplitVariations(variants, protein.Protein.Length, Convert.ToInt32(map.Width / spacing));
+            }
             map.Children.Clear();
             legendGrid.Children.Clear();
 
@@ -282,10 +368,29 @@ namespace ProteaseGuruGUI
             foreach (var line in splitSeq)
             {
                 indices.Clear();
-                for (int r = 0; r < line.Length; r++)
+                if (variants.Count() > 0)
                 {
-                    SequenceCoverageMap.txtDrawing(map, new Point(r * spacing + 10, height), line[r].ToString().ToUpper(), Brushes.Black);
+                    for (int r = 0; r < line.Length; r++)
+                    {
+                        if (variantsByLine[splitSeq.IndexOf(line)].Contains(r + 1))
+                        {
+                            SequenceCoverageMap.txtDrawing(map, new Point(r * spacing + 10, height), line[r].ToString().ToUpper(), Brushes.Red);
+                        }
+                        else
+                        {
+                            SequenceCoverageMap.txtDrawing(map, new Point(r * spacing + 10, height), line[r].ToString().ToUpper(), Brushes.Black);
+                        }
+                        
+                    }
                 }
+                else
+                {
+                    for (int r = 0; r < line.Length; r++)
+                    {
+                        SequenceCoverageMap.txtDrawing(map, new Point(r * spacing + 10, height), line[r].ToString().ToUpper(), Brushes.Black);
+                    }
+                }
+                
                 if (mods.Count() > 0)
                 {
                     var modsForLine = modsSplitByLine[splitSeq.IndexOf(line)];
@@ -464,11 +569,27 @@ namespace ProteaseGuruGUI
 
             if (mods.Count > 0)
             {
-                SequenceCoverageMap.drawLegendMods(legend, ProteaseByColor, ModsByColor, proteases, legendGrid);
+                if (variants.Count > 0)
+                {
+                    SequenceCoverageMap.drawLegendMods(legend, ProteaseByColor, ModsByColor, proteases, legendGrid, true);
+                }
+                else
+                {
+                    SequenceCoverageMap.drawLegendMods(legend, ProteaseByColor, ModsByColor, proteases, legendGrid, false);
+                }
+                
             }
             else 
             {
-                SequenceCoverageMap.drawLegend(legend, ProteaseByColor, proteases, legendGrid);
+                if (variants.Count > 0)
+                {
+                    SequenceCoverageMap.drawLegend(legend, ProteaseByColor, proteases, legendGrid, true);
+                }
+                else
+                {
+                    SequenceCoverageMap.drawLegend(legend, ProteaseByColor, proteases, legendGrid,false);
+                }
+               
             }
             
         }
@@ -549,6 +670,14 @@ namespace ProteaseGuruGUI
         private void LoadProteins_Click(object sender, RoutedEventArgs e)
         {
             ProteinLoadButton.IsEnabled = false;
+            if (PeptideByFile.Keys.Count > 1)
+            {
+               MessageBox.Show("Note: More than one protein database was analyzed. Unique peptides are defined as being unique to a single protein in all analyzed databases."); 
+            }
+            else
+            {
+               MessageBox.Show("Note: One protein database was analyzed. Unique peptides are defined as being unique to a single protein in the analyzed database.");
+            }
 
             // populate proteins
             foreach (var db in PeptideByFile)
@@ -588,8 +717,7 @@ namespace ProteaseGuruGUI
                             // define peptides for protein for tree view
                             ProteinsForTreeView[prot].AllPeptides.AddRange(protein.Value);
                             ProteinsForTreeView[prot].UniquePeptides.AddRange(protein.Value.Where(p => p.UniqueAllDbs));
-                            ProteinsForTreeView[prot].SharedPeptides.AddRange(protein.Value.Where(p => !p.UniqueAllDbs));                           
-                            MessageBox.Show("Note: More than one protein database was analyzed. Unique peptides are defined as being unique to a single protein in all analyzed databases."); 
+                            ProteinsForTreeView[prot].SharedPeptides.AddRange(protein.Value.Where(p => !p.UniqueAllDbs));
                         }
                         else
                         {
@@ -597,7 +725,6 @@ namespace ProteaseGuruGUI
                             ProteinsForTreeView[prot].AllPeptides.AddRange(protein.Value);
                             ProteinsForTreeView[prot].UniquePeptides.AddRange(protein.Value.Where(p => p.Unique));
                             ProteinsForTreeView[prot].SharedPeptides.AddRange(protein.Value.Where(p => !p.Unique));
-                            MessageBox.Show("Note: One protein database was analyzed. Unique peptides are defined as being unique to a single protein in the analyzed database.");
                         }
                         
                     }
