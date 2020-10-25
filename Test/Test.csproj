@@ -1,16 +1,10 @@
-﻿<Project Sdk="Microsoft.NET.Sdk.WindowsDesktop">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <OutputType>WinExe</OutputType>
+    <OutputType>Library</OutputType>
     <TargetFramework>netcoreapp3.1</TargetFramework>
-    <UseWPF>true</UseWPF>
-    <ApplicationIcon>Icons\proteaseGuru.ico</ApplicationIcon>
   </PropertyGroup>
-
-  <ItemGroup>   
-    <None Remove="proteaseGuru.ico" /> 
-  </ItemGroup>
-
+  
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
     <PlatformTarget>x64</PlatformTarget>
   </PropertyGroup>
@@ -20,47 +14,31 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="16.7.1" />
     <PackageReference Include="mzLib" Version="1.0.472" />
-    <PackageReference Include="Nett" Version="0.15.0" />
-    <PackageReference Include="OxyPlot.Core" Version="2.0.0" />
-    <PackageReference Include="OxyPlot.Wpf" Version="2.0.0" />
+    <PackageReference Include="NUnit" Version="3.12.0" />
+    <PackageReference Include="NUnit3TestAdapter" Version="3.17.0" />
   </ItemGroup>
-
+  
   <ItemGroup>
     <ProjectReference Include="..\Engine\Engine.csproj" />
     <ProjectReference Include="..\Tasks\Tasks.csproj" />
   </ItemGroup>
-
+  
   <ItemGroup>
-    <Page Update="CustomProteaseWindow.xaml">
-      <SubType>Designer</SubType>
-    </Page>
+    <Folder Include="Databases\" />
   </ItemGroup>
-
+  
   <ItemGroup>
-    <Folder Include="Icons\" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Resource Include="proteaseGuru.ico">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Resource>
-  </ItemGroup>
-
-  <ItemGroup>
-
-    <None Update="Icons\proteaseGuru.ico">
+    <None Update="Databases\TestDatabase_1.fasta">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
-
-    <None Update="Twitter_Logo_Blue.bmp">
+    <None Update="Databases\TestDatabase_2.fasta">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
-
-    <None Update="youtube_20.bmp">
+    <None Update="Databases\TestDatabase_3.fasta">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
-
   </ItemGroup>
 
 </Project>

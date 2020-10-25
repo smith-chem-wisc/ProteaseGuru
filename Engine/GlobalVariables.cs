@@ -7,15 +7,12 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
+using UsefulProteomicsDatabases;
 
 namespace Engine
 {
     public static class GlobalVariables
     {
-        // for now, these are only used for error-checking in the command-line version.
-        // compressed versions of the protein databases (e.g., .xml.gz) are also supported
-        public static List<string> AcceptedDatabaseFormats = new List<string> { ".fasta", ".fa", ".xml" };        
-
         private static List<Modification> _AllModsKnown = new List<Modification>();
         private static HashSet<string> _AllModTypesKnown = new HashSet<string>();       
         
@@ -28,12 +25,12 @@ namespace Engine
 
         static GlobalVariables()
         {
-            MetaMorpheusVersion = typeof(GlobalVariables).Assembly.GetName().Version.ToString();
+            ProteaseGuruVersion = typeof(GlobalVariables).Assembly.GetName().Version.ToString();
 
-            if (MetaMorpheusVersion.Equals("1.0.0.0"))
+            if (ProteaseGuruVersion.Equals("1.0.0.0"))
             {
 #if DEBUG
-                MetaMorpheusVersion = "Not a release version. DEBUG.";
+                ProteaseGuruVersion = "Not a release version. DEBUG.";
 #else
                 MetaMorpheusVersion = "Not a release version.";
 #endif
@@ -44,14 +41,14 @@ namespace Engine
                 // this is intentional; it's to avoid conflicting AppVeyor build numbers
                 // trim the build number off the version number for displaying/checking versions, etc
                 var foundIndexes = new List<int>();
-                for (int i = 0; i < MetaMorpheusVersion.Length; i++)
+                for (int i = 0; i < ProteaseGuruVersion.Length; i++)
                 {
-                    if (MetaMorpheusVersion[i] == '.')
+                    if (ProteaseGuruVersion[i] == '.')
                     {
                         foundIndexes.Add(i);
                     }
                 }
-                MetaMorpheusVersion = MetaMorpheusVersion.Substring(0, foundIndexes.Last());
+                ProteaseGuruVersion = ProteaseGuruVersion.Substring(0, foundIndexes.Last());
             }
 
             {
@@ -103,7 +100,7 @@ namespace Engine
 
         public static bool StopLoops { get; set; }
         public static string ElementsLocation { get; }
-        public static string MetaMorpheusVersion { get; }        
+        public static string ProteaseGuruVersion { get; }        
         public static IEnumerable<Modification> UnimodDeserialized { get; }
         public static IEnumerable<Modification> UniprotDeseralized { get; }
         public static UsefulProteomicsDatabases.Generated.obo PsiModDeserialized { get; }
