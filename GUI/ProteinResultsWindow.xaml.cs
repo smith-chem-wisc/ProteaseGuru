@@ -612,8 +612,11 @@ namespace ProteaseGuruGUI
         {
             int size = Convert.ToInt32(map.Width / spacing);
             var splitSequence = Enumerable.Range(0, sequence.Length / size).Select(i => sequence.Substring(i * size, size)).ToList();
-            splitSequence.Add(sequence.Substring(splitSequence.Count() * size));
-
+            var lineText = sequence.Substring(splitSequence.Count() * size);
+            if (lineText != "")
+            {
+                splitSequence.Add(lineText);
+            }            
             return splitSequence;
         }
        
