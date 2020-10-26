@@ -31,14 +31,14 @@ namespace Tasks
 
             static GlobalVariables()
             {
-                MetaMorpheusVersion = typeof(GlobalVariables).Assembly.GetName().Version.ToString();
+                ProteaseGuruVersion = typeof(GlobalVariables).Assembly.GetName().Version.ToString();
 
-                if (MetaMorpheusVersion.Equals("1.0.0.0"))
+                if (ProteaseGuruVersion.Equals("1.0.0.0"))
                 {
 #if DEBUG
-                    MetaMorpheusVersion = "Not a release version. DEBUG.";
+                    ProteaseGuruVersion = "Not a release version. DEBUG.";
 #else
-                MetaMorpheusVersion = "Not a release version.";
+                ProteaseGuruVersion = "Not a release version.";
 #endif
                 }
                 else
@@ -47,14 +47,14 @@ namespace Tasks
                     // this is intentional; it's to avoid conflicting AppVeyor build numbers
                     // trim the build number off the version number for displaying/checking versions, etc
                     var foundIndexes = new List<int>();
-                    for (int i = 0; i < MetaMorpheusVersion.Length; i++)
+                    for (int i = 0; i < ProteaseGuruVersion.Length; i++)
                     {
-                        if (MetaMorpheusVersion[i] == '.')
+                        if (ProteaseGuruVersion[i] == '.')
                         {
                             foundIndexes.Add(i);
                         }
                     }
-                    MetaMorpheusVersion = MetaMorpheusVersion.Substring(0, foundIndexes.Last());
+                    ProteaseGuruVersion = ProteaseGuruVersion.Substring(0, foundIndexes.Last());
                 }
 
                 {
@@ -116,7 +116,7 @@ namespace Tasks
 
             public static bool StopLoops { get; set; }
             public static string ElementsLocation { get; }
-            public static string MetaMorpheusVersion { get; }
+            public static string ProteaseGuruVersion { get; }
             public static GlobalSettings GlobalSettings { get; set; }
             public static IEnumerable<Modification> UnimodDeserialized { get; }
             public static IEnumerable<Modification> UniprotDeseralized { get; }

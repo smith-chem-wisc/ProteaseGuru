@@ -32,7 +32,7 @@ namespace Engine
 #if DEBUG
                 ProteaseGuruVersion = "Not a release version. DEBUG.";
 #else
-                MetaMorpheusVersion = "Not a release version.";
+                ProteaseGuruVersion = "Not a release version.";
 #endif
             }
             else
