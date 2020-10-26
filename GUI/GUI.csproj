@@ -49,6 +49,10 @@
 
   <ItemGroup>
 
+    <None Update="Icons\MMnice.bmp">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+
     <None Update="Icons\proteaseGuru.ico">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>

@@ -647,7 +647,7 @@
 
                     <TextBlock Grid.Row="2" Style="{StaticResource TextBlockStyle}">
                         Please visit our 
-                        <Hyperlink NavigateUri="https://github.com/smith-chem-wisc/MetaMorpheus/wiki" RequestNavigate="Hyperlink_RequestNavigate">
+                        <Hyperlink NavigateUri="https://github.com/smith-chem-wisc/ProteaseGuru/wiki" RequestNavigate="Hyperlink_RequestNavigate">
                             wiki
                         </Hyperlink>  
                         to find answers to commonly-asked questions.
@@ -656,7 +656,7 @@
                         <LineBreak/>
                         
                         If you encounter problems or you have a suggestion, please visit  
-                        <Hyperlink NavigateUri="https://github.com/smith-chem-wisc/MetaMorpheus/issues/new" RequestNavigate="Hyperlink_RequestNavigate">
+                        <Hyperlink NavigateUri="https://github.com/smith-chem-wisc/ProteaseGuru/issues/new" RequestNavigate="Hyperlink_RequestNavigate">
                             our issues page
                         </Hyperlink> 
                         on GitHub and submit a new issue. 
@@ -666,7 +666,7 @@
                         
                         If you would prefer to keep your correspondence private, you may email us at 
                         <Hyperlink NavigateUri="null" RequestNavigate="MenuItem_EmailHelp_Click">
-                            mm_support@chem.wisc.edu
+                           smith_software@chem.wisc.edu
                         </Hyperlink>.
                     </TextBlock>
 
@@ -707,7 +707,7 @@
 
                         <Button Grid.Row="2" Grid.Column="1" HorizontalContentAlignment="Left" BorderThickness="0" Click="MenuItem_MetaMorpheus_Click">
                             <StackPanel Orientation="Horizontal">
-                                <Image Source="Icons/proxl-ms.bmp" Width="20" Height="20" Margin="0,0,5,0"/>
+                                <Image Source="Icons/MMnice.bmp" Width="20" Height="20" Margin="0,0,5,0"/>
                                 <TextBlock Text="Search proteomic data with MetaMorpheus" VerticalAlignment="Center" />
                             </StackPanel>
                         </Button>
