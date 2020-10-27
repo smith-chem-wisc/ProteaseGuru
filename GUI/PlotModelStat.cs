@@ -68,7 +68,7 @@ namespace GUI
 
         public PlotModelStat(string plotName, ObservableCollection<InSilicoPep> peptides, Dictionary<string, ObservableCollection<InSilicoPep>> peptidesByProtease, Dictionary<string, Dictionary<Protein, (double,double)>> sequenceCoverageByProtease)
         {
-            privateModel = new PlotModel { Title = plotName, DefaultFontSize = 14 };
+            privateModel = new PlotModel { Title = plotName, DefaultFontSize = 12 };
             allPeptides = peptides;
             this.PeptidesByProtease = peptidesByProtease;
             foreach (var protease in sequenceCoverageByProtease)
@@ -165,6 +165,11 @@ namespace GUI
             privateModel.LegendTitle = "Protease";
             privateModel.LegendPlacement = LegendPlacement.Outside;
             privateModel.LegendPosition = LegendPosition.BottomLeft;
+            privateModel.LegendItemAlignment = HorizontalAlignment.Left;
+            privateModel.LegendFontSize = 12;
+            privateModel.TitleFontSize = 15;
+            privateModel.LegendOrientation = LegendOrientation.Horizontal;
+
             string yAxisTitle = "Count";
             string xAxisTitle = "Amino Acid";
             Dictionary<string, Dictionary<char, int>> dictsByProtease = new Dictionary<string, Dictionary<char, int>>();
@@ -194,7 +199,7 @@ namespace GUI
                 dictsByProtease.Add(protease.Key, aminoAcidCount);
             }
 
-            var categoryAxis = new CategoryAxis { Position = AxisPosition.Bottom, Title =xAxisTitle, GapWidth = .25 };
+            var categoryAxis = new CategoryAxis { Position = AxisPosition.Bottom, Title =xAxisTitle, GapWidth = .1 };
             foreach (var aa in aminoAcids)
             {
                 categoryAxis.Labels.Add(aa.ToString());
@@ -251,7 +256,10 @@ namespace GUI
         {
             privateModel.LegendTitle = "Protease";
             privateModel.LegendPlacement = LegendPlacement.Outside;
-            privateModel.LegendPosition = LegendPosition.BottomLeft;            
+            privateModel.LegendPosition = LegendPosition.BottomLeft;
+            privateModel.LegendFontSize = 12;
+            privateModel.TitleFontSize = 15;
+            privateModel.LegendOrientation = LegendOrientation.Horizontal;
             string yAxisTitle = "Count";
             string xAxisTitle = "";
             double binSize = -1;
@@ -296,7 +304,7 @@ namespace GUI
                     break;
                 case 4: // Predicted Peptide Hydrophobicity
                     xAxisTitle = "Number of Unique Peptides per Protein";
-                    binSize = 2;
+                    binSize = 5;
                     foreach (string key in UniquePeptidesPerProtein.Keys)
                     {
                         numbersByProtease.Add(key, UniquePeptidesPerProtein[key].Select(p => p));
@@ -358,7 +366,6 @@ namespace GUI
             foreach (string key in dictsByProtease.Keys)
             {
                 var column = new ColumnSeries { ColumnWidth = 200, IsStacked = false, Title = key, TrackerFormatString = "Bin: {bin}\n{0}: {2}\nTotal: {total}" };
-                
                 foreach (var d in dictsByProtease[key])
                 {                    
                     int bin = int.Parse(d.Key);
@@ -404,7 +411,7 @@ namespace GUI
                 Position = AxisPosition.Bottom,
                 ItemsSource = category,
                 Title = xAxisTitle,
-                GapWidth = .25,
+                GapWidth = .1,
                 Angle = labelAngle,
             });
             privateModel.Axes.Add(new LinearAxis { Title = yAxisTitle, Position = AxisPosition.Left, AbsoluteMinimum = 0 });

@@ -7,6 +7,7 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.IO;
 using System.Linq;
+using System.Net.WebSockets;
 using System.Text;
 using System.Windows;
 using System.Windows.Controls;
@@ -26,8 +27,9 @@ namespace ProteaseGuruGUI
     /// </summary>
     public partial class ProteinResultsWindow : UserControl
     {        
-        private ObservableCollection<ProteinForTreeView> proteinTree;
-        private ObservableCollection<ProteinForTreeView> filteredTree;
+        private ObservableCollection<string> proteinList;
+        private ObservableCollection<string> filteredList;
+        private ObservableCollection<SummaryForTreeView> ProteinDigestionSummary;
         private readonly Dictionary<string, Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>> PeptideByFile;
         private Dictionary<Protein, Dictionary<string, List<InSilicoPep>>> PeptideByProteaseAndProtein;
         private Dictionary<Protein, ProteinForTreeView> ProteinsForTreeView;
@@ -37,6 +39,7 @@ namespace ProteaseGuruGUI
         private List<string> Proteases;
         private List<string> SelectedProteases;
         private ProteinForTreeView SelectedProtein;
+        private bool MessageShow;
         Parameters UserParams;
 
         public ProteinResultsWindow()
@@ -51,12 +54,15 @@ namespace ProteaseGuruGUI
             UserParams = userParams;
             SelectedProtein = null;
             PeptideByFile = peptideByFile;
+            MessageShow = true;
             PeptideByProteaseAndProtein = new Dictionary<Protein, Dictionary<string, List<InSilicoPep>>>();
-            proteinTree = new ObservableCollection<ProteinForTreeView>();
-            filteredTree = new ObservableCollection<ProteinForTreeView>();
-            ProteinsForTreeView = new Dictionary<Protein, ProteinForTreeView>();            
-            dataGridProteins.DataContext = proteinTree;            
-            SetUpDictionaries();
+            ProteinDigestionSummary = new ObservableCollection<SummaryForTreeView>();
+            proteinList = new ObservableCollection<string>();
+            filteredList = new ObservableCollection<string>();
+            ProteinsForTreeView = new Dictionary<Protein, ProteinForTreeView>();
+            SetUpTreeView();
+            dataGridProteins.DataContext = proteinList;            
+            SetUpDictionaries();            
 
             this.Loaded += results_Loaded;
 
@@ -124,34 +130,111 @@ namespace ProteaseGuruGUI
 
             if (string.IsNullOrEmpty(userInput))
             {
-                dataGridProteins.DataContext = proteinTree;
+                dataGridProteins.DataContext = proteinList;
                 return;
             }
 
             searchProtein(userInput);
-            dataGridProteins.DataContext = filteredTree;
+            dataGridProteins.Items.Clear();
+            foreach (var entry in filteredList)
+            {
+                dataGridProteins.Items.Add(entry);
+            }
+            
             SearchModifications.Timer.Stop();
         }
 
         // search through protein list based on user input
         private void searchProtein(string txt)
         {
-            filteredTree.Clear();
-            foreach (var protein in proteinTree)
+            filteredList.Clear();
+            foreach (var protein in proteinList)
             {
-                if (protein.DisplayName.ToUpper().Contains(txt.ToUpper()))
+                if (protein.Contains(txt.ToUpper()))
                 {
-                    filteredTree.Add(protein);
+                    filteredList.Add(protein);
                 }
             }
         }
 
-        // updat when the protein selected is changed
+        private void SetUpTreeView()
+        {
+            foreach (var db in PeptideByFile)
+            {
+                foreach (var protease in db.Value)
+                {
+                    // protease.Value is <Protein, List<Peptides>>
+                    foreach (var protein in protease.Value)
+                    {
+                        var prot = protein.Key;
+                        dataGridProteins.Items.Add(prot.Accession);
+                        var peptidesByProtease = new Dictionary<string, List<InSilicoPep>>();
+
+                        if (PeptideByProteaseAndProtein.ContainsKey(prot))
+                        {
+                            if (PeptideByProteaseAndProtein[prot].ContainsKey(protease.Key))
+                            {
+                                PeptideByProteaseAndProtein[prot][protease.Key].AddRange(protein.Value);
+                            }
+                            else
+                            {
+                                PeptideByProteaseAndProtein[prot].Add(protease.Key, protein.Value);
+                            }
+                        }
+                        else
+                        {
+                            peptidesByProtease.Add(protease.Key, protein.Value);
+                            PeptideByProteaseAndProtein.Add(prot, peptidesByProtease);
+
+                            var name = prot.Accession ?? prot.Name;
+                            var newPtv = new ProteinForTreeView(prot, name, new List<InSilicoPep>(), new List<InSilicoPep>(), new List<InSilicoPep>());
+                            ProteinsForTreeView.Add(prot, newPtv);
+                            proteinList.Add(newPtv.Protein.Accession);
+                        }
+
+                        if (PeptideByFile.Keys.Count > 1)
+                        {
+                            // define peptides for protein for tree view
+                            ProteinsForTreeView[prot].AllPeptides.AddRange(protein.Value);
+                            ProteinsForTreeView[prot].UniquePeptides.AddRange(protein.Value.Where(p => p.UniqueAllDbs));
+                            ProteinsForTreeView[prot].SharedPeptides.AddRange(protein.Value.Where(p => !p.UniqueAllDbs));
+                        }
+                        else
+                        {
+                            // define peptides for protein for tree view
+                            ProteinsForTreeView[prot].AllPeptides.AddRange(protein.Value);
+                            ProteinsForTreeView[prot].UniquePeptides.AddRange(protein.Value.Where(p => p.Unique));
+                            ProteinsForTreeView[prot].SharedPeptides.AddRange(protein.Value.Where(p => !p.Unique));
+                        }
+
+                    }
+                }
+            }
+
+            
+        }
+
+        // update when the protein selected is changed
         private void OnSelectionChanged()
         {
+            if (MessageShow == true)
+            {
+                if (PeptideByFile.Keys.Count > 1)
+                {
+                    MessageBox.Show("Note: More than one protein database was analyzed. Unique peptides are defined as being unique to a single protein in all analyzed databases.");
+                }
+                else
+                {
+                    MessageBox.Show("Note: One protein database was analyzed. Unique peptides are defined as being unique to a single protein in the analyzed database.");
+                }
+                MessageShow = false;
+            }
+            
+
             if (dataGridProteins.SelectedItem != null)
             {
-                var protein = (ProteinForTreeView)dataGridProteins.SelectedItem;
+                string proteinName = dataGridProteins.SelectedItem.ToString();
+                var protein = ProteinsForTreeView.Where(p => p.Key.Accession == proteinName).FirstOrDefault().Value;
                 // draw sequence coverage map if exists
                 if (protein != null)
                 {
@@ -160,12 +243,62 @@ namespace ProteaseGuruGUI
             }
             else
             {
-                var protein = (ProteinForTreeView)ProteinsForTreeView.FirstOrDefault().Value;
+                var protein = ProteinsForTreeView.FirstOrDefault().Value;
                 if (protein != null)
                 {
                     SelectedProtein = protein;
                 }
-            }
+            }            
+
+            var ptv = SelectedProtein;
+                var proteaseList = UserParams.ProteasesForDigestion.Select(p => p.Name).ToList();
+                var uniquePeps = ptv.UniquePeptides.GroupBy(p => p.Protease).ToDictionary(group => group.Key, group => group.ToList());
+                var sharedPeps = ptv.SharedPeptides.GroupBy(p => p.Protease).ToDictionary(group => group.Key, group => group.ToList());
+            ptv.Summary.Add(new SummaryForTreeView("Digestion Results for " + ptv.Protein.Accession + ":"));           
+
+                ptv.Summary.Add(new SummaryForTreeView("    Number of Unique Peptides: "));
+                foreach (var protease in proteaseList)
+                {
+                    if (uniquePeps.ContainsKey(protease))
+                    {
+                        ptv.Summary.Add(new SummaryForTreeView("        " + protease + ": " + uniquePeps[protease].Count()));
+                    }
+                    else
+                    {
+                        ptv.Summary.Add(new SummaryForTreeView("        " + protease + ": 0"));
+                    }
+
+                }
+                ptv.Summary.Add(new SummaryForTreeView("    Number of Shared Peptides: "));
+                foreach (var protease in proteaseList)
+                {
+                    if (sharedPeps.ContainsKey(protease))
+                    {
+                        ptv.Summary.Add(new SummaryForTreeView("        " + protease + ": " + sharedPeps[protease].Count()));
+                    }
+                    else
+                    {
+                        ptv.Summary.Add(new SummaryForTreeView("        " + protease + ": 0"));
+                    }
+
+                }
+
+                ptv.Summary.Add(new SummaryForTreeView("    Percent Sequence Coverage (all peptides):")); // break down by protease
+
+                foreach (var seqCovKvp in CalculateSequenceCoverage(SelectedProtein.Protein))
+                {
+                    ptv.Summary.Add(new SummaryForTreeView("        " + seqCovKvp.Item1 + ": " + Math.Round(seqCovKvp.Item2 * 100, 3) + "%")); // break down by protease
+                }
+
+                ptv.Summary.Add(new SummaryForTreeView("    Percent Sequence Coverage (unique peptides):")); // break down by protease
+
+                foreach (var seqCovKvp in CalculateSequenceCoverageUnique(SelectedProtein.Protein))
+                {
+                    ptv.Summary.Add(new SummaryForTreeView("        " + seqCovKvp.Item1 + ": " + Math.Round(seqCovKvp.Item2 * 100, 3) + "%")); // break down by protease
+                }
+
+            proteinResults.DataContext = ptv.Summary;
+
             DrawSequenceCoverageMap(SelectedProtein, SelectedProteases);
 
 
@@ -285,6 +418,8 @@ namespace ProteaseGuruGUI
             int height = 10;
             int totalHeight = 0;
             int accumIndex = 0;
+
+            map.Width = 0.90* ResultsGrid.ActualWidth;
 
             string seqCoverage = protein.Protein.BaseSequence;
             IDictionary<int, List<Modification>> mods = protein.Protein.OneBasedPossibleLocalizedModifications;
@@ -670,126 +805,30 @@ namespace ProteaseGuruGUI
         }
 
         //populate the search space with all proteins from all databases digested
-        private void LoadProteins_Click(object sender, RoutedEventArgs e)
-        {
-            ProteinLoadButton.IsEnabled = false;
-            if (PeptideByFile.Keys.Count > 1)
-            {
-               MessageBox.Show("Note: More than one protein database was analyzed. Unique peptides are defined as being unique to a single protein in all analyzed databases."); 
-            }
-            else
-            {
-               MessageBox.Show("Note: One protein database was analyzed. Unique peptides are defined as being unique to a single protein in the analyzed database.");
-            }
+        //private void LoadProteins_Click(object sender, RoutedEventArgs e)
+        //{
+            
+            
 
-            // populate proteins
-            foreach (var db in PeptideByFile)
-            {
-                foreach (var protease in db.Value)
-                {
-                    // protease.Value is <Protein, List<Peptides>>
-                    foreach (var protein in protease.Value)
-                    {
-                        var prot = protein.Key;
-                        var peptidesByProtease = new Dictionary<string, List<InSilicoPep>>();
+        //    // populate proteins
+        //    foreach (var db in PeptideByFile)
+        //    {
+        //        foreach (var protease in db.Value)
+        //        {
+        //            // protease.Value is <Protein, List<Peptides>>
+        //            foreach (var protein in protease.Value)
+        //            {
+        //                var prot = protein.Key;
+        //                dataGridProteins.Items.Add(prot.Accession);
+        //            }
+        //        }
+        //    }   
 
-                        if (PeptideByProteaseAndProtein.ContainsKey(prot))
-                        {
-                            if (PeptideByProteaseAndProtein[prot].ContainsKey(protease.Key))
-                            {
-                                PeptideByProteaseAndProtein[prot][protease.Key].AddRange(protein.Value);
-                            }
-                            else
-                            {
-                                PeptideByProteaseAndProtein[prot].Add(protease.Key, protein.Value);
-                            }
-                        }
-                        else
-                        {
-                            peptidesByProtease.Add(protease.Key, protein.Value);
-                            PeptideByProteaseAndProtein.Add(prot, peptidesByProtease);
-
-                            var name = prot.Accession ?? prot.Name;
-                            var newPtv = new ProteinForTreeView(prot, name, new List<InSilicoPep>(), new List<InSilicoPep>(), new List<InSilicoPep>());
-                            ProteinsForTreeView.Add(prot, newPtv);
-                            proteinTree.Add(newPtv);
-                        }
-
-                        if (PeptideByFile.Keys.Count > 1)
-                        {
-                            // define peptides for protein for tree view
-                            ProteinsForTreeView[prot].AllPeptides.AddRange(protein.Value);
-                            ProteinsForTreeView[prot].UniquePeptides.AddRange(protein.Value.Where(p => p.UniqueAllDbs));
-                            ProteinsForTreeView[prot].SharedPeptides.AddRange(protein.Value.Where(p => !p.UniqueAllDbs));
-                        }
-                        else
-                        {
-                            // define peptides for protein for tree view
-                            ProteinsForTreeView[prot].AllPeptides.AddRange(protein.Value);
-                            ProteinsForTreeView[prot].UniquePeptides.AddRange(protein.Value.Where(p => p.Unique));
-                            ProteinsForTreeView[prot].SharedPeptides.AddRange(protein.Value.Where(p => !p.Unique));
-                        }
-                        
-                    }
-                }
-            }
-
-            // add summary for proteins
-            foreach (var protein in PeptideByProteaseAndProtein)
-            {
-                var ptv = ProteinsForTreeView[protein.Key];
-                var proteaseList = UserParams.ProteasesForDigestion.Select(p=>p.Name).ToList();
-                var uniquePeps = ptv.UniquePeptides.GroupBy(p => p.Protease).ToDictionary(group => group.Key, group => group.ToList());
-                var sharedPeps = ptv.SharedPeptides.GroupBy(p => p.Protease).ToDictionary(group => group.Key, group => group.ToList());
-               
-                ptv.Summary.Add(new SummaryForTreeView("Number of Unique Peptides: "));
-                foreach (var protease in proteaseList)
-                {
-                    if (uniquePeps.ContainsKey(protease))
-                    {
-                        ptv.Summary.Add(new SummaryForTreeView("     " + protease + ": " + uniquePeps[protease].Count()));
-                    }
-                    else 
-                    {
-                        ptv.Summary.Add(new SummaryForTreeView("     " + protease + ": 0" ));
-                    }
-                    
-                }
-                ptv.Summary.Add(new SummaryForTreeView("Number of Shared Peptides: " ));
-                foreach (var protease in proteaseList)
-                {
-                    if (sharedPeps.ContainsKey(protease))
-                    {
-                        ptv.Summary.Add(new SummaryForTreeView("     " + protease + ": " + sharedPeps[protease].Count()));
-                    }
-                    else
-                    {
-                        ptv.Summary.Add(new SummaryForTreeView("     " + protease + ": 0"));
-                    }
-
-                }
-                                
-                ptv.Summary.Add(new SummaryForTreeView("Percent Sequence Coverage (all peptides):")); // break down by protease
-
-                foreach (var seqCovKvp in CalculateSequenceCoverage(protein.Key))
-                {
-                    ptv.Summary.Add(new SummaryForTreeView("     " + seqCovKvp.Item1 + ": " + Math.Round(seqCovKvp.Item2*100, 3) + "%")); // break down by protease
-                }
-
-                ptv.Summary.Add(new SummaryForTreeView("Percent Sequence Coverage (unique peptides):")); // break down by protease
-
-                foreach (var seqCovKvp in CalculateSequenceCoverageUnique(protein.Key))
-                {
-                    ptv.Summary.Add(new SummaryForTreeView("     " + seqCovKvp.Item1 + ": " + Math.Round(seqCovKvp.Item2 * 100, 3) + "%")); // break down by protease
-                }
-            }
-
-            DrawSequenceCoverageMap(ProteinsForTreeView.FirstOrDefault().Value, SelectedProteases);
-        }
+        //}
 
         private void ChangeMapScrollViewSize()
         {
-            mapViewer.Height = .70 * ResultsGrid.ActualHeight;
+            mapViewer.Height = .85 * ResultsGrid.ActualHeight;
             mapViewer.Width = .99 * ResultsGrid.ActualWidth;
 
             ChangeMapScrollViewVisibility();
@@ -816,7 +855,7 @@ namespace ProteaseGuruGUI
             SearchModifications.Timer.Tick -= new EventHandler(searchBox_TextChangedHandler);
         }
 
-        private void proteins_SelectedCellsChanged(object sender, RoutedPropertyChangedEventArgs<object> e)
+        private void proteins_SelectedCellsChanged(object sender, SelectionChangedEventArgs e)
         {  
                 OnSelectionChanged();            
         }

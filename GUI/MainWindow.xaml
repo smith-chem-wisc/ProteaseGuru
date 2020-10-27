@@ -9,7 +9,7 @@
         Drop="Window_Drop" AllowDrop="true" 
         WindowStartupLocation="CenterScreen"
         Icon="proteaseGuru.ico"
-        Title="ProteaseGuru" Height="600" Width="1200">
+        Title="ProteaseGuru" Height="600" Width="1300">
     <Window.Resources>
         <ResourceDictionary>
 
@@ -260,7 +260,6 @@
                         </Grid.RowDefinitions>
                         <ScrollViewer VerticalScrollBarVisibility="Visible" HorizontalScrollBarVisibility="Auto" Grid.Row="0">
                             <ListBox Name ="ProteaseSelectedForUse" SelectionMode="Multiple" ItemContainerStyle="{StaticResource ListBoxItem}">
-
                             </ListBox>
                         </ScrollViewer>
                         <Grid Grid.Row="5" Style="{StaticResource InternalGridStyle}">

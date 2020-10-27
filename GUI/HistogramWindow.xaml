@@ -7,7 +7,7 @@
              mc:Ignorable="d" 
              xmlns:local="clr-namespace:ProteaseGuruGUI"           
              xmlns:Controls="clr-namespace:ProteaseGuruGUI"
-             d:DesignHeight="600" d:DesignWidth="800">
+             d:DesignHeight="600" d:DesignWidth="1200">
     <Grid Style="{StaticResource PageGridStyle}">
         <Grid.RowDefinitions>
             <RowDefinition Height="50"/>
@@ -161,12 +161,10 @@
                                 </StatusBarItem>
                             </StatusBar>
                         </Grid>
-                        
-                        
-                            <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Visible" VerticalScrollBarVisibility="Visible">
-                                <oxy:PlotView  x:Name="plotViewStat" Model="{Binding Model}" FontSize="16" FontStretch="Expanded" BorderBrush="LightGray" Grid.ColumnSpan="2" Height="400" Width="900" ></oxy:PlotView>
-                            </ScrollViewer>
-                       
+                        <Grid Grid.Row=" 1" Style="{StaticResource PageGridStyle}">
+                            <oxy:PlotView  x:Name="plotViewStat" Model="{Binding Model}" FontSize="16" FontStretch="Expanded" BorderBrush="LightGray" Grid.ColumnSpan="2" Height="400" Width="850" ></oxy:PlotView>
+                        </Grid>                       
+                           
                         <DockPanel Grid.Row="2" Margin="2" Background="{StaticResource DataGridBackgroundColor}">
                             <Button Content="Export to PDF" Width="150" Click="CreatePlotPdf_Click" HorizontalAlignment="Left" Style="{StaticResource ImportantButtonStyle}"/>
                             <Button Content="Export Data to CSV" Width="150" Click="CreateTable_Click" HorizontalAlignment="Right" Style="{StaticResource ImportantButtonStyle}"/>
