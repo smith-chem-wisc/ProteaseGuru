@@ -38,7 +38,7 @@ namespace Tasks
                     PeptideByFile[database.FileName].Add(protease.Name, DeterminePeptideStatus(database.FileName, DigestDatabase(proteins, protease, DigestionParameters), DigestionParameters));                   
                 }                
             }
-            PeptideByFile = WritePeptidesToTsv(PeptideByFile, OutputFolder, DigestionParameters);
+            WritePeptidesToTsv(PeptideByFile, OutputFolder, DigestionParameters);
             MyTaskResults myRunResults = new MyTaskResults(this);
             return myRunResults;
         }
@@ -229,7 +229,7 @@ namespace Tasks
         }
         
         // write peptides to tsv files as results
-        protected static Dictionary<string, Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>> WritePeptidesToTsv(Dictionary<string, Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>> peptideByFile, string filePath, Parameters userParams)
+        protected static void WritePeptidesToTsv(Dictionary<string, Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>> peptideByFile, string filePath, Parameters userParams)
         {
             string tab = "\t";
             string header = "Database" + tab + "Protease" + tab + "Base Sequence" + tab + "Full Sequence" + tab + "Previous Amino Acid" + tab +
@@ -254,11 +254,7 @@ namespace Tasks
                         else
                         {
                             allDatabasePeptidesByProtease.Add(protease.Key, protease.Value.SelectMany(p => p.Value).ToList());
-                        }
-                        foreach (var protein in protease.Value)
-                        {
-                            peptideByFile[database.Key][protease.Key][protein.Key].Clear();
-                        }
+                        }                        
                     }
                 }
                 foreach (var protease in allDatabasePeptidesByProtease)
@@ -282,9 +278,7 @@ namespace Tasks
                         {
                             peptide.UniqueAllDbs = true;
                             peptide.SeqOnlyInThisDb = true;
-                            allPeptides.Add(peptide);
-                            var protein = peptideByFile[peptide.Database][peptide.Protease].Keys.ToList().Where(p => p.Accession == peptide.Protein).First();
-                            peptideByFile[peptide.Database][peptide.Protease][protein].Add(peptide);
+                            allPeptides.Add(peptide);                           
 
                         }                        
                     }
@@ -297,9 +291,7 @@ namespace Tasks
                             {
                                 peptide.UniqueAllDbs = false;
                                 peptide.SeqOnlyInThisDb = true;
-                                allPeptides.Add(peptide);
-                                var protein = peptideByFile[peptide.Database][peptide.Protease].Keys.ToList().Where(p => p.Accession == peptide.Protein).First();
-                                peptideByFile[peptide.Database][peptide.Protease][protein].Add(peptide);
+                                allPeptides.Add(peptide);                                
                             }
                         }
                         else
@@ -308,9 +300,7 @@ namespace Tasks
                             {
                                 peptide.UniqueAllDbs = false;
                                 peptide.SeqOnlyInThisDb = false;
-                                allPeptides.Add(peptide);
-                                var protein = peptideByFile[peptide.Database][peptide.Protease].Keys.ToList().Where(p => p.Accession == peptide.Protein).First();
-                                peptideByFile[peptide.Database][peptide.Protease][protein].Add(peptide);
+                                allPeptides.Add(peptide);                                
                             }
                         }                        
                     }   
@@ -331,9 +321,7 @@ namespace Tasks
                                 peptide.SeqOnlyInThisDb = true;
                                 peptidesForProtein.Add(peptide);
                                 allPeptides.Add(peptide);
-                            }
-                            peptideByFile[database.Key][protease.Key][protein.Key].Clear();
-                            peptideByFile[database.Key][protease.Key][protein.Key].AddRange(peptidesForProtein);
+                            }                            
                         }
                     }
                 }
@@ -411,8 +399,7 @@ namespace Tasks
             parameters.Add("Treat modified peptides as different peptides: " + userParams.TreatModifiedPeptidesAsDifferent);
 
             File.WriteAllLines(filePath + @"\DigestionConditions.txt", parameters);
-
-            return peptideByFile;
+            
         }
     }
 }
