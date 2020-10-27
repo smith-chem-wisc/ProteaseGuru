@@ -72,59 +72,66 @@ namespace ProteaseGuruGUI
                         
                     }                        
                 }
-               
-                // if we want modified peptides to be treated differently than unmodified peptides we must use the FullSequence for unique peptide determination
-                if (UserParams.TreatModifiedPeptidesAsDifferent)
+
+                foreach (var protease in allDatabasePeptidesByProtease)
                 {
-                    foreach (var protease in allDatabasePeptidesByProtease)
+                    Dictionary<string, List<InSilicoPep>> peptidesToProteins = new Dictionary<string, List<InSilicoPep>>();
+
+                    if (UserParams.TreatModifiedPeptidesAsDifferent)
                     {
-                        string prot = protease.Key;
-                        DigestionSummaryForTreeView thisDigestion = new DigestionSummaryForTreeView(prot + " Results:");
-                        var peptidesToProteins = protease.Value.GroupBy(p => p.FullSequence).ToDictionary(group => group.Key, group => group.ToList());
-                        List<InSilicoPep> allPeptides = peptidesToProteins.SelectMany(p => p.Value).ToList();
-                        thisDigestion.Summary.Add(new SummaryForTreeView("Number of Peptides: " + allPeptides.Count));
-                        thisDigestion.Summary.Add(new SummaryForTreeView("     Number of Distinct Peptide Sequences: " + allPeptides.Select(p => p.FullSequence).Distinct().Count()));                       
-                        var peptidesForSingleDatabase = allPeptides.Where(p => p.SeqOnlyInThisDb == true).GroupBy(p => p.Database).ToDictionary(group => group.Key, group => group.ToList());
+                        peptidesToProteins = protease.Value.GroupBy(p => p.FullSequence).ToDictionary(group => group.Key, group => group.ToList());
+                    }
+                    else
+                    {
+                        peptidesToProteins = protease.Value.GroupBy(p => p.BaseSequence).ToDictionary(group => group.Key, group => group.ToList());
+                    }
+                    var unique = peptidesToProteins.Where(p => p.Value.Select(p => p.Protein).Distinct().Count() == 1).ToList();
+                    var shared = peptidesToProteins.Where(p => p.Value.Select(p => p.Protein).Distinct().Count() > 1).ToList();
+                    var sharedPeptidesInOneDb = shared.Where(p => p.Value.Select(p => p.Database).Distinct().Count() == 1);
 
-                        
-                        thisDigestion.Summary.Add(new SummaryForTreeView("Number of Unique Peptide Sequences: " + allPeptides.Where(p => p.UniqueAllDbs == true).Select(p => p.FullSequence).Distinct().Count()));                        
-                        thisDigestion.Summary.Add(new SummaryForTreeView("Number of Shared Peptide Sequences: " + allPeptides.Where(p => p.UniqueAllDbs == false).Select(p => p.FullSequence).Distinct().Count()));
+                    List<InSilicoPep> peptidesInOneDb = new List<InSilicoPep>();
 
-                        foreach (var db in peptidesForSingleDatabase)
+                    foreach (var pep in unique)
+                    {
+                        peptidesInOneDb.AddRange(pep.Value);
+                    }
+
+                    foreach (var pep in sharedPeptidesInOneDb)
+                    {
+                        peptidesInOneDb.AddRange(pep.Value);
+                    }
+
+                    string prot = protease.Key;
+                    DigestionSummaryForTreeView thisDigestion = new DigestionSummaryForTreeView(prot + " Results:");
+                    
+                    List<InSilicoPep> allPeptides = peptidesToProteins.SelectMany(p => p.Value).ToList();
+                    thisDigestion.Summary.Add(new SummaryForTreeView("Number of Peptides: " + allPeptides.Count));
+                    thisDigestion.Summary.Add(new SummaryForTreeView("     Number of Distinct Peptide Sequences: " + peptidesToProteins.Count()));
+                    var peptidesForSingleDatabase = peptidesInOneDb.GroupBy(p => p.Database).ToDictionary(group => group.Key, group => group.ToList());
+
+
+                    thisDigestion.Summary.Add(new SummaryForTreeView("Number of Unique Peptide Sequences: " + unique.Count()));
+                    thisDigestion.Summary.Add(new SummaryForTreeView("Number of Shared Peptide Sequences: " + shared.Count()));
+
+                    foreach (var db in peptidesForSingleDatabase)
+                    {
+                        if (UserParams.TreatModifiedPeptidesAsDifferent)
                         {
-                            thisDigestion.Summary.Add(new SummaryForTreeView("Number of Peptide Sequences Found Only in "+db.Key+": " + db.Value.Select(p => p.FullSequence).Distinct().Count()));
+                            thisDigestion.Summary.Add(new SummaryForTreeView("Number of Peptide Sequences Found Only in " + db.Key + ": " + db.Value.Select(p => p.FullSequence).Distinct().Count()));
                         }
-
-
-                        allDatabases.Summary.Add(thisDigestion);
-
-                    }
-                }
-                // We don't care about distinguishing modified and unmodified peptides so we use BaseSequence
-                else 
-                {
-                    foreach (var protease in allDatabasePeptidesByProtease)
-                    {
-                        string prot = protease.Key;
-                        DigestionSummaryForTreeView thisDigestion = new DigestionSummaryForTreeView(prot + " Results:");
-                        var peptidesToProteins = protease.Value.GroupBy(p => p.BaseSequence).ToDictionary(group => group.Key, group => group.ToList());
-                        List<InSilicoPep> allPeptides = peptidesToProteins.SelectMany(p => p.Value).ToList();
-                        thisDigestion.Summary.Add(new SummaryForTreeView("Number of Peptides: " + allPeptides.Count));
-                        thisDigestion.Summary.Add(new SummaryForTreeView("     Number of Distinct Peptide Sequences: " + allPeptides.Select(p => p.BaseSequence).Distinct().Count()));
-                        var peptidesForSingleDatabase = allPeptides.Where(p => p.SeqOnlyInThisDb == true).GroupBy(p => p.Database).ToDictionary(group => group.Key, group => group.ToList());
-                        
-                        thisDigestion.Summary.Add(new SummaryForTreeView("Number of Unique Peptide Sequences: " + allPeptides.Where(p => p.UniqueAllDbs == true).Select(p => p.BaseSequence).Distinct().Count()));
-                        thisDigestion.Summary.Add(new SummaryForTreeView("Number of Shared Peptide Sequences: " + allPeptides.Where(p => p.UniqueAllDbs == false).Select(p => p.BaseSequence).Distinct().Count()));
-
-                        foreach (var db in peptidesForSingleDatabase)
+                        else
                         {
-                            thisDigestion.Summary.Add(new SummaryForTreeView("Number of Peptide Sequences Found Only in " + db.Key + ": " + db.Value.Select(p=>p.BaseSequence).Distinct().Count()));
-                        }                        
-
-                        allDatabases.Summary.Add(thisDigestion);
-
+                            thisDigestion.Summary.Add(new SummaryForTreeView("Number of Peptide Sequences Found Only in " + db.Key + ": " + db.Value.Select(p => p.BaseSequence).Distinct().Count()));
+                        }
+                        
                     }
-                }               
+
+
+                    allDatabases.Summary.Add(thisDigestion);
+                }
+
+                    
+                     
                 //put the results summary in the GUI for users to view
                 SummaryForTreeViewObservableCollection.Add(allDatabases);
                 //Now do a similar results summary for each individual database on its own

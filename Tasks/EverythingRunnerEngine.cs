@@ -81,7 +81,7 @@ namespace Tasks
             var resultsFileName = Path.Combine(OutputFolder, "allResults.txt");
             using (StreamWriter file = new StreamWriter(resultsFileName))
             {
-                file.WriteLine("ProteaseGuru: Version 1.0");
+                file.WriteLine("ProteaseGuru: Version " + GlobalVariables.ProteaseGuruVersion);
                 file.WriteLine("Total time: " + stopWatch.Elapsed);
                 file.Write(allResultsText.ToString());
             }

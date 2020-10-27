@@ -51,46 +51,56 @@ namespace Tasks
                         }
                     }
                 }
-                if (parameters.TreatModifiedPeptidesAsDifferent)
+                
+                foreach (var protease in allDatabasePeptidesByProtease)
                 {
-                    foreach (var protease in allDatabasePeptidesByProtease)
+                    Dictionary<string, List<InSilicoPep>> peptidesToProteins = new Dictionary<string, List<InSilicoPep>>();
+
+                    if (parameters.TreatModifiedPeptidesAsDifferent)
                     {
-                        string prot = protease.Key;
-                        summary.Add("   "+prot + " Results:");
-                        var peptidesToProteins = protease.Value.GroupBy(p => p.FullSequence).ToDictionary(group => group.Key, group => group.ToList());
-                        List<InSilicoPep> allPeptides = peptidesToProteins.SelectMany(p => p.Value).ToList();
-                        summary.Add("       Number of Peptides: " + allPeptides.Count);
-                        summary.Add("            Number of Distinct Peptide Sequences: " + allPeptides.Select(p => p.FullSequence).Distinct().Count());
-                        var peptidesForSingleDatabase = allPeptides.Where(p => p.SeqOnlyInThisDb == true).GroupBy(p => p.Database).ToDictionary(group => group.Key, group => group.ToList());
+                        peptidesToProteins = protease.Value.GroupBy(p => p.FullSequence).ToDictionary(group => group.Key, group => group.ToList());
+                    }
+                    else
+                    {
+                        peptidesToProteins = protease.Value.GroupBy(p => p.BaseSequence).ToDictionary(group => group.Key, group => group.ToList());
+                    }
+                    var unique = peptidesToProteins.Where(p => p.Value.Select(p => p.Protein).Distinct().Count() == 1).ToList();
+                    var shared = peptidesToProteins.Where(p => p.Value.Select(p => p.Protein).Distinct().Count() > 1).ToList();
+                    var sharedPeptidesInOneDb = shared.Where(p => p.Value.Select(p => p.Database).Distinct().Count() == 1);
 
-                        summary.Add("Number of Unique Peptide Sequences: " + allPeptides.Where(p=>p.UniqueAllDbs==true).Select(p=>p.FullSequence).Distinct().Count());
-                        summary.Add("Number of Shared Peptide Sequences: " + allPeptides.Where(p => p.UniqueAllDbs == false).Select(p => p.FullSequence).Distinct().Count());
+                    List<InSilicoPep> peptidesInOneDb = new List<InSilicoPep>();
 
-                        foreach (var db in peptidesForSingleDatabase)
+                    foreach (var pep in unique)
+                    {
+                        peptidesInOneDb.AddRange(pep.Value);
+                    }
+
+                    foreach (var pep in sharedPeptidesInOneDb)
+                    {
+                        peptidesInOneDb.AddRange(pep.Value);
+                    }
+
+                    string prot = protease.Key;
+                    summary.Add("   " + prot + " Results:");
+                    List<InSilicoPep> allPeptides = peptidesToProteins.SelectMany(p => p.Value).ToList();
+                    summary.Add("       Number of Peptides: " + allPeptides.Count);
+                    summary.Add("            Number of Distinct Peptide Sequences: " + peptidesToProteins.Count());
+                    var peptidesForSingleDatabase = peptidesInOneDb.GroupBy(p => p.Database).ToDictionary(group => group.Key, group => group.ToList());
+
+                    summary.Add("Number of Unique Peptide Sequences: " + unique.Count());
+                    summary.Add("Number of Shared Peptide Sequences: " + shared.Count());
+
+                    foreach (var db in peptidesForSingleDatabase)
+                    {
+                        if (parameters.TreatModifiedPeptidesAsDifferent)
                         {
                             summary.Add("Number of Peptide Sequences Found Only in " + db.Key + ": " + db.Value.Select(p => p.FullSequence).Distinct().Count());
                         }
-                    }
-                }
-                else 
-                {
-                    foreach (var protease in allDatabasePeptidesByProtease)
-                    {
-                        string prot = protease.Key;
-                        summary.Add("   "+prot + " Results:");
-                        var peptidesToProteins = protease.Value.GroupBy(p => p.BaseSequence).ToDictionary(group => group.Key, group => group.ToList());
-                        List<InSilicoPep> allPeptides = peptidesToProteins.SelectMany(p => p.Value).ToList();
-                        summary.Add("       Number of Peptides: " + allPeptides.Count);
-                        summary.Add("           Number of Distinct Peptide Sequences: " + allPeptides.Select(p => p.BaseSequence).Distinct().Count());
-                        var peptidesForSingleDatabase = allPeptides.Where(p => p.SeqOnlyInThisDb == true).GroupBy(p => p.Database).ToDictionary(group => group.Key, group => group.ToList());
-
-                        summary.Add("Number of Unique Peptide Sequences: " + allPeptides.Where(p => p.UniqueAllDbs == true).Select(p => p.BaseSequence).Distinct().Count());
-                        summary.Add("Number of Shared Peptide Sequences: " + allPeptides.Where(p => p.UniqueAllDbs == false).Select(p => p.BaseSequence).Distinct().Count());
-
-                        foreach (var db in peptidesForSingleDatabase)
+                        else
                         {
                             summary.Add("Number of Peptide Sequences Found Only in " + db.Key + ": " + db.Value.Select(p => p.BaseSequence).Distinct().Count());
                         }
+                        
                     }
                 }
                 foreach (var database in PeptideByFile)

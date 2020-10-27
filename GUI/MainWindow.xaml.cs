@@ -44,6 +44,7 @@ namespace GUI
         public MainWindow()
         {
             InitializeComponent();
+            Title = "ProteaseGuru: Version " + GlobalVariables.ProteaseGuruVersion;
             UserParameters = new Parameters();
             PopulateProteaseList();            
             dataGridProteinDatabases.DataContext = ProteinDbObservableCollection;
