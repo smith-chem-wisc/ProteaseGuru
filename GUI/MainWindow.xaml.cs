@@ -788,62 +788,41 @@ namespace GUI
                 foreach (var parameter in fileData)
                 {
                     var info = parameter.Split(": ");
-                    if (info[0] == "Proteases")
+                    switch (info[0])
                     {
-                        var proteaseNames = info[1].Split(",");
-                        foreach (var protease in proteaseNames)
-                        {
-                            if (dict.ContainsKey(protease))
+                        case "Digestion Conditions:":
+                            break;
+                        case "Proteases":
+                            var proteaseNames = info[1].Split(",");
+                            foreach (var protease in proteaseNames)
                             {
-                                proteases.Add(dict[protease]);
-                            }
+                                if (dict.ContainsKey(protease))
+                                {
+                                    proteases.Add(dict[protease]);
+                                }
 
-                        }
-                    }
-                    else
-                    {
-                        MessageBox.Show("Error: Parameters file provided is not from a previous ProteaseGuru run.");
-                        return;
-                    }
-                    if (info[0] == "Max Missed Cleavages")
-                    {
-                        missedCleavages = Convert.ToInt32(info[1]);
-                    }
-                    else
-                    {
-                        MessageBox.Show("Error: Parameters file provided is not from a previous ProteaseGuru run.");
-                        return;
-                    }
-                    if (info[0] == "Min Peptide Length")
-                    {
-                        minPeptideLength = Convert.ToInt32(info[1]);
-                    }
-                    else
-                    {
-                        MessageBox.Show("Error: Parameters file provided is not from a previous ProteaseGuru run.");
-                        return;
-                    }
-                    if (info[0] == "Max Peptide Length")
-                    {
-                        maxPeptideLength = Convert.ToInt32(info[1]);
-                    }
-                    else
-                    {
-                        MessageBox.Show("Error: Parameters file provided is not from a previous ProteaseGuru run.");
-                        return;
-                    }
-                    if (info[0] == "Treat modified peptides as different peptides")
-                    {
-                        if (info[1] == "TRUE")
-                        {
-                            treatModPeps = true;
-                        }
-                    }
-                    else
-                    {
-                        MessageBox.Show("Error: Parameters file provided is not from a previous ProteaseGuru run.");
-                        return;
-                    }
+                            }
+                            break;
+                        case "Max Missed Cleavages":
+                            missedCleavages = Convert.ToInt32(info[1]);
+                            break;
+                        case "Min Peptide Length":
+                            minPeptideLength = Convert.ToInt32(info[1]);
+                            break;
+                        case "Max Peptide Length":
+                            maxPeptideLength = Convert.ToInt32(info[1]);
+                            break;
+                        case "Treat modified peptides as different peptides":
+                            if (info[1] == "True")
+                            {
+                                treatModPeps = true;
+                            }
+                            break;
+                        default:
+                            MessageBox.Show("Error: Parameters file provided is not from a previous ProteaseGuru run.");
+                            return;
+
+                    } 
                 }
 
                 loadedParams.ProteasesForDigestion = proteases;
@@ -890,15 +869,20 @@ namespace GUI
                         {
                             uniqueAll = true;
                         }
-                        double hydrophobicity = Convert.ToDouble(info[13]);
-                        double electrophoreticMobility = Convert.ToDouble(info[14]);
+                        bool oneDb= false;
+                        if (info[13] == "True")
+                        {
+                            oneDb = true;
+                        }
+                        double hydrophobicity = Convert.ToDouble(info[14]);
+                        double electrophoreticMobility = Convert.ToDouble(info[15]);
                         InSilicoPep pep = new InSilicoPep(baseSeq, fullSeq, previousAA, nextAA, unique, hydrophobicity, electrophoreticMobility, length,
                             molecularWeight, database, protein, start, end, protease);
                         pep.UniqueAllDbs = uniqueAll;
+                        pep.SeqOnlyInThisDb = oneDb;
                         allpeptides.Add(pep);
                     }
-                    peptideCount++;
-                                   
+                    peptideCount++;                                  
 
                 }
 
