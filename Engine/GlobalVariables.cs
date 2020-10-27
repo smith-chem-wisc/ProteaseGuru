@@ -32,12 +32,12 @@ namespace Engine
 #if DEBUG
                 ProteaseGuruVersion = "Not a release version. DEBUG.";
 #else
-                ProteaseGuruVersion = "Not a release version.";
+                ProteaseGuruVersion = "0.0.13";
 #endif
             }
             else
             {
-                // as of 0.0.277, AppVeyor appends the build number
+                // AppVeyor appends the build number
                 // this is intentional; it's to avoid conflicting AppVeyor build numbers
                 // trim the build number off the version number for displaying/checking versions, etc
                 var foundIndexes = new List<int>();
@@ -55,7 +55,7 @@ namespace Engine
                 var pathToProgramFiles = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles);
                 if (!String.IsNullOrWhiteSpace(pathToProgramFiles) && AppDomain.CurrentDomain.BaseDirectory.Contains(pathToProgramFiles) && !AppDomain.CurrentDomain.BaseDirectory.Contains("Jenkins"))
                 {
-                    DataDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "MetaMorpheus");
+                    DataDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "ProteaseGuru");
                 }
                 else
                 {
@@ -137,7 +137,7 @@ namespace Engine
                 {
                     // same ID, same mod type, and same mod properties; continue and don't output an error message
                     // this could result from reading in an XML database with mods annotated at the top
-                    // that are already loaded in MetaMorpheus
+                    // that are already loaded in ProteaseGuru
                     continue;
                 }
                 else if (AllModsKnown.Any(m => m.IdWithMotif == mod.IdWithMotif))
