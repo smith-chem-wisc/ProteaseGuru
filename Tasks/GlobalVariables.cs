@@ -38,7 +38,7 @@ namespace Tasks
 #if DEBUG
                     ProteaseGuruVersion = "Not a release version. DEBUG.";
 #else
-                ProteaseGuruVersion = "Not a release version.";
+                ProteaseGuruVersion = "0.0.13";
 #endif
                 }
                 else
@@ -61,7 +61,7 @@ namespace Tasks
                     var pathToProgramFiles = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles);
                     if (!String.IsNullOrWhiteSpace(pathToProgramFiles) && AppDomain.CurrentDomain.BaseDirectory.Contains(pathToProgramFiles) && !AppDomain.CurrentDomain.BaseDirectory.Contains("Jenkins"))
                     {
-                        DataDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "MetaMorpheus");
+                        DataDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "ProteaseGuru");
                     }
                     else
                     {

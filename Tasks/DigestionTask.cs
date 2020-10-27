@@ -4,6 +4,7 @@ using Proteomics.ProteolyticDigestion;
 using Proteomics.RetentionTimePrediction;
 using System;
 using System.Collections.Generic;
+using System.Data;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -268,9 +269,9 @@ namespace Tasks
                     {
                         peptidesToProteins = protease.Value.GroupBy(p => p.BaseSequence).ToDictionary(group => group.Key, group => group.ToList());
                     }
+
                     var unique = peptidesToProteins.Where(p => p.Value.Select(p => p.Protein).Distinct().Count() == 1).ToList();
                     var shared = peptidesToProteins.Where(p => p.Value.Select(p => p.Protein).Distinct().Count() > 1).ToList();
-                    var sharedPeptidesInOneDb = shared.Where(p => p.Value.Select(p => p.Database).Distinct().Count() == 1);                 
                     
                     foreach (var entry in unique)
                     {
@@ -303,7 +304,8 @@ namespace Tasks
                                 allPeptides.Add(peptide);                                
                             }
                         }                        
-                    }   
+                    }
+                    
                 }
             }
             else
@@ -313,56 +315,19 @@ namespace Tasks
                     foreach (var protease in database.Value)
                     {
                         foreach (var protein in protease.Value)
-                        {
-                            var peptidesForProtein = new List<InSilicoPep>();
+                        {                           
                             foreach (var peptide in protein.Value)
                             {
                                 peptide.UniqueAllDbs = peptide.Unique;
-                                peptide.SeqOnlyInThisDb = true;
-                                peptidesForProtein.Add(peptide);
+                                peptide.SeqOnlyInThisDb = true;                                
                                 allPeptides.Add(peptide);
                             }                            
                         }
                     }
                 }
             }
-
-            //foreach (var peptide in allPeptides)
-            //{
-            //    var protein = peptideByFile[peptide.Database][peptide.Protease].Keys.ToList().Where(p => p.Accession == peptide.Protein).First();
-
-            //    if (peptideByFileUpdated.ContainsKey(peptide.Database))
-            //    {
-            //        if (peptideByFileUpdated[peptide.Database].ContainsKey(peptide.Protease))
-            //        {
-            //            if (peptideByFileUpdated[peptide.Database][peptide.Protease].ContainsKey(protein))
-            //            {
-            //                peptideByFileUpdated[peptide.Database][peptide.Protease][protein].Add(peptide);
-            //            }
-            //            else
-            //            {
-            //                peptideByFileUpdated[peptide.Database][peptide.Protease].Add(protein, new List<InSilicoPep>() { peptide });
-            //            }
-            //        }
-            //        else
-            //        {
-            //            Dictionary<Protein, List<InSilicoPep>> proteinDic = new Dictionary<Protein, List<InSilicoPep>>();
-            //            proteinDic.Add(protein, new List<InSilicoPep>() { peptide });
-
-            //            peptideByFileUpdated[peptide.Database].Add(peptide.Protease, proteinDic);
-            //        }
-            //    }
-            //    else
-            //    {
-            //        Dictionary<Protein, List<InSilicoPep>> proteinDic = new Dictionary<Protein, List<InSilicoPep>>();
-            //        proteinDic.Add(protein, new List<InSilicoPep>() { peptide });
-            //        Dictionary<string, Dictionary<Protein, List<InSilicoPep>>> proteaseDic = new Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>();
-            //        proteaseDic.Add(peptide.Protease, proteinDic);
-
-            //        peptideByFileUpdated.Add(peptide.Database, proteaseDic);
-            //    }
-            //}
-                        
+                       
+            
             var numberOfPeptides = allPeptides.Count();
             double numberOfFiles = Math.Ceiling(numberOfPeptides / 1000000.0);
             var peptidesInFile = 1;
