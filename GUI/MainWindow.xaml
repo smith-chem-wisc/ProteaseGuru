@@ -426,7 +426,7 @@
                 </Grid>
             </TabItem>
 
-            <TabItem Header="Run" Style="{StaticResource TabItemStyle}">
+            <TabItem Header="Run" Style="{StaticResource TabItemStyle}" Selector.Selected="OnRunTabSelection">
                 <Grid Style="{StaticResource PageGridStyle}">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="50"/>

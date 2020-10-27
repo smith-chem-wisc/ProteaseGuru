@@ -449,6 +449,10 @@ namespace GUI
         //takes all information provided by the user for the digestion (databases, parameters etc) and make sure it is up to date and prepares for the run
         private void AddDigestionTask_Click(object sender, RoutedEventArgs e)
         {
+            if(StaticTasksObservableCollection.Count() != 0)
+            {
+                StaticTasksObservableCollection.Clear();
+            }
             // disable button so that no more tasks are added
             AddDigestionTask.IsEnabled = false;
             ResetDigestionTask.IsEnabled = true;
@@ -997,6 +1001,43 @@ namespace GUI
             MaxPeptideLengthTextBox.IsEnabled = true;
 
             SummaryForTreeViewObservableCollection.Clear();
+        }
+
+        private void OnRunTabSelection(object sender, RoutedEventArgs e)
+        {
+            // disable button so that no more tasks are added
+            if (AddDigestionTask.IsEnabled == true)
+            {
+                if (StaticTasksObservableCollection.Count() == 0)
+                {
+                    ResetDigestionTask.IsEnabled = true;
+                    ProteaseSelectedForUse.IsEnabled = false;
+                    MissedCleavagesTextBox.IsEnabled = false;
+                    MinPeptideLengthTextBox.IsEnabled = false;
+                    MaxPeptideLengthTextBox.IsEnabled = false;
+
+                    DigestionTask task = new DigestionTask();
+                    UpdateFieldsFromUser(task);
+                    AddTaskToCollection(task);
+                    OutputFolderTextBox.IsEnabled = true;
+
+                    GenerateRunSummary();
+
+                    // output folder
+                    if (string.IsNullOrWhiteSpace(OutputFolderTextBox.Text))
+                    {
+                        var pathOfFirstSpectraFile = System.IO.Path.GetDirectoryName(ProteinDbObservableCollection.First().FilePath);
+                        OutputFolderTextBox.Text = System.IO.Path.Combine(pathOfFirstSpectraFile, @"$DATETIME");
+                    }
+
+                    var startTimeForAllFilenames = DateTime.Now.ToString("yyyy-MM-dd-HH-mm-ss", CultureInfo.InvariantCulture);
+                    string outputFolder = OutputFolderTextBox.Text.Replace("$DATETIME", startTimeForAllFilenames);
+                    OutputFolderTextBox.Text = outputFolder;
+                    UserParameters.OutputFolder = outputFolder;
+
+                }
+            }
+            
         }
                 
         // generate summary for users to see all the databases, proteases and parameters that were selected before the run is started
