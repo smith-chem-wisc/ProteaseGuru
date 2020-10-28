@@ -54,36 +54,9 @@
                     <Grid.RowDefinitions>
                         <RowDefinition Height=".9*"/>
                     </Grid.RowDefinitions>
-                    <!--Header label-->
+                  
                     <ListBox Name ="dataGridProteins" SelectionMode="Single" ItemContainerStyle="{StaticResource ListBoxItem}" SelectionChanged="proteins_SelectedCellsChanged"> </ListBox>
-                    <!--<TreeView BorderThickness="1" x:Name="dataGridProteins" ItemsSource="{Binding}" DataContext="{x:Type local:ProteinForTreeView}"
-                                SelectedItemChanged="proteins_SelectedCellsChanged" VirtualizingStackPanel.IsVirtualizing="True" 
-                                  VirtualizingStackPanel.VirtualizationMode="Recycling" Grid.ColumnSpan="2">
-
-                        <TreeView.Resources>
-                            <HierarchicalDataTemplate DataType="{x:Type local:ProteinForTreeView}" ItemsSource="{Binding Summary}">
-                                <StackPanel Orientation="Horizontal">
-                                    <TextBlock Text="{Binding DisplayName}" FontSize="15"/>
-                                </StackPanel>
-                            </HierarchicalDataTemplate>
-                            <HierarchicalDataTemplate DataType="{x:Type local:SummaryForTreeView}">
-                                <StackPanel Orientation="Horizontal">
-                                    <TextBlock Text="{Binding DisplayName}" FontSize="12"/>
-                                </StackPanel>
-                            </HierarchicalDataTemplate>
-                        </TreeView.Resources>
-                        <TreeView.ItemContainerStyle>
-                            <Style TargetType="TreeViewItem">
-                                <Style.Resources>
-                                    <SolidColorBrush x:Key="{x:Static SystemColors.ControlBrushKey}" Color="#fdd8c1"/>
-                                    <SolidColorBrush x:Key="{x:Static SystemColors.HighlightBrushKey}" Color="#fdd8c1"/>
-                                    <SolidColorBrush x:Key="{x:Static SystemColors.HighlightTextBrushKey}" Color="#131313"/>
-                                    <SolidColorBrush x:Key="{x:Static SystemColors.InactiveSelectionHighlightBrushKey}" Color="#fdd8c1"/>
-                                </Style.Resources>
-                                <Setter Property="IsExpanded" Value="{Binding Expanded}"/>
-                            </Style>
-                        </TreeView.ItemContainerStyle>
-                    </TreeView>-->
+                    
                 </Grid>                
             </Grid>
 
@@ -127,14 +100,24 @@
                     </Grid.RowDefinitions>
                     <!--Header label-->
                     <Label Content="Protein Digestion Summary" Grid.Row="0" Style="{StaticResource SmallHeaderLabelStyle}" />
-                    <TreeView Grid.Row="1" x:Name="proteinResults" ItemsSource="{Binding}" DataContext="{x:Type local:ProteinForTreeView}" ScrollViewer.VerticalScrollBarVisibility="Auto">
+                    <TreeView Grid.Row="1" x:Name="proteinResults" Width ="735" ItemsSource="{Binding}" DataContext="{x:Type local:ProteinSummaryForTreeView}" ScrollViewer.VerticalScrollBarVisibility="Auto">
 
-                        <TreeView.Resources>                            
-                            <HierarchicalDataTemplate DataType="{x:Type local:SummaryForTreeView}">
+                        <TreeView.Resources>
+                            <HierarchicalDataTemplate DataType="{x:Type local:ProteinSummaryForTreeView}" ItemsSource="{Binding Summary}">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="{Binding DisplayName}" FontSize="16" />
+                                </StackPanel>
+                            </HierarchicalDataTemplate>
+                            <HierarchicalDataTemplate DataType="{x:Type local:AnalysisSummaryForTreeView}" ItemsSource="{Binding Summary}">
                                 <StackPanel Orientation="Horizontal">
                                     <TextBlock Text="{Binding DisplayName}" FontSize="15"/>
                                 </StackPanel>
                             </HierarchicalDataTemplate>
+                            <DataTemplate DataType="{x:Type local:ProtSummaryForTreeView}">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="{Binding DisplayName}" FontSize="13.5"/>
+                                </StackPanel>
+                            </DataTemplate>
                         </TreeView.Resources>
                         <TreeView.ItemContainerStyle>
                             <Style TargetType="TreeViewItem">
@@ -175,7 +158,7 @@
 
                     </ScrollViewer>
 
-                    <Button x:Name="exportPngButton" Content="Export Coverage Map" Click="exportCoverageMap" Grid.Row="3" Width="150" Style="{StaticResource ImportantButtonStyle}"/>
+                    <Button x:Name="exportPngButton" Content="Export Protein Digestion Results" Click="exportCoverageMap" Grid.Row="3" Width="250" Style="{StaticResource ImportantButtonStyle}"/>
 
                 </Grid>
             </Grid>
