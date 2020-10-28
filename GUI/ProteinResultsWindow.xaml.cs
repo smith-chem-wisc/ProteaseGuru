@@ -73,13 +73,11 @@ namespace ProteaseGuruGUI
         //set up protease to color dictionary for peptides as well as mods
         public void SetUpDictionaries()
         {
-            List<Color> colors = new List<Color>(){Colors.MediumBlue, Colors.Goldenrod, Colors.ForestGreen, Colors.DarkOrchid, Colors.Chocolate,
-                Colors.Teal, Colors.PaleVioletRed, Colors.DimGray, Colors.LightSkyBlue, Colors.PaleGoldenrod, Colors.DarkSeaGreen, Colors.Thistle,
-                Colors.PeachPuff, Colors.PaleTurquoise, Colors.MistyRose, Colors.Gainsboro, Colors.Navy, Colors.DarkGoldenrod, Colors.DarkGreen, 
-                Colors.Sienna, Colors.DarkSlateGray, Colors.MediumVioletRed, Colors.Black, Colors.CornflowerBlue, Colors.Gold, Colors.MediumSeaGreen, 
-                Colors.MediumOrchid, Colors.DarkSalmon, Colors.LightSeaGreen, Colors.LightPink, Colors.DarkGray, Colors.Aquamarine, Colors.Coral, 
-                Colors.CadetBlue, Colors.DarkMagenta, Colors.DarkOliveGreen, Colors.DeepPink, Colors.GreenYellow, Colors.Maroon, Colors.Yellow,
-                Colors.Plum, Colors.PowderBlue};
+            List<Color> colors = new List<Color>(){ Color.FromRgb(130, 88, 159), Color.FromRgb(0, 148, 50), Color.FromRgb(181, 52, 113), Color.FromRgb(52, 152, 219), Color.FromRgb(230, 126, 34),
+           Color.FromRgb(27, 20, 100), Color.FromRgb(253, 167, 223), Color.FromRgb(99, 110, 114), Color.FromRgb(255, 221, 89), Color.FromRgb(162, 155, 254), Color.FromRgb(58, 227, 116),
+           Color.FromRgb(252, 66, 123), Color.FromRgb(126, 214, 223), Color.FromRgb(249, 127, 81), Color.FromRgb(189, 195, 199), Color.FromRgb(241, 196, 15), Color.FromRgb(0, 98, 102), Color.FromRgb(142, 68, 173),
+           Color.FromRgb(225, 112, 85), Color.FromRgb(255, 184, 184), Color.FromRgb(61, 193, 211), Color.FromRgb(224, 86, 253), Color.FromRgb(196, 229, 56), Color.FromRgb(255, 71, 87),
+            Color.FromRgb(88, 177, 159), Color.FromRgb(111, 30, 81), Color.FromRgb(129, 236, 236), Color.FromRgb(179, 57, 57), Color.FromRgb(232, 67, 147)};
             ProteaseByColor = new Dictionary<string, Color>();
             ModsByColor = new Dictionary<string, SolidColorBrush>();
             var proteases = PeptideByFile.SelectMany(p => p.Value.Keys).Distinct().ToList();
@@ -159,6 +157,7 @@ namespace ProteaseGuruGUI
 
         private void SetUpTreeView()
         {
+            List<string> proteinListDuplicates = new List<string>();
             foreach (var db in PeptideByFile)
             {
                 foreach (var protease in db.Value)
@@ -167,7 +166,8 @@ namespace ProteaseGuruGUI
                     foreach (var protein in protease.Value)
                     {
                         var prot = protein.Key;
-                        dataGridProteins.Items.Add(prot.Accession);
+                        
+                        proteinListDuplicates.Add(prot.Accession);
                         var peptidesByProtease = new Dictionary<string, List<InSilicoPep>>();
 
                         if (PeptideByProteaseAndProtein.ContainsKey(prot))
@@ -189,7 +189,7 @@ namespace ProteaseGuruGUI
                             var name = prot.Accession ?? prot.Name;
                             var newPtv = new ProteinForTreeView(prot, name, new List<InSilicoPep>(), new List<InSilicoPep>(), new List<InSilicoPep>());
                             ProteinsForTreeView.Add(prot, newPtv);
-                            proteinList.Add(newPtv.Protein.Accession);
+                            
                         }
 
                         if (PeptideByFile.Keys.Count > 1)
@@ -210,7 +210,11 @@ namespace ProteaseGuruGUI
                     }
                 }
             }
-
+            foreach (var prot in proteinListDuplicates.Distinct())
+            {
+                proteinList.Add(prot);
+                dataGridProteins.Items.Add(prot);
+            }
             
         }
 
@@ -298,6 +302,8 @@ namespace ProteaseGuruGUI
                 percentCovUniq.Summary.Add(new ProtSummaryForTreeView(seqCovKvp.Item1 + ": " + Math.Round(seqCovKvp.Item2 * 100, 3) + "%")); // break down by protease
             }
             thisProtein.Summary.Add(percentCovUniq);
+
+            ProteinDigestionSummary.Clear();
 
             ProteinDigestionSummary.Add(thisProtein);
 
@@ -811,7 +817,7 @@ namespace ProteaseGuruGUI
         private void ChangeMapScrollViewSize()
         {
             mapViewer.Height = .8 * ResultsGrid.ActualHeight;
-            mapViewer.Width = .99 * ResultsGrid.ActualWidth;
+            mapViewer.Width = .99 * ResultsGrid.ActualWidth;            
 
             ChangeMapScrollViewVisibility();
         }

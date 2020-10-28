@@ -20,11 +20,11 @@
         <!--Detail text-->
         <TextBlock Grid.Row="1" Style="{StaticResource TextBlockStyle}">
           Explore proteome-wide digestion trends using histograms. Select a database and a histogram type to visualize the data.
-            
+
         </TextBlock>
 
         <GroupBox Grid.Row="2" Grid.Column="2" Name="gbResults" ScrollViewer.VerticalScrollBarVisibility="Hidden" Background="{StaticResource DataGridBackgroundColor}">
-                       
+
             <DockPanel>
                 <Grid Background="{StaticResource DataGridBackgroundColor}">
                     <Grid.ColumnDefinitions>
@@ -33,8 +33,8 @@
                         <ColumnDefinition Width="5*"/>
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
-                    
-                        <Grid Grid.Column="0" Background="{StaticResource DataGridBackgroundColor}">
+
+                    <Grid Grid.Column="0" Background="{StaticResource DataGridBackgroundColor}">
                         <Grid.Resources>
                             <Style TargetType="DataGridCell">
                                 <Style.Triggers>
@@ -47,37 +47,38 @@
 
                         </Grid.Resources>
                         <Grid.RowDefinitions>
-                                <RowDefinition Height="35"/>
-                                <RowDefinition Height="1*"/>
-                                <RowDefinition Height="30"/>
-                            </Grid.RowDefinitions>
-                            <!--Header label-->
-                            <Label Content="Database" Grid.Row="0" Style="{StaticResource SmallHeaderLabelStyle}" />
-                            
-                            <DataGrid x:Name="dataGridProteinDBs" Grid.Row="1" AutoGenerateColumns="False" VerticalAlignment="Stretch" ItemsSource="{Binding}" 
+                            <RowDefinition Height="35"/>
+                            <RowDefinition Height="1*"/>
+                            <RowDefinition Height="30"/>
+                        </Grid.RowDefinitions>
+                        <!--Header label-->
+                        <Label Content="Database" Grid.Row="0" Style="{StaticResource SmallHeaderLabelStyle}" />
+
+                        <DataGrid x:Name="dataGridProteinDBs" Grid.Row="1" AutoGenerateColumns="False" VerticalAlignment="Stretch" ItemsSource="{Binding}" 
                                                         IsReadOnly="True" ScrollViewer.CanContentScroll="True" Margin="0,0,0,0" 
                                                         CanUserDeleteRows="false" CanUserAddRows="false" Style="{StaticResource x:DataGridStyle}" ColumnHeaderStyle="{StaticResource DataGridColumnHeaderStyle}" SelectedCellsChanged="DatabaseSelectionChanged">
-                                <DataGrid.Columns>
-                                    <DataGridTextColumn Header="File" Binding="{Binding}" Width="450" />                                
-                                </DataGrid.Columns>
-                            </DataGrid>
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="File" Binding="{Binding}" Width="450" />
+                            </DataGrid.Columns>
+                        </DataGrid>
                         <Button Grid.Row="2" Content="Use Selected Databases" Width="150" Click="ProteinDBSelected_Click" HorizontalAlignment="Center" Style="{StaticResource ImportantButtonStyle}"></Button>
-                        </Grid>                    
+                    </Grid>
                     <GridSplitter Grid.Column="1" HorizontalAlignment="Center" VerticalAlignment="Stretch" Background="Silver" Width="3"/>
                     <Grid Grid.Column="2" Background="{StaticResource DataGridBackgroundColor}">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="35"/>
+                            <RowDefinition Height="10"/>
                             <RowDefinition Height="1*"/>
                             <RowDefinition Height="25"/>
                         </Grid.RowDefinitions>
                         <Grid Grid.Row="0" Background="{StaticResource DataGridBackgroundColor}">
                             <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="300"/>
-                                <ColumnDefinition Width="500"/>
+                                <ColumnDefinition Width="450"/>
+                                <ColumnDefinition Width="400"/>
                             </Grid.ColumnDefinitions>
                             <StackPanel Orientation="Horizontal" Grid.Column="0" Background="{StaticResource DataGridBackgroundColor}">
                                 <Label x:Name="HistogramType" Content="Histogram Type:" Width="125" Style="{StaticResource SmallHeaderLabelStyle}"/>
-                                <ComboBox x:Name="HistogramComboBox" SelectionChanged="PlotSelected" Background="{StaticResource DataGridBackgroundColor}" Width="150">
+                                <ComboBox x:Name="HistogramComboBox" SelectionChanged="PlotSelected" Background="{StaticResource DataGridBackgroundColor}" Width="300">
 
                                     <ComboBoxItem Content="Amino Acid Distribution">
                                         <ComboBoxItem.ToolTip >
@@ -123,17 +124,7 @@
                                         <ComboBoxItem.ToolTip >
                                             <TextBlock>
                                                                     Histrogram representing the distribution of predicted peptide hydrophobicity values.
-                                                                    <LineBreak/>
-                                                                    <LineBreak/>
-                                                                    The hydrophobicity prediction algorithm was adapted from the following publication:                                                                    
-                                                                    <LineBreak/>
-                                                                    O. V. Krokhin, R. Craig, V. Spicer, W. Ens, K. G. Standing, R. C. Beavis, J. A. Wilkin
-                                                                    <LineBreak/>
-                                                                    An improved model for prediction of retention times of tryptic peptides in ion-pair reverse-phase HPLC:
-                                                                    <LineBreak/>
-                                                                    its application to protein peptide mapping by off-line HPLC-MALDI MS
-                                                                    <LineBreak/>
-                                                                    Molecular and Cellular Proteomics 2004 Sep;3(9):908-19.
+                                                                    
                                             </TextBlock>
                                         </ComboBoxItem.ToolTip>
                                     </ComboBoxItem>
@@ -141,31 +132,25 @@
                                         <ComboBoxItem.ToolTip >
                                             <TextBlock>
                                                                     Histrogram representing the distribution of predicted peptide electrophoretic mobility values.
-                                                                    <LineBreak/>
-                                                                    <LineBreak/>
-                                                                    The electrophoretic mobility prediction algorithm was adapted from the following publication: 
-                                                                    <LineBreak/>                                                                    
-                                                                    A. Cifuentes, H. Poppe.
-                                                                    <LineBreak/>
-                                                                    Simulation and optimization of peptide separation by capillary electrophoresis
-                                                                    <LineBreak/>
-                                                                    Journal of Chromatography,A 1994; 680(1):321-40.
+                                                                    
                                             </TextBlock>
                                         </ComboBoxItem.ToolTip>
                                     </ComboBoxItem>
                                 </ComboBox>
                             </StackPanel>
-                            <StatusBar Name="HistogramLoading" Grid.Column="1" Background="{StaticResource BackgroundColor}">
-                                <StatusBarItem>
-                                    <TextBlock Style="{StaticResource StatusBarTextStyle}">Histogram Loading:</TextBlock>
-                                </StatusBarItem>
-                            </StatusBar>
+
+                            <StackPanel Orientation="Horizontal" Grid.Column="1" Background="{StaticResource DataGridBackgroundColor}">
+                                <Label x:Name="HistogramLoadingLabel" Content="Histogram Loading:" Width="150" Style="{StaticResource SmallHeaderLabelStyle}"/>
+                                <StatusBar Name="HistogramLoading" Background="{StaticResource BackgroundColor}">                                    
+                                </StatusBar>
+                            </StackPanel>
+                                
                         </Grid>
-                        <Grid Grid.Row=" 1" Style="{StaticResource PageGridStyle}">
-                            <oxy:PlotView  x:Name="plotViewStat" Model="{Binding Model}" FontSize="16" FontStretch="Expanded" BorderBrush="LightGray" Grid.ColumnSpan="2" Height="400" Width="850" ></oxy:PlotView>
-                        </Grid>                       
-                           
-                        <DockPanel Grid.Row="2" Margin="2" Background="{StaticResource DataGridBackgroundColor}">
+                        <Grid Grid.Row=" 2" Style="{StaticResource PageGridStyle}" Height="440" Width="850">                            
+                            <oxy:PlotView  x:Name="plotViewStat" Model="{Binding Model}" FontSize="16" FontStretch="Expanded" BorderBrush="LightGray" Height="400" Width="850" HorizontalAlignment="Center" VerticalAlignment="Top"></oxy:PlotView>
+                        </Grid>
+
+                        <DockPanel Grid.Row="3" Margin="2" Background="{StaticResource DataGridBackgroundColor}">
                             <Button Content="Export to PDF" Width="150" Click="CreatePlotPdf_Click" HorizontalAlignment="Left" Style="{StaticResource ImportantButtonStyle}"/>
                             <Button Content="Export Data to CSV" Width="150" Click="CreateTable_Click" HorizontalAlignment="Right" Style="{StaticResource ImportantButtonStyle}"/>
                         </DockPanel>
@@ -174,8 +159,8 @@
 
                 </Grid>
 
-            </DockPanel>                           
-        </GroupBox>                   
-               
+            </DockPanel>
+        </GroupBox>
+
     </Grid>
 </UserControl>

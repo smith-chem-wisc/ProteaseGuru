@@ -103,7 +103,7 @@ namespace ProteaseGuruGUI
             top.X2 = end.X + 11;
             top.Y1 = start.Y + 20;
             top.Y2 = end.Y + 20;
-            top.StrokeThickness = 2;
+            top.StrokeThickness = 3.25;
 
             if (shared)
             {
@@ -192,6 +192,7 @@ namespace ProteaseGuruGUI
 
                 Label pepLabel = new Label();
                 pepLabel.Content = peptide + " peptides";
+                pepLabel.FontSize = 12;
 
                 if (peptide.Equals("Shared"))
                 {
@@ -212,6 +213,7 @@ namespace ProteaseGuruGUI
                 variantLabel.Content = "Sequence Variants";
                 variantLabel.Foreground = Brushes.Tomato;
                 variantLabel.FontWeight = FontWeights.ExtraBold;
+                variantLabel.FontSize = 12;
                 legend.Children.Add(variantLabel);
                 Grid.SetColumn(variantLabel, ++i);
                 Grid.SetRow(variantLabel, 1);
@@ -226,6 +228,7 @@ namespace ProteaseGuruGUI
                 legend.ColumnDefinitions.Add(new ColumnDefinition());
                 Label proteaseName = new Label();
                 proteaseName.Content = protease;
+                proteaseName.FontSize = 12;
 
                 Rectangle proteaseColor = new Rectangle();
                 proteaseColor.Fill = new SolidColorBrush(proteaseByColor[protease]);
@@ -302,6 +305,7 @@ namespace ProteaseGuruGUI
 
                 Label pepLabel = new Label();
                 pepLabel.Content = peptide + " peptides";
+                pepLabel.FontSize= 12;
 
                 if (peptide.Equals("Shared"))
                 {
@@ -320,6 +324,7 @@ namespace ProteaseGuruGUI
             {
                 legend.ColumnDefinitions.Add(new ColumnDefinition());
                 Label variantLabel = new Label();
+                variantLabel.FontSize = 12;
                 variantLabel.Content = "Sequence Variants";
                 variantLabel.Foreground = Brushes.Tomato;
                 variantLabel.FontWeight = FontWeights.ExtraBold;
@@ -339,6 +344,7 @@ namespace ProteaseGuruGUI
                 legend.ColumnDefinitions.Add(new ColumnDefinition());
                 Label proteaseName = new Label();
                 proteaseName.Content = protease;
+                proteaseName.FontSize = 12;
 
                 Rectangle proteaseColor = new Rectangle();
                 proteaseColor.Fill = new SolidColorBrush(proteaseByColor[protease]);
@@ -392,7 +398,10 @@ namespace ProteaseGuruGUI
                 };
                 circle.Fill = mod.Value;
                 circle.Stroke = mod.Value;
-                
+
+                Label modName = new Label();
+                modName.FontSize = 12;
+
                 if (modCount == 1)
                 {
                     j++;
@@ -400,7 +409,7 @@ namespace ProteaseGuruGUI
                     legend.Children.Add(circle);
                     Grid.SetRow(circle, j);
                     Grid.SetColumn(circle, 0);
-                    Label modName = new Label();
+                    
                     modName.Content = mod.Key;
                     legend.Children.Add(modName);
                     Grid.SetRow(modName, j);
@@ -412,7 +421,7 @@ namespace ProteaseGuruGUI
                     legend.Children.Add(circle);
                     Grid.SetRow(circle, j);
                     Grid.SetColumn(circle, 2);
-                    Label modName = new Label();
+                    
                     modName.Content = mod.Key;
                     legend.Children.Add(modName);
                     Grid.SetRow(modName, j);
@@ -423,7 +432,7 @@ namespace ProteaseGuruGUI
                     legend.Children.Add(circle);
                     Grid.SetRow(circle, j);
                     Grid.SetColumn(circle, 4);
-                    Label modName = new Label();
+                    
                     modName.Content = mod.Key;
                     legend.Children.Add(modName);
                     Grid.SetRow(modName, j);

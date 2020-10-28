@@ -31,13 +31,24 @@ namespace GUI
 
         //colors for histgrams (different color for each protease). Order of protease selection dictates its color not the protease itself
         //can change in future to allow more user input
-        private static List<OxyColor> columnColors = new List<OxyColor>
-        {           
-           OxyColors.MediumBlue, OxyColors.Goldenrod, OxyColors.ForestGreen, OxyColors.DarkOrchid, OxyColors.Chocolate, OxyColors.Teal, OxyColors.PaleVioletRed, OxyColors.DimGray,
-           OxyColors.LightSkyBlue, OxyColors.PaleGoldenrod, OxyColors.DarkSeaGreen, OxyColors.Thistle, OxyColors.PeachPuff, OxyColors.PaleTurquoise, OxyColors.MistyRose, OxyColors.Gainsboro,
-           OxyColors.Navy, OxyColors.DarkGoldenrod, OxyColors.DarkGreen, OxyColors.Purple, OxyColors.Sienna, OxyColors.DarkSlateGray, OxyColors.MediumVioletRed, OxyColors.Black,
-           OxyColors.CornflowerBlue, OxyColors.Gold, OxyColors.MediumSeaGreen, OxyColors.MediumOrchid, OxyColors.DarkSalmon, OxyColors.LightSeaGreen, OxyColors.LightPink, OxyColors.DarkGray
+        //private static List<OxyColor> columnColors = new List<OxyColor>
+        //{           
+        //   OxyColors.MediumBlue, OxyColors.Goldenrod, OxyColors.ForestGreen, OxyColors.Red, OxyColors.DarkOrchid, OxyColors.Chocolate,  OxyColors.PaleVioletRed, OxyColors.DimGray,
+        //   OxyColors.LightSkyBlue, OxyColors.PaleGoldenrod, OxyColors.DarkSeaGreen, OxyColors.Thistle, OxyColors.PeachPuff, OxyColors.PaleTurquoise, OxyColors.MistyRose, OxyColors.Gainsboro,
+        //   OxyColors.Navy, OxyColors.DarkGoldenrod, OxyColors.DarkGreen, OxyColors.Purple, OxyColors.Sienna, OxyColors.DarkSlateGray, OxyColors.MediumVioletRed, OxyColors.Black,
+        //   OxyColors.CornflowerBlue, OxyColors.Gold, OxyColors.MediumSeaGreen, OxyColors.MediumOrchid, OxyColors.DarkSalmon, OxyColors.LightSeaGreen, OxyColors.LightPink, OxyColors.DarkGray
 
+
+            
+        //};
+
+        private static List<OxyColor> columnColors = new List<OxyColor>
+        {
+           OxyColor.FromRgb(130, 88, 159), OxyColor.FromRgb(0, 148, 50), OxyColor.FromRgb(181, 52, 113), OxyColor.FromRgb(52, 152, 219), OxyColor.FromRgb(230, 126, 34), OxyColor.FromRgb(27, 20, 100), OxyColor.FromRgb(253, 167, 223),
+           OxyColor.FromRgb(99, 110, 114), OxyColor.FromRgb(255, 221, 89), OxyColor.FromRgb(162, 155, 254), OxyColor.FromRgb(58, 227, 116), OxyColor.FromRgb(252, 66, 123),
+           OxyColor.FromRgb(126, 214, 223), OxyColor.FromRgb(249, 127, 81), OxyColor.FromRgb(189, 195, 199), OxyColor.FromRgb(241, 196, 15), OxyColor.FromRgb(0, 98, 102), OxyColor.FromRgb(142, 68, 173),
+           OxyColor.FromRgb(225, 112, 85), OxyColor.FromRgb(255, 184, 184), OxyColor.FromRgb(61, 193, 211), OxyColor.FromRgb(224, 86, 253), OxyColor.FromRgb(196, 229, 56), OxyColor.FromRgb(255, 71, 87),
+           OxyColor.FromRgb(88, 177, 159), OxyColor.FromRgb(111, 30, 81), OxyColor.FromRgb(129, 236, 236), OxyColor.FromRgb(179, 57, 57), OxyColor.FromRgb(232, 67, 147)
         };
 
         public PlotModel Model
@@ -304,7 +315,7 @@ namespace GUI
                     break;
                 case 4: // Predicted Peptide Hydrophobicity
                     xAxisTitle = "Number of Unique Peptides per Protein";
-                    binSize = 5;
+                    binSize = 10;
                     foreach (string key in UniquePeptidesPerProtein.Keys)
                     {
                         numbersByProtease.Add(key, UniquePeptidesPerProtein[key].Select(p => p));
