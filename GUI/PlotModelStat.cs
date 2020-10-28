@@ -13,6 +13,7 @@ using System.ComponentModel;
 using System.Linq;
 using System.Globalization;
 using Proteomics;
+using Easy.Common.Extensions;
 
 namespace GUI
 {
@@ -28,19 +29,6 @@ namespace GUI
         List<string> Proteases = new List<string>();
         //access series stuff here
         public Dictionary<string, Dictionary<string, string>> DataTable = new Dictionary<string, Dictionary<string, string>>();
-
-        //colors for histgrams (different color for each protease). Order of protease selection dictates its color not the protease itself
-        //can change in future to allow more user input
-        //private static List<OxyColor> columnColors = new List<OxyColor>
-        //{           
-        //   OxyColors.MediumBlue, OxyColors.Goldenrod, OxyColors.ForestGreen, OxyColors.Red, OxyColors.DarkOrchid, OxyColors.Chocolate,  OxyColors.PaleVioletRed, OxyColors.DimGray,
-        //   OxyColors.LightSkyBlue, OxyColors.PaleGoldenrod, OxyColors.DarkSeaGreen, OxyColors.Thistle, OxyColors.PeachPuff, OxyColors.PaleTurquoise, OxyColors.MistyRose, OxyColors.Gainsboro,
-        //   OxyColors.Navy, OxyColors.DarkGoldenrod, OxyColors.DarkGreen, OxyColors.Purple, OxyColors.Sienna, OxyColors.DarkSlateGray, OxyColors.MediumVioletRed, OxyColors.Black,
-        //   OxyColors.CornflowerBlue, OxyColors.Gold, OxyColors.MediumSeaGreen, OxyColors.MediumOrchid, OxyColors.DarkSalmon, OxyColors.LightSeaGreen, OxyColors.LightPink, OxyColors.DarkGray
-
-
-            
-        //};
 
         private static List<OxyColor> columnColors = new List<OxyColor>
         {
@@ -316,6 +304,21 @@ namespace GUI
                 case 4: // Predicted Peptide Hydrophobicity
                     xAxisTitle = "Number of Unique Peptides per Protein";
                     binSize = 10;
+                    double maxValue = 0;
+                    double minValue = 0;
+                    foreach (string key in UniquePeptidesPerProtein.Keys)
+                    {
+                        if (maxValue < UniquePeptidesPerProtein[key].Max())
+                        {
+                            maxValue = UniquePeptidesPerProtein[key].Max();
+                        }
+                        if (minValue > UniquePeptidesPerProtein[key].Min())
+                        {
+                            minValue = UniquePeptidesPerProtein[key].Min();
+                        }
+                    }
+                    binSize = Math.Round((maxValue - minValue) / 50, 0);
+
                     foreach (string key in UniquePeptidesPerProtein.Keys)
                     {
                         numbersByProtease.Add(key, UniquePeptidesPerProtein[key].Select(p => p));
