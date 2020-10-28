@@ -473,8 +473,13 @@ namespace GUI
             // output folder
             if (string.IsNullOrWhiteSpace(OutputFolderTextBox.Text))
             {
-                var pathOfFirstSpectraFile = System.IO.Path.GetDirectoryName(ProteinDbObservableCollection.First().FilePath);
-                OutputFolderTextBox.Text = System.IO.Path.Combine(pathOfFirstSpectraFile, @"$DATETIME");
+                if (ProteinDbObservableCollection.Count() == 0)
+                {
+                    MessageBox.Show("Error: No databases are provided for digestion. Please add databases before proceeding with analysis.");
+                    return;
+                }
+                var pathOfFirstDbFile = System.IO.Path.GetDirectoryName(ProteinDbObservableCollection.First().FilePath);
+                OutputFolderTextBox.Text = System.IO.Path.Combine(pathOfFirstDbFile, @"$DATETIME");
             }
 
             var startTimeForAllFilenames = DateTime.Now.ToString("yyyy-MM-dd-HH-mm-ss", CultureInfo.InvariantCulture);
@@ -1010,6 +1015,11 @@ namespace GUI
                     // output folder
                     if (string.IsNullOrWhiteSpace(OutputFolderTextBox.Text))
                     {
+                        if (ProteinDbObservableCollection.Count() == 0)
+                        {
+                            MessageBox.Show("Error: No databases are provided for digestion. Please add databases before proceeding with analysis.");
+                            return;
+                        }
                         var pathOfFirstSpectraFile = System.IO.Path.GetDirectoryName(ProteinDbObservableCollection.First().FilePath);
                         OutputFolderTextBox.Text = System.IO.Path.Combine(pathOfFirstSpectraFile, @"$DATETIME");
                     }
