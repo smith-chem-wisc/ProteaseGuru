@@ -53,6 +53,7 @@ namespace GUI
             dataGridReloadDb.DataContext = ReloadProteinDbObservableCollection;
             EverythingRunnerEngine.NewDbsHandler += AddNewDB;
             EverythingRunnerEngine.WarnHandler += GuiWarnHandler;
+            DigestionTask.OutLabelStatusHandler += NewoutLabelStatus;
             SummaryForTreeViewObservableCollection = new ObservableCollection<RunSummaryForTreeView>();
             ResetDigestionTask.IsEnabled = false;
         }        
@@ -1104,6 +1105,18 @@ namespace GUI
             }
 
 
+        }
+
+        private void NewoutLabelStatus(object sender, StringEventArgs s)
+        {
+            if (!Dispatcher.CheckAccess())
+            {
+                Dispatcher.BeginInvoke(new Action(() => NewoutLabelStatus(sender, s)));
+            }
+            else
+            {
+                ProgressTextBox.Text = s.S;
+            }
         }
 
         private void MenuItem_Spritz_Click(object sender, RoutedEventArgs e)

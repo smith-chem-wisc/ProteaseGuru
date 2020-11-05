@@ -2,6 +2,7 @@
 using Proteomics.ProteolyticDigestion;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Text;
 
@@ -102,7 +103,14 @@ namespace Tasks
                         }
                         
                     }
+
+                    peptidesForSingleDatabase = null;
+                    unique = null;
+                    shared = null;
+                    sharedPeptidesInOneDb = null;
+                    allPeptides = null;
                 }
+
                 foreach (var database in PeptideByFile)
                 {
                     summary.Add(database.Key + " Results:");
@@ -125,6 +133,7 @@ namespace Tasks
                             summary.Add("       Number of Unique Peptides: " + allPeptides.Where(pep => pep.Unique == true).Select(p => p.BaseSequence).Distinct().Count());
                             summary.Add("       Number of Shared Peptides: " + allPeptides.Where(pep => pep.Unique == false).Select(p => p.BaseSequence).Distinct().Count());
                         }
+                        allPeptides = null;
                     }
                 }
             }
@@ -152,9 +161,10 @@ namespace Tasks
                             summary.Add("       Number of Unique Peptides: " + allPeptides.Where(pep => pep.Unique == true).Select(p => p.BaseSequence).Distinct().Count());
                             summary.Add("       Number of Shared Peptides: " + allPeptides.Where(pep => pep.Unique == false).Select(p => p.BaseSequence).Distinct().Count());
                         }
+                        allPeptides = null;
                     }
-                }
-            }
+                }                
+            }            
             return summary;
         }
 

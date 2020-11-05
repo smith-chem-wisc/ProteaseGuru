@@ -494,11 +494,23 @@
                             <Button x:Name="RunTaskButton" Content="Run!" Click="RunTaskButton_Click" FontSize="24" Grid.Row="3" Grid.ColumnSpan="2" Width="400" Style="{StaticResource ImportantButtonStyle}"/>
                             
                         </Grid>
-                    <StatusBar Name="RunStatus" Grid.Row="5" Background="{StaticResource BackgroundColor}">
-                        <StatusBarItem>
-                            <TextBlock Style="{StaticResource StatusBarTextStyle}">Running:</TextBlock>
-                        </StatusBarItem>                        
-                    </StatusBar>
+                    <Grid Grid.Row="5" Background="{StaticResource BackgroundColor}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition></ColumnDefinition>
+                            <ColumnDefinition></ColumnDefinition>
+                        </Grid.ColumnDefinitions>
+                        <StatusBar Name="RunStatus" Grid.Column="0" Background="{StaticResource BackgroundColor}">
+                            <StatusBarItem>
+                                <TextBlock Style="{StaticResource StatusBarTextStyle}">Running:</TextBlock>
+                            </StatusBarItem>
+                        </StatusBar>
+                        <DockPanel Margin="5" Grid.Column="1">
+                            <Label Content="Run Status:" Style="{StaticResource ProgressTextStyle}"/>
+                            <TextBox x:Name="ProgressTextBox"  Background="{StaticResource BackgroundColor}" BorderThickness="0"/>
+                        </DockPanel>
+                        
+                    </Grid>
+                   
                    
                 </Grid>
             </TabItem>

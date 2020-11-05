@@ -25,6 +25,8 @@ namespace Tasks
 
         public Dictionary<string, Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>> PeptideByFile;
 
+        public static event EventHandler<StringEventArgs> OutLabelStatusHandler;
+
 
         public override MyTaskResults RunSpecific(string OutputFolder, List<DbForDigestion> dbFileList)
         {                    
@@ -32,6 +34,9 @@ namespace Tasks
                 new Dictionary<string, Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>>(dbFileList.Count);
             int threads_1 = Environment.ProcessorCount - 1 > dbFileList.Count() ? dbFileList.Count : Environment.ProcessorCount -2;
             int[] threadArray_1 = Enumerable.Range(0, threads_1).ToArray();
+
+            Status("Loading Protein Databases", "loadDbs");
+
             Parallel.ForEach(threadArray_1, (j) =>
             {
                 for (; j < dbFileList.Count(); j += threads_1)
@@ -46,6 +51,8 @@ namespace Tasks
                     {
                         for (; i < DigestionParameters.ProteasesForDigestion.Count; i += maxThreads)
                         {
+                            Status("Digesting Proteins", "digestDbs");
+
                             var peptides = DigestDatabase(proteins, DigestionParameters.ProteasesForDigestion[i], DigestionParameters);
                             var peptidesFormatted = DeterminePeptideStatus(database.FileName, peptides, DigestionParameters);
                             lock (PeptideByFile)
@@ -58,9 +65,11 @@ namespace Tasks
 
                 }
             });
-             
+            Status("Writing Peptide Output", "peptides");
             WritePeptidesToTsv(PeptideByFile, OutputFolder, DigestionParameters);
+            Status("Writing Results Summary", "summary");
             MyTaskResults myRunResults = new MyTaskResults(this);
+            Status("Run Complete!", "summary");
             return myRunResults;
         }
         // Load proteins from XML or FASTA databases and keep them associated with the database file name from which they came from
@@ -385,6 +394,11 @@ namespace Tasks
 
             File.WriteAllLines(filePath + @"\DigestionConditions.txt", parameters);
             
+        }
+
+        protected void Status(string v, string id)
+        {
+            OutLabelStatusHandler?.Invoke(this, new StringEventArgs(v, new List<string> { id }));
         }
     }
 }
