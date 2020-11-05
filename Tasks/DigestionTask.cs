@@ -35,8 +35,6 @@ namespace Tasks
             int threads_1 = Environment.ProcessorCount - 1 > dbFileList.Count() ? dbFileList.Count : Environment.ProcessorCount -2;
             int[] threadArray_1 = Enumerable.Range(0, threads_1).ToArray();
 
-            Status("Loading Protein Databases", "loadDbs");
-
             Parallel.ForEach(threadArray_1, (j) =>
             {
                 for (; j < dbFileList.Count(); j += threads_1)
@@ -44,6 +42,7 @@ namespace Tasks
                     var database = dbFileList[j];
                     PeptideByFile.Add(database.FileName, new Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>(DigestionParameters.ProteasesForDigestion.Count));
                     Dictionary<string, Dictionary<Protein, List<InSilicoPep>>> peptidesByProtease = new Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>();
+                    Status("Loading Protein Database...", "loadDbs");
                     List<Protein> proteins = LoadProteins(database);
                     int maxThreads = Environment.ProcessorCount - 2;
                     int[] threads = Enumerable.Range(0, maxThreads).ToArray();
@@ -51,7 +50,7 @@ namespace Tasks
                     {
                         for (; i < DigestionParameters.ProteasesForDigestion.Count; i += maxThreads)
                         {
-                            Status("Digesting Proteins", "digestDbs");
+                            Status("Digesting Proteins...", "digestDbs");
 
                             var peptides = DigestDatabase(proteins, DigestionParameters.ProteasesForDigestion[i], DigestionParameters);
                             var peptidesFormatted = DeterminePeptideStatus(database.FileName, peptides, DigestionParameters);
@@ -65,9 +64,9 @@ namespace Tasks
 
                 }
             });
-            Status("Writing Peptide Output", "peptides");
+            Status("Writing Peptide Output...", "peptides");
             WritePeptidesToTsv(PeptideByFile, OutputFolder, DigestionParameters);
-            Status("Writing Results Summary", "summary");
+            Status("Writing Results Summary...", "summary");
             MyTaskResults myRunResults = new MyTaskResults(this);
             Status("Run Complete!", "summary");
             return myRunResults;

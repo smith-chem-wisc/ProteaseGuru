@@ -258,7 +258,7 @@
                             <RowDefinition Height="*"/>
                             <RowDefinition Height="35"/>
                         </Grid.RowDefinitions>
-                        <ScrollViewer VerticalScrollBarVisibility="Visible" HorizontalScrollBarVisibility="Auto" Grid.Row="0">
+                        <ScrollViewer VerticalScrollBarVisibility="Visible" HorizontalScrollBarVisibility="Auto" Grid.Row="0" PreviewMouseWheel="HandlePreviewMouseWheel">
                             <ListBox Name ="ProteaseSelectedForUse" SelectionMode="Multiple" ItemContainerStyle="{StaticResource ListBoxItem}">
                             </ListBox>
                         </ScrollViewer>

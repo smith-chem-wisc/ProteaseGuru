@@ -1119,6 +1119,28 @@ namespace GUI
             }
         }
 
+        private void HandlePreviewMouseWheel(object sender, MouseWheelEventArgs e)
+
+        {
+            var scrollControl = sender as ScrollViewer;
+            if (!e.Handled && sender != null)
+            {
+                bool cancelScrolling = false;
+                if ((e.Delta > 0 && scrollControl.VerticalOffset == 0)
+                    || (e.Delta <= 0 && scrollControl.VerticalOffset >= scrollControl.ExtentHeight - scrollControl.ViewportHeight))
+                {
+                    e.Handled = true;
+                    var eventArg = new MouseWheelEventArgs(e.MouseDevice, e.Timestamp, e.Delta);
+                    eventArg.RoutedEvent = UIElement.MouseWheelEvent;
+                    eventArg.Source = sender;
+                    var parent = ((Control)sender).Parent as UIElement;
+                    parent.RaiseEvent(eventArg);
+                }
+
+            }
+
+        }
+
         private void MenuItem_Spritz_Click(object sender, RoutedEventArgs e)
         {
             GlobalVariables.StartProcess(@"https://smith-chem-wisc.github.io/Spritz/");
