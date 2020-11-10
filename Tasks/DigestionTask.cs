@@ -49,7 +49,7 @@ namespace Tasks
 
             PeptideByFile =
                 new Dictionary<string, Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>>(dbFileList.Count);
-            int threads_1 = Environment.ProcessorCount - 2 > dbFileList.Count() ? dbFileList.Count : Environment.ProcessorCount - 2;
+            int threads_1 = Environment.ProcessorCount - 1 > dbFileList.Count() ? dbFileList.Count : Environment.ProcessorCount - 1;
             int[] threadArray_1 = Enumerable.Range(0, threads_1).ToArray();
 
             Parallel.ForEach(threadArray_1, (j) =>
@@ -64,7 +64,7 @@ namespace Tasks
                     
                     Status("Loading Protein Database...", "loadDbs");
                     List<Protein> proteins = LoadProteins(database);
-                    int maxThreads = Environment.ProcessorCount - 2;
+                    int maxThreads = Environment.ProcessorCount - 1;
                     int[] threads = Enumerable.Range(0, maxThreads).ToArray();
                     Parallel.ForEach(threads, (i) =>
                     {
