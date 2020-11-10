@@ -40,7 +40,10 @@ namespace Tasks
                 for (; j < dbFileList.Count(); j += threads_1)
                 {
                     var database = dbFileList[j];
-                    PeptideByFile.Add(database.FileName, new Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>(DigestionParameters.ProteasesForDigestion.Count));
+                    lock (PeptideByFile)
+                    {
+                        PeptideByFile.Add(database.FileName, new Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>(DigestionParameters.ProteasesForDigestion.Count));
+                    }                   
                     Dictionary<string, Dictionary<Protein, List<InSilicoPep>>> peptidesByProtease = new Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>();
                     Status("Loading Protein Database...", "loadDbs");
                     List<Protein> proteins = LoadProteins(database);
