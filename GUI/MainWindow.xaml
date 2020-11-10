@@ -150,16 +150,33 @@
                     <!--Text content-->
                     <TextBlock Grid.Row="2" Grid.RowSpan="2" Style="{StaticResource TextBlockStyle}"> 
                        
-                        ProteaseGuru is a in silico digestion program facilitating the comparison of proteolytic digests. 
+                        ProteaseGuru is a in silico digestion program facilitating the comparison of proteolytic digests. It accepts protein databases (.xml or .fasta) as input and allows
                         <LineBreak />
-                        It accepts protein databases (.xml or .fasta) as input and allows users to set digestion conditions and proteases for digestion.                       
+                         users to set digestion conditions and proteases for digestion. ProteaseGuru is designed to help users determine which protease or combination of proteases would yield the best experimental results.
                         
+                        
+                        <LineBreak />
+                        <LineBreak />
+                        <LineBreak />
+                        ProteaseGuru is especially helpful for the planning of the following experiment types:
+                        <LineBreak />                        
+                        <LineBreak />
+                        ● Experiments targeting specific proteins.
+                        <LineBreak />                        
+                        <LineBreak />
+                        ● Experiments focusing on the discovery of PTMs and/or sequence variants.
+                        <LineBreak />                        
+                        <LineBreak />
+                        ● Experiments where the sample is composed of more than one species with sequence homology (e.g. xenografts).
+                        
+                        
+                        <LineBreak/>
                         <LineBreak />
                         <LineBreak />
                         ProteaseGuru provides:
                         <LineBreak />                        
                         <LineBreak />
-                        ● The ability to analyze more than one database enabling its use with samples containing multiple species (e.g. xenografts).
+                        ● The ability to analyze more than one database enabling its use with samples containing multiple species .
                         <LineBreak />                        
                         <LineBreak />
                         ● Result files containing various biophysical properties of theoretical peptides such as their molecular weight,
