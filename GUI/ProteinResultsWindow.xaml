@@ -5,7 +5,7 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
              mc:Ignorable="d" 
              xmlns:local="clr-namespace:ProteaseGuruGUI"    
-             d:DesignHeight="600" d:DesignWidth="800">
+             d:DesignHeight="600" d:DesignWidth="1200">
     <Grid Style="{StaticResource PageGridStyle}">
         <Grid.RowDefinitions>
             <RowDefinition Height="50"/>
@@ -18,15 +18,15 @@
 
         <!--Detail text-->
         <TextBlock Grid.Row="1" Style="{StaticResource TextBlockStyle}">
-            Search for a specific protein accessions to view its digestion results both numerically and as a protein sequence coverage map.            
+            Search for a specific protein accessions to view its digestion results both numerically and as a protein sequence coverage map.
         </TextBlock>
 
         <Grid Grid.Row ="2" Style="{StaticResource InternalGridStyle}">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="1.5*"/>
-                <ColumnDefinition Width="5"/>
-                <ColumnDefinition Width="1.13*"/>
-                <ColumnDefinition Width="5"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="3"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="3"/>
                 <ColumnDefinition Width="4*"/>
             </Grid.ColumnDefinitions>
 
@@ -35,7 +35,7 @@
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="35"/>
                     <RowDefinition Height="2*"/>
-                    <RowDefinition Height="25"/>
+                    <RowDefinition Height="3"/>
                 </Grid.RowDefinitions>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"></ColumnDefinition>
@@ -48,102 +48,121 @@
                 <Label Content="Proteins" Grid.Row="1" Style="{StaticResource SmallHeaderLabelStyle}" />
 
                 <Grid Grid.Row="2" Style="{StaticResource InternalGridStyle}">
-                        <Grid.RowDefinitions>                            
-                            <RowDefinition Height=".9*"/>
-                        </Grid.RowDefinitions>
-                        <!--Header label-->
-                        
-                        <TreeView BorderThickness="1" x:Name="dataGridProteins" ItemsSource="{Binding}" DataContext="{x:Type local:ProteinForTreeView}"
-                                SelectedItemChanged="proteins_SelectedCellsChanged" VirtualizingStackPanel.IsVirtualizing="True" 
-                                  VirtualizingStackPanel.VirtualizationMode="Recycling">
-                        
-                        <TreeView.Resources>                            
-                                <HierarchicalDataTemplate DataType="{x:Type local:ProteinForTreeView}" ItemsSource="{Binding Summary}">
-                                    <StackPanel Orientation="Horizontal">
-                                        <TextBlock Text="{Binding DisplayName}" FontSize="15"/>
-                                    </StackPanel>
-                                </HierarchicalDataTemplate>
-                                <HierarchicalDataTemplate DataType="{x:Type local:SummaryForTreeView}">
-                                    <StackPanel Orientation="Horizontal">
-                                        <TextBlock Text="{Binding DisplayName}" FontSize="12"/>
-                                    </StackPanel>
-                                </HierarchicalDataTemplate>
-                            </TreeView.Resources>
-                            <TreeView.ItemContainerStyle>
-                                <Style TargetType="TreeViewItem">
-                                <Style.Resources>
-                                    <SolidColorBrush x:Key="{x:Static SystemColors.ControlBrushKey}" Color="#fdd8c1"/>
-                                    <SolidColorBrush x:Key="{x:Static SystemColors.HighlightBrushKey}" Color="#fdd8c1"/>
-                                    <SolidColorBrush x:Key="{x:Static SystemColors.HighlightTextBrushKey}" Color="#131313"/>
-                                    <SolidColorBrush x:Key="{x:Static SystemColors.InactiveSelectionHighlightBrushKey}" Color="#fdd8c1"/>                                    
-                                </Style.Resources>
-                                    <Setter Property="IsExpanded" Value="{Binding Expanded}"/>
-                                </Style>
-                            </TreeView.ItemContainerStyle>
-                        </TreeView>
-                    </Grid>                
-                <Button Content="Load Proteins" Grid.Row="3" Width="100" Click="LoadProteins_Click" Name="ProteinLoadButton" Style="{StaticResource ImportantButtonStyle}" />
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>                        
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height=".9*"/>
+                    </Grid.RowDefinitions>
+                  
+                    <ListBox Name ="dataGridProteins" SelectionMode="Single" ItemContainerStyle="{StaticResource ListBoxItem}" SelectionChanged="proteins_SelectedCellsChanged"> </ListBox>
+                    
+                </Grid>                
             </Grid>
 
             <GridSplitter Grid.Column="1" 
                           HorizontalAlignment="Center"
                           Background="{StaticResource BackgroundColor}"
                           Width="3"/>
-          
-                <Grid Grid.Column="2" Style="{StaticResource InternalGridStyle}">
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="35"></RowDefinition>
-                        <RowDefinition Height = "*"></RowDefinition>
-                        <RowDefinition Height = "30"></RowDefinition>
-                        <RowDefinition Height="1"></RowDefinition>
-                        <RowDefinition Height="30"></RowDefinition>
-                    </Grid.RowDefinitions>
+
+            <Grid Grid.Column="2" Style="{StaticResource InternalGridStyle}">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="35"></RowDefinition>
+                    <RowDefinition Height = "*"></RowDefinition>
+                    <RowDefinition Height = "30"></RowDefinition>
+                    <RowDefinition Height="1"></RowDefinition>
+                    <RowDefinition Height="30"></RowDefinition>
+                </Grid.RowDefinitions>
                 <!--Header label-->
                 <Label Content="Protease Selections" Grid.Row="0" Style="{StaticResource SmallHeaderLabelStyle}"  HorizontalContentAlignment="Center"/>
                 <ScrollViewer VerticalScrollBarVisibility="Visible" HorizontalScrollBarVisibility="Auto" Grid.Row="1" Grid.Column="1">
                     <ListBox Name ="ProteaseSelectedForUse" SelectionMode="Multiple" Loaded="proteaseCoverageMaps_loaded" ItemContainerStyle="{StaticResource ListBoxItem}">
-                        </ListBox>
-                    </ScrollViewer>
+                    </ListBox>
+                </ScrollViewer>
                 <Button x:Name="viewSelectedProteases" Grid.Row ="2" Content="View Selected Proteases" Click="SelectProteases_Click" Width ="170" Style="{StaticResource ImportantButtonStyle}" />
-                    <Button x:Name="clearProteasesButton" Grid.Row="4" Content="Clear Selected Proteases" Click="ClearSelectedProteases_Click" Width="170" Style="{StaticResource ImportantButtonStyle}" />
-                </Grid>            
+                <Button x:Name="clearProteasesButton" Grid.Row="4" Content="Clear Selected Proteases" Click="ClearSelectedProteases_Click" Width="170" Style="{StaticResource ImportantButtonStyle}" />
+            </Grid>
 
             <GridSplitter Grid.Column="3" 
                           HorizontalAlignment="Center"
                           Background="{StaticResource BackgroundColor}"
                           Width="3"/>
 
-            
-                <Grid Grid.Column="4" Name="ResultsGrid" SizeChanged="resultsSizeChanged" Style="{StaticResource InternalGridStyle}">
+            <Grid Grid.Column="4" Name="AllResultsGrid" Style="{StaticResource InternalGridStyle}">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="*"></RowDefinition>
+                    <RowDefinition Height="2*"></RowDefinition>
+                </Grid.RowDefinitions>
+                <Grid Grid.Row="0" Name="SummaryGrid" Style="{StaticResource InternalGridStyle}">
                     <Grid.RowDefinitions>
-                    <RowDefinition Height = "35"></RowDefinition>
-                    <RowDefinition Height = "*"></RowDefinition>
-                    <RowDefinition Height="5"></RowDefinition>
-                    <!--<RowDefinition Height="65"></RowDefinition>
-                    <RowDefinition Height="5"></RowDefinition>-->
-                    <RowDefinition Height = "30"></RowDefinition>
+                        <RowDefinition Height=" 35"></RowDefinition>
+                        <RowDefinition Height="*"></RowDefinition>
+                    </Grid.RowDefinitions>
+                    <!--Header label-->
+                    <Label Content="Protein Digestion Summary" Grid.Row="0" Style="{StaticResource SmallHeaderLabelStyle}" />
+                    <TreeView Grid.Row="1" x:Name="proteinResults" Width ="735" ItemsSource="{Binding}" DataContext="{x:Type local:ProteinSummaryForTreeView}" ScrollViewer.VerticalScrollBarVisibility="Auto">
+
+                        <TreeView.Resources>
+                            <HierarchicalDataTemplate DataType="{x:Type local:ProteinSummaryForTreeView}" ItemsSource="{Binding Summary}">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="{Binding DisplayName}" FontSize="16" />
+                                </StackPanel>
+                            </HierarchicalDataTemplate>
+                            <HierarchicalDataTemplate DataType="{x:Type local:AnalysisSummaryForTreeView}" ItemsSource="{Binding Summary}">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="{Binding DisplayName}" FontSize="15"/>
+                                </StackPanel>
+                            </HierarchicalDataTemplate>
+                            <DataTemplate DataType="{x:Type local:ProtSummaryForTreeView}">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="{Binding DisplayName}" FontSize="13.5"/>
+                                </StackPanel>
+                            </DataTemplate>
+                        </TreeView.Resources>
+                        <TreeView.ItemContainerStyle>
+                            <Style TargetType="TreeViewItem">
+                                <Style.Resources>
+                                    <SolidColorBrush x:Key="{x:Static SystemColors.ControlBrushKey}" Color="#fdd8c1"/>
+                                    <SolidColorBrush x:Key="{x:Static SystemColors.HighlightBrushKey}" Color="#fdd8c1"/>
+                                    <SolidColorBrush x:Key="{x:Static SystemColors.HighlightTextBrushKey}" Color="#131313"/>
+                                    <SolidColorBrush x:Key="{x:Static SystemColors.InactiveSelectionHighlightBrushKey}" Color="#fdd8c1"/>
+                                </Style.Resources>
+                                <Setter Property="IsExpanded" Value="{Binding Expanded}"/>
+                            </Style>
+                        </TreeView.ItemContainerStyle>
+                    </TreeView>
+                    
+                </Grid>
+                <Grid Grid.Row="1" Name="ResultsGrid" SizeChanged="resultsSizeChanged" Style="{StaticResource InternalGridStyle}">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height = "35"></RowDefinition>
+                        <RowDefinition Height = "*"></RowDefinition>
+                        <RowDefinition Height="5"></RowDefinition>
+                        <RowDefinition Height = "30"></RowDefinition>
                     </Grid.RowDefinitions>
 
-                <!--Header label-->
-                <Label Content="Protein Sequence Coverage Map" Grid.Row="0" Style="{StaticResource SmallHeaderLabelStyle}" />
-                <ScrollViewer Grid.Row="1" Name="mapViewer" HorizontalAlignment="Center" VerticalAlignment="Center" 
-                                  CanContentScroll="True" VerticalScrollBarVisibility="Visible" HorizontalScrollBarVisibility="Visible">
-                    <Grid Name="mapGrid" Background="White">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition ></ColumnDefinition>
-                            <ColumnDefinition></ColumnDefinition>
-                        </Grid.ColumnDefinitions>
-                        <Canvas x:Name="map" Grid.Column="0" Width="800" Background="White"></Canvas>
-                        <Canvas x:Name="legend" Grid.Column ="1" Width ="800" Height="300" Background="White" VerticalAlignment="Top" HorizontalAlignment="Left">
-                            <Grid Name="legendGrid" Background="White" VerticalAlignment="Top" HorizontalAlignment="Left"/>
-                        </Canvas>
-                    </Grid>
-                    
-                </ScrollViewer>
-                               
-                <Button x:Name="exportPngButton" Content="Export Coverage Map" Click="exportCoverageMap" Grid.Row="3" Width="150" Style="{StaticResource ImportantButtonStyle}"/>                   
-                   
+                    <!--Header label-->
+                    <Label Content="Protein Sequence Coverage Map" Grid.Row="0" Style="{StaticResource SmallHeaderLabelStyle}" />
+                    <ScrollViewer Grid.Row="1" Name="mapViewer" HorizontalAlignment="Center" VerticalAlignment="Center" 
+                                  CanContentScroll="True" VerticalScrollBarVisibility="Visible" Width="775">
+                        <Grid Name="mapGrid" Background="White">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height=" 2*" ></RowDefinition>
+                                <RowDefinition Height=" *"></RowDefinition>
+                            </Grid.RowDefinitions>
+                            <Canvas x:Name="map" Grid.Row="0" Width="700" Background="White"></Canvas>
+                            <Canvas x:Name="legend" Grid.Row ="1" Width ="700" Height="300" Background="White" VerticalAlignment="Top" HorizontalAlignment="Left">
+                                <Grid Name="legendGrid" Background="White" VerticalAlignment="Top" HorizontalAlignment="Left"/>
+                            </Canvas>
+                        </Grid>
+
+                    </ScrollViewer>
+
+                    <Button x:Name="exportPngButton" Content="Export Protein Digestion Results" Click="exportCoverageMap" Grid.Row="3" Width="250" Style="{StaticResource ImportantButtonStyle}"/>
+
                 </Grid>
+            </Grid>
+            
         </Grid>
     </Grid>
 </UserControl>

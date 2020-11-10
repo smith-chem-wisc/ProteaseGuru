@@ -13,6 +13,7 @@ using System.ComponentModel;
 using System.Linq;
 using System.Globalization;
 using Proteomics;
+using Easy.Common.Extensions;
 
 namespace GUI
 {
@@ -29,15 +30,13 @@ namespace GUI
         //access series stuff here
         public Dictionary<string, Dictionary<string, string>> DataTable = new Dictionary<string, Dictionary<string, string>>();
 
-        //colors for histgrams (different color for each protease). Order of protease selection dictates its color not the protease itself
-        //can change in future to allow more user input
         private static List<OxyColor> columnColors = new List<OxyColor>
-        {           
-           OxyColors.MediumBlue, OxyColors.Goldenrod, OxyColors.ForestGreen, OxyColors.DarkOrchid, OxyColors.Chocolate, OxyColors.Teal, OxyColors.PaleVioletRed, OxyColors.DimGray,
-           OxyColors.LightSkyBlue, OxyColors.PaleGoldenrod, OxyColors.DarkSeaGreen, OxyColors.Thistle, OxyColors.PeachPuff, OxyColors.PaleTurquoise, OxyColors.MistyRose, OxyColors.Gainsboro,
-           OxyColors.Navy, OxyColors.DarkGoldenrod, OxyColors.DarkGreen, OxyColors.Purple, OxyColors.Sienna, OxyColors.DarkSlateGray, OxyColors.MediumVioletRed, OxyColors.Black,
-           OxyColors.CornflowerBlue, OxyColors.Gold, OxyColors.MediumSeaGreen, OxyColors.MediumOrchid, OxyColors.DarkSalmon, OxyColors.LightSeaGreen, OxyColors.LightPink, OxyColors.DarkGray
-
+        {
+           OxyColor.FromRgb(130, 88, 159), OxyColor.FromRgb(0, 148, 50), OxyColor.FromRgb(181, 52, 113), OxyColor.FromRgb(52, 152, 219), OxyColor.FromRgb(230, 126, 34), OxyColor.FromRgb(27, 20, 100), OxyColor.FromRgb(253, 167, 223),
+           OxyColor.FromRgb(99, 110, 114), OxyColor.FromRgb(255, 221, 89), OxyColor.FromRgb(162, 155, 254), OxyColor.FromRgb(58, 227, 116), OxyColor.FromRgb(252, 66, 123),
+           OxyColor.FromRgb(126, 214, 223), OxyColor.FromRgb(249, 127, 81), OxyColor.FromRgb(189, 195, 199), OxyColor.FromRgb(241, 196, 15), OxyColor.FromRgb(0, 98, 102), OxyColor.FromRgb(142, 68, 173),
+           OxyColor.FromRgb(225, 112, 85), OxyColor.FromRgb(255, 184, 184), OxyColor.FromRgb(61, 193, 211), OxyColor.FromRgb(224, 86, 253), OxyColor.FromRgb(196, 229, 56), OxyColor.FromRgb(255, 71, 87),
+           OxyColor.FromRgb(88, 177, 159), OxyColor.FromRgb(111, 30, 81), OxyColor.FromRgb(129, 236, 236), OxyColor.FromRgb(179, 57, 57), OxyColor.FromRgb(232, 67, 147)
         };
 
         public PlotModel Model
@@ -68,7 +67,7 @@ namespace GUI
 
         public PlotModelStat(string plotName, ObservableCollection<InSilicoPep> peptides, Dictionary<string, ObservableCollection<InSilicoPep>> peptidesByProtease, Dictionary<string, Dictionary<Protein, (double,double)>> sequenceCoverageByProtease)
         {
-            privateModel = new PlotModel { Title = plotName, DefaultFontSize = 14 };
+            privateModel = new PlotModel { Title = plotName, DefaultFontSize = 12 };
             allPeptides = peptides;
             this.PeptidesByProtease = peptidesByProtease;
             foreach (var protease in sequenceCoverageByProtease)
@@ -165,6 +164,11 @@ namespace GUI
             privateModel.LegendTitle = "Protease";
             privateModel.LegendPlacement = LegendPlacement.Outside;
             privateModel.LegendPosition = LegendPosition.BottomLeft;
+            privateModel.LegendItemAlignment = HorizontalAlignment.Left;
+            privateModel.LegendFontSize = 12;
+            privateModel.TitleFontSize = 15;
+            privateModel.LegendOrientation = LegendOrientation.Horizontal;
+
             string yAxisTitle = "Count";
             string xAxisTitle = "Amino Acid";
             Dictionary<string, Dictionary<char, int>> dictsByProtease = new Dictionary<string, Dictionary<char, int>>();
@@ -194,7 +198,7 @@ namespace GUI
                 dictsByProtease.Add(protease.Key, aminoAcidCount);
             }
 
-            var categoryAxis = new CategoryAxis { Position = AxisPosition.Bottom, Title =xAxisTitle, GapWidth = .25 };
+            var categoryAxis = new CategoryAxis { Position = AxisPosition.Bottom, Title =xAxisTitle, GapWidth = .1 };
             foreach (var aa in aminoAcids)
             {
                 categoryAxis.Labels.Add(aa.ToString());
@@ -251,7 +255,10 @@ namespace GUI
         {
             privateModel.LegendTitle = "Protease";
             privateModel.LegendPlacement = LegendPlacement.Outside;
-            privateModel.LegendPosition = LegendPosition.BottomLeft;            
+            privateModel.LegendPosition = LegendPosition.BottomLeft;
+            privateModel.LegendFontSize = 12;
+            privateModel.TitleFontSize = 15;
+            privateModel.LegendOrientation = LegendOrientation.Horizontal;
             string yAxisTitle = "Count";
             string xAxisTitle = "";
             double binSize = -1;
@@ -296,7 +303,22 @@ namespace GUI
                     break;
                 case 4: // Predicted Peptide Hydrophobicity
                     xAxisTitle = "Number of Unique Peptides per Protein";
-                    binSize = 2;
+                    binSize = 10;
+                    double maxValue = 0;
+                    double minValue = 0;
+                    foreach (string key in UniquePeptidesPerProtein.Keys)
+                    {
+                        if (maxValue < UniquePeptidesPerProtein[key].Max())
+                        {
+                            maxValue = UniquePeptidesPerProtein[key].Max();
+                        }
+                        if (minValue > UniquePeptidesPerProtein[key].Min())
+                        {
+                            minValue = UniquePeptidesPerProtein[key].Min();
+                        }
+                    }
+                    binSize = Math.Round((maxValue - minValue) / 50, 0);
+
                     foreach (string key in UniquePeptidesPerProtein.Keys)
                     {
                         numbersByProtease.Add(key, UniquePeptidesPerProtein[key].Select(p => p));
@@ -358,7 +380,6 @@ namespace GUI
             foreach (string key in dictsByProtease.Keys)
             {
                 var column = new ColumnSeries { ColumnWidth = 200, IsStacked = false, Title = key, TrackerFormatString = "Bin: {bin}\n{0}: {2}\nTotal: {total}" };
-                
                 foreach (var d in dictsByProtease[key])
                 {                    
                     int bin = int.Parse(d.Key);
@@ -404,7 +425,7 @@ namespace GUI
                 Position = AxisPosition.Bottom,
                 ItemsSource = category,
                 Title = xAxisTitle,
-                GapWidth = .25,
+                GapWidth = .1,
                 Angle = labelAngle,
             });
             privateModel.Axes.Add(new LinearAxis { Title = yAxisTitle, Position = AxisPosition.Left, AbsoluteMinimum = 0 });

@@ -9,7 +9,7 @@
         Drop="Window_Drop" AllowDrop="true" 
         WindowStartupLocation="CenterScreen"
         Icon="proteaseGuru.ico"
-        Title="ProteaseGuru" Height="600" Width="1200">
+        Title="ProteaseGuru" Height="600" Width="1300">
     <Window.Resources>
         <ResourceDictionary>
 
@@ -150,16 +150,33 @@
                     <!--Text content-->
                     <TextBlock Grid.Row="2" Grid.RowSpan="2" Style="{StaticResource TextBlockStyle}"> 
                        
-                        ProteaseGuru is a in silico digestion program facilitating the comparison of proteolytic digests. 
+                        ProteaseGuru is a in silico digestion program facilitating the comparison of proteolytic digests. It accepts protein databases (.xml or .fasta) as input and allows
                         <LineBreak />
-                        It accepts protein databases (.xml or .fasta) as input and allows users to set digestion conditions and proteases for digestion.                       
+                         users to set digestion conditions and proteases for digestion. ProteaseGuru is designed to help users determine which protease or combination of proteases would yield the best experimental results.
                         
+                        
+                        <LineBreak />
+                        <LineBreak />
+                        <LineBreak />
+                        ProteaseGuru is especially helpful for the planning of the following experiment types:
+                        <LineBreak />                        
+                        <LineBreak />
+                        ● Experiments targeting specific proteins.
+                        <LineBreak />                        
+                        <LineBreak />
+                        ● Experiments focusing on the discovery of PTMs and/or sequence variants.
+                        <LineBreak />                        
+                        <LineBreak />
+                        ● Experiments where the sample is composed of more than one species with sequence homology (e.g. xenografts).
+                        
+                        
+                        <LineBreak/>
                         <LineBreak />
                         <LineBreak />
                         ProteaseGuru provides:
                         <LineBreak />                        
                         <LineBreak />
-                        ● The ability to analyze more than one database enabling its use with samples containing multiple species (e.g. xenografts).
+                        ● The ability to analyze more than one database enabling its use with samples containing multiple species .
                         <LineBreak />                        
                         <LineBreak />
                         ● Result files containing various biophysical properties of theoretical peptides such as their molecular weight,
@@ -258,9 +275,8 @@
                             <RowDefinition Height="*"/>
                             <RowDefinition Height="35"/>
                         </Grid.RowDefinitions>
-                        <ScrollViewer VerticalScrollBarVisibility="Visible" HorizontalScrollBarVisibility="Auto" Grid.Row="0">
+                        <ScrollViewer VerticalScrollBarVisibility="Visible" HorizontalScrollBarVisibility="Auto" Grid.Row="0" PreviewMouseWheel="HandlePreviewMouseWheel">
                             <ListBox Name ="ProteaseSelectedForUse" SelectionMode="Multiple" ItemContainerStyle="{StaticResource ListBoxItem}">
-
                             </ListBox>
                         </ScrollViewer>
                         <Grid Grid.Row="5" Style="{StaticResource InternalGridStyle}">
@@ -426,7 +442,7 @@
                 </Grid>
             </TabItem>
 
-            <TabItem Header="Run" Style="{StaticResource TabItemStyle}">
+            <TabItem Header="Run" Style="{StaticResource TabItemStyle}" Selector.Selected="OnRunTabSelection">
                 <Grid Style="{StaticResource PageGridStyle}">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="50"/>
@@ -495,11 +511,23 @@
                             <Button x:Name="RunTaskButton" Content="Run!" Click="RunTaskButton_Click" FontSize="24" Grid.Row="3" Grid.ColumnSpan="2" Width="400" Style="{StaticResource ImportantButtonStyle}"/>
                             
                         </Grid>
-                    <StatusBar Name="RunStatus" Grid.Row="5" Background="{StaticResource BackgroundColor}">
-                        <StatusBarItem>
-                            <TextBlock Style="{StaticResource StatusBarTextStyle}">Running:</TextBlock>
-                        </StatusBarItem>                        
-                    </StatusBar>
+                    <Grid Grid.Row="5" Background="{StaticResource BackgroundColor}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition></ColumnDefinition>
+                            <ColumnDefinition></ColumnDefinition>
+                        </Grid.ColumnDefinitions>
+                        <StatusBar Name="RunStatus" Grid.Column="0" Background="{StaticResource BackgroundColor}">
+                            <StatusBarItem>
+                                <TextBlock Style="{StaticResource StatusBarTextStyle}">Running:</TextBlock>
+                            </StatusBarItem>
+                        </StatusBar>
+                        <DockPanel Margin="5" Grid.Column="1">
+                            <Label Content="Run Status:" Style="{StaticResource ProgressTextStyle}"/>
+                            <TextBox x:Name="ProgressTextBox"  Background="{StaticResource BackgroundColor}" BorderThickness="0"/>
+                        </DockPanel>
+                        
+                    </Grid>
+                   
                    
                 </Grid>
             </TabItem>

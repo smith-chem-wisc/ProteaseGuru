@@ -53,6 +53,7 @@ namespace GUI
             dataGridReloadDb.DataContext = ReloadProteinDbObservableCollection;
             EverythingRunnerEngine.NewDbsHandler += AddNewDB;
             EverythingRunnerEngine.WarnHandler += GuiWarnHandler;
+            DigestionTask.OutLabelStatusHandler += NewoutLabelStatus;
             SummaryForTreeViewObservableCollection = new ObservableCollection<RunSummaryForTreeView>();
             ResetDigestionTask.IsEnabled = false;
         }        
@@ -449,6 +450,10 @@ namespace GUI
         //takes all information provided by the user for the digestion (databases, parameters etc) and make sure it is up to date and prepares for the run
         private void AddDigestionTask_Click(object sender, RoutedEventArgs e)
         {
+            if(StaticTasksObservableCollection.Count() != 0)
+            {
+                StaticTasksObservableCollection.Clear();
+            }
             // disable button so that no more tasks are added
             AddDigestionTask.IsEnabled = false;
             ResetDigestionTask.IsEnabled = true;
@@ -469,8 +474,13 @@ namespace GUI
             // output folder
             if (string.IsNullOrWhiteSpace(OutputFolderTextBox.Text))
             {
-                var pathOfFirstSpectraFile = System.IO.Path.GetDirectoryName(ProteinDbObservableCollection.First().FilePath);
-                OutputFolderTextBox.Text = System.IO.Path.Combine(pathOfFirstSpectraFile, @"$DATETIME");
+                if (ProteinDbObservableCollection.Count() == 0)
+                {
+                    MessageBox.Show("Error: No databases are provided for digestion. Please add databases before proceeding with analysis.");
+                    return;
+                }
+                var pathOfFirstDbFile = System.IO.Path.GetDirectoryName(ProteinDbObservableCollection.First().FilePath);
+                OutputFolderTextBox.Text = System.IO.Path.Combine(pathOfFirstDbFile, @"$DATETIME");
             }
 
             var startTimeForAllFilenames = DateTime.Now.ToString("yyyy-MM-dd-HH-mm-ss", CultureInfo.InvariantCulture);
@@ -784,62 +794,41 @@ namespace GUI
                 foreach (var parameter in fileData)
                 {
                     var info = parameter.Split(": ");
-                    if (info[0] == "Proteases")
+                    switch (info[0])
                     {
-                        var proteaseNames = info[1].Split(",");
-                        foreach (var protease in proteaseNames)
-                        {
-                            if (dict.ContainsKey(protease))
+                        case "Digestion Conditions:":
+                            break;
+                        case "Proteases":
+                            var proteaseNames = info[1].Split(",");
+                            foreach (var protease in proteaseNames)
                             {
-                                proteases.Add(dict[protease]);
-                            }
+                                if (dict.ContainsKey(protease))
+                                {
+                                    proteases.Add(dict[protease]);
+                                }
 
-                        }
-                    }
-                    else
-                    {
-                        MessageBox.Show("Error: Parameters file provided is not from a previous ProteaseGuru run.");
-                        return;
-                    }
-                    if (info[0] == "Max Missed Cleavages")
-                    {
-                        missedCleavages = Convert.ToInt32(info[1]);
-                    }
-                    else
-                    {
-                        MessageBox.Show("Error: Parameters file provided is not from a previous ProteaseGuru run.");
-                        return;
-                    }
-                    if (info[0] == "Min Peptide Length")
-                    {
-                        minPeptideLength = Convert.ToInt32(info[1]);
-                    }
-                    else
-                    {
-                        MessageBox.Show("Error: Parameters file provided is not from a previous ProteaseGuru run.");
-                        return;
-                    }
-                    if (info[0] == "Max Peptide Length")
-                    {
-                        maxPeptideLength = Convert.ToInt32(info[1]);
-                    }
-                    else
-                    {
-                        MessageBox.Show("Error: Parameters file provided is not from a previous ProteaseGuru run.");
-                        return;
-                    }
-                    if (info[0] == "Treat modified peptides as different peptides")
-                    {
-                        if (info[1] == "TRUE")
-                        {
-                            treatModPeps = true;
-                        }
-                    }
-                    else
-                    {
-                        MessageBox.Show("Error: Parameters file provided is not from a previous ProteaseGuru run.");
-                        return;
-                    }
+                            }
+                            break;
+                        case "Max Missed Cleavages":
+                            missedCleavages = Convert.ToInt32(info[1]);
+                            break;
+                        case "Min Peptide Length":
+                            minPeptideLength = Convert.ToInt32(info[1]);
+                            break;
+                        case "Max Peptide Length":
+                            maxPeptideLength = Convert.ToInt32(info[1]);
+                            break;
+                        case "Treat modified peptides as different peptides":
+                            if (info[1] == "True")
+                            {
+                                treatModPeps = true;
+                            }
+                            break;
+                        default:
+                            MessageBox.Show("Error: Parameters file provided is not from a previous ProteaseGuru run.");
+                            return;
+
+                    } 
                 }
 
                 loadedParams.ProteasesForDigestion = proteases;
@@ -886,15 +875,20 @@ namespace GUI
                         {
                             uniqueAll = true;
                         }
-                        double hydrophobicity = Convert.ToDouble(info[13]);
-                        double electrophoreticMobility = Convert.ToDouble(info[14]);
+                        bool oneDb= false;
+                        if (info[13] == "True")
+                        {
+                            oneDb = true;
+                        }
+                        double hydrophobicity = Convert.ToDouble(info[14]);
+                        double electrophoreticMobility = Convert.ToDouble(info[15]);
                         InSilicoPep pep = new InSilicoPep(baseSeq, fullSeq, previousAA, nextAA, unique, hydrophobicity, electrophoreticMobility, length,
                             molecularWeight, database, protein, start, end, protease);
                         pep.UniqueAllDbs = uniqueAll;
+                        pep.SeqOnlyInThisDb = oneDb;
                         allpeptides.Add(pep);
                     }
-                    peptideCount++;
-                                   
+                    peptideCount++;                                  
 
                 }
 
@@ -998,6 +992,48 @@ namespace GUI
 
             SummaryForTreeViewObservableCollection.Clear();
         }
+
+        private void OnRunTabSelection(object sender, RoutedEventArgs e)
+        {
+            // disable button so that no more tasks are added
+            if (AddDigestionTask.IsEnabled == true)
+            {
+                if (StaticTasksObservableCollection.Count() == 0)
+                {
+                    ResetDigestionTask.IsEnabled = true;
+                    ProteaseSelectedForUse.IsEnabled = false;
+                    MissedCleavagesTextBox.IsEnabled = false;
+                    MinPeptideLengthTextBox.IsEnabled = false;
+                    MaxPeptideLengthTextBox.IsEnabled = false;
+
+                    DigestionTask task = new DigestionTask();
+                    UpdateFieldsFromUser(task);
+                    AddTaskToCollection(task);
+                    OutputFolderTextBox.IsEnabled = true;
+
+                    GenerateRunSummary();
+
+                    // output folder
+                    if (string.IsNullOrWhiteSpace(OutputFolderTextBox.Text))
+                    {
+                        if (ProteinDbObservableCollection.Count() == 0)
+                        {
+                            MessageBox.Show("Error: No databases are provided for digestion. Please add databases before proceeding with analysis.");
+                            return;
+                        }
+                        var pathOfFirstSpectraFile = System.IO.Path.GetDirectoryName(ProteinDbObservableCollection.First().FilePath);
+                        OutputFolderTextBox.Text = System.IO.Path.Combine(pathOfFirstSpectraFile, @"$DATETIME");
+                    }
+
+                    var startTimeForAllFilenames = DateTime.Now.ToString("yyyy-MM-dd-HH-mm-ss", CultureInfo.InvariantCulture);
+                    string outputFolder = OutputFolderTextBox.Text.Replace("$DATETIME", startTimeForAllFilenames);
+                    OutputFolderTextBox.Text = outputFolder;
+                    UserParameters.OutputFolder = outputFolder;
+
+                }
+            }
+            
+        }
                 
         // generate summary for users to see all the databases, proteases and parameters that were selected before the run is started
         private void GenerateRunSummary()
@@ -1068,6 +1104,40 @@ namespace GUI
                 
             }
 
+
+        }
+
+        private void NewoutLabelStatus(object sender, StringEventArgs s)
+        {
+            if (!Dispatcher.CheckAccess())
+            {
+                Dispatcher.BeginInvoke(new Action(() => NewoutLabelStatus(sender, s)));
+            }
+            else
+            {
+                ProgressTextBox.Text = s.S;
+            }
+        }
+
+        private void HandlePreviewMouseWheel(object sender, MouseWheelEventArgs e)
+
+        {
+            var scrollControl = sender as ScrollViewer;
+            if (!e.Handled && sender != null)
+            {
+                bool cancelScrolling = false;
+                if ((e.Delta > 0 && scrollControl.VerticalOffset == 0)
+                    || (e.Delta <= 0 && scrollControl.VerticalOffset >= scrollControl.ExtentHeight - scrollControl.ViewportHeight))
+                {
+                    e.Handled = true;
+                    var eventArg = new MouseWheelEventArgs(e.MouseDevice, e.Timestamp, e.Delta);
+                    eventArg.RoutedEvent = UIElement.MouseWheelEvent;
+                    eventArg.Source = sender;
+                    var parent = ((Control)sender).Parent as UIElement;
+                    parent.RaiseEvent(eventArg);
+                }
+
+            }
 
         }
 
