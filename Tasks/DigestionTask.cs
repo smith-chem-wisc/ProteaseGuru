@@ -32,7 +32,7 @@ namespace Tasks
         {                    
             PeptideByFile =
                 new Dictionary<string, Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>>(dbFileList.Count);
-            int threads_1 = Environment.ProcessorCount - 1 > dbFileList.Count() ? dbFileList.Count : Environment.ProcessorCount -2;
+            int threads_1 = Environment.ProcessorCount - 2 > dbFileList.Count() ? dbFileList.Count : Environment.ProcessorCount -2;
             int[] threadArray_1 = Enumerable.Range(0, threads_1).ToArray();
 
             Parallel.ForEach(threadArray_1, (j) =>
