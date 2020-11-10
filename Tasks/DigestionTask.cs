@@ -29,24 +29,7 @@ namespace Tasks
 
 
         public override MyTaskResults RunSpecific(string OutputFolder, List<DbForDigestion> dbFileList)
-        {
-
-            //PeptideByFile =
-            //    new Dictionary<string, Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>>(dbFileList.Count);
-            //foreach (var database in dbFileList)
-            //{
-            //    PeptideByFile.Add(database.FileName, new Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>(DigestionParameters.ProteasesForDigestion.Count));
-            //    Dictionary<string, Dictionary<Protein, List<InSilicoPep>>> peptidesByProtease = new Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>();
-            //    List<Protein> proteins = LoadProteins(database);
-            //    foreach (var protease in DigestionParameters.ProteasesForDigestion)
-            //    {
-            //        PeptideByFile[database.FileName].Add(protease.Name, DeterminePeptideStatus(database.FileName, DigestDatabase(proteins, protease, DigestionParameters), DigestionParameters));
-            //    }
-            //}
-            //WritePeptidesToTsv(PeptideByFile, OutputFolder, DigestionParameters); ;
-            //MyTaskResults myRunResults = new MyTaskResults(this);
-            //return myRunResults;
-
+        {            
             PeptideByFile =
                 new Dictionary<string, Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>>(dbFileList.Count);
             int threads_1 = Environment.ProcessorCount - 1 > dbFileList.Count() ? dbFileList.Count : Environment.ProcessorCount - 1;
@@ -56,13 +39,8 @@ namespace Tasks
             {
                 for (; j < dbFileList.Count(); j += threads_1)
                 {
-                    var database = dbFileList[j];
-                    //lock (PeptideByFile)
-                    //{
-                    //    PeptideByFile.Add(database.FileName, new Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>(DigestionParameters.ProteasesForDigestion.Count));
-                    //}
-                    
-                    Status("Loading Protein Database...", "loadDbs");
+                    var database = dbFileList[j];                    
+                    Status("Loading Protein Database(s)...", "loadDbs");
                     List<Protein> proteins = LoadProteins(database);
                     int maxThreads = Environment.ProcessorCount - 1;
                     int[] threads = Enumerable.Range(0, maxThreads).ToArray();
@@ -95,10 +73,9 @@ namespace Tasks
                 }
             });
             Status("Writing Peptide Output...", "peptides");
-            WritePeptidesToTsv(PeptideByFile, OutputFolder, DigestionParameters);
-            Status("Writing Results Summary...", "summary");
+            WritePeptidesToTsv(PeptideByFile, OutputFolder, DigestionParameters);            
             MyTaskResults myRunResults = new MyTaskResults(this);
-            Status("Run Complete!", "summary");
+            Status("Writing Results Summary...", "summary");
             return myRunResults;
         }
         // Load proteins from XML or FASTA databases and keep them associated with the database file name from which they came from
