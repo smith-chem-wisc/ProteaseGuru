@@ -118,7 +118,7 @@ namespace Tasks
                     {
                         string prot = protease.Key;
                        summary.Add("    "+prot + " Results:");
-                        var allPeptides = protease.Value.SelectMany(p => p.Value);
+                        var allPeptides = protease.Value.SelectMany(p => p.Value);                        
                         if (parameters.TreatModifiedPeptidesAsDifferent)
                         {
                             summary.Add("       Number of Peptides: " + allPeptides.Count());

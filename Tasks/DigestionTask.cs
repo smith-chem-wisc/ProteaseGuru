@@ -131,7 +131,7 @@ namespace Tasks
             Dictionary<Protein, List<PeptideWithSetModifications>> peptidesForProtein = new Dictionary<Protein, List<PeptideWithSetModifications>>(proteinsFromDatabase.Count);
             foreach (var protein in proteinsFromDatabase)
             {
-                List<PeptideWithSetModifications> peptides = protein.Digest(dp, new List<Modification> { }, new List<Modification> { }).ToList();
+                List<PeptideWithSetModifications> peptides = protein.Digest(dp, new List<Modification> { }, new List<Modification> { }).ToList();                
                 peptidesForProtein.Add(protein, peptides);
             }
             return peptidesForProtein;
@@ -227,6 +227,10 @@ namespace Tasks
                         }
                     }
                 }
+            }
+            foreach (var protein in databasePeptides.Keys.Where(p => inSilicoPeptides.ContainsKey(p) == false))
+            {
+                inSilicoPeptides.Add(protein, new List<InSilicoPep>());
             }
             databasePeptides = null;
             return inSilicoPeptides;
