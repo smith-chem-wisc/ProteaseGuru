@@ -662,8 +662,12 @@ namespace ProteaseGuruGUI
                         
                             SequenceCoverageMap.Highlight(start, end, map, indices, height, ProteaseByColor[peptide.Key.Protease],
                                 peptide.Key.Unique, highlightIndex);
-                        
-                        
+                        var partialIndex = CheckPartialMatch(peptide.Key, line, accumIndex);
+                        if (partialIndex >= 0)
+                        {
+                            partialPeptideMatches.Add(peptide.Key, (partialIndex, highlightIndex));
+                        }
+
                     }
                 }
 

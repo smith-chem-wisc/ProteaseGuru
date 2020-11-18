@@ -12,12 +12,13 @@ namespace Test
     [TestFixture]
     internal static class DigestionTests
     {
-        //[OneTimeSetUp]
-        //public static void Setup()
-        //{
 
-        //}
-        [Test]
+            //[OneTimeSetUp]
+            //public static void Setup()
+            //{
+
+            //}
+            [Test]
         public static void SingleDatabase()
         {
             Loaders.LoadElements();
