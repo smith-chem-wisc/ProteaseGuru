@@ -41,8 +41,8 @@ namespace Tasks
                 {
                     var database = dbFileList[j];                    
                     Status("Loading Protein Database(s)...", "loadDbs");
-                    List<Protein> proteins = LoadProteins(database);
-                    int maxThreads = Environment.ProcessorCount - 1;
+                    List<Protein> proteins = LoadProteins(database);                   
+                    int maxThreads = Environment.ProcessorCount - 1;                    
                     int[] threads = Enumerable.Range(0, maxThreads).ToArray();
                     Parallel.ForEach(threads, (i) =>
                     {
@@ -76,6 +76,7 @@ namespace Tasks
             WritePeptidesToTsv(PeptideByFile, OutputFolder, DigestionParameters);            
             MyTaskResults myRunResults = new MyTaskResults(this);
             Status("Writing Results Summary...", "summary");
+           
             return myRunResults;
         }
         // Load proteins from XML or FASTA databases and keep them associated with the database file name from which they came from
