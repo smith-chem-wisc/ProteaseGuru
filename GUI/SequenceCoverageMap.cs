@@ -96,6 +96,7 @@ namespace ProteaseGuruGUI
         // draw line for peptides
         public static void peptideLineDrawing(Canvas cav, Point start, Point end, Color clr, bool shared)
         {
+            
             // draw top
             Line top = new Line();
             top.Stroke = new SolidColorBrush(clr);
@@ -107,7 +108,10 @@ namespace ProteaseGuruGUI
 
             if (shared)
             {
-                top.StrokeDashArray = new DoubleCollection() { 2 };
+                top.StrokeDashArray = new DoubleCollection() { 1.25 };
+                top.StrokeDashCap = PenLineCap.Round;
+                top.StrokeStartLineCap = PenLineCap.Round;
+                top.StrokeEndLineCap = PenLineCap.Round;
             }
 
             cav.Children.Add(top);
@@ -185,7 +189,7 @@ namespace ProteaseGuruGUI
                 pepLine.X2 = 50;
                 pepLine.Y1 = 0;
                 pepLine.Y2 = 0;
-                pepLine.StrokeThickness = 1;
+                pepLine.StrokeThickness = 2;
                 pepLine.Stroke = Brushes.Black;
                 pepLine.HorizontalAlignment = HorizontalAlignment.Center;
                 pepLine.VerticalAlignment = VerticalAlignment.Center;
@@ -196,7 +200,10 @@ namespace ProteaseGuruGUI
 
                 if (peptide.Equals("Shared"))
                 {
-                    pepLine.StrokeDashArray = new DoubleCollection() { 2 };
+                    pepLine.StrokeDashArray = new DoubleCollection() { 1 };
+                    pepLine.StrokeDashCap = PenLineCap.Round;
+                    pepLine.StrokeStartLineCap = PenLineCap.Round;
+                    pepLine.StrokeEndLineCap = PenLineCap.Round;
                 }
 
                 legend.Children.Add(pepLine);
@@ -309,7 +316,10 @@ namespace ProteaseGuruGUI
 
                 if (peptide.Equals("Shared"))
                 {
-                    pepLine.StrokeDashArray = new DoubleCollection() { 2 };
+                    pepLine.StrokeDashArray = new DoubleCollection() { 1 };
+                    pepLine.StrokeDashCap = PenLineCap.Round;
+                    pepLine.StrokeStartLineCap = PenLineCap.Round;
+                    pepLine.StrokeEndLineCap = PenLineCap.Round;
                 }
 
                 legend.Children.Add(pepLine);
