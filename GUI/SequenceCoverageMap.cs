@@ -15,14 +15,14 @@ namespace ProteaseGuruGUI
         private const int spacing = 22;
 
         public static int Highlight(int start, int end, Canvas map, Dictionary<int, List<int>> indices,
-            int height, Color clr, bool unique, int partial = -1)
+            int height, Color clr, bool unique, bool startPep, bool endPep,int partial = -1)
         {
             int increment = 0;
             int i;
 
             if (partial >= 0) // if partial peptide 
             {
-                increment = partial * 5;
+                increment = partial * 10;
                 i = partial;            }
             else
             {
@@ -41,7 +41,7 @@ namespace ProteaseGuruGUI
                         break;
                     }
 
-                    increment += 5;
+                    increment += 10;
                 }
             }           
 
@@ -59,12 +59,12 @@ namespace ProteaseGuruGUI
             if (unique)
             {
                 peptideLineDrawing(map, new Point(start * spacing + 10, height + increment), 
-                    new Point(end * spacing + 10, height + increment), clr, false);
+                    new Point(end * spacing + 10, height + increment), clr, false, startPep, endPep);
             }
             else
             {
                 peptideLineDrawing(map, new Point(start * spacing + 10, height + increment), 
-                    new Point(end * spacing + 10, height + increment), clr, true);
+                    new Point(end * spacing + 10, height + increment), clr, true, startPep, endPep);
             }
 
             return i;
@@ -94,24 +94,39 @@ namespace ProteaseGuruGUI
         }
 
         // draw line for peptides
-        public static void peptideLineDrawing(Canvas cav, Point start, Point end, Color clr, bool shared)
+        public static void peptideLineDrawing(Canvas cav, Point start, Point end, Color clr, bool shared, bool pepStart, bool pepEnd)
         {
             
             // draw top
             Line top = new Line();
             top.Stroke = new SolidColorBrush(clr);
-            top.X1 = start.X;
-            top.X2 = end.X + 11;
+            if (pepStart == false)
+            {
+                top.X1 = start.X-10;
+            }
+            else
+            {
+                top.X1 = start.X;
+            }
+
+            if (pepEnd == false)
+            {
+                top.X2 = end.X + 21;
+            }
+            else 
+            {
+                top.X2 = end.X + 11;
+            }
+                        
             top.Y1 = start.Y + 20;
             top.Y2 = end.Y + 20;
-            top.StrokeThickness = 3.25;
+            top.StrokeThickness = 3.25;            
+            top.StrokeStartLineCap = PenLineCap.Round;
+            top.StrokeEndLineCap = PenLineCap.Round;
 
             if (shared)
-            {
-                top.StrokeDashArray = new DoubleCollection() { 1.25 };
-                top.StrokeDashCap = PenLineCap.Round;
-                top.StrokeStartLineCap = PenLineCap.Round;
-                top.StrokeEndLineCap = PenLineCap.Round;
+            {                
+                top.Stroke.Opacity = 0.35;
             }
 
             cav.Children.Add(top);
@@ -189,8 +204,13 @@ namespace ProteaseGuruGUI
                 pepLine.X2 = 50;
                 pepLine.Y1 = 0;
                 pepLine.Y2 = 0;
-                pepLine.StrokeThickness = 2;
-                pepLine.Stroke = Brushes.Black;
+                pepLine.StrokeThickness = 4;
+                pepLine.Stroke = new SolidColorBrush(Colors.Black);
+                if (peptide.Equals("Shared"))
+                {
+                    
+                    pepLine.Stroke.Opacity = 0.35;                   
+                }
                 pepLine.HorizontalAlignment = HorizontalAlignment.Center;
                 pepLine.VerticalAlignment = VerticalAlignment.Center;
 
@@ -198,13 +218,7 @@ namespace ProteaseGuruGUI
                 pepLabel.Content = peptide + " peptides";
                 pepLabel.FontSize = 12;
 
-                if (peptide.Equals("Shared"))
-                {
-                    pepLine.StrokeDashArray = new DoubleCollection() { 1 };
-                    pepLine.StrokeDashCap = PenLineCap.Round;
-                    pepLine.StrokeStartLineCap = PenLineCap.Round;
-                    pepLine.StrokeEndLineCap = PenLineCap.Round;
-                }
+                
 
                 legend.Children.Add(pepLine);
                 legend.Children.Add(pepLabel);
@@ -306,21 +320,17 @@ namespace ProteaseGuruGUI
                 pepLine.Y1 = 0;
                 pepLine.Y2 = 0;
                 pepLine.StrokeThickness = 1;
-                pepLine.Stroke = Brushes.Black;
+                pepLine.Stroke = new SolidColorBrush(Colors.Black);
+                if (peptide.Equals("Shared"))
+                {                    
+                    pepLine.Stroke.Opacity = 0.35;
+                }
                 pepLine.HorizontalAlignment = HorizontalAlignment.Center;
                 pepLine.VerticalAlignment = VerticalAlignment.Center;
 
                 Label pepLabel = new Label();
                 pepLabel.Content = peptide + " peptides";
                 pepLabel.FontSize= 12;
-
-                if (peptide.Equals("Shared"))
-                {
-                    pepLine.StrokeDashArray = new DoubleCollection() { 1 };
-                    pepLine.StrokeDashCap = PenLineCap.Round;
-                    pepLine.StrokeStartLineCap = PenLineCap.Round;
-                    pepLine.StrokeEndLineCap = PenLineCap.Round;
-                }
 
                 legend.Children.Add(pepLine);
                 legend.Children.Add(pepLabel);
