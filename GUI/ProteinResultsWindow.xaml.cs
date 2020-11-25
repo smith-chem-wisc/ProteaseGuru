@@ -660,12 +660,18 @@ namespace ProteaseGuruGUI
 
                         // continue highlighting peptide from previous line
                         
-                            SequenceCoverageMap.Highlight(start, end, map, indices, height, ProteaseByColor[peptide.Key.Protease],
-                                peptide.Key.Unique, highlightIndex);
+                           
                         var partialIndex = CheckPartialMatch(peptide.Key, line, accumIndex);
                         if (partialIndex >= 0)
                         {
+                            SequenceCoverageMap.Highlight(start, end, map, indices, height, ProteaseByColor[peptide.Key.Protease],
+                            peptide.Key.Unique, false, false, highlightIndex);
                             partialPeptideMatches.Add(peptide.Key, (partialIndex, highlightIndex));
+                        }
+                        else
+                        {
+                            SequenceCoverageMap.Highlight(start, end, map, indices, height, ProteaseByColor[peptide.Key.Protease],
+                                   peptide.Key.Unique, false, true, highlightIndex);
                         }
 
                     }
@@ -684,12 +690,18 @@ namespace ProteaseGuruGUI
                             int start = peptide.StartResidue - accumIndex - 1;
                             int end = Math.Min(peptide.EndResidue - accumIndex - 1, line.Length - 1);
 
-                            var highlightIndex = SequenceCoverageMap.Highlight(start, end, map, indices, height, ProteaseByColor[peptide.Protease],
-                                peptide.Unique);
+                            
 
                             if (partialIndex >= 0)
                             {
-                                partialPeptideMatches.Add(peptide, (partialIndex, highlightIndex));
+                                var highlightIndex = SequenceCoverageMap.Highlight(start, end, map, indices, height, ProteaseByColor[peptide.Protease],
+                                peptide.Unique, true, false);
+                            partialPeptideMatches.Add(peptide, (partialIndex, highlightIndex));
+                            }
+                            else
+                            {
+                                 var highlightIndex = SequenceCoverageMap.Highlight(start, end, map, indices, height, ProteaseByColor[peptide.Protease],
+                                 peptide.Unique, true, true);
                             }
                             peptidesToDraw.Remove(peptide);
                         }                   
@@ -701,7 +713,7 @@ namespace ProteaseGuruGUI
                 }
                 else 
                 {
-                    height += (proteases.Count() * 50);
+                    height += (proteases.Count() * 60);
                 }                
                 accumIndex += line.Length;
             }
@@ -712,8 +724,8 @@ namespace ProteaseGuruGUI
             }
             else
             {
-                totalHeight += splitSeq.Count() * (proteases.Count() * 50);
-                map.Height = totalHeight + (proteases.Count() * 50);
+                totalHeight += splitSeq.Count() * (proteases.Count() * 60);
+                map.Height = totalHeight + (proteases.Count() * 60);
             }
 
             if (mods.Count > 0)
