@@ -196,7 +196,7 @@ namespace ProteaseGuruGUI
             legend.ColumnDefinitions.Add(new ColumnDefinition());
             legend.ColumnDefinitions.Add(new ColumnDefinition());
             legend.ColumnDefinitions.Add(new ColumnDefinition());
-            string[] peptides = new string[2] { "Shared", "Unique" };
+            string[] peptides = new string[2] { "Shared peptides (translucent)", "Unique peptides (bold)" };
             foreach (string peptide in peptides)
             {
                 Line pepLine = new Line();
@@ -206,7 +206,7 @@ namespace ProteaseGuruGUI
                 pepLine.Y2 = 0;
                 pepLine.StrokeThickness = 4;
                 pepLine.Stroke = new SolidColorBrush(Colors.Black);
-                if (peptide.Equals("Shared"))
+                if (peptide.Equals("Shared peptides (translucent)"))
                 {
                     
                     pepLine.Stroke.Opacity = 0.35;                   
@@ -215,7 +215,7 @@ namespace ProteaseGuruGUI
                 pepLine.VerticalAlignment = VerticalAlignment.Center;
 
                 Label pepLabel = new Label();
-                pepLabel.Content = peptide + " peptides";
+                pepLabel.Content = peptide ;
                 pepLabel.FontSize = 12;
 
                 
@@ -231,8 +231,8 @@ namespace ProteaseGuruGUI
             {
                 legend.ColumnDefinitions.Add(new ColumnDefinition());
                 Label variantLabel = new Label();
-                variantLabel.Content = "Sequence Variants";
-                variantLabel.Foreground = Brushes.Tomato;
+                variantLabel.Content = "Sequence Variant";
+                variantLabel.Foreground = Brushes.Red;
                 variantLabel.FontWeight = FontWeights.ExtraBold;
                 variantLabel.FontSize = 12;
                 legend.Children.Add(variantLabel);
@@ -311,7 +311,7 @@ namespace ProteaseGuruGUI
             legend.ColumnDefinitions.Add(new ColumnDefinition());
             legend.ColumnDefinitions.Add(new ColumnDefinition());
             legend.ColumnDefinitions.Add(new ColumnDefinition());
-            string[] peptides = new string[2] { "Shared", "Unique" };
+            string[] peptides = new string[2] { "Shared peptides (translucent)", "Unique peptides (bold)" };
             foreach (string peptide in peptides)
             {
                 Line pepLine = new Line();
@@ -321,7 +321,7 @@ namespace ProteaseGuruGUI
                 pepLine.Y2 = 0;
                 pepLine.StrokeThickness = 1;
                 pepLine.Stroke = new SolidColorBrush(Colors.Black);
-                if (peptide.Equals("Shared"))
+                if (peptide.Equals("Shared peptides (translucent)"))
                 {                    
                     pepLine.Stroke.Opacity = 0.35;
                 }
@@ -329,7 +329,7 @@ namespace ProteaseGuruGUI
                 pepLine.VerticalAlignment = VerticalAlignment.Center;
 
                 Label pepLabel = new Label();
-                pepLabel.Content = peptide + " peptides";
+                pepLabel.Content = peptide;
                 pepLabel.FontSize= 12;
 
                 legend.Children.Add(pepLine);
@@ -345,8 +345,8 @@ namespace ProteaseGuruGUI
                 legend.ColumnDefinitions.Add(new ColumnDefinition());
                 Label variantLabel = new Label();
                 variantLabel.FontSize = 12;
-                variantLabel.Content = "Sequence Variants";
-                variantLabel.Foreground = Brushes.Tomato;
+                variantLabel.Content = "Sequence Variant";
+                variantLabel.Foreground = Brushes.Red;
                 variantLabel.FontWeight = FontWeights.ExtraBold;
                 legend.Children.Add(variantLabel);
                 Grid.SetColumn(variantLabel, ++i);
