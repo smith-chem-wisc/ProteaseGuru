@@ -13,6 +13,8 @@ namespace Tasks
         public int MaxPeptideLengthAllowed { get; set; }
         public bool TreatModifiedPeptidesAsDifferent { get; set; }
         public List<Protease> ProteasesForDigestion { get; set; }
+        public int MinPeptideMassAllowed {get; set;}
+        public int MaxPeptideMassAllowed { get; set; }
         public string OutputFolder;
 
         //default parameters?
@@ -23,14 +25,18 @@ namespace Tasks
             MaxPeptideLengthAllowed = 50;
             TreatModifiedPeptidesAsDifferent = false;
             ProteasesForDigestion = new List<Protease>();
+            MinPeptideMassAllowed = -1;
+            MaxPeptideMassAllowed = -1;
         }
-        public Parameters(int numMissedCleavages, int minPeptideLength, int maxPeptideLength, bool treatModifiedPeptidesDifferent, List<Protease> proteases)
+        public Parameters(int numMissedCleavages, int minPeptideLength, int maxPeptideLength, bool treatModifiedPeptidesDifferent, List<Protease> proteases, int minPeptideMass, int maxPeptideMass)
         {
             NumberOfMissedCleavagesAllowed = numMissedCleavages;
             MinPeptideLengthAllowed = minPeptideLength;
             MaxPeptideLengthAllowed = maxPeptideLength;
             TreatModifiedPeptidesAsDifferent = treatModifiedPeptidesDifferent;
             ProteasesForDigestion = proteases;
+            MinPeptideMassAllowed = minPeptideMass;
+            MaxPeptideMassAllowed = maxPeptideMass;
         }
     }
 }

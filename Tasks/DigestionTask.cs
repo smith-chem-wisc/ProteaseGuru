@@ -132,7 +132,19 @@ namespace Tasks
             Dictionary<Protein, List<PeptideWithSetModifications>> peptidesForProtein = new Dictionary<Protein, List<PeptideWithSetModifications>>(proteinsFromDatabase.Count);
             foreach (var protein in proteinsFromDatabase)
             {
-                List<PeptideWithSetModifications> peptides = protein.Digest(dp, new List<Modification> { }, new List<Modification> { }).ToList();                
+                List<PeptideWithSetModifications> peptides = protein.Digest(dp, new List<Modification> { }, new List<Modification> { }).ToList();
+                if (userDigestionParams.MaxPeptideMassAllowed != -1 && userDigestionParams.MinPeptideMassAllowed != -1)
+                {
+                    peptides = peptides.Where(p => p.MonoisotopicMass > userDigestionParams.MinPeptideMassAllowed && p.MonoisotopicMass < userDigestionParams.MaxPeptideMassAllowed).ToList();
+                }
+                else if (userDigestionParams.MaxPeptideMassAllowed == -1 && userDigestionParams.MinPeptideMassAllowed != -1)
+                {
+                    peptides = peptides.Where(p => p.MonoisotopicMass > userDigestionParams.MinPeptideMassAllowed).ToList();
+                }
+                else if (userDigestionParams.MaxPeptideMassAllowed != -1 && userDigestionParams.MinPeptideMassAllowed == -1)
+                {
+                    peptides = peptides.Where(p => p.MonoisotopicMass < userDigestionParams.MaxPeptideMassAllowed).ToList();
+                }                
                 peptidesForProtein.Add(protein, peptides);
             }
             return peptidesForProtein;
@@ -402,6 +414,8 @@ namespace Tasks
             parameters.Add("Min Peptide Length: " + userParams.MinPeptideLengthAllowed);
             parameters.Add("Max Peptide Length: " + userParams.MaxPeptideLengthAllowed);
             parameters.Add("Treat modified peptides as different peptides: " + userParams.TreatModifiedPeptidesAsDifferent);
+            parameters.Add("Min Peptide Mass: " + userParams.MinPeptideLengthAllowed);
+            parameters.Add("Max Peptide Mass: " + userParams.MaxPeptideLengthAllowed);
 
             File.WriteAllLines(filePath + @"\DigestionConditions.txt", parameters);
             

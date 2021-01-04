@@ -321,10 +321,49 @@ namespace GUI
                 }
             }            
             UserParameters.TreatModifiedPeptidesAsDifferent = Convert.ToBoolean(ModPepsAreUnique.IsChecked);
+            if (!string.IsNullOrWhiteSpace(MinPeptideMassTextBox.Text))
+            {
+                try
+                {
+                    int value = Convert.ToInt32(MinPeptideMassTextBox.Text);
+                    UserParameters.MinPeptideMassAllowed = value;
+
+                }
+                catch (FormatException)
+                {
+                    MessageBox.Show("Error: The value provided for the 'Min Peptide Mass' is invalid, please replace with an integer value before proceeding with analysis.");
+                    return;
+                }
+            }
+            else
+            {
+                int value = -1;
+                UserParameters.MinPeptideMassAllowed = value;
+            }
+            if (!string.IsNullOrWhiteSpace(MaxPeptideMassTextBox.Text))
+            {
+                try
+                {
+                    int value = Convert.ToInt32(MaxPeptideMassTextBox.Text);
+                    UserParameters.MaxPeptideMassAllowed = value;
+
+                }
+                catch (FormatException)
+                {
+                    MessageBox.Show("Error: The value provided for the 'Max Peptide Mass' is invalid, please replace with an integer value before proceeding with analysis.");
+                    return;
+                }
+            }
+            else 
+            {
+                int value = -1;
+                UserParameters.MaxPeptideMassAllowed = value;
+            }
             List<Protease> proteases = new List<Protease>();
             foreach (var protease in ProteaseSelectedForUse.SelectedItems)
             {
-                proteases.Add(ProteaseDictionary.Dictionary[protease.ToString()]);
+                var name = protease.ToString().Split(':')[1].Trim();
+                proteases.Add(ProteaseDictionary.Dictionary[name]);
             }
             UserParameters.ProteasesForDigestion = proteases;
             run.DigestionParameters = UserParameters;
@@ -654,6 +693,7 @@ namespace GUI
             var myLines = File.ReadAllLines(proteaseFilePath);
             myLines = myLines.Skip(1).ToArray();
             Dictionary<string, Protease> dict = new Dictionary<string, Protease>();
+            Dictionary<string, string> motif = new Dictionary<string, string>();
             foreach (string line in myLines)
             {
                 if (line.Trim() != string.Empty) // skip empty lines
@@ -667,11 +707,16 @@ namespace GUI
                     string psiMsName = fields[6];
                     var protease = new Protease(name, cleavageSpecificity, psiMsAccessionNumber, psiMsName, motifList);
                     dict.Add(protease.Name, protease);
+                    motif.Add(protease.Name, fields[1]);
                 }
             }            
             foreach (Protease protease in dict.Values)
             {
-                ProteaseSelectedForUse.Items.Add(protease);
+                //ProteaseSelectedForUse.Items.Add(protease);
+                ListBoxItem item = new ListBoxItem();
+                item.Content = protease;
+                item.ToolTip = "Cleavage specificity: " + motif[protease.Name].Trim(new char[] { '"' });
+                ProteaseSelectedForUse.Items.Add(item);
             }
         }
         
@@ -823,6 +868,12 @@ namespace GUI
                             {
                                 treatModPeps = true;
                             }
+                            break;
+                        case "Min Peptide Mass":
+                            minPeptideLength = Convert.ToInt32(info[1]);
+                            break;
+                        case "Max Peptide Mass":
+                            maxPeptideLength = Convert.ToInt32(info[1]);
                             break;
                         default:
                             MessageBox.Show("Error: Parameters file provided is not from a previous ProteaseGuru run.");
@@ -986,9 +1037,18 @@ namespace GUI
             ResetDigestionTask.IsEnabled = false;
 
             ProteaseSelectedForUse.IsEnabled = true;
+            MissedCleavagesTextBox.Clear();
             MissedCleavagesTextBox.IsEnabled = true;
+            MinPeptideLengthTextBox.Clear();
             MinPeptideLengthTextBox.IsEnabled = true;
+            MaxPeptideLengthTextBox.Clear();
             MaxPeptideLengthTextBox.IsEnabled = true;
+            MinPeptideMassTextBox.Clear();
+            MinPeptideMassTextBox.IsEnabled = true;
+            MaxPeptideMassTextBox.Clear();
+            MaxPeptideMassTextBox.IsEnabled = true;
+
+            ModPepsAreUnique.IsChecked = false;
 
             SummaryForTreeViewObservableCollection.Clear();
         }
@@ -1055,11 +1115,15 @@ namespace GUI
             FeatureForTreeView missedCleavages = new FeatureForTreeView("Number of Missed Cleavages: " + UserParameters.NumberOfMissedCleavagesAllowed);
             FeatureForTreeView minPep = new FeatureForTreeView("Minimum Peptide Length: " + UserParameters.MinPeptideLengthAllowed);
             FeatureForTreeView maxPep = new FeatureForTreeView("Maximum Peptide Length: " + UserParameters.MaxPeptideLengthAllowed);
-            FeatureForTreeView modPep = new FeatureForTreeView("Treat Modified Peptides as Different Peptides: " + UserParameters.TreatModifiedPeptidesAsDifferent);
+            FeatureForTreeView modPep = new FeatureForTreeView("Treat Modified Peptides as Different Peptides: " + UserParameters.TreatModifiedPeptidesAsDifferent);           
+            FeatureForTreeView minMass = new FeatureForTreeView("Minimum Peptide Mass: " + UserParameters.MinPeptideMassAllowed);                    
+            FeatureForTreeView maxMass = new FeatureForTreeView("Maximum Peptide Mass: " + UserParameters.MaxPeptideMassAllowed);
             parameters.Summary.Add(missedCleavages);
             parameters.Summary.Add(minPep);
             parameters.Summary.Add(maxPep);
             parameters.Summary.Add(modPep);
+            parameters.Summary.Add(minMass);
+            parameters.Summary.Add(maxMass);
             runSummary.Summary.Add(parameters);
 
             SummaryForTreeViewObservableCollection.Add(runSummary);

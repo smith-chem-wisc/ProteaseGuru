@@ -315,6 +315,11 @@
                                     <RowDefinition Height="40"/>
                                     <RowDefinition Height="40"/>
                                 </Grid.RowDefinitions>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="330"/>
+                                    <ColumnDefinition Width="330"/>
+
+                                </Grid.ColumnDefinitions>
                                 <!-- Max missed cleavages -->
                                 <StackPanel Orientation="Horizontal" Margin="5 5 5 0" Grid.Column="0" Grid.Row="1">
                                     <Label x:Name="maxMissedCleavagesLabel" Content="Max Missed Cleavages:" Width="150" />
@@ -424,6 +429,47 @@
                                             <ToolTip Content="Modified forms of a peptide base sequence are treated as different"  ToolTipService.ShowDuration="999999" ToolTipService.InitialShowDelay="500" />
                                         </ToolTipService.ToolTip>
                                     </CheckBox>
+                                </StackPanel>
+                                <!-- Min peptide mass -->
+                                <StackPanel Orientation="Horizontal" Margin="5 5 5 0" Grid.Column="1" Grid.Row="1" Background="{StaticResource DataGridBackgroundColor}">
+                                    <Label x:Name="lblMinPeptideMass" Content="Min Peptide Mass:" Width="150" />
+                                    <TextBox x:Name="MinPeptideMassTextBox" PreviewTextInput="CheckIfNumber" Width="45">
+                                        <TextBox.ToolTip>
+                                            <TextBlock>
+                                                    Optional: The minimum allowed peptide mass. Leave empty for no limitation.
+                                            </TextBlock>
+                                        </TextBox.ToolTip>
+                                        <TextBox.Style>
+                                            <Style TargetType="TextBox" xmlns:sys="clr-namespace:System;assembly=mscorlib">                                                
+                                                <Style.Triggers>                                                    
+                                                    <Trigger Property="IsKeyboardFocused" Value="True">
+                                                        <Setter Property="Background" Value="White" />
+                                                    </Trigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBox.Style>
+                                    </TextBox>
+                                </StackPanel>
+                                <!-- Max peptide mass -->
+                                <StackPanel Orientation="Horizontal" Margin="5 5 5 0" Grid.Column="1" Grid.Row="2" Background="{StaticResource DataGridBackgroundColor}">
+                                    <Label x:Name="lblMaxPeptideMass" Content="Max Peptide Mass:" Width="150" />
+                                    <TextBox x:Name="MaxPeptideMassTextBox" PreviewTextInput="CheckIfNumber" Width="45">
+                                        <TextBox.ToolTip>
+                                            <TextBlock>
+                                                    Optional: The maximum allowed peptide mass. Leave empty for no limitation.
+                                            </TextBlock>
+                                        </TextBox.ToolTip>
+                                        <TextBox.Style>
+                                            <Style TargetType="TextBox" xmlns:sys="clr-namespace:System;assembly=mscorlib">                                               
+                                                <Style.Triggers>
+                                                   
+                                                    <Trigger Property="IsKeyboardFocused" Value="True">
+                                                        <Setter Property="Background" Value="White" />
+                                                    </Trigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBox.Style>
+                                    </TextBox>
                                 </StackPanel>
 
                             </Grid>
