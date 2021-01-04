@@ -424,7 +424,7 @@ namespace ProteaseGuruGUI
         //draw the sequence coverage map, write out the protein seqeunce, overlay modifications, and display peptides for all proteases
         private void DrawSequenceCoverageMap(ProteinForTreeView protein, List<string> proteases) 
         {
-            double spacing = 22;
+            double spacing = 25;
             int height = 10;
             int totalHeight = 0;
             int accumIndex = 0;
@@ -481,12 +481,12 @@ namespace ProteaseGuruGUI
             modColors.Add("Trimethylation", Brushes.MediumVioletRed);
             if (mods.Count() != 0)
             {
-                modsSplitByLine = SplitMods(mods, protein.Protein.Length, Convert.ToInt32(map.Width / spacing));
+                modsSplitByLine = SplitMods(mods, protein.Protein.Length, Convert.ToInt32( spacing));
             }
 
             if (variants.Count() != 0)
             {
-                variantsByLine = SplitVariations(variants, protein.Protein.Length, Convert.ToInt32(map.Width / spacing));
+                variantsByLine = SplitVariations(variants, protein.Protein.Length, Convert.ToInt32(spacing));
             }
             map.Children.Clear();
             legendGrid.Children.Clear();
@@ -513,17 +513,20 @@ namespace ProteaseGuruGUI
             foreach (var line in splitSeq)
             {
                 indices.Clear();
+                var lineCount = splitSeq.IndexOf(line);
+                var lineLabel = (lineCount * 25) + 1;
+                SequenceCoverageMap.txtDrawingLabel(map, new Point(0, height), lineLabel.ToString(), Brushes.Black);
                 if (variants.Count() > 0)
                 {
                     for (int r = 0; r < line.Length; r++)
-                    {
+                    {                        
                         if (variantsByLine[splitSeq.IndexOf(line)].Contains(r + 1))
                         {
-                            SequenceCoverageMap.txtDrawing(map, new Point(r * spacing + 10, height), line[r].ToString().ToUpper(), Brushes.Red);
+                            SequenceCoverageMap.txtDrawing(map, new Point(r * spacing + 65, height), line[r].ToString().ToUpper(), Brushes.Red);
                         }
                         else
                         {
-                            SequenceCoverageMap.txtDrawing(map, new Point(r * spacing + 10, height), line[r].ToString().ToUpper(), Brushes.Black);
+                            SequenceCoverageMap.txtDrawing(map, new Point(r * spacing + 65, height), line[r].ToString().ToUpper(), Brushes.Black);
                         }
                         
                     }
@@ -532,7 +535,7 @@ namespace ProteaseGuruGUI
                 {
                     for (int r = 0; r < line.Length; r++)
                     {
-                        SequenceCoverageMap.txtDrawing(map, new Point(r * spacing + 10, height), line[r].ToString().ToUpper(), Brushes.Black);
+                        SequenceCoverageMap.txtDrawing(map, new Point(r * spacing + 65, height), line[r].ToString().ToUpper(), Brushes.Black);
                     }
                 }
                 
@@ -592,7 +595,7 @@ namespace ProteaseGuruGUI
 
                                 }
                             }
-                            SequenceCoverageMap.stackedCircledTxtDraw(map, new Point((mod.Key) * spacing - 17, height), colors);
+                            SequenceCoverageMap.stackedCircledTxtDraw(map, new Point((mod.Key) * spacing +38, height), colors);
 
                         }
                         else
@@ -636,7 +639,7 @@ namespace ProteaseGuruGUI
                                 }
 
                             }
-                            SequenceCoverageMap.circledTxtDraw(map, new Point((mod.Key) * spacing - 17, height), color);
+                            SequenceCoverageMap.circledTxtDraw(map, new Point((mod.Key) * spacing + 38, height), color);
                         }
                         
                     }
@@ -771,7 +774,7 @@ namespace ProteaseGuruGUI
         //split the protein sequence into lines for the coverage map
         private List<string> Split(string sequence, double spacing)
         {
-            int size = Convert.ToInt32(map.Width / spacing);
+            int size = Convert.ToInt32(spacing);
             var splitSequence = Enumerable.Range(0, sequence.Length / size).Select(i => sequence.Substring(i * size, size)).ToList();
             var lineText = sequence.Substring(splitSequence.Count() * size);
             if (lineText != "")
