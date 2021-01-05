@@ -923,21 +923,68 @@ namespace ProteaseGuruGUI
             }
 
             File.WriteAllLines(System.IO.Path.Combine(subFolder, resultsFile), results);
-
-            string tab = "\t";
-            string header = "Database" + tab + "Protease" + tab + "Base Sequence" + tab + "Full Sequence" + tab + "Previous Amino Acid" + tab +
-                "Next Amino Acid" + tab + "Start Residue" + tab + "End Residue" + tab + "Length" + tab + "Molecular Weight" + tab + "Protein Accession" + tab + "Protein Name" + tab + "Unique Peptide (in this database)" + tab + "Unique Peptide (in all databases)" + tab + "Peptide sequence exclusive to this Database" + tab +
-                "Hydrophobicity" + tab + "Electrophoretic Mobility";
-            var allPeptidesForProtein = PeptideByProteaseAndProtein.Where(p => p.Key.Accession == proteinAccession).FirstOrDefault().Value;
+            //seq coverage map meta data
+            var allPeptidesForProtein = PeptideByProteaseAndProtein.Where(p => p.Key.Accession == proteinAccession).FirstOrDefault();
             List<InSilicoPep> allPeptides = new List<InSilicoPep>();
             List<InSilicoPep> allPeptidesUnique = new List<InSilicoPep>();
-            foreach (var protease in allPeptidesForProtein)
+            foreach (var protease in allPeptidesForProtein.Value)
             {
                 allPeptides.AddRange(protease.Value);
                 allPeptidesUnique.AddRange(protease.Value.Where(p => p.UniqueAllDbs == true));
-            }   
+            }
+            string tab = "\t";
+            List<string> metaData = new List<string>();
+            metaData.Add("MetaData for " + allPeptidesForProtein.Key.Accession + " Sequence Coverage Map");
+            metaData.Add("Protein Sequence");
+            var proteinSeq = allPeptidesForProtein.Key.BaseSequence;
+            metaData.Add("Sequence Variations");
+            metaData.Add("Start Residue \t End Residue \t Original Sequence \t Variant Sequence");
+            var sequenceVariants = allPeptidesForProtein.Key.AppliedSequenceVariations;
+            foreach (var variant in sequenceVariants)
+            {
+                var startResidue = variant.OneBasedBeginPosition;
+                var endResidue = variant.OneBasedEndPosition;
+                var originalSeq = variant.OriginalSequence;
+                var newSeq = variant.VariantSequence;
+                var line = startResidue + tab + endResidue + tab + originalSeq + tab + newSeq;
+                metaData.Add(line);
+            }
+            metaData.Add("Post-Translational Modifications");
+            metaData.Add("Residue \t Modifications");
+            var mods = allPeptidesForProtein.Key.OneBasedPossibleLocalizedModifications;
+            foreach (var mod in mods)
+            {
+                var residue = mod.Key;
+                List<string> allMods = new List<string>(); 
+                foreach (var ptm in mod.Value)
+                {
+                    allMods.Add(ptm.IdWithMotif);                
+                }
+                var modList = string.Join(',', allMods);
+                var line = residue + tab + modList;
+                metaData.Add(line);
+            }
+            metaData.Add("All Peptides");
+            metaData.Add("Start Residue \t End Residue \t Protease \t Unique");
+            HashSet<string> peptideStrings = new HashSet<string>();
+            foreach (var peptide in allPeptides)
+            {
+                var startResidue = peptide.StartResidue;
+                var endResidue = peptide.EndResidue;
+                var protease = peptide.Protease;
+                var unique = peptide.UniqueAllDbs;
+                var line = startResidue + tab + endResidue + tab + protease + tab + unique;
+                peptideStrings.Add(line);
+            }
+            metaData.AddRange(peptideStrings);
 
+            var metaFile = String.Concat(SelectedProtein.DisplayName + "_MapMetaData.txt");
+            File.WriteAllLines(System.IO.Path.Combine(subFolder, metaFile), metaData);
 
+            //protein specific peptide files            
+            string header = "Database" + tab + "Protease" + tab + "Base Sequence" + tab + "Full Sequence" + tab + "Previous Amino Acid" + tab +
+                "Next Amino Acid" + tab + "Start Residue" + tab + "End Residue" + tab + "Length" + tab + "Molecular Weight" + tab + "Protein Accession" + tab + "Protein Name" + tab + "Unique Peptide (in this database)" + tab + "Unique Peptide (in all databases)" + tab + "Peptide sequence exclusive to this Database" + tab +
+                "Hydrophobicity" + tab + "Electrophoretic Mobility";
             var numberOfPeptides = allPeptides.Count();
             double numberOfFiles = Math.Ceiling(numberOfPeptides / 1000000.0);
             var peptidesInFile = 1;
@@ -998,7 +1045,7 @@ namespace ProteaseGuruGUI
                 var messageBox = MessageBox.Show(message, null, MessageBoxButton.YesNo);
                 if (messageBox == MessageBoxResult.Yes)
                 {
-                    Clipboard.SetText("Coverage Map: " + filePath + "\r\nResults Summary File: " + System.IO.Path.Combine(subFolder, resultsFile) + "\r\nAll Peptide Files: " + subFolder + @"\ProteaseGuruPeptides_" + proteinAccession + "_" + 1 + ".tsv" + "\r\nUnique Peptides: " + subFolder + @"\ProteaseGuruUniquePeptides_" + proteinAccession + "_" + 1 + ".tsv");
+                    Clipboard.SetText("Coverage Map: " + filePath + "\r\n Coverage Map MetaData: " + System.IO.Path.Combine(subFolder, metaFile) + "\r\nResults Summary File: " + System.IO.Path.Combine(subFolder, resultsFile) + "\r\nAll Peptide Files: " + subFolder + @"\ProteaseGuruPeptides_" + proteinAccession + "_" + 1 + ".tsv" + "\r\nUnique Peptides: " + subFolder + @"\ProteaseGuruUniquePeptides_" + proteinAccession + "_" + 1 + ".tsv");
                 }
             }
             else
@@ -1007,7 +1054,7 @@ namespace ProteaseGuruGUI
                 var messageBox = MessageBox.Show(message, null, MessageBoxButton.YesNo);
                 if (messageBox == MessageBoxResult.Yes)
                 {
-                    Clipboard.SetText("Coverage Map: " + filePath + "\r\nResults Summary File: " + System.IO.Path.Combine(subFolder, resultsFile) + "\r\nAll Peptide Files: " + subFolder + @"\ProteaseGuruPeptides_" + proteinAccession + "_" + 1 + ".tsv");
+                    Clipboard.SetText("Coverage Map: " + filePath + "\r\n Coverage Map MetaData: " + System.IO.Path.Combine(subFolder, metaFile) + "\r\nResults Summary File: " + System.IO.Path.Combine(subFolder, resultsFile) + "\r\nAll Peptide Files: " + subFolder + @"\ProteaseGuruPeptides_" + proteinAccession + "_" + 1 + ".tsv");
                 }
             }
             
