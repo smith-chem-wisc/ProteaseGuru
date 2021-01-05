@@ -1043,7 +1043,7 @@ namespace ProteaseGuruGUI
                 }
 
                 string message = "PNG and txt files Created at " + subFolder + "! Would you like to copy the file paths?";
-                var messageBox = MessageBox.Show(message, null, MessageBoxButton.YesNo);
+                var messageBox = MessageBox.Show(message, "", MessageBoxButton.YesNo);
                 if (messageBox == MessageBoxResult.Yes)
                 {
                     Clipboard.SetText("Coverage Map: " + filePath + "\r\n Coverage Map MetaData: " + System.IO.Path.Combine(subFolder, metaFile) + "\r\nResults Summary File: " + System.IO.Path.Combine(subFolder, resultsFile) + "\r\nAll Peptide Files: " + subFolder + @"\ProteaseGuruPeptides_" + proteinAccession + "_" + 1 + ".tsv" + "\r\nUnique Peptides: " + subFolder + @"\ProteaseGuruUniquePeptides_" + proteinAccession + "_" + 1 + ".tsv");
@@ -1052,7 +1052,7 @@ namespace ProteaseGuruGUI
             else
             {
                 string message = "PNG and txt files Created at " + subFolder + "! Would you like to copy the file paths?";
-                var messageBox = MessageBox.Show(message, null, MessageBoxButton.YesNo);
+                var messageBox = MessageBox.Show(message, "", MessageBoxButton.YesNo);
                 if (messageBox == MessageBoxResult.Yes)
                 {
                     Clipboard.SetText("Coverage Map: " + filePath + "\r\n Coverage Map MetaData: " + System.IO.Path.Combine(subFolder, metaFile) + "\r\nResults Summary File: " + System.IO.Path.Combine(subFolder, resultsFile) + "\r\nAll Peptide Files: " + subFolder + @"\ProteaseGuruPeptides_" + proteinAccession + "_" + 1 + ".tsv");

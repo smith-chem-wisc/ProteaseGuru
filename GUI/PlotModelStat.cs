@@ -281,7 +281,7 @@ namespace GUI
                     break;
                 case 2: // Protein Sequence Coverage
                     xAxisTitle = "Protein Sequence Coverage";
-                    binSize = 0.1;
+                    binSize = 0.10;
                     foreach (string key in SequenceCoverageByProtease.Keys)
                     {
                         numbersByProtease.Add(key, SequenceCoverageByProtease[key].Select(p => p));
@@ -292,7 +292,7 @@ namespace GUI
                     break;
                 case 3: // Protein Sequence Coverage (unique peptides)
                     xAxisTitle = "Protein Sequence Coverage (Unique Peptides Only)";
-                    binSize = 0.1;
+                    binSize = 0.10;
                     foreach (string key in SequenceCoverageUniqueByProtease.Keys)
                     {
                         numbersByProtease.Add(key, SequenceCoverageUniqueByProtease[key].Select(p => p));
