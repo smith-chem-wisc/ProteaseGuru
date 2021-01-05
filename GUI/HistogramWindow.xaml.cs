@@ -591,8 +591,13 @@ namespace ProteaseGuruGUI
             var plotName = HistogramComboBox.SelectedItem.ToString().Split(':');
             var fileDirectory = UserParams.OutputFolder;
             var fileName = String.Concat(plotName[1],"_DataTable", ".csv");
-            File.WriteAllText(Path.Combine(fileDirectory, fileName), dataTable);
-            MessageBox.Show("Data table Created at " + Path.Combine(fileDirectory, fileName) + "!");
+            File.WriteAllText(Path.Combine(fileDirectory, fileName), dataTable);            
+            string message = "Data table Created at " + Path.Combine(fileDirectory, fileName) + "! Would you like to copy the file path?";
+            var messageBox = MessageBox.Show(message, null, MessageBoxButton.YesNo);
+            if (messageBox == MessageBoxResult.Yes)
+            {
+                Clipboard.SetText(Path.Combine(fileDirectory, fileName));
+            }
 
         }
         //be able to expot the plots made as pdf files
@@ -623,7 +628,12 @@ namespace ProteaseGuruGUI
             }
             plotViewStat.Width = tmpW;
             plotViewStat.Height = tmpH;
-            MessageBox.Show("PDF Created at " + Path.Combine(fileDirectory, fileName) + "!");
+            string message = "PDF Created at " + Path.Combine(fileDirectory, fileName) + "! Would you like to copy the file path?";
+            var messageBox = MessageBox.Show(message, null, MessageBoxButton.YesNo);
+            if (messageBox == MessageBoxResult.Yes)
+            {
+                Clipboard.SetText(Path.Combine(fileDirectory, fileName));
+            }            
         }
         //calculate the protein seqeunce coverage of each protein based on its digested peptides (for all peptides and unique peptides)
         private Dictionary<string, Dictionary<Protein, (double,double)>> CalculateProteinSequenceCoverage( Dictionary<string, Dictionary<Protein, List<InSilicoPep>>> peptidesByProtease)

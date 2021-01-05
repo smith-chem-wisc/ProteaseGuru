@@ -916,25 +916,26 @@ namespace GUI
                         int length = Convert.ToInt32(info[8]);
                         double molecularWeight = Convert.ToDouble(info[9]);
                         string protein = info[10];
+                        string proteinName = info[11];
                         bool unique = false;
-                        if (info[11] == "True")
+                        if (info[12] == "True")
                         {
                             unique = true;
                         }
                         bool uniqueAll = false;
-                        if (info[12] == "True")
+                        if (info[13] == "True")
                         {
                             uniqueAll = true;
                         }
                         bool oneDb= false;
-                        if (info[13] == "True")
+                        if (info[14] == "True")
                         {
                             oneDb = true;
                         }
-                        double hydrophobicity = Convert.ToDouble(info[14]);
-                        double electrophoreticMobility = Convert.ToDouble(info[15]);
+                        double hydrophobicity = Convert.ToDouble(info[15]);
+                        double electrophoreticMobility = Convert.ToDouble(info[16]);
                         InSilicoPep pep = new InSilicoPep(baseSeq, fullSeq, previousAA, nextAA, unique, hydrophobicity, electrophoreticMobility, length,
-                            molecularWeight, database, protein, start, end, protease);
+                            molecularWeight, database, protein, proteinName, start, end, protease);
                         pep.UniqueAllDbs = uniqueAll;
                         pep.SeqOnlyInThisDb = oneDb;
                         allpeptides.Add(pep);

@@ -880,7 +880,7 @@ namespace ProteaseGuruGUI
             combo.ItemsSource = Proteases;            
         }
         
-        // export the coverage map and legend as separate .png files
+        // export results
         private void exportCoverageMap(object sender, RoutedEventArgs e)
         {
             var fileDirectory = UserParams.OutputFolder;
@@ -907,11 +907,11 @@ namespace ProteaseGuruGUI
             var filePath = System.IO.Path.Combine(subFolder, fileName);
             System.IO.File.WriteAllBytes(filePath, ms.ToArray());
             var resultsFile = String.Concat(SelectedProtein.DisplayName + "_DigestionResults.txt");
-
+            var proteinAccession = SelectedProtein.DisplayName;
             List<string> results = new List<string>();
             foreach (var protein in ProteinDigestionSummary)
             {
-                results.Add(protein.DisplayName);
+                results.Add(protein.DisplayName);               
                 foreach (var analysis in protein.Summary)
                 {
                     results.Add("   "+analysis.DisplayName);
@@ -924,7 +924,93 @@ namespace ProteaseGuruGUI
 
             File.WriteAllLines(System.IO.Path.Combine(subFolder, resultsFile), results);
 
-            MessageBox.Show("PNG and txt files Created at " + subFolder + "!");
+            string tab = "\t";
+            string header = "Database" + tab + "Protease" + tab + "Base Sequence" + tab + "Full Sequence" + tab + "Previous Amino Acid" + tab +
+                "Next Amino Acid" + tab + "Start Residue" + tab + "End Residue" + tab + "Length" + tab + "Molecular Weight" + tab + "Protein Accession" + tab + "Protein Name" + tab + "Unique Peptide (in this database)" + tab + "Unique Peptide (in all databases)" + tab + "Peptide sequence exclusive to this Database" + tab +
+                "Hydrophobicity" + tab + "Electrophoretic Mobility";
+            var allPeptidesForProtein = PeptideByProteaseAndProtein.Where(p => p.Key.Accession == proteinAccession).FirstOrDefault().Value;
+            List<InSilicoPep> allPeptides = new List<InSilicoPep>();
+            List<InSilicoPep> allPeptidesUnique = new List<InSilicoPep>();
+            foreach (var protease in allPeptidesForProtein)
+            {
+                allPeptides.AddRange(protease.Value);
+                allPeptidesUnique.AddRange(protease.Value.Where(p => p.UniqueAllDbs == true));
+            }   
+
+
+            var numberOfPeptides = allPeptides.Count();
+            double numberOfFiles = Math.Ceiling(numberOfPeptides / 1000000.0);
+            var peptidesInFile = 1;
+            var peptideIndex = 0;
+            var fileCount = 1;
+
+            while (fileCount <= Convert.ToInt32(numberOfFiles))
+            {
+                using (StreamWriter output = new StreamWriter(subFolder + @"\ProteaseGuruPeptides_"+proteinAccession+"_" + fileCount + ".tsv"))
+                {
+                    output.WriteLine(header);
+                    while (peptidesInFile < 1000000)
+                    {
+                        if (peptideIndex < numberOfPeptides)
+                        {
+                            output.WriteLine(allPeptides[peptideIndex].ToString());
+                            peptideIndex++;
+                        }
+                        peptidesInFile++;
+
+                    }
+                    output.Close();
+                    peptidesInFile = 1;
+                }
+                fileCount++;
+            }
+
+            var numberOfUniquePeptides = allPeptidesUnique.Count();
+            if (numberOfUniquePeptides != 0)
+            {
+                double numberOfFilesUnique = Math.Ceiling(numberOfPeptides / 1000000.0);
+                var uniquePeptidesInFile = 1;
+                var uniquePeptideIndex = 0;
+                var fileCountUnique = 1;
+
+                while (fileCountUnique <= Convert.ToInt32(numberOfFilesUnique))
+                {
+                    using (StreamWriter outputUnique = new StreamWriter(subFolder + @"\ProteaseGuruUniquePeptides_" + proteinAccession + "_" + fileCountUnique + ".tsv"))
+                    {
+                        outputUnique.WriteLine(header);
+                        while (uniquePeptidesInFile < 1000000)
+                        {
+                            if (uniquePeptideIndex < numberOfUniquePeptides)
+                            {
+                                outputUnique.WriteLine(allPeptidesUnique[uniquePeptideIndex].ToString());
+                                uniquePeptideIndex++;
+                            }
+                            uniquePeptidesInFile++;
+
+                        }
+                        outputUnique.Close();
+                        uniquePeptidesInFile = 1;
+                    }
+                    fileCountUnique++;
+                }
+
+                string message = "PNG and txt files Created at " + subFolder + "! Would you like to copy the file paths?";
+                var messageBox = MessageBox.Show(message, null, MessageBoxButton.YesNo);
+                if (messageBox == MessageBoxResult.Yes)
+                {
+                    Clipboard.SetText("Coverage Map: " + filePath + "\r\nResults Summary File: " + System.IO.Path.Combine(subFolder, resultsFile) + "\r\nAll Peptide Files: " + subFolder + @"\ProteaseGuruPeptides_" + proteinAccession + "_" + 1 + ".tsv" + "\r\nUnique Peptides: " + subFolder + @"\ProteaseGuruUniquePeptides_" + proteinAccession + "_" + 1 + ".tsv");
+                }
+            }
+            else
+            {
+                string message = "PNG and txt files Created at " + subFolder + "! Would you like to copy the file paths?";
+                var messageBox = MessageBox.Show(message, null, MessageBoxButton.YesNo);
+                if (messageBox == MessageBoxResult.Yes)
+                {
+                    Clipboard.SetText("Coverage Map: " + filePath + "\r\nResults Summary File: " + System.IO.Path.Combine(subFolder, resultsFile) + "\r\nAll Peptide Files: " + subFolder + @"\ProteaseGuruPeptides_" + proteinAccession + "_" + 1 + ".tsv");
+                }
+            }
+            
         }
     }
 }

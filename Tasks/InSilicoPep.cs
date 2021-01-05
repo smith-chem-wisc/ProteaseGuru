@@ -22,12 +22,13 @@ namespace Tasks
         public double MolecularWeight;
         public string Database;
         public string Protein;
+        public string ProteinName;
         public int StartResidue;
         public int EndResidue;
         public string Protease;
 
         public InSilicoPep(string baseSequence, string fullSequence, char previousAA, char nextAA, bool unique, double hydrophobicity, double electrophoreticMobility,
-            int length, double molecularWeight, string database, string protein,int start, int end, string protease)
+            int length, double molecularWeight, string database, string protein, string proteinName,int start, int end, string protease)
         {
             BaseSequence = baseSequence;
             FullSequence = fullSequence;
@@ -40,6 +41,7 @@ namespace Tasks
             MolecularWeight = molecularWeight;
             Database = database;
             Protein = protein;
+            ProteinName = proteinName;
             StartResidue = start;
             EndResidue = end;
             Protease = protease;
@@ -72,6 +74,8 @@ namespace Tasks
             sb.Append(MolecularWeight);
             sb.Append(tab);
             sb.Append(Protein);
+            sb.Append(tab);
+            sb.Append(ProteinName);
             sb.Append(tab);
             sb.Append(Unique);
             sb.Append(tab);
