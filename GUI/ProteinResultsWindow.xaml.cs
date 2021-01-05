@@ -883,7 +883,7 @@ namespace ProteaseGuruGUI
         // export results
         private void exportCoverageMap(object sender, RoutedEventArgs e)
         {
-            var fileDirectory = UserParams.OutputFolder;
+            var fileDirectory = UserParams.OutputFolder + @"\ProteaseGuruDigestionResults";
             string subFolder = System.IO.Path.Combine(fileDirectory, SelectedProtein.DisplayName);
             Directory.CreateDirectory(subFolder);
             var fileName = String.Concat("SequenceCoverageMap_"+SelectedProtein.DisplayName+".png");            
