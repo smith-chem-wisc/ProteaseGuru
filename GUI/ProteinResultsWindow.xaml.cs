@@ -937,6 +937,7 @@ namespace ProteaseGuruGUI
             metaData.Add("MetaData for " + allPeptidesForProtein.Key.Accession + " Sequence Coverage Map");
             metaData.Add("Protein Sequence");
             var proteinSeq = allPeptidesForProtein.Key.BaseSequence;
+            metaData.Add(proteinSeq);
             metaData.Add("Sequence Variations");
             metaData.Add("Start Residue \t End Residue \t Original Sequence \t Variant Sequence");
             var sequenceVariants = allPeptidesForProtein.Key.AppliedSequenceVariations;
