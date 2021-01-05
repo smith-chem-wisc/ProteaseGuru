@@ -664,7 +664,7 @@ namespace ProteaseGuruGUI
                     double seqCoverageFract = (double)coveredOneBasesResidues.Count / protein.Key.Length;
                     double seqCoverageFractUnique = (double)coveredOneBasesResiduesUnique.Count / protein.Key.Length;
 
-                    sequenceCoverages.Add(protein.Key, (seqCoverageFract,seqCoverageFractUnique));
+                    sequenceCoverages.Add(protein.Key, (Math.Round(seqCoverageFract,3), Math.Round(seqCoverageFractUnique, 3)));
                 }
                 proteinSequenceCoverageByProtease.Add(protease.Key, sequenceCoverages);
             }            

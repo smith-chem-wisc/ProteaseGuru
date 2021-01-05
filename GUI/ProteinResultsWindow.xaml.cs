@@ -801,7 +801,7 @@ namespace ProteaseGuruGUI
                 }
 
                 var fract = (double)coveredOneBasedResidues.Count / protein.Length;
-                yield return (proteaseKvp.Key, fract);
+                yield return (proteaseKvp.Key, Math.Round(fract, 2));
             }
         }
 
@@ -829,7 +829,7 @@ namespace ProteaseGuruGUI
                 }
 
                 var fract = (double)coveredOneBasedResidues.Count / protein.Length;
-                yield return (proteaseKvp.Key, fract);
+                yield return (proteaseKvp.Key, Math.Round(fract, 2));
             }
         }
                
