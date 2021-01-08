@@ -1,27 +1,27 @@
-Name	Sequences Inducing Cleavage	Sequences Preventing Cleavage	Cleavage Terminus	Cleavage Specificity	PSI-MS Accession Number	PSI-MS Name	Site Regular Expression	Notes
-Arg-C	R|			full	MS:1001303	Arg-C	(?<=R)(?!P)	
-Asp-N	|D			full	MS:1001304	Asp-N	(?=[BD])	
-chymotrypsin (don't cleave before proline)	"F[P]|,W[P]|,Y[P]|"			full				
-chymotrypsin (cleave before proline)	"F|,W|,Y|"			full				
-elastase	"A|,V|,S|,G|,L|,I|"			full		Elastase	(?<=[AVSGLI])	
-Glu-C	E|			full				
-Glu-C (with asp)	"E|,D|"			full				
-Lys-C (don't cleave before proline)	K[P]|			full	MS:1001309	Lys-C	(?<=K)(?!P)	
-Lys-C (cleave before proline)	K|			full	MS:1001310	Lys-C/P	(?<=K)	
-Lys-N	|K			full				
-trypsin (cleave before proline)	"K|,R|"			full	MS:1001313	Trypsin/P	(?<=[KR])	
-trypsin (don't cleave before proline)	"K[P]|,R[P]|"			full	MS:1001251	Trypsin	(?<=[KR])(?!P) 	
-collagenase	GPX|GPX			full				
-CNBr	M|			full	MS:1001307	CNBr	(?<=M)	
-trypsin (don't cleave before proline) + Lys-C (don't cleave before proline)	"K[P]|,R[P]|"			full				
-trypsin (cleave before proline) + Lys-C (cleave before proline)	"K|,R|"			full				
-trypsin (don't cleave before proline) + Arg-C	"K[P]|,R[P]|"			full				
-trypsin (cleave before proline) + Arg-C	"K|,R|"			full				
-trypsin (don't cleave before proline) + Asp-N	"K[P]|,R[P]|,|D"			full				
-trypsin (cleave before proline) + Asp-N	"K|,R|,|D"			full				
-trypsin (don't cleave before proline) + chymotrypsin (don't cleave before proline)	"K[P]|,R[P]|,F[P]|,W[P]|,Y[P]|"			full				
-trypsin (cleave before proline) + chymotrypsin (cleave before proline)	"K|,R|,F|,W|,Y|"			full				
-trypsin (don't cleave before proline) + Glu-C	"K[P]|,R[P]|,E|"			full				
-trypsin (cleave before proline) + Glu-C	"K|,R|,E|"			full				
-trypsin (don't cleave before proline) + Glu-C (with asp)	"K[P]|,R[P]|,E|,D|"			full				
-trypsin (cleave before proline) + Glu-C (with asp)	"K|,R|,E|,D|"			full				
+Name	Sequences Inducing Cleavage	Sequences Preventing Cleavage	Cleavage Terminus	Cleavage Specificity	PSI-MS Accession Number	PSI-MS Name	Site Regular Expression	Cleavage Mass Shifts	Notes
+Arg-C	R|			full	MS:1001303	Arg-C	(?<=R)(?!P)		
+Asp-N	|D			full	MS:1001304	Asp-N	(?=[BD])		
+chymotrypsin (don't cleave before proline)	"F[P]|,W[P]|,Y[P]|"			full					
+chymotrypsin (cleave before proline)	"F|,W|,Y|"			full					
+elastase	"A|,V|,S|,G|,L|,I|"			full		Elastase	(?<=[AVSGLI])		
+Glu-C	E|			full					
+Glu-C (with asp)	"E|,D|"			full					
+Lys-C (don't cleave before proline)	K[P]|			full	MS:1001309	Lys-C	(?<=K)(?!P)		
+Lys-C (cleave before proline)	K|			full	MS:1001310	Lys-C/P	(?<=K)		
+Lys-N	|K			full					
+trypsin (cleave before proline)	"K|,R|"			full	MS:1001313	Trypsin/P	(?<=[KR])		
+trypsin (don't cleave before proline)	"K[P]|,R[P]|"			full	MS:1001251	Trypsin	(?<=[KR])(?!P) 		
+collagenase	GPX|GPX			full					
+CNBr	M|			full	MS:1001307	CNBr	(?<=M)	M:-48.00337	
+trypsin (don't cleave before proline) + Lys-C (don't cleave before proline)	"K[P]|,R[P]|"			full					
+trypsin (cleave before proline) + Lys-C (cleave before proline)	"K|,R|"			full					
+trypsin (don't cleave before proline) + Arg-C	"K[P]|,R[P]|"			full					
+trypsin (cleave before proline) + Arg-C	"K|,R|"			full					
+trypsin (don't cleave before proline) + Asp-N	"K[P]|,R[P]|,|D"			full					
+trypsin (cleave before proline) + Asp-N	"K|,R|,|D"			full					
+trypsin (don't cleave before proline) + chymotrypsin (don't cleave before proline)	"K[P]|,R[P]|,F[P]|,W[P]|,Y[P]|"			full					
+trypsin (cleave before proline) + chymotrypsin (cleave before proline)	"K|,R|,F|,W|,Y|"			full					
+trypsin (don't cleave before proline) + Glu-C	"K[P]|,R[P]|,E|"			full					
+trypsin (cleave before proline) + Glu-C	"K|,R|,E|"			full					
+trypsin (don't cleave before proline) + Glu-C (with asp)	"K[P]|,R[P]|,E|,D|"			full					
+trypsin (cleave before proline) + Glu-C (with asp)	"K|,R|,E|,D|"			full					

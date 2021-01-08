@@ -690,29 +690,20 @@ namespace GUI
         {
             string proteaseDirectory = System.IO.Path.Combine(GlobalVariables.DataDir, @"ProteolyticDigestion");
             string proteaseFilePath = System.IO.Path.Combine(proteaseDirectory, @"proteases.tsv");
+            Dictionary<string, Protease> dict = ProteaseDictionary.LoadProteaseDictionary(proteaseFilePath);
             var myLines = File.ReadAllLines(proteaseFilePath);
             myLines = myLines.Skip(1).ToArray();
-            Dictionary<string, Protease> dict = new Dictionary<string, Protease>();
             Dictionary<string, string> motif = new Dictionary<string, string>();
             foreach (string line in myLines)
             {
                 if (line.Trim() != string.Empty) // skip empty lines
                 {
-                    string[] fields = line.Split('\t');
-                    List<DigestionMotif> motifList = DigestionMotif.ParseDigestionMotifsFromString(fields[1]);
-
-                    string name = fields[0];
-                    var cleavageSpecificity = ((CleavageSpecificity)Enum.Parse(typeof(CleavageSpecificity), fields[4], true));
-                    string psiMsAccessionNumber = fields[5];
-                    string psiMsName = fields[6];
-                    var protease = new Protease(name, cleavageSpecificity, psiMsAccessionNumber, psiMsName, motifList);
-                    dict.Add(protease.Name, protease);
-                    motif.Add(protease.Name, fields[1]);
+                    string[] fields = line.Split('\t');                    
+                    motif.Add(fields[0], fields[1]);
                 }
             }            
             foreach (Protease protease in dict.Values)
-            {
-                //ProteaseSelectedForUse.Items.Add(protease);
+            {                
                 ListBoxItem item = new ListBoxItem();
                 item.Content = protease;
                 item.ToolTip = "Cleavage specificity: " + motif[protease.Name].Trim(new char[] { '"' });

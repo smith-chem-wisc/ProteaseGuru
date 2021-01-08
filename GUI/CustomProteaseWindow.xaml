@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:GUI"
         mc:Ignorable="d"
-        Title="Add Custom Protease" Height="290" Width="375">
+        Title="Add Custom Protease" Height="320" Width="375">
     <Grid Style="{StaticResource PageGridStyle}">
         <StackPanel Orientation="Vertical" VerticalAlignment="Top" HorizontalAlignment="Center" Margin="5">
             <!--Modification name-->
@@ -145,7 +145,38 @@
                     </TextBox.Style>
                 </TextBox>
             </StackPanel>
+            <StackPanel Orientation="Horizontal">
+                <Label Content="Cleavage Mass Shift" Width="195" Style="{StaticResource xSmallHeaderLabelStyle}"></Label>
+                <TextBox x:Name="cleavageMassShiftTextBox" Width="155" Height="20">
+                    <ToolTipService.ToolTip>
+                        <ToolTip Content="If protease cleavage generates a mass shift from the normal amino acid sequence, incorporate that information here (optional), example: 'M:-48.00337'"/>
+                    </ToolTipService.ToolTip>
+                    <TextBox.Style>
+                        <Style TargetType="TextBox" xmlns:sys="clr-namespace:System;assembly=mscorlib">
+                            <Style.Resources>
+                                <VisualBrush x:Key="CueBannerBrush" AlignmentX="Left" AlignmentY="Center" Stretch="None">
+                                    <VisualBrush.Visual>
+                                        <Label Content="CNBr ex: 'M:-48.00337'" Foreground="Gray" />
+                                    </VisualBrush.Visual>
+                                </VisualBrush>
+                            </Style.Resources>
+                            <Style.Triggers>
+                                <Trigger Property="Text" Value="{x:Static sys:String.Empty}">
+                                    <Setter Property="Background" Value="{StaticResource CueBannerBrush}" />
+                                </Trigger>
+                                <Trigger Property="Text" Value="{x:Null}">
+                                    <Setter Property="Background" Value="{StaticResource CueBannerBrush}" />
+                                </Trigger>
+                                <Trigger Property="IsKeyboardFocused" Value="True">
+                                    <Setter Property="Background" Value="White" />
+                                </Trigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBox.Style>
+                </TextBox>
+            </StackPanel>
         </StackPanel>
+        
         <!--Save and cancel buttons-->
         <StackPanel Orientation="Horizontal" Height="35" VerticalAlignment="Bottom" HorizontalAlignment="Center"  >
             <Button Name="saveButton" Content="Save Protease" FontSize="13" Margin="5" Width="100" Click="SaveCustomProtease_Click" Style="{StaticResource ImportantButtonStyle}" />

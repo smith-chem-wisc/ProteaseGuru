@@ -61,6 +61,7 @@ namespace GUI
             var cleavageSpecificity = (string)cleavageSpecificityListBox.SelectedItem;
             string psiAccession = psiAccessionNumber.Text;
             string psiNames = psiName.Text;
+            string massShift = cleavageMassShiftTextBox.Text;
             
             //formatting these properties for writing to the protease file, so they can be read in each time ProteaseGuru is used
             string proteaseInfo = name + "\t" ;
@@ -129,7 +130,7 @@ namespace GUI
                 }
                 proteaseInfo += cleavageMotif;
             }
-            proteaseInfo += "\t"+ "\t"+ "\t"+ cleavageSpecificity +"\t" + psiAccession+ "\t" + psiNames;
+            proteaseInfo += "\t"+ "\t"+ "\t"+ cleavageSpecificity +"\t" + psiAccession+ "\t" + psiNames+"\t"+"\t"+massShift;
             proteaseFileText.Add(proteaseInfo);
             File.WriteAllLines(proteaseFilePath, proteaseFileText);
             proteaseAdded = true;
