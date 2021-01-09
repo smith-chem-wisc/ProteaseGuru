@@ -41,19 +41,21 @@ namespace ProteaseGuruGUI
         private ProteinForTreeView SelectedProtein;
         private bool MessageShow;
         Parameters UserParams;
+        private Dictionary<string, Dictionary<Protein, (double, double)>> SequenceCoverageByProtease;
 
         public ProteinResultsWindow()
         {
 
         }
 
-        public ProteinResultsWindow(Dictionary<string, Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>> peptideByFile, Parameters userParams) // change constructor to receive analysis information
+        public ProteinResultsWindow(Dictionary<string, Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>> peptideByFile, Parameters userParams, Dictionary<string, Dictionary<Protein, (double, double)>> sequenceCoverageByProtease) // change constructor to receive analysis information
         {
             InitializeComponent();
             SelectedProteases = new List<string>();
             UserParams = userParams;
             SelectedProtein = null;
             PeptideByFile = peptideByFile;
+            SequenceCoverageByProtease = sequenceCoverageByProtease;
             MessageShow = true;
             PeptideByProteaseAndProtein = new Dictionary<Protein, Dictionary<string, List<InSilicoPep>>>();
             ProteinDigestionSummary = new ObservableCollection<ProteinSummaryForTreeView>();
@@ -157,7 +159,7 @@ namespace ProteaseGuruGUI
 
         private void SetUpTreeView()
         {
-            List<string> proteinListDuplicates = new List<string>();
+            HashSet<string> proteinListDuplicates = new HashSet<string>();
             foreach (var db in PeptideByFile)
             {
                 foreach (var protease in db.Value)
@@ -209,8 +211,8 @@ namespace ProteaseGuruGUI
 
                     }
                 }
-            }
-            foreach (var prot in proteinListDuplicates.Distinct())
+            }            
+            foreach (var prot in proteinListDuplicates)
             {
                 proteinList.Add(prot);
                 dataGridProteins.Items.Add(prot);
@@ -255,9 +257,9 @@ namespace ProteaseGuruGUI
             }
 
             var ptv = SelectedProtein;
-                var proteaseList = UserParams.ProteasesForDigestion.Select(p => p.Name).ToList();
-                var uniquePeps = ptv.UniquePeptides.GroupBy(p => p.Protease).ToDictionary(group => group.Key, group => group.ToList());
-                var sharedPeps = ptv.SharedPeptides.GroupBy(p => p.Protease).ToDictionary(group => group.Key, group => group.ToList());
+            var proteaseList = UserParams.ProteasesForDigestion.Select(p => p.Name).ToList();
+            var uniquePeps = ptv.UniquePeptides.GroupBy(p => p.Protease).ToDictionary(group => group.Key, group => group.ToList());
+            var sharedPeps = ptv.SharedPeptides.GroupBy(p => p.Protease).ToDictionary(group => group.Key, group => group.ToList());
 
             ProteinSummaryForTreeView thisProtein = new ProteinSummaryForTreeView("Digestion Results for " + ptv.Protein.Accession + ":");
             AnalysisSummaryForTreeView uniquePep = new AnalysisSummaryForTreeView("Number of Unique Peptides: ");
@@ -290,19 +292,31 @@ namespace ProteaseGuruGUI
             thisProtein.Summary.Add(sharedPep);
 
             AnalysisSummaryForTreeView percentCov = new AnalysisSummaryForTreeView("Percent Sequence Coverage (all peptides):" );
-            foreach (var seqCovKvp in CalculateSequenceCoverage(SelectedProtein.Protein))
+            foreach (var protease in SequenceCoverageByProtease)
             {
-                percentCov.Summary.Add(new ProtSummaryForTreeView(seqCovKvp.Item1 + ": " + Math.Round(seqCovKvp.Item2 * 100, 3) + "%")); // break down by protease
+                var coverage = Math.Round(protease.Value[SelectedProtein.Protein].Item1,2);
+                percentCov.Summary.Add(new ProtSummaryForTreeView(protease.Key + ": " + Math.Round(coverage * 100, 3) + "%")); // break down by protease
             }
             thisProtein.Summary.Add(percentCov);
 
             AnalysisSummaryForTreeView percentCovUniq = new AnalysisSummaryForTreeView("Percent Sequence Coverage (unique peptides):");
-            foreach (var seqCovKvp in CalculateSequenceCoverageUnique(SelectedProtein.Protein))
+            if (PeptideByFile.Keys.Count > 1)
             {
-                percentCovUniq.Summary.Add(new ProtSummaryForTreeView(seqCovKvp.Item1 + ": " + Math.Round(seqCovKvp.Item2 * 100, 3) + "%")); // break down by protease
+                foreach (var seqCovKvp in CalculateSequenceCoverageUnique(SelectedProtein.Protein))
+                {
+                    percentCovUniq.Summary.Add(new ProtSummaryForTreeView(seqCovKvp.Item1 + ": " + Math.Round(seqCovKvp.Item2 * 100, 3) + "%")); // break down by protease
+                }
+            }
+            else
+            {
+                foreach (var protease in SequenceCoverageByProtease)
+                {
+                    var coverage = protease.Value[SelectedProtein.Protein].Item2;
+                    percentCovUniq.Summary.Add(new ProtSummaryForTreeView(protease.Key + ": " + Math.Round(coverage * 100, 3) + "%")); // break down by protease
+                }
+                
             }
             thisProtein.Summary.Add(percentCovUniq);
-
             ProteinDigestionSummary.Clear();
 
             ProteinDigestionSummary.Add(thisProtein);
@@ -310,8 +324,6 @@ namespace ProteaseGuruGUI
             proteinResults.DataContext = ProteinDigestionSummary;
 
             DrawSequenceCoverageMap(SelectedProtein, SelectedProteases);
-
-
         }
 
         //splits the list of modifcations to lines and gives them the proper index to line up to the same amino acid
@@ -784,40 +796,20 @@ namespace ProteaseGuruGUI
             return splitSequence;
         }
        
-        //caluclate protein sequence coverage for the individual protein summaries
-        public IEnumerable<(string, double)> CalculateSequenceCoverage(Protein protein)
-        {
-            foreach(var proteaseKvp in PeptideByProteaseAndProtein[protein])
-            {
-                HashSet<int> coveredOneBasedResidues = new HashSet<int>();
-                var peptides = proteaseKvp.Value;
-
-                foreach (var peptide in peptides)
-                {
-                    for (int i = peptide.StartResidue; i <= peptide.EndResidue; i++)
-                    {
-                        coveredOneBasedResidues.Add(i);
-                    }
-                }
-
-                var fract = (double)coveredOneBasedResidues.Count / protein.Length;
-                yield return (proteaseKvp.Key, Math.Round(fract, 2));
-            }
-        }
-
+        
         public IEnumerable<(string, double)> CalculateSequenceCoverageUnique(Protein protein)
         {
-            List<InSilicoPep> peptides = new List<InSilicoPep>();
+            HashSet<InSilicoPep> peptides = new HashSet<InSilicoPep>();
             foreach (var proteaseKvp in PeptideByProteaseAndProtein[protein])
             {
                 HashSet<int> coveredOneBasedResidues = new HashSet<int>();
                 if (PeptideByFile.Keys.Count() > 1)
                 {
-                    peptides = proteaseKvp.Value.Where(p => p.UniqueAllDbs == true).ToList();
+                    peptides = proteaseKvp.Value.Where(p => p.UniqueAllDbs == true).ToHashSet();
                 }
                 else
                 {
-                    peptides = proteaseKvp.Value.Where(p => p.Unique == true).ToList();
+                    peptides = proteaseKvp.Value.Where(p => p.Unique == true).ToHashSet();
                 }
                 
                 foreach (var peptide in peptides)
