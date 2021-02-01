@@ -1176,9 +1176,9 @@ namespace GUI
 
             if (theExtension.Equals(".fasta") || theExtension.Equals(".fa"))
             {
-                proteinList = ProteinDbLoader.LoadProteinFasta(database.FilePath, true, DecoyType.None, false, ProteinDbLoader.UniprotAccessionRegex,
+                proteinList = ProteinDbLoader.LoadProteinFasta(database.FilePath, true, DecoyType.None, false, out dbErrors, ProteinDbLoader.UniprotAccessionRegex,
                     ProteinDbLoader.UniprotFullNameRegex, ProteinDbLoader.UniprotFullNameRegex, ProteinDbLoader.UniprotGeneNameRegex,
-                    ProteinDbLoader.UniprotOrganismRegex, out dbErrors, -1);
+                    ProteinDbLoader.UniprotOrganismRegex,  -1);
                 
                     return proteinList;
                 

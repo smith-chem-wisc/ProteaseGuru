@@ -125,9 +125,9 @@ namespace Tasks
 
                 if (theExtension.Equals(".fasta") || theExtension.Equals(".fa"))
                 {
-                    proteinList = ProteinDbLoader.LoadProteinFasta(database.FilePath, true, DecoyType.None, false, ProteinDbLoader.UniprotAccessionRegex,
+                    proteinList = ProteinDbLoader.LoadProteinFasta(database.FilePath, true, DecoyType.None, false, out dbErrors, ProteinDbLoader.UniprotAccessionRegex,
                         ProteinDbLoader.UniprotFullNameRegex, ProteinDbLoader.UniprotFullNameRegex, ProteinDbLoader.UniprotGeneNameRegex,
-                        ProteinDbLoader.UniprotOrganismRegex, out dbErrors, -1);
+                        ProteinDbLoader.UniprotOrganismRegex,  -1);
                     if (!proteinList.Any())
                     {
                         Warn("Warning: No protein entries were found in the database");
