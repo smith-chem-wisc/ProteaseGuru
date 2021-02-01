@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:GUI"
         mc:Ignorable="d"
-        Title="Add Custom Protease" Height="320" Width="375">
+        Title="Add Custom Protease" Height="327" Width="375">
     <Grid Style="{StaticResource PageGridStyle}">
         <StackPanel Orientation="Vertical" VerticalAlignment="Top" HorizontalAlignment="Center" Margin="5">
             <!--Modification name-->

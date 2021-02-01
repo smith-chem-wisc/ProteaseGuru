@@ -112,7 +112,7 @@
                 <Label Content="Monoisotopic Mass" Width="195" Style="{StaticResource xSmallHeaderLabelStyle}"></Label>
                 <TextBox Name="monoisotopicMassTextBox" Width="155" Height="20">
                     <ToolTipService.ToolTip>
-                        <ToolTip Content="Monoisotopic mass (optional, if chemical formula is specified), example: '48.003'"/>
+                        <ToolTip Content="Monoisotopic mass (optional, if chemical formula is specified), example: '-48.003'"/>
                     </ToolTipService.ToolTip>
                     <TextBox.Style>
                         <Style TargetType="TextBox" xmlns:sys="clr-namespace:System;assembly=mscorlib">
