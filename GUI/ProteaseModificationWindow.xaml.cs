@@ -118,6 +118,7 @@ namespace GUI
                 _neutralLosses: neutralLosses,
                 _diagnosticIons: diagnosticIons);
 
+            modName = modification.IdWithMotif;
             // write/read temp file to make sure the mod is readable, then delete it
             string tempPath = System.IO.Path.Combine(proteaseModDirectory, @"temp.txt");
             try
@@ -163,7 +164,7 @@ namespace GUI
             }
 
             GlobalVariables.AddMods(new List<Modification> { modification }, false);
-
+            GlobalVariables.ProteaseMods = UsefulProteomicsDatabases.PtmListLoader.ReadModsFromFile(proteaseModFilePath, out var errorList).ToList();
             DialogResult = true;
             proteaseModAdded = true;
         }

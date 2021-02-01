@@ -690,7 +690,7 @@ namespace GUI
         {
             string proteaseDirectory = System.IO.Path.Combine(GlobalVariables.DataDir, @"ProteolyticDigestion");
             string proteaseFilePath = System.IO.Path.Combine(proteaseDirectory, @"proteases.tsv");
-            Dictionary<string, Protease> dict = ProteaseDictionary.LoadProteaseDictionary(proteaseFilePath);
+            Dictionary<string, Protease> dict = ProteaseDictionary.LoadProteaseDictionary(proteaseFilePath, GlobalVariables.ProteaseMods);
             var myLines = File.ReadAllLines(proteaseFilePath);
             myLines = myLines.Skip(1).ToArray();
             Dictionary<string, string> motif = new Dictionary<string, string>();

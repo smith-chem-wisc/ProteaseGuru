@@ -1,6 +1,7 @@
 ﻿using Chemistry;
 using Proteomics;
 using Proteomics.AminoAcidPolymer;
+using Proteomics.ProteolyticDigestion;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -14,7 +15,8 @@ namespace Engine
     public static class GlobalVariables
     {
         private static List<Modification> _AllModsKnown = new List<Modification>();
-        private static HashSet<string> _AllModTypesKnown = new HashSet<string>();       
+        private static HashSet<string> _AllModTypesKnown = new HashSet<string>(); 
+        public static List<Modification> ProteaseMods = new List<Modification>();
         
 
         //Characters that aren't amino acids, but are reserved for special uses (motifs, delimiters, mods, etc)
@@ -89,6 +91,9 @@ namespace Engine
                 }
                 // no error thrown if multiple mods with this ID are present - just pick one
             }
+
+            ProteaseMods = UsefulProteomicsDatabases.PtmListLoader.ReadModsFromFile(Path.Combine(DataDir, @"Mods", @"ProteaseMods.txt"), out var errors).ToList();
+            ProteaseDictionary.Dictionary = ProteaseDictionary.LoadProteaseDictionary(Path.Combine(DataDir, @"ProteolyticDigestion", @"proteases.tsv"), ProteaseMods);
 
             RefreshAminoAcidDictionary();            
         }

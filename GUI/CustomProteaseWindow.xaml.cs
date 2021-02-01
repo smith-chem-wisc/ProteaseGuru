@@ -143,9 +143,17 @@ namespace GUI
                 }
                 proteaseInfo += cleavageMotif;
             }
-            proteaseInfo += "\t" + "\t" + "\t" + cleavageSpecificity + "\t" + psiAccession + "\t" + psiNames + "\t" + "\t";
+            if (modName != "")
+            {
+                proteaseInfo += "\t" + "\t" + "\t" + cleavageSpecificity + "\t" + psiAccession + "\t" + psiNames + "\t" + "\t" + modName;
+            }
+            else
+            {
+                proteaseInfo += "\t" + "\t" + "\t" + cleavageSpecificity + "\t" + psiAccession + "\t" + psiNames + "\t" + "\t";
+            }
             proteaseFileText.Add(proteaseInfo);
             File.WriteAllLines(proteaseFilePath, proteaseFileText);
+            ProteaseDictionary.Dictionary = ProteaseDictionary.LoadProteaseDictionary(proteaseFilePath, GlobalVariables.ProteaseMods);
             proteaseAdded = true;
         }
 

@@ -12,7 +12,7 @@ Lys-N	|K			full
 trypsin (cleave before proline)	"K|,R|"			full	MS:1001313	Trypsin/P	(?<=[KR])		
 trypsin (don't cleave before proline)	"K[P]|,R[P]|"			full	MS:1001251	Trypsin	(?<=[KR])(?!P) 		
 collagenase	GPX|GPX			full					
-CNBr	M|			full	MS:1001307	CNBr	(?<=M)	M:-48.00337	
+CNBr	M|			full	MS:1001307	CNBr	(?<=M)	Homoserine lactone on M	
 trypsin (don't cleave before proline) + Lys-C (don't cleave before proline)	"K[P]|,R[P]|"			full					
 trypsin (cleave before proline) + Lys-C (cleave before proline)	"K|,R|"			full					
 trypsin (don't cleave before proline) + Arg-C	"K[P]|,R[P]|"			full					

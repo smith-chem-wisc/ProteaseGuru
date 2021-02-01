@@ -1,4 +1,5 @@
-﻿using NUnit.Framework;
+﻿using Engine;
+using NUnit.Framework;
 using Proteomics.ProteolyticDigestion;
 using System;
 using System.Collections.Generic;
@@ -496,6 +497,40 @@ namespace Test
 
             Directory.Delete(subFolder, true);
 
+        }
+
+        [Test]
+        public static void ProteaseModTest()
+        {
+            Loaders.LoadElements();
+            string subFolder = Path.Combine(TestContext.CurrentContext.TestDirectory, @"DigestionTest");
+            Directory.CreateDirectory(subFolder);
+
+            string databasePath1 = Path.Combine(TestContext.CurrentContext.TestDirectory, "Databases", "ProteaseModTest.fasta");
+            DbForDigestion database1 = new DbForDigestion(databasePath1);
+
+            var protDic = ProteaseDictionary.LoadProteaseDictionary(Path.Combine(GlobalVariables.DataDir, @"ProteolyticDigestion", @"proteases.tsv"), GlobalVariables.ProteaseMods);
+
+            Parameters param = new Parameters();
+            param.MinPeptideLengthAllowed = 1;
+            param.MaxPeptideLengthAllowed = 100;
+            param.NumberOfMissedCleavagesAllowed = 0;
+            param.TreatModifiedPeptidesAsDifferent = false;
+            param.ProteasesForDigestion.Add(protDic["CNBr"]);
+            param.OutputFolder = subFolder;
+
+            DigestionTask digestion = new DigestionTask();
+            digestion.DigestionParameters = param;
+            var digestionResults = digestion.RunSpecific(subFolder, new List<DbForDigestion>() { database1});           
+
+            foreach (var entry in digestionResults.PeptideByFile[database1.FileName][param.ProteasesForDigestion.First().Name])
+            {
+                var peptides = entry.Value;
+                Assert.AreEqual(2, peptides.Count());
+                Assert.AreNotEqual(peptides[0].FullSequence, peptides[1].FullSequence);
+                Assert.AreEqual(882.39707781799996, peptides[0].MolecularWeight);
+                Assert.AreEqual(930.400449121, peptides[1].MolecularWeight);
+            }
         }
     }
 }

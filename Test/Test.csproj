@@ -26,10 +26,9 @@
   </ItemGroup>
   
   <ItemGroup>
-    <Folder Include="Databases\" />
-  </ItemGroup>
-  
-  <ItemGroup>
+    <None Update="Databases\ProteaseModTest.fasta">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Update="Databases\TestDatabase_1.fasta">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
