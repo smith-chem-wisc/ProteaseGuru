@@ -17,6 +17,7 @@ namespace Tasks
         private readonly StringBuilder TaskSummaryText = new StringBuilder();
         private readonly StringBuilder PsmPeptideProteinSummaryText = new StringBuilder();
         public readonly Dictionary<string, Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>> PeptideByFile;
+        public readonly Dictionary<string, Dictionary<Protein, (double, double)>> SequenceCoverageByProtease;
         Parameters parameters;
 
         internal MyTaskResults(ProteaseGuruTask s)
@@ -24,6 +25,7 @@ namespace Tasks
             var results = (DigestionTask)s;
             PeptideByFile = results.PeptideByFile;
             parameters = results.DigestionParameters;
+            SequenceCoverageByProtease = results.SequenceCoverageByProtease;
             resultTexts = new List<string>();
         }
 

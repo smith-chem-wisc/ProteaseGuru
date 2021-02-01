@@ -12,7 +12,7 @@ namespace ProteaseGuruGUI
 {
     class SequenceCoverageMap
     {
-        private const int spacing = 22;
+        private const int spacing = 25;
 
         public static int Highlight(int start, int end, Canvas map, Dictionary<int, List<int>> indices,
             int height, Color clr, bool unique, bool startPep, bool endPep,int partial = -1)
@@ -58,24 +58,47 @@ namespace ProteaseGuruGUI
             // highlight peptide
             if (unique)
             {
-                peptideLineDrawing(map, new Point(start * spacing + 10, height + increment), 
-                    new Point(end * spacing + 10, height + increment), clr, false, startPep, endPep);
+                peptideLineDrawing(map, new Point(start * spacing + 65, height + increment), 
+                    new Point(end * spacing+65, height + increment), clr, false, startPep, endPep);
             }
             else
             {
-                peptideLineDrawing(map, new Point(start * spacing + 10, height + increment), 
-                    new Point(end * spacing + 10, height + increment), clr, true, startPep, endPep);
+                peptideLineDrawing(map, new Point(start * spacing + 65, height + increment), 
+                    new Point(end * spacing+65, height + increment), clr, true, startPep, endPep);
             }
 
             return i;
         }
         
         public static void txtDrawing(Canvas cav, Point loc, string txt, Brush clr)
+        {            
+            TextBlock tb = new TextBlock();                      
+            tb.Foreground = clr;
+            tb.Text = txt;
+            tb.FontSize = 15;
+            if (clr == Brushes.Black)
+            {
+                tb.FontWeight = FontWeights.Bold;
+            }
+            else
+            {
+                tb.FontWeight = FontWeights.ExtraBold;
+            }
+            tb.FontFamily = new FontFamily("Arial"); // monospaced font
+
+            Canvas.SetTop(tb, loc.Y);
+            Canvas.SetLeft(tb, loc.X);
+            Panel.SetZIndex(tb, 2); //lower priority
+            cav.Children.Add(tb);
+            cav.UpdateLayout();
+        }
+
+        public static void txtDrawingLabel(Canvas cav, Point loc, string txt, Brush clr)
         {
             TextBlock tb = new TextBlock();
             tb.Foreground = clr;
             tb.Text = txt;
-            tb.FontSize = 15;
+            tb.FontSize = 10;
             if (clr == Brushes.Black)
             {
                 tb.FontWeight = FontWeights.Bold;
@@ -145,7 +168,7 @@ namespace ProteaseGuruGUI
                 Fill = clr,
                 Opacity = 0.85
             };
-            Canvas.SetLeft(circle, loc.X+3);
+            Canvas.SetLeft(circle, loc.X);
             Canvas.SetTop(circle, loc.Y-.75);
             Panel.SetZIndex(circle, 1);
             cav.Children.Add(circle);
@@ -165,7 +188,7 @@ namespace ProteaseGuruGUI
                     Fill = mod,
                     Opacity = 0.85
                 };
-                Canvas.SetLeft(circle, loc.X + 3);
+                Canvas.SetLeft(circle, loc.X );
                 Canvas.SetTop(circle, ((loc.Y - .75)-(circleCount*18)));
                 Panel.SetZIndex(circle, 1);
                 cav.Children.Add(circle);

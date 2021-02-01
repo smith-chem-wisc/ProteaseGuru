@@ -32,6 +32,7 @@ namespace GUI
     public partial class CustomProteaseWindow : Window
     {
         public bool proteaseAdded = false;
+        public string modName = "";
         public CustomProteaseWindow()
         {
             InitializeComponent();
@@ -45,6 +46,19 @@ namespace GUI
             cleavageTerminusListBox.Items.Add("C");
             cleavageTerminusListBox.Items.Add("N");
         }
+
+        private void OpenProteaseModification_Click(object sender, RoutedEventArgs e)
+        {
+            var dialog = new ProteaseModificationWindow();
+            dialog.ShowDialog();
+            if (dialog.proteaseModAdded == true)
+            {
+                modName = dialog.modName;
+                UsefulProteomicsDatabases.PtmListLoader.ReadModsFromFile(System.IO.Path.Combine(GlobalVariables.DataDir, @"Mods", @"ProteaseMods.txt"), out List<(Modification,string)> filteredModificationsWithWarnings);                
+            }
+
+        }
+
         //Save all the user provided information in the proteases file for future use
         private void SaveCustomProtease_Click(object sender, RoutedEventArgs e)
         {
@@ -60,7 +74,7 @@ namespace GUI
             var cleavageTerminus = (string)cleavageTerminusListBox.SelectedItem;
             var cleavageSpecificity = (string)cleavageSpecificityListBox.SelectedItem;
             string psiAccession = psiAccessionNumber.Text;
-            string psiNames = psiName.Text;
+            string psiNames = psiName.Text;            
             
             //formatting these properties for writing to the protease file, so they can be read in each time ProteaseGuru is used
             string proteaseInfo = name + "\t" ;
@@ -129,9 +143,17 @@ namespace GUI
                 }
                 proteaseInfo += cleavageMotif;
             }
-            proteaseInfo += "\t"+ "\t"+ "\t"+ cleavageSpecificity +"\t" + psiAccession+ "\t" + psiNames;
+            if (modName != "")
+            {
+                proteaseInfo += "\t" + "\t" + "\t" + cleavageSpecificity + "\t" + psiAccession + "\t" + psiNames + "\t" + "\t" + modName;
+            }
+            else
+            {
+                proteaseInfo += "\t" + "\t" + "\t" + cleavageSpecificity + "\t" + psiAccession + "\t" + psiNames + "\t" + "\t";
+            }
             proteaseFileText.Add(proteaseInfo);
             File.WriteAllLines(proteaseFilePath, proteaseFileText);
+            ProteaseDictionary.Dictionary = ProteaseDictionary.LoadProteaseDictionary(proteaseFilePath, GlobalVariables.ProteaseMods);
             proteaseAdded = true;
         }
 

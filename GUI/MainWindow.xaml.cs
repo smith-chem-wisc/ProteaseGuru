@@ -321,10 +321,49 @@ namespace GUI
                 }
             }            
             UserParameters.TreatModifiedPeptidesAsDifferent = Convert.ToBoolean(ModPepsAreUnique.IsChecked);
+            if (!string.IsNullOrWhiteSpace(MinPeptideMassTextBox.Text))
+            {
+                try
+                {
+                    int value = Convert.ToInt32(MinPeptideMassTextBox.Text);
+                    UserParameters.MinPeptideMassAllowed = value;
+
+                }
+                catch (FormatException)
+                {
+                    MessageBox.Show("Error: The value provided for the 'Min Peptide Mass' is invalid, please replace with an integer value before proceeding with analysis.");
+                    return;
+                }
+            }
+            else
+            {
+                int value = -1;
+                UserParameters.MinPeptideMassAllowed = value;
+            }
+            if (!string.IsNullOrWhiteSpace(MaxPeptideMassTextBox.Text))
+            {
+                try
+                {
+                    int value = Convert.ToInt32(MaxPeptideMassTextBox.Text);
+                    UserParameters.MaxPeptideMassAllowed = value;
+
+                }
+                catch (FormatException)
+                {
+                    MessageBox.Show("Error: The value provided for the 'Max Peptide Mass' is invalid, please replace with an integer value before proceeding with analysis.");
+                    return;
+                }
+            }
+            else 
+            {
+                int value = -1;
+                UserParameters.MaxPeptideMassAllowed = value;
+            }
             List<Protease> proteases = new List<Protease>();
             foreach (var protease in ProteaseSelectedForUse.SelectedItems)
             {
-                proteases.Add(ProteaseDictionary.Dictionary[protease.ToString()]);
+                var name = protease.ToString().Split(':')[1].Trim();
+                proteases.Add(ProteaseDictionary.Dictionary[name]);
             }
             UserParameters.ProteasesForDigestion = proteases;
             run.DigestionParameters = UserParameters;
@@ -651,27 +690,24 @@ namespace GUI
         {
             string proteaseDirectory = System.IO.Path.Combine(GlobalVariables.DataDir, @"ProteolyticDigestion");
             string proteaseFilePath = System.IO.Path.Combine(proteaseDirectory, @"proteases.tsv");
+            Dictionary<string, Protease> dict = ProteaseDictionary.LoadProteaseDictionary(proteaseFilePath, GlobalVariables.ProteaseMods);
             var myLines = File.ReadAllLines(proteaseFilePath);
             myLines = myLines.Skip(1).ToArray();
-            Dictionary<string, Protease> dict = new Dictionary<string, Protease>();
+            Dictionary<string, string> motif = new Dictionary<string, string>();
             foreach (string line in myLines)
             {
                 if (line.Trim() != string.Empty) // skip empty lines
                 {
-                    string[] fields = line.Split('\t');
-                    List<DigestionMotif> motifList = DigestionMotif.ParseDigestionMotifsFromString(fields[1]);
-
-                    string name = fields[0];
-                    var cleavageSpecificity = ((CleavageSpecificity)Enum.Parse(typeof(CleavageSpecificity), fields[4], true));
-                    string psiMsAccessionNumber = fields[5];
-                    string psiMsName = fields[6];
-                    var protease = new Protease(name, cleavageSpecificity, psiMsAccessionNumber, psiMsName, motifList);
-                    dict.Add(protease.Name, protease);
+                    string[] fields = line.Split('\t');                    
+                    motif.Add(fields[0], fields[1]);
                 }
             }            
             foreach (Protease protease in dict.Values)
-            {
-                ProteaseSelectedForUse.Items.Add(protease);
+            {                
+                ListBoxItem item = new ListBoxItem();
+                item.Content = protease;
+                item.ToolTip = "Cleavage specificity: " + motif[protease.Name].Trim(new char[] { '"' });
+                ProteaseSelectedForUse.Items.Add(item);
             }
         }
         
@@ -741,15 +777,17 @@ namespace GUI
             Stopwatch stopwatch = new Stopwatch();
             stopwatch.Start();
             RunStatus.Items.Add(runProgressBar);
-            Dictionary<string, Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>> peptidesByFile = await Task.Run(() => a.Run());            
+            var results = await Task.Run(() => a.Run());
+            Dictionary<string, Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>> peptidesByFile = results.PeptideByFile;
+            Dictionary<string, Dictionary<Protein, (double, double)>> sequenceCoverageByProtease = results.SequenceCoverageByProtease;
             stopwatch.Stop();
 
             runProgressBar.IsIndeterminate = false;
             // when done with tasks
             StaticTasksObservableCollection.Clear();
             AllResultsTab.Content = new AllResultsWindow(peptidesByFile, UserParameters); // update results display
-            ProteinCovMap.Content = new ProteinResultsWindow(peptidesByFile, UserParameters);
-            AllHistogramsTab.Content = new HistogramWindow(peptidesByFile, UserParameters);
+            ProteinCovMap.Content = new ProteinResultsWindow(peptidesByFile, UserParameters, sequenceCoverageByProtease);
+            AllHistogramsTab.Content = new HistogramWindow(peptidesByFile, UserParameters, sequenceCoverageByProtease);
             AllResultsTab.IsSelected = true; // switch to results tab
             RunTaskButton.IsEnabled = true; // allow user to run new task
         }
@@ -824,6 +862,12 @@ namespace GUI
                                 treatModPeps = true;
                             }
                             break;
+                        case "Min Peptide Mass":
+                            minPeptideLength = Convert.ToInt32(info[1]);
+                            break;
+                        case "Max Peptide Mass":
+                            maxPeptideLength = Convert.ToInt32(info[1]);
+                            break;
                         default:
                             MessageBox.Show("Error: Parameters file provided is not from a previous ProteaseGuru run.");
                             return;
@@ -865,25 +909,26 @@ namespace GUI
                         int length = Convert.ToInt32(info[8]);
                         double molecularWeight = Convert.ToDouble(info[9]);
                         string protein = info[10];
+                        string proteinName = info[11];
                         bool unique = false;
-                        if (info[11] == "True")
+                        if (info[12] == "True")
                         {
                             unique = true;
                         }
                         bool uniqueAll = false;
-                        if (info[12] == "True")
+                        if (info[13] == "True")
                         {
                             uniqueAll = true;
                         }
                         bool oneDb= false;
-                        if (info[13] == "True")
+                        if (info[14] == "True")
                         {
                             oneDb = true;
                         }
-                        double hydrophobicity = Convert.ToDouble(info[14]);
-                        double electrophoreticMobility = Convert.ToDouble(info[15]);
+                        double hydrophobicity = Convert.ToDouble(info[15]);
+                        double electrophoreticMobility = Convert.ToDouble(info[16]);
                         InSilicoPep pep = new InSilicoPep(baseSeq, fullSeq, previousAA, nextAA, unique, hydrophobicity, electrophoreticMobility, length,
-                            molecularWeight, database, protein, start, end, protease);
+                            molecularWeight, database, protein, proteinName, start, end, protease);
                         pep.UniqueAllDbs = uniqueAll;
                         pep.SeqOnlyInThisDb = oneDb;
                         allpeptides.Add(pep);
@@ -945,12 +990,44 @@ namespace GUI
                 }
 
             }
+            Dictionary<string, Dictionary<Protein, List<InSilicoPep>>> allPeptidesByProtease = new Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>();
+
+            foreach (var file in PeptidesByFile)
+            {
+                foreach (var protease in file.Value)
+                {
+                    foreach (var protein in protease.Value)
+                    {
+                        if (allPeptidesByProtease.ContainsKey(protease.Key))
+                        {
+                            if (allPeptidesByProtease[protease.Key].ContainsKey(protein.Key))
+                            {
+                                allPeptidesByProtease[protease.Key][protein.Key].AddRange(protein.Value);
+                            }
+                            else
+                            {
+                                allPeptidesByProtease[protease.Key].Add(protein.Key, protein.Value);
+                            }
+                        }
+                        else
+                        {
+                            Dictionary<Protein, List<InSilicoPep>> proteinDic = new Dictionary<Protein, List<InSilicoPep>>();
+                            proteinDic.Add(protein.Key, protein.Value);
+                            allPeptidesByProtease.Add(protease.Key, proteinDic);
+                        }
+                    }
+
+                }
+            }
+
+            var seqCov = CalculateProteinSequenceCoverage(allPeptidesByProtease);
 
             AllResultsTab.Content = new AllResultsWindow(PeptidesByFile, loadedParams); // update results display
-            ProteinCovMap.Content = new ProteinResultsWindow(PeptidesByFile, loadedParams);
-            AllHistogramsTab.Content = new HistogramWindow(PeptidesByFile, loadedParams);
+            ProteinCovMap.Content = new ProteinResultsWindow(PeptidesByFile, loadedParams, seqCov);
+            AllHistogramsTab.Content = new HistogramWindow(PeptidesByFile, loadedParams, seqCov);
             AllResultsTab.IsSelected = true; // switch to results tab
         }
+        
 
         //be able to use hyperlinks to webpages
         private void Hyperlink_RequestNavigate(object sender, RequestNavigateEventArgs e)
@@ -986,9 +1063,18 @@ namespace GUI
             ResetDigestionTask.IsEnabled = false;
 
             ProteaseSelectedForUse.IsEnabled = true;
+            MissedCleavagesTextBox.Clear();
             MissedCleavagesTextBox.IsEnabled = true;
+            MinPeptideLengthTextBox.Clear();
             MinPeptideLengthTextBox.IsEnabled = true;
+            MaxPeptideLengthTextBox.Clear();
             MaxPeptideLengthTextBox.IsEnabled = true;
+            MinPeptideMassTextBox.Clear();
+            MinPeptideMassTextBox.IsEnabled = true;
+            MaxPeptideMassTextBox.Clear();
+            MaxPeptideMassTextBox.IsEnabled = true;
+
+            ModPepsAreUnique.IsChecked = false;
 
             SummaryForTreeViewObservableCollection.Clear();
         }
@@ -1055,11 +1141,15 @@ namespace GUI
             FeatureForTreeView missedCleavages = new FeatureForTreeView("Number of Missed Cleavages: " + UserParameters.NumberOfMissedCleavagesAllowed);
             FeatureForTreeView minPep = new FeatureForTreeView("Minimum Peptide Length: " + UserParameters.MinPeptideLengthAllowed);
             FeatureForTreeView maxPep = new FeatureForTreeView("Maximum Peptide Length: " + UserParameters.MaxPeptideLengthAllowed);
-            FeatureForTreeView modPep = new FeatureForTreeView("Treat Modified Peptides as Different Peptides: " + UserParameters.TreatModifiedPeptidesAsDifferent);
+            FeatureForTreeView modPep = new FeatureForTreeView("Treat Modified Peptides as Different Peptides: " + UserParameters.TreatModifiedPeptidesAsDifferent);           
+            FeatureForTreeView minMass = new FeatureForTreeView("Minimum Peptide Mass: " + UserParameters.MinPeptideMassAllowed);                    
+            FeatureForTreeView maxMass = new FeatureForTreeView("Maximum Peptide Mass: " + UserParameters.MaxPeptideMassAllowed);
             parameters.Summary.Add(missedCleavages);
             parameters.Summary.Add(minPep);
             parameters.Summary.Add(maxPep);
             parameters.Summary.Add(modPep);
+            parameters.Summary.Add(minMass);
+            parameters.Summary.Add(maxMass);
             runSummary.Summary.Add(parameters);
 
             SummaryForTreeViewObservableCollection.Add(runSummary);
@@ -1086,9 +1176,9 @@ namespace GUI
 
             if (theExtension.Equals(".fasta") || theExtension.Equals(".fa"))
             {
-                proteinList = ProteinDbLoader.LoadProteinFasta(database.FilePath, true, DecoyType.None, false, ProteinDbLoader.UniprotAccessionRegex,
+                proteinList = ProteinDbLoader.LoadProteinFasta(database.FilePath, true, DecoyType.None, false, out dbErrors, ProteinDbLoader.UniprotAccessionRegex,
                     ProteinDbLoader.UniprotFullNameRegex, ProteinDbLoader.UniprotFullNameRegex, ProteinDbLoader.UniprotGeneNameRegex,
-                    ProteinDbLoader.UniprotOrganismRegex, out dbErrors, -1);
+                    ProteinDbLoader.UniprotOrganismRegex,  -1);
                 
                     return proteinList;
                 
@@ -1139,6 +1229,41 @@ namespace GUI
 
             }
 
+        }
+
+        private Dictionary<string, Dictionary<Protein, (double, double)>> CalculateProteinSequenceCoverage(Dictionary<string, Dictionary<Protein, List<InSilicoPep>>> peptidesByProtease)
+        {
+            Dictionary<string, Dictionary<Protein, (double, double)>> proteinSequenceCoverageByProtease = new Dictionary<string, Dictionary<Protein, (double, double)>>();
+            foreach (var protease in peptidesByProtease)
+            {
+                Dictionary<Protein, (double, double)> sequenceCoverages = new Dictionary<Protein, (double, double)>();
+                foreach (var protein in protease.Value)
+                {
+                    //count which residues are covered at least one time by a peptide
+                    HashSet<int> coveredOneBasesResidues = new HashSet<int>();
+                    HashSet<int> coveredOneBasesResiduesUnique = new HashSet<int>();
+                    var minPeptideList = protein.Value.ToHashSet();
+                    foreach (var peptide in minPeptideList)
+                    {
+                        for (int i = peptide.StartResidue; i <= peptide.EndResidue; i++)
+                        {
+                            coveredOneBasesResidues.Add(i);
+                            if (peptide.Unique == true)
+                            {
+                                coveredOneBasesResiduesUnique.Add(i);
+                            }
+                        }
+                    }
+                    //divide the number of covered residues by the total residues in the protein
+                    double seqCoverageFract = (double)coveredOneBasesResidues.Count / protein.Key.Length;
+                    double seqCoverageFractUnique = (double)coveredOneBasesResiduesUnique.Count / protein.Key.Length;
+
+                    sequenceCoverages.Add(protein.Key, (Math.Round(seqCoverageFract, 3), Math.Round(seqCoverageFractUnique, 3)));
+                }
+                proteinSequenceCoverageByProtease.Add(protease.Key, sequenceCoverages);
+            }
+
+            return proteinSequenceCoverageByProtease;
         }
 
         private void MenuItem_Spritz_Click(object sender, RoutedEventArgs e)

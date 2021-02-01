@@ -20,7 +20,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="mzLib" Version="1.0.472" />
+    <PackageReference Include="mzLib" Version="1.0.485" />
     <PackageReference Include="Nett" Version="0.15.0" />
     <PackageReference Include="OxyPlot.Core" Version="2.0.0" />
     <PackageReference Include="OxyPlot.Wpf" Version="2.0.0" />
@@ -32,6 +32,9 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Page Update="ProteaseModificationWindow.xaml">
+      <SubType>Designer</SubType>
+    </Page>
     <Page Update="CustomProteaseWindow.xaml">
       <SubType>Designer</SubType>
     </Page>

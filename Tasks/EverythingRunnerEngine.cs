@@ -37,12 +37,7 @@ namespace Tasks
 
         public Dictionary<string, Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>> PeptideByFile;
 
-        public Dictionary<string, Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>> Results()
-        {
-            return PeptideByFile;
-        }
-
-        public Dictionary<string, Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>> Run()
+        public MyTaskResults Run()
         {
             StartingAllTasks();
             var stopWatch = new Stopwatch();
@@ -53,6 +48,7 @@ namespace Tasks
             OutputFolder = OutputFolder.Replace("$DATETIME", startTimeForAllFilenames);
 
             StringBuilder allResultsText = new StringBuilder();
+            MyTaskResults results = null;
 
             for (int i = 0; i < RunList.Count; i++)
             {
@@ -71,7 +67,8 @@ namespace Tasks
                     Directory.CreateDirectory(outputFolderForThisTask);
 
                 // Actual task running code
-                var myTaskResults = ok.Item2.RunSpecific(outputFolderForThisTask, CurrentXmlDbFilenameList);                
+                var myTaskResults = ok.Item2.RunSpecific(outputFolderForThisTask, CurrentXmlDbFilenameList);
+                results = myTaskResults;
 
                 PeptideByFile = myTaskResults.PeptideByFile;
 
@@ -87,7 +84,7 @@ namespace Tasks
             }
             FinishedWritingAllResultsFileHandler?.Invoke(this, new StringEventArgs(resultsFileName, null));
             FinishedAllTasks(OutputFolder);
-            return PeptideByFile;
+            return results;
         }
 
         private void Warn(string v)
