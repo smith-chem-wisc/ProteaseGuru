@@ -119,7 +119,7 @@
                             <Style.Resources>
                                 <VisualBrush x:Key="CueBannerBrush" AlignmentX="Left" AlignmentY="Center" Stretch="None">
                                     <VisualBrush.Visual>
-                                        <Label Content="ex: '48.003'" Foreground="Gray" />
+                                        <Label Content="ex: '-48.003'" Foreground="Gray" />
                                     </VisualBrush.Visual>
                                 </VisualBrush>
                             </Style.Resources>
