@@ -321,6 +321,14 @@ namespace GUI
                 }
             }            
             UserParameters.TreatModifiedPeptidesAsDifferent = Convert.ToBoolean(ModPepsAreUnique.IsChecked);
+            if (Convert.ToBoolean(FixedCarbamido.IsChecked))
+            {               
+                UserParameters.fixedMods = GlobalVariables.AllModsKnown.Where(p => p.IdWithMotif == "Carbamidomethyl on C").ToList();
+            }
+            if (Convert.ToBoolean(VariableOx.IsChecked))
+            {
+                UserParameters.variableMods = GlobalVariables.AllModsKnown.Where(p => p.IdWithMotif == "Oxidation on M").ToList(); 
+            }
             if (!string.IsNullOrWhiteSpace(MinPeptideMassTextBox.Text))
             {
                 try
