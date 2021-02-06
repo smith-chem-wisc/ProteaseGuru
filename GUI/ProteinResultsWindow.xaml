@@ -45,7 +45,7 @@
                     <Label Height="30" DockPanel.Dock="Left">Search</Label>
                     <TextBox Name="SearchTextBox" TextChanged="Search_TextChanged" DockPanel.Dock="Right"></TextBox>
                 </DockPanel>
-                <Label Content="Proteins" Grid.Row="1" Style="{StaticResource SmallHeaderLabelStyle}" />
+                <Label Content="Protein Accessions" Grid.Row="1" Style="{StaticResource SmallHeaderLabelStyle}" />
 
                 <Grid Grid.Row="2" Style="{StaticResource InternalGridStyle}">
                     <Grid.ColumnDefinitions>

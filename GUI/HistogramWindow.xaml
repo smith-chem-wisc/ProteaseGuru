@@ -90,16 +90,16 @@
                                     <ComboBoxItem Content="Peptide Length">
                                         <ComboBoxItem.ToolTip >
                                             <TextBlock>
-                                                                    Histrogram representing the length distribution of all in silico digested peptides.
+                                                                    Histogram representing the length distribution of all in silico digested peptides.
                                             </TextBlock>
                                         </ComboBoxItem.ToolTip>
                                     </ComboBoxItem>
                                     <ComboBoxItem Content="Protein Sequence Coverage">
                                         <ComboBoxItem.ToolTip >
                                             <TextBlock>
-                                                                    Histrogram representing the distribution of protein seqeunce coverage for all selected proteases.
+                                                                    Histogram representing the distribution of protein seqeunce coverage for all selected proteases.
                                                                     <LineBreak/>
-                                                                    Protein sequence coverage is calculated by dividing the number of amino acids belonging to peptide sequences by the length of the peptide.
+                                                                    Protein sequence coverage is calculated by dividing the number of amino acids belonging to peptide sequences by the length of the protein.
                                             </TextBlock>
                                         </ComboBoxItem.ToolTip>
                                     </ComboBoxItem>
@@ -107,23 +107,23 @@
                                     <ComboBoxItem Content="Protein Sequence Coverage (Unique Peptides Only)">
                                         <ComboBoxItem.ToolTip >
                                             <TextBlock>
-                                                                    Histrogram representing the distribution of protein seqeunce coverage values when only unique peptides are used. 
+                                                                    Histogram representing the distribution of protein seqeunce coverage values when only unique peptides are used. 
                                                                     <LineBreak/>
-                                                                    Protein sequence coverage is calculated by dividing the number of amino acids belonging to unique peptide sequences by the length of the peptide.
+                                                                    Protein sequence coverage is calculated by dividing the number of amino acids belonging to unique peptide sequences by the length of the protein.
                                             </TextBlock>
                                         </ComboBoxItem.ToolTip>
                                     </ComboBoxItem>
                                     <ComboBoxItem Content="Number of Unique Peptides per Protein">
                                         <ComboBoxItem.ToolTip >
                                             <TextBlock>
-                                                                    Histrogram representing the distribution of unique peptides across the proteins present in the selected database.
+                                                                    Histogram representing the distribution of unique peptides across the proteins present in the selected database.
                                             </TextBlock>
                                         </ComboBoxItem.ToolTip>
                                     </ComboBoxItem>
                                     <ComboBoxItem Content="Predicted Peptide Hydrophobicity">
                                         <ComboBoxItem.ToolTip >
                                             <TextBlock>
-                                                                    Histrogram representing the distribution of predicted peptide hydrophobicity values.
+                                                                    Histogram representing the distribution of predicted peptide hydrophobicity values.
                                                                     
                                             </TextBlock>
                                         </ComboBoxItem.ToolTip>
@@ -131,7 +131,7 @@
                                     <ComboBoxItem Content="Predicted Peptide Electrophoretic Mobility">
                                         <ComboBoxItem.ToolTip >
                                             <TextBlock>
-                                                                    Histrogram representing the distribution of predicted peptide electrophoretic mobility values.
+                                                                    Histogram representing the distribution of predicted peptide electrophoretic mobility values.
                                                                     
                                             </TextBlock>
                                         </ComboBoxItem.ToolTip>
