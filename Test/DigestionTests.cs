@@ -14,12 +14,12 @@ namespace Test
     internal static class DigestionTests
     {
 
-            //[OneTimeSetUp]
-            //public static void Setup()
-            //{
+        //[OneTimeSetUp]
+        //public static void Setup()
+        //{
 
-            //}
-            [Test]
+        //}
+        [Test]
         public static void SingleDatabase()
         {
             Loaders.LoadElements();
@@ -294,7 +294,7 @@ namespace Test
                 if (entry.Key.Accession == "testProtein_A")
                 {
                     Assert.AreEqual(28, entry.Value.Count);
-                    
+
                     Assert.AreEqual("MSFVNGNEIFTAAR", entry.Value[0].BaseSequence);
                     Assert.IsFalse(entry.Value[0].Unique);
                     Assert.IsFalse(entry.Value[0].UniqueAllDbs);
@@ -369,7 +369,7 @@ namespace Test
                     Assert.AreEqual("QGHPPGAFNTNNLEWTR", entry.Value[25].BaseSequence);
                     Assert.IsTrue(entry.Value[25].Unique);
                     Assert.IsFalse(entry.Value[25].UniqueAllDbs);
-                    Assert.IsFalse(entry.Value[25].SeqOnlyInThisDb);                   
+                    Assert.IsFalse(entry.Value[25].SeqOnlyInThisDb);
 
                     Assert.AreEqual("NTPVLIQVSMGAAK", entry.Value[4].BaseSequence);
                     Assert.IsFalse(entry.Value[4].Unique);
@@ -521,7 +521,7 @@ namespace Test
 
             DigestionTask digestion = new DigestionTask();
             digestion.DigestionParameters = param;
-            var digestionResults = digestion.RunSpecific(subFolder, new List<DbForDigestion>() { database1});           
+            var digestionResults = digestion.RunSpecific(subFolder, new List<DbForDigestion>() { database1 });
 
             foreach (var entry in digestionResults.PeptideByFile[database1.FileName][param.ProteasesForDigestion.First().Name])
             {
@@ -531,6 +531,131 @@ namespace Test
                 Assert.AreEqual(882.39707781799996, peptides[0].MolecularWeight);
                 Assert.AreEqual(930.400449121, peptides[1].MolecularWeight);
             }
+        }
+
+        [Test]
+        public static void InitiatorMethionineTest()
+        {
+            Loaders.LoadElements();
+            string subFolder = Path.Combine(TestContext.CurrentContext.TestDirectory, @"DigestionTest");
+            Directory.CreateDirectory(subFolder);
+
+            string databasePath1 = Path.Combine(TestContext.CurrentContext.TestDirectory, "Databases", "TestDatabase_1.fasta");
+            DbForDigestion database1 = new DbForDigestion(databasePath1);
+
+            string databasePath2 = Path.Combine(TestContext.CurrentContext.TestDirectory, "Databases", "TestDatabase_2.fasta");
+            DbForDigestion database2 = new DbForDigestion(databasePath2);
+
+            string databasePath3 = Path.Combine(TestContext.CurrentContext.TestDirectory, "Databases", "TestDatabase_3.fasta");
+            DbForDigestion database3 = new DbForDigestion(databasePath3);
+
+            Parameters param = new Parameters();
+            param.MinPeptideLengthAllowed = 1;
+            param.MaxPeptideLengthAllowed = 100;
+            param.NumberOfMissedCleavagesAllowed = 0;
+            param.TreatModifiedPeptidesAsDifferent = false;
+            param.ProteasesForDigestion.Add(ProteaseDictionary.Dictionary["trypsin (cleave before proline)"]);
+            param.OutputFolder = subFolder;
+
+            DigestionTask digestion = new DigestionTask();
+            digestion.DigestionParameters = param;
+            var digestionResults = digestion.RunSpecific(subFolder, new List<DbForDigestion>() { database1, database2, database3 });
+            Assert.AreEqual(3, digestionResults.PeptideByFile.Count);
+            Assert.AreEqual(3, digestionResults.PeptideByFile.Values.Count);
+            Assert.AreEqual(2, digestionResults.PeptideByFile[database1.FileName][param.ProteasesForDigestion.First().Name].Count);
+            Assert.AreEqual(2, digestionResults.PeptideByFile[database2.FileName][param.ProteasesForDigestion.First().Name].Count);
+            Assert.AreEqual(2, digestionResults.PeptideByFile[database3.FileName][param.ProteasesForDigestion.First().Name].Count);
+            foreach (var entry in digestionResults.PeptideByFile[database1.FileName][param.ProteasesForDigestion.First().Name])
+            {
+                if (entry.Key.Accession == "testProtein_1")
+                {
+
+                    Assert.AreEqual("MSFVNGNEIFTAAR", entry.Value[0].BaseSequence);
+                    Assert.AreEqual('-', entry.Value[0].PreviousAA);
+                    Assert.AreEqual(1, entry.Value[0].StartResidue);
+
+
+                    Assert.AreEqual("SFVNGNEIFTAAR", entry.Value[1].BaseSequence);
+                    Assert.AreEqual('M', entry.Value[1].PreviousAA);
+                    Assert.AreEqual(2, entry.Value[1].StartResidue);
+
+
+                }
+                else if (entry.Key.Accession == "testProtein_2")
+                {
+
+
+                    Assert.AreEqual("MSFVNGNEIFTAAR", entry.Value[0].BaseSequence);
+                    Assert.AreEqual('-', entry.Value[0].PreviousAA);
+                    Assert.AreEqual(1, entry.Value[0].StartResidue);
+
+                    Assert.AreEqual("SFVNGNEIFTAAR", entry.Value[1].BaseSequence);
+                    Assert.AreEqual('M', entry.Value[1].PreviousAA);
+                    Assert.AreEqual(2, entry.Value[1].StartResidue);
+
+                }
+            }
+
+            foreach (var entry in digestionResults.PeptideByFile[database2.FileName][param.ProteasesForDigestion.First().Name])
+            {
+                if (entry.Key.Accession == "testProtein_A")
+                {
+
+                    Assert.AreEqual("MSFVNGNEIFTAAR", entry.Value[0].BaseSequence);
+                    Assert.AreEqual('-', entry.Value[0].PreviousAA);
+                    Assert.AreEqual(1, entry.Value[0].StartResidue);
+
+                    Assert.AreEqual("SFVNGNEIFTAAR", entry.Value[1].BaseSequence);
+                    Assert.AreEqual('M', entry.Value[1].PreviousAA);
+                    Assert.AreEqual(2, entry.Value[1].StartResidue);
+
+
+                }
+                else if (entry.Key.Accession == "testProtein_B")
+                {
+
+                    Assert.AreEqual("MSFVNGNEIFTAAR", entry.Value[0].BaseSequence);
+                    Assert.AreEqual('-', entry.Value[0].PreviousAA);
+                    Assert.AreEqual(1, entry.Value[0].StartResidue);
+
+                    Assert.AreEqual("SFVNGNEIFTAAR", entry.Value[1].BaseSequence);
+                    Assert.AreEqual('M', entry.Value[1].PreviousAA);
+                    Assert.AreEqual(2, entry.Value[1].StartResidue);
+
+
+                }
+            }
+
+            foreach (var entry in digestionResults.PeptideByFile[database3.FileName][param.ProteasesForDigestion.First().Name])
+            {
+                if (entry.Key.Accession == "testProtein_one")
+                {
+
+                    Assert.AreEqual("MSFVNGNEIFTAAR", entry.Value[0].BaseSequence);
+                    Assert.AreEqual('-', entry.Value[0].PreviousAA);
+                    Assert.AreEqual(1, entry.Value[0].StartResidue);
+
+                    Assert.AreEqual("SFVNGNEIFTAAR", entry.Value[1].BaseSequence);
+                    Assert.AreEqual('M', entry.Value[1].PreviousAA);
+                    Assert.AreEqual(2, entry.Value[1].StartResidue);
+
+                }
+                else if (entry.Key.Accession == "testProtein_two")
+                {
+
+                    Assert.AreEqual("MSFVNGNEIFTQER", entry.Value[19].BaseSequence);
+                    Assert.AreEqual('-', entry.Value[19].PreviousAA);
+                    Assert.AreEqual(1, entry.Value[19].StartResidue);
+
+                    Assert.AreEqual("SFVNGNEIFTQER", entry.Value[20].BaseSequence);
+                    Assert.AreEqual('M', entry.Value[20].PreviousAA);
+                    Assert.AreEqual(2, entry.Value[20].StartResidue);
+
+                }
+            }
+
+
+            Directory.Delete(subFolder, true);
         }
     }
 }
