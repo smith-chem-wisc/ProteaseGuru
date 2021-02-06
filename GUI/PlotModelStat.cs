@@ -13,7 +13,8 @@ using System.ComponentModel;
 using System.Linq;
 using System.Globalization;
 using Proteomics;
-using Easy.Common.Extensions;
+//using Easy.Common.Extensions;
+using System.Windows;
 
 namespace GUI
 {
@@ -21,11 +22,12 @@ namespace GUI
     public class PlotModelStat : INotifyPropertyChanged, IPlotModel
     {
         private PlotModel privateModel;
-        private readonly ObservableCollection<InSilicoPep> allPeptides;
-        private readonly Dictionary<string, ObservableCollection<InSilicoPep>> PeptidesByProtease;
-        private readonly Dictionary<string, ObservableCollection<double>> SequenceCoverageByProtease = new Dictionary<string, ObservableCollection<double>>();
-        private readonly Dictionary<string, ObservableCollection<double>> SequenceCoverageUniqueByProtease = new Dictionary<string, ObservableCollection<double>>();
-        private readonly Dictionary<string, ObservableCollection<double>> UniquePeptidesPerProtein = new Dictionary<string, ObservableCollection<double>>();
+        private readonly List<InSilicoPep> AllPeptides = new List<InSilicoPep>();
+        public Dictionary<string, List<InSilicoPep>> PeptidesByProtease = new Dictionary<string, List<InSilicoPep>>();
+        public Dictionary<string, Dictionary<Protein, (double, double)>> SequenceCoverageByProtease_Return = new Dictionary<string, Dictionary<Protein, (double, double)>>();
+        private readonly Dictionary<string, List<double>> SequenceCoverageByProtease = new Dictionary<string, List<double>>();
+        private readonly Dictionary<string, List<double>> SequenceCoverageUniqueByProtease = new Dictionary<string, List<double>>();
+        private readonly Dictionary<string, List<double>> UniquePeptidesPerProtein = new Dictionary<string, List<double>>();
         List<string> Proteases = new List<string>();
         //access series stuff here
         public Dictionary<string, Dictionary<string, string>> DataTable = new Dictionary<string, Dictionary<string, string>>();
@@ -65,15 +67,239 @@ namespace GUI
             }
         }
 
-        public PlotModelStat(string plotName, ObservableCollection<InSilicoPep> peptides, Dictionary<string, ObservableCollection<InSilicoPep>> peptidesByProtease, Dictionary<string, Dictionary<Protein, (double,double)>> sequenceCoverageByProtease)
+        public PlotModelStat(string plotName, List<string> dbSelected, Dictionary<string, Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>> peptideByFile, Parameters userParams, Dictionary<string, Dictionary<Protein, (double,double)>> sequenceCoverageByProtease)
         {
             privateModel = new PlotModel { Title = plotName, DefaultFontSize = 12 };
-            allPeptides = peptides;
-            this.PeptidesByProtease = peptidesByProtease;
-            foreach (var protease in sequenceCoverageByProtease)
+
+            Dictionary<string, Dictionary<Protein, List<InSilicoPep>>> databasePeptides = new Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>();
+            
+            if (dbSelected.Count() > 1)
             {
-                ObservableCollection<double> coverages = new ObservableCollection<double>();
-                ObservableCollection<double> uniqueCoverages = new ObservableCollection<double>();
+                MessageBox.Show("Note: More than one protein database has been selected. Unique peptides are defined as being unique to a single protein in all selected databases.");
+
+                List<InSilicoPep> allPeptides = new List<InSilicoPep>();
+
+                foreach (var db in dbSelected)
+                {
+                    var pep = peptideByFile[db];
+                    foreach (var entry in pep)
+                    {
+                        foreach (var protein in entry.Value)
+                        {
+                            allPeptides.AddRange(protein.Value);
+                        }
+                    }
+                }
+
+                Dictionary<string, List<InSilicoPep>> peptidesToProteins = new Dictionary<string, List<InSilicoPep>>();
+
+                if (plotName == " Protein Sequence Coverage (Unique Peptides Only)" || plotName == " Number of Unique Peptides per Protein")
+                {
+                    if (userParams.TreatModifiedPeptidesAsDifferent)
+                    {
+                        peptidesToProteins = allPeptides.GroupBy(p => p.FullSequence).ToDictionary(group => group.Key, group => group.ToList());
+                    }
+                    else
+                    {
+                        peptidesToProteins = allPeptides.GroupBy(p => p.BaseSequence).ToDictionary(group => group.Key, group => group.ToList());
+                    }
+                    var unique = peptidesToProteins.Where(p => p.Value.Select(p => p.Protein).Distinct().Count() == 1).ToDictionary(group => group.Key, group => group.Value);
+                    var shared = peptidesToProteins.Where(p => p.Value.Select(p => p.Protein).Distinct().Count() > 1).ToDictionary(group => group.Key, group => group.Value);
+
+                    foreach (var db in dbSelected)
+                    {
+                        var pep = peptideByFile[db];
+                        foreach (var entry in pep)
+                        {
+
+                            if (databasePeptides.ContainsKey(entry.Key))
+                            {
+                                foreach (var prot in pep[entry.Key])
+                                {
+                                    if (databasePeptides[entry.Key].ContainsKey(prot.Key))
+                                    {
+                                        List<InSilicoPep> proteinSpecificPeptides = new List<InSilicoPep>();
+                                        foreach (var peptide in prot.Value)
+                                        {
+                                            if (userParams.TreatModifiedPeptidesAsDifferent)
+                                            {
+                                                if (unique.ContainsKey(peptide.FullSequence))
+                                                {
+                                                    peptide.Unique = true;
+                                                }
+                                                else
+                                                {
+                                                    peptide.Unique = false;
+                                                }
+                                            }
+                                            else
+                                            {
+                                                if (unique.ContainsKey(peptide.BaseSequence))
+                                                {
+                                                    peptide.Unique = true;
+                                                }
+                                                else
+                                                {
+                                                    peptide.Unique = false;
+                                                }
+                                            }
+
+                                            proteinSpecificPeptides.Add(peptide);
+                                        }
+
+                                        databasePeptides[entry.Key][prot.Key].AddRange(proteinSpecificPeptides);
+                                    }
+                                    else
+                                    {
+                                        List<InSilicoPep> proteinSpecificPeptides = new List<InSilicoPep>();
+                                        foreach (var peptide in prot.Value)
+                                        {
+                                            if (userParams.TreatModifiedPeptidesAsDifferent)
+                                            {
+                                                if (unique.ContainsKey(peptide.FullSequence))
+                                                {
+                                                    peptide.Unique = true;
+                                                }
+                                                else
+                                                {
+                                                    peptide.Unique = false;
+                                                }
+                                            }
+                                            else
+                                            {
+                                                if (unique.ContainsKey(peptide.BaseSequence))
+                                                {
+                                                    peptide.Unique = true;
+                                                }
+                                                else
+                                                {
+                                                    peptide.Unique = false;
+                                                }
+                                            }
+                                            proteinSpecificPeptides.Add(peptide);
+
+                                        }
+                                        databasePeptides[entry.Key].Add(prot.Key, proteinSpecificPeptides);
+                                    }
+                                }
+                            }
+                            else
+                            {
+                                Dictionary<Protein, List<InSilicoPep>> proteinDic = new Dictionary<Protein, List<InSilicoPep>>();
+                                foreach (var prot in entry.Value)
+                                {
+                                    List<InSilicoPep> proteinSpecificPeptides = new List<InSilicoPep>();
+                                    foreach (var peptide in prot.Value)
+                                    {
+                                        if (userParams.TreatModifiedPeptidesAsDifferent)
+                                        {
+                                            if (unique.ContainsKey(peptide.FullSequence))
+                                            {
+                                                peptide.Unique = true;
+                                            }
+                                            else
+                                            {
+                                                peptide.Unique = false;
+                                            }
+                                        }
+                                        else
+                                        {
+                                            if (unique.ContainsKey(peptide.BaseSequence))
+                                            {
+                                                peptide.Unique = true;
+                                            }
+                                            else
+                                            {
+                                                peptide.Unique = false;
+                                            }
+                                        }
+                                        proteinSpecificPeptides.Add(peptide);
+
+                                    }
+                                    proteinDic.Add(prot.Key, proteinSpecificPeptides);
+                                }
+                                databasePeptides.Add(entry.Key, proteinDic);
+                            }
+                        }
+
+                    }
+                    SequenceCoverageByProtease_Return = CalculateProteinSequenceCoverage(databasePeptides);
+                }
+                else 
+                {                    
+                    foreach (var db in dbSelected)
+                    {
+                        var pep = peptideByFile[db];
+                        foreach (var entry in pep)
+                        {
+
+                            if (databasePeptides.ContainsKey(entry.Key))
+                            {
+                                foreach (var prot in pep[entry.Key])
+                                {
+                                    if (databasePeptides[entry.Key].ContainsKey(prot.Key))
+                                    {
+                                        databasePeptides[entry.Key][prot.Key].AddRange(prot.Value);
+                                    }
+                                    else
+                                    {                                       
+                                        databasePeptides[entry.Key].Add(prot.Key, prot.Value);
+                                    }
+                                }
+                            }
+                            else
+                            {
+                                Dictionary<Protein, List<InSilicoPep>> proteinDic = new Dictionary<Protein, List<InSilicoPep>>();
+                                foreach (var prot in entry.Value)
+                                {
+                                    List<InSilicoPep> proteinSpecificPeptides = new List<InSilicoPep>();                                    
+                                    proteinDic.Add(prot.Key, prot.Value);
+                                }
+                                databasePeptides.Add(entry.Key, proteinDic);
+                            }
+                        }
+
+                    }
+                }
+                SequenceCoverageByProtease_Return = CalculateProteinSequenceCoverage(databasePeptides);
+            }
+            else
+            {
+                MessageBox.Show("Note: One protein database has been selected. Unique peptides are defined as being unique to a single protein in this database.");
+                databasePeptides = peptideByFile[dbSelected.FirstOrDefault()];
+                SequenceCoverageByProtease_Return = CalculateProteinSequenceCoverage(databasePeptides);
+            }
+
+            List<InSilicoPep> peptides = new List<InSilicoPep>();
+            Dictionary<string, List<InSilicoPep>> peptidesByProtease = new Dictionary<string, List<InSilicoPep>>();
+
+
+            foreach (var protease in databasePeptides)
+            {
+                List<InSilicoPep> proteasePeptides = new List<InSilicoPep>();
+                foreach (var protein in protease.Value)
+                {
+                    proteasePeptides.AddRange(protein.Value);
+                    peptides.AddRange(protein.Value);
+                }
+                if (peptidesByProtease.ContainsKey(protease.Key))
+                {
+                    peptidesByProtease[protease.Key] = proteasePeptides;
+                }
+                else
+                {
+                    peptidesByProtease.Add(protease.Key, proteasePeptides);
+                }
+            }
+
+            AllPeptides = peptides;
+            this.PeptidesByProtease = peptidesByProtease;
+
+
+            foreach (var protease in SequenceCoverageByProtease_Return)
+            {
+                List<double> coverages = new List<double>();
+                List<double> uniqueCoverages = new List<double>();
                 foreach (var protein in protease.Value)
                 {
                     coverages.Add(protein.Value.Item1);
@@ -84,7 +310,7 @@ namespace GUI
             }
             foreach (var protease in peptidesByProtease)
             {
-                ObservableCollection<double> uniquePeptides = new ObservableCollection<double>();
+                List<double> uniquePeptides = new List<double>();
                 foreach (var protein in protease.Value.GroupBy(pep => pep.Protein).ToDictionary(group => group.Key, group => group.ToList()))
                 {
                     uniquePeptides.Add(protein.Value.Where(pep => pep.Unique).Count());
@@ -164,7 +390,7 @@ namespace GUI
             privateModel.LegendTitle = "Protease";
             privateModel.LegendPlacement = LegendPlacement.Outside;
             privateModel.LegendPosition = LegendPosition.BottomLeft;
-            privateModel.LegendItemAlignment = HorizontalAlignment.Left;
+            privateModel.LegendItemAlignment = OxyPlot.HorizontalAlignment.Left;
             privateModel.LegendFontSize = 12;
             privateModel.TitleFontSize = 15;
             privateModel.LegendOrientation = LegendOrientation.Horizontal;
@@ -430,7 +656,46 @@ namespace GUI
             });
             privateModel.Axes.Add(new LinearAxis { Title = yAxisTitle, Position = AxisPosition.Left, AbsoluteMinimum = 0 });
         }
-        
+
+        //calculate the protein seqeunce coverage of each protein based on its digested peptides (for all peptides and unique peptides)
+        private Dictionary<string, Dictionary<Protein, (double, double)>> CalculateProteinSequenceCoverage(Dictionary<string, Dictionary<Protein, List<InSilicoPep>>> peptidesByProtease)
+        {
+            Dictionary<string, Dictionary<Protein, (double, double)>> proteinSequenceCoverageByProtease = new Dictionary<string, Dictionary<Protein, (double, double)>>();
+            foreach (var protease in peptidesByProtease)
+            {
+                Dictionary<Protein, (double, double)> sequenceCoverages = new Dictionary<Protein, (double, double)>();
+                foreach (var protein in protease.Value)
+                {
+                    //count which residues are covered at least one time by a peptide                    
+                    HashSet<int> coveredOneBasesResiduesUnique = new HashSet<int>();
+                    HashSet<int> coveredOneBasesResidues = new HashSet<int>();
+                    var minPeptideList = protein.Value.ToHashSet();
+
+                    foreach (var peptide in minPeptideList)
+                    {
+                        for (int i = peptide.StartResidue; i <= peptide.EndResidue; i++)
+                        {
+                            coveredOneBasesResidues.Add(i);
+                            if (peptide.Unique == true)
+                            {
+                                coveredOneBasesResiduesUnique.Add(i);
+                            }                           
+
+                        }                       
+
+                    }
+                    //divide the number of covered residues by the total residues in the protein                    
+                    double seqCoverageFractUnique = (double)coveredOneBasesResiduesUnique.Count / protein.Key.Length;
+                    double seqCoverageFract = (double)coveredOneBasesResidues.Count / protein.Key.Length;
+
+                    sequenceCoverages.Add(protein.Key, (Math.Round(seqCoverageFract, 3), Math.Round(seqCoverageFractUnique, 3)));
+                }
+                proteinSequenceCoverageByProtease.Add(protease.Key, sequenceCoverages);
+            }
+
+            return proteinSequenceCoverageByProtease;
+        }       
+
         //unused interface methods
         public void Update(bool updateData) { }
         public void Render(IRenderContext rc, double width, double height) { }
