@@ -146,8 +146,9 @@
                             </StackPanel>
                                 
                         </Grid>
-                        <Grid Grid.Row=" 2" Style="{StaticResource PageGridStyle}" Height="440" Width="850">                            
-                            <oxy:PlotView  x:Name="plotViewStat" Model="{Binding Model}" FontSize="16" FontStretch="Expanded" BorderBrush="LightGray" Height="400" Width="850" HorizontalAlignment="Center" VerticalAlignment="Top"></oxy:PlotView>
+                        <Grid Grid.Row=" 2" Style="{StaticResource PageGridStyle}" Height="440" Width="850"> 
+                            
+                            <oxy:PlotView  x:Name="plotViewStat" Model="{Binding Model}" FontSize="16" FontStretch="Expanded" BorderBrush="LightGray" Height="400" Width="850" HorizontalAlignment="Center" VerticalAlignment="Top" ></oxy:PlotView>
                         </Grid>
 
                         <DockPanel Grid.Row="3" Margin="2" Background="{StaticResource DataGridBackgroundColor}">

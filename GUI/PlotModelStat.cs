@@ -433,6 +433,7 @@ namespace GUI
             // add axes
             privateModel.Axes.Add(categoryAxis);
             privateModel.Axes.Add(new LinearAxis { Title = yAxisTitle, Position = AxisPosition.Left, AbsoluteMinimum = 0 });
+            privateModel.Axes[0].AbsoluteMaximum = privateModel.Axes[0].Maximum;            
 
             foreach (string key in dictsByProtease.Keys)
             {
@@ -588,6 +589,7 @@ namespace GUI
             int skipBinLabel = numBins < minBinLabels ? 1 : numBins / minBinLabels;
 
             // assign axis labels, skip labels based on skipBinLabel, calculate bin totals across all files
+            var MaxValue = 0;
             category = new string[numBins];
             totalCounts = new int[numBins];
             for (int i = start; i <= end; i++)
@@ -599,9 +601,14 @@ namespace GUI
                 foreach (Dictionary<string, int> dict in dictsByProtease.Values)
                 {
                     totalCounts[i - start] += dict.ContainsKey(i.ToString(CultureInfo.InvariantCulture)) ? dict[i.ToString(CultureInfo.InvariantCulture)] : 0;
+                    if (totalCounts[i - start] > MaxValue)
+                    {
+                        MaxValue = totalCounts[i - start];
+                    }
                 }
             }
 
+            
                 // add a column series for each protease
             foreach (string key in dictsByProtease.Keys)
             {
@@ -654,7 +661,12 @@ namespace GUI
                 GapWidth = .1,
                 Angle = labelAngle,
             });
-            privateModel.Axes.Add(new LinearAxis { Title = yAxisTitle, Position = AxisPosition.Left, AbsoluteMinimum = 0 });
+            privateModel.Axes.Add(new LinearAxis { Title = yAxisTitle, Position = AxisPosition.Left});
+            privateModel.Axes[0].AbsoluteMaximum = privateModel.Axes[0].Maximum;
+            privateModel.Axes[0].AbsoluteMinimum = privateModel.Axes[0].Minimum;
+            privateModel.Axes[1].AbsoluteMaximum = MaxValue;
+            privateModel.Axes[1].AbsoluteMinimum = 0;
+            privateModel.Axes[1].Minimum = 0;
         }
 
         //calculate the protein seqeunce coverage of each protein based on its digested peptides (for all peptides and unique peptides)
