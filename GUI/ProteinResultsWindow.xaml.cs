@@ -42,6 +42,7 @@ namespace ProteaseGuruGUI
         private bool MessageShow;
         Parameters UserParams;
         private Dictionary<string, Dictionary<Protein, (double, double)>> SequenceCoverageByProtease;
+        int ProteinExportCount = 1;
 
         public ProteinResultsWindow()
         {
@@ -877,8 +878,22 @@ namespace ProteaseGuruGUI
         {
             var fileDirectory = UserParams.OutputFolder + @"\ProteaseGuruDigestionResults";
             string subFolder = System.IO.Path.Combine(fileDirectory, SelectedProtein.DisplayName);
+            string proteinName = SelectedProtein.DisplayName;
+            if (subFolder.IndexOfAny(System.IO.Path.GetInvalidPathChars()) == -1)
+            {
+                Directory.CreateDirectory(subFolder);
+            }
+            else
+            {
+                proteinName = "Protein" + ProteinExportCount;
+                ProteinExportCount++;
+                MessageBox.Show("Warning: The accession of the protein selected contains invalid characters and has been replaced with -" + proteinName + "- for the generation of folder and file names.");
+                subFolder = System.IO.Path.Combine(fileDirectory, proteinName);
+               
+            }
+                
             Directory.CreateDirectory(subFolder);
-            var fileName = String.Concat("SequenceCoverageMap_"+SelectedProtein.DisplayName+".png");            
+            var fileName = String.Concat("SequenceCoverageMap_"+proteinName+".png");            
             Rect bounds = VisualTreeHelper.GetDescendantBounds(mapGrid);
             double dpi = 96d;
             RenderTargetBitmap rtb = new RenderTargetBitmap((int)bounds.Width, (int)bounds.Height, dpi, dpi, System.Windows.Media.PixelFormats.Default);
@@ -898,7 +913,7 @@ namespace ProteaseGuruGUI
             ms.Close();
             var filePath = System.IO.Path.Combine(subFolder, fileName);
             System.IO.File.WriteAllBytes(filePath, ms.ToArray());
-            var resultsFile = String.Concat(SelectedProtein.DisplayName + "_DigestionResults.txt");
+            var resultsFile = String.Concat(proteinName + "_DigestionResults.txt");
             var proteinAccession = SelectedProtein.DisplayName;
             List<string> results = new List<string>();
             foreach (var protein in ProteinDigestionSummary)
@@ -971,33 +986,39 @@ namespace ProteaseGuruGUI
             }
             metaData.AddRange(peptideStrings);
 
-            var metaFile = String.Concat(SelectedProtein.DisplayName + "_MapMetaData.txt");
+            var metaFile = String.Concat(proteinName + "_MapMetaData.txt");
             File.WriteAllLines(System.IO.Path.Combine(subFolder, metaFile), metaData);
 
             //protein specific peptide files            
             string header = "Database" + tab + "Protease" + tab + "Base Sequence" + tab + "Full Sequence" + tab + "Previous Amino Acid" + tab +
                 "Next Amino Acid" + tab + "Start Residue" + tab + "End Residue" + tab + "Length" + tab + "Molecular Weight" + tab + "Protein Accession" + tab + "Protein Name" + tab + "Unique Peptide (in this database)" + tab + "Unique Peptide (in all databases)" + tab + "Peptide sequence exclusive to this Database" + tab +
                 "Hydrophobicity" + tab + "Electrophoretic Mobility";
+            
             var numberOfPeptides = allPeptides.Count();
             double numberOfFiles = Math.Ceiling(numberOfPeptides / 1000000.0);
             var peptidesInFile = 1;
             var peptideIndex = 0;
             var fileCount = 1;
+            
 
             while (fileCount <= Convert.ToInt32(numberOfFiles))
             {
-                using (StreamWriter output = new StreamWriter(subFolder + @"\ProteaseGuruPeptides_"+proteinAccession+"_" + fileCount + ".tsv"))
+                using (StreamWriter output = new StreamWriter(subFolder + @"\ProteaseGuruPeptides_"+proteinName+"_" + fileCount + ".tsv"))
                 {
                     output.WriteLine(header);
+                    HashSet<string> outputString = new HashSet<string>();
                     while (peptidesInFile < 1000000)
-                    {
+                    {                        
                         if (peptideIndex < numberOfPeptides)
                         {
-                            output.WriteLine(allPeptides[peptideIndex].ToString());
+                            outputString.Add(allPeptides[peptideIndex].ToString());                            
                             peptideIndex++;
                         }
-                        peptidesInFile++;
-
+                        peptidesInFile++;                        
+                    }
+                    foreach (var peptide in outputString)
+                    {
+                        output.WriteLine(peptide);
                     }
                     output.Close();
                     peptidesInFile = 1;
@@ -1015,18 +1036,23 @@ namespace ProteaseGuruGUI
 
                 while (fileCountUnique <= Convert.ToInt32(numberOfFilesUnique))
                 {
-                    using (StreamWriter outputUnique = new StreamWriter(subFolder + @"\ProteaseGuruUniquePeptides_" + proteinAccession + "_" + fileCountUnique + ".tsv"))
+                    using (StreamWriter outputUnique = new StreamWriter(subFolder + @"\ProteaseGuruUniquePeptides_" + proteinName + "_" + fileCountUnique + ".tsv"))
                     {
                         outputUnique.WriteLine(header);
+                        HashSet<string> outputString = new HashSet<string>();
                         while (uniquePeptidesInFile < 1000000)
                         {
                             if (uniquePeptideIndex < numberOfUniquePeptides)
                             {
-                                outputUnique.WriteLine(allPeptidesUnique[uniquePeptideIndex].ToString());
+                                outputString.Add(allPeptides[uniquePeptideIndex].ToString());                                
                                 uniquePeptideIndex++;
                             }
                             uniquePeptidesInFile++;
 
+                        }
+                        foreach (var peptide in outputString)
+                        {
+                            outputUnique.WriteLine(peptide);
                         }
                         outputUnique.Close();
                         uniquePeptidesInFile = 1;
@@ -1038,7 +1064,7 @@ namespace ProteaseGuruGUI
                 var messageBox = MessageBox.Show(message, "", MessageBoxButton.YesNo);
                 if (messageBox == MessageBoxResult.Yes)
                 {
-                    Clipboard.SetText("Coverage Map: " + filePath + "\r\n Coverage Map MetaData: " + System.IO.Path.Combine(subFolder, metaFile) + "\r\nResults Summary File: " + System.IO.Path.Combine(subFolder, resultsFile) + "\r\nAll Peptide Files: " + subFolder + @"\ProteaseGuruPeptides_" + proteinAccession + "_" + 1 + ".tsv" + "\r\nUnique Peptides: " + subFolder + @"\ProteaseGuruUniquePeptides_" + proteinAccession + "_" + 1 + ".tsv");
+                    Clipboard.SetText("Coverage Map: " + filePath + "\r\n Coverage Map MetaData: " + System.IO.Path.Combine(subFolder, metaFile) + "\r\nResults Summary File: " + System.IO.Path.Combine(subFolder, resultsFile) + "\r\nAll Peptide Files: " + subFolder + @"\ProteaseGuruPeptides_" + proteinName + "_" + 1 + ".tsv" + "\r\nUnique Peptides: " + subFolder + @"\ProteaseGuruUniquePeptides_" + proteinName + "_" + 1 + ".tsv");
                 }
             }
             else
@@ -1047,7 +1073,7 @@ namespace ProteaseGuruGUI
                 var messageBox = MessageBox.Show(message, "", MessageBoxButton.YesNo);
                 if (messageBox == MessageBoxResult.Yes)
                 {
-                    Clipboard.SetText("Coverage Map: " + filePath + "\r\n Coverage Map MetaData: " + System.IO.Path.Combine(subFolder, metaFile) + "\r\nResults Summary File: " + System.IO.Path.Combine(subFolder, resultsFile) + "\r\nAll Peptide Files: " + subFolder + @"\ProteaseGuruPeptides_" + proteinAccession + "_" + 1 + ".tsv");
+                    Clipboard.SetText("Coverage Map: " + filePath + "\r\n Coverage Map MetaData: " + System.IO.Path.Combine(subFolder, metaFile) + "\r\nResults Summary File: " + System.IO.Path.Combine(subFolder, resultsFile) + "\r\nAll Peptide Files: " + subFolder + @"\ProteaseGuruPeptides_" + proteinName + "_" + 1 + ".tsv");
                 }
             }
             

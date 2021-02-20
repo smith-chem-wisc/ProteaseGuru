@@ -133,13 +133,14 @@ namespace ProteaseGuruGUI
             HistogramLoading.Items.Add(progressBar);            
            
             //make the plot       
-            PlotModelStat plot = await Task.Run(() => new PlotModelStat(plotName, DBSelected, PeptideByFile,UserParams, sequenceCoverageByProtease));
+            PlotModelStat plot = await Task.Run(() => new PlotModelStat(plotName, DBSelected, PeptideByFile, UserParams, sequenceCoverageByProtease));
             SelectedPlot = plotName;
             PeptidesByProtease = plot.PeptidesByProtease;
             SequenceCoverageByProtease = plot.SequenceCoverageByProtease_Return;
             progressBar.IsIndeterminate = false;
-            //send the plot to GUI
+            //send the plot to GUI            
             plotViewStat.DataContext = plot;
+            plotViewStat.Model.Axes[1].AbsoluteMinimum = 0;            
             //send the data table with plot info to GUI for export if desired
             HistogramDataTable = plot.DataTable;
             HistogramLoading.Items.Clear();
@@ -234,12 +235,12 @@ namespace ProteaseGuruGUI
             Dictionary<string, IEnumerable<double>> numbersByProtease = new Dictionary<string, IEnumerable<double>>();    // key is protease name, value is data from that protease
             Dictionary<string, Dictionary<string, int>> dictsByProtease = new Dictionary<string, Dictionary<string, int>>();   // key is protease name, value is dictionary of bins and their counts
 
-            Dictionary<string, ObservableCollection<double>> UniquePeptidesPerProtein = new Dictionary<string, ObservableCollection<double>>();
+            Dictionary<string, List<double>> UniquePeptidesPerProtein = new Dictionary<string, List<double>>();
 
 
             foreach (var protease in PeptidesByProtease)
             {
-                ObservableCollection<double> uniquePeptides = new ObservableCollection<double>();
+                List<double> uniquePeptides = new List<double>();
                 foreach (var protein in protease.Value.GroupBy(pep => pep.Protein).ToDictionary(group => group.Key, group => group.ToList()))
                 {
                     uniquePeptides.Add(protein.Value.Where(pep => pep.Unique).Count());
@@ -247,15 +248,16 @@ namespace ProteaseGuruGUI
                 UniquePeptidesPerProtein.Add(protease.Key, uniquePeptides);
             }
             double binSize = 0;
+            double maxValue = 0;
             switch (SelectedPlot)
             {               
                 case " Protein Sequence Coverage": // Protein Sequence Coverage                    
                     binSize = 0.01;
-                    Dictionary<string, ObservableCollection<double>> sequenceCoverageByProtease = new Dictionary<string, ObservableCollection<double>>();
+                    Dictionary<string, List<double>> sequenceCoverageByProtease = new Dictionary<string, List<double>>();
                     foreach (var protease in SequenceCoverageByProtease)
                     {
-                            ObservableCollection<double> coverages = new ObservableCollection<double>();
-                            ObservableCollection<double> uniqueCoverages = new ObservableCollection<double>();
+                            List<double> coverages = new List<double>();
+                            List<double> uniqueCoverages = new List<double>();
                             foreach (var protein in protease.Value)
                             {
                                 coverages.Add(protein.Value.Item1);
@@ -266,6 +268,7 @@ namespace ProteaseGuruGUI
                     foreach (string key in sequenceCoverageByProtease.Keys)
                     {
                         numbersByProtease.Add(key, sequenceCoverageByProtease[key].Select(p => p));
+                        maxValue = 1;
                         var testList = numbersByProtease[key].Select(p => roundToBin(p, binSize)).ToList();
                         var results = numbersByProtease[key].GroupBy(p => roundToBin(p, binSize)).OrderBy(p => p.Key).Select(p => p).ToList();
                         dictsByProtease.Add(key, results.ToDictionary(p => p.Key.ToString(), v => v.Count()));
@@ -273,11 +276,11 @@ namespace ProteaseGuruGUI
                     break;
                 case " Protein Sequence Coverage (Unique Peptides Only)": // Protein Sequence Coverage (unique peptides)                    
                     binSize = 0.01;
-                    Dictionary<string, ObservableCollection<double>> sequenceCoverageUniqueByProtease = new Dictionary<string, ObservableCollection<double>>();
+                    Dictionary<string, List<double>> sequenceCoverageUniqueByProtease = new Dictionary<string, List<double>>();
                     foreach (var protease in SequenceCoverageByProtease)
                     {
-                            ObservableCollection<double> coverages = new ObservableCollection<double>();
-                            ObservableCollection<double> uniqueCoverages = new ObservableCollection<double>();
+                            List<double> coverages = new List<double>();
+                            List<double> uniqueCoverages = new List<double>();
                             foreach (var protein in protease.Value)
                             {
                                 coverages.Add(protein.Value.Item1);
@@ -285,9 +288,10 @@ namespace ProteaseGuruGUI
                             }                            
                             sequenceCoverageUniqueByProtease.Add(protease.Key, uniqueCoverages);
                     }
-                        foreach (string key in sequenceCoverageUniqueByProtease.Keys)
+                    foreach (string key in sequenceCoverageUniqueByProtease.Keys)
                     {
                         numbersByProtease.Add(key, sequenceCoverageUniqueByProtease[key].Select(p => p));
+                        maxValue = 1;
                         var testList = numbersByProtease[key].Select(p => roundToBin(p, binSize)).ToList();
                         var results = numbersByProtease[key].GroupBy(p => roundToBin(p, binSize)).OrderBy(p => p.Key).Select(p => p).ToList();
                         dictsByProtease.Add(key, results.ToDictionary(p => p.Key.ToString(), v => v.Count()));
@@ -298,6 +302,7 @@ namespace ProteaseGuruGUI
                     foreach (string key in UniquePeptidesPerProtein.Keys)
                     {
                         numbersByProtease.Add(key, UniquePeptidesPerProtein[key].Select(p => p));
+                        maxValue = numbersByProtease[key].Max();
                         var results = numbersByProtease[key].GroupBy(p => roundToBin(p, binSize)).OrderBy(p => p.Key).Select(p => p);
                         dictsByProtease.Add(key, results.ToDictionary(p => p.Key.ToString(), v => v.Count()));
                     }
@@ -308,44 +313,65 @@ namespace ProteaseGuruGUI
             if (dictsByProtease.Count() != 0)
             {
                 Dictionary<string, Dictionary<string, string>> detailedTable = new Dictionary<string, Dictionary<string, string>>();
-                foreach (string key in dictsByProtease.Keys)
+                double binValue = 0;
+                var proteases = dictsByProtease.Keys;
+                Dictionary<string, string> proteaseSetUp = new Dictionary<string, string>();
+                foreach (var protease in proteases)
                 {
-                    foreach (var d in dictsByProtease[key])
+                    proteaseSetUp.Add(protease, "0");
+                }
+                while (binValue < (maxValue+binSize))
+                {
+                    foreach (var protease in proteases)
                     {
-                        int bin = int.Parse(d.Key);
-                        var histBin = (bin * binSize).ToString(CultureInfo.InvariantCulture);
-                        var histValue = d.Value.ToString();
-                        if (detailedTable.ContainsKey(histBin))
+                        var proteaseSpecific = dictsByProtease[protease];
+                        var binNumber = Math.Round((binValue / binSize), 2).ToString();
+                        var binString = Math.Round((binValue), 2).ToString();
+                        if (proteaseSpecific.ContainsKey(binNumber))
                         {
-                            if (detailedTable[histBin].ContainsKey(key))
+                            if (detailedTable.ContainsKey(binString))
                             {
-                                detailedTable[histBin][key] = histValue;
+                                if (detailedTable[binString].ContainsKey(protease))
+                                {
+                                    detailedTable[binString][protease] = proteaseSpecific[binNumber].ToString();
+                                }
+                                else
+                                {
+                                    detailedTable[binString].Add(protease, proteaseSpecific[binNumber].ToString());
+                                }
                             }
                             else
                             {
-                                detailedTable[histBin].Add(key, histValue);
+                                Dictionary<string, string> proteaseDetails = new Dictionary<string, string>();
+                                proteaseDetails.Add(protease, proteaseSpecific[binNumber].ToString());
+                                detailedTable.Add(binString, proteaseDetails);
                             }
                         }
                         else
                         {
-                            var data = new Dictionary<string, string>();
-                            foreach (var protease in dictsByProtease.Keys)
+                            if (detailedTable.ContainsKey(binString))
                             {
-                                if (protease == key)
+                                if (detailedTable[binString].ContainsKey(protease))
                                 {
-                                    data.Add(key, histValue);
+                                    detailedTable[binString][protease] = "0";
                                 }
                                 else
                                 {
-                                    data.Add(protease, "0");
+                                    detailedTable[binString].Add(protease, "0");
                                 }
                             }
-
-                            detailedTable.Add(histBin, data);
+                            else
+                            {
+                                Dictionary<string, string> proteaseDetails = new Dictionary<string, string>();
+                                proteaseDetails.Add(protease, "0");
+                                detailedTable.Add(binString, proteaseDetails);
+                            }
                         }
-
-                    }
+                    }                        
+                    binValue = binValue + binSize;
                 }
+                
+               
                 DataTable table2 = new DataTable();
                 table2.Columns.Add("Bin Value", typeof(string));                
                 foreach (var protease in proteaseList)
