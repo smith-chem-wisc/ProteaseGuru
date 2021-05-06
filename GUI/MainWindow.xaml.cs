@@ -998,37 +998,8 @@ namespace GUI
                 }
 
             }
-            Dictionary<string, Dictionary<Protein, List<InSilicoPep>>> allPeptidesByProtease = new Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>();
-
-            foreach (var file in PeptidesByFile)
-            {
-                foreach (var protease in file.Value)
-                {
-                    foreach (var protein in protease.Value)
-                    {
-                        if (allPeptidesByProtease.ContainsKey(protease.Key))
-                        {
-                            if (allPeptidesByProtease[protease.Key].ContainsKey(protein.Key))
-                            {
-                                allPeptidesByProtease[protease.Key][protein.Key].AddRange(protein.Value);
-                            }
-                            else
-                            {
-                                allPeptidesByProtease[protease.Key].Add(protein.Key, protein.Value);
-                            }
-                        }
-                        else
-                        {
-                            Dictionary<Protein, List<InSilicoPep>> proteinDic = new Dictionary<Protein, List<InSilicoPep>>();
-                            proteinDic.Add(protein.Key, protein.Value);
-                            allPeptidesByProtease.Add(protease.Key, proteinDic);
-                        }
-                    }
-
-                }
-            }
-
-            var seqCov = CalculateProteinSequenceCoverage(allPeptidesByProtease);
+                       
+            var seqCov = CalculateProteinSequenceCoverage(PeptidesByFile);
 
             AllResultsTab.Content = new AllResultsWindow(PeptidesByFile, loadedParams); // update results display
             ProteinCovMap.Content = new ProteinResultsWindow(PeptidesByFile, loadedParams, seqCov);
@@ -1239,13 +1210,39 @@ namespace GUI
 
         }
 
-        private Dictionary<string, Dictionary<Protein, (double, double)>> CalculateProteinSequenceCoverage(Dictionary<string, Dictionary<Protein, List<InSilicoPep>>> peptidesByProtease)
+        private Dictionary<string, Dictionary<Protein, (double, double)>> CalculateProteinSequenceCoverage(Dictionary<string, Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>> peptideByFile)
         {
-            Dictionary<string, Dictionary<Protein, (double, double)>> proteinSequenceCoverageByProtease = new Dictionary<string, Dictionary<Protein, (double, double)>>();
-            foreach (var protease in peptidesByProtease)
+            Dictionary<string, List<InSilicoPep>> allDatabasePeptidesByProtease = new Dictionary<string, List<InSilicoPep>>();
+            HashSet<Protein> proteins = new HashSet<Protein>();
+            foreach (var database in peptideByFile)
             {
+                foreach (var protease in database.Value)
+                {
+                    if (allDatabasePeptidesByProtease.ContainsKey(protease.Key))
+                    {
+                        foreach (var protein in protease.Value)
+                        {
+                            allDatabasePeptidesByProtease[protease.Key].AddRange(protein.Value);
+                            proteins.Add(protein.Key);
+                        }
+                    }
+                    else
+                    {
+                        allDatabasePeptidesByProtease.Add(protease.Key, protease.Value.SelectMany(p => p.Value).ToList());
+                        foreach (var protein in protease.Value)
+                        {
+                            proteins.Add(protein.Key);
+                        }
+                    }
+                }
+            }
+
+            Dictionary<string, Dictionary<Protein, (double, double)>> proteinSequenceCoverageByProtease = new Dictionary<string, Dictionary<Protein, (double, double)>>();
+            foreach (var protease in allDatabasePeptidesByProtease)
+            {
+                var proteinForProtease = protease.Value.GroupBy(p => p.Protein).ToDictionary(group => group.Key, group => group.ToList());
                 Dictionary<Protein, (double, double)> sequenceCoverages = new Dictionary<Protein, (double, double)>();
-                foreach (var protein in protease.Value)
+                foreach (var protein in proteinForProtease)
                 {
                     //count which residues are covered at least one time by a peptide
                     HashSet<int> coveredOneBasesResidues = new HashSet<int>();
@@ -1266,11 +1263,10 @@ namespace GUI
                     double seqCoverageFract = (double)coveredOneBasesResidues.Count / protein.Key.Length;
                     double seqCoverageFractUnique = (double)coveredOneBasesResiduesUnique.Count / protein.Key.Length;
 
-                    sequenceCoverages.Add(protein.Key, (Math.Round(seqCoverageFract, 3), Math.Round(seqCoverageFractUnique, 3)));
+                    sequenceCoverages.Add(proteins.Where(p => p.Accession == protein.Key).First(), (Math.Round(seqCoverageFract, 3), Math.Round(seqCoverageFractUnique, 3)));
                 }
                 proteinSequenceCoverageByProtease.Add(protease.Key, sequenceCoverages);
             }
-
             return proteinSequenceCoverageByProtease;
         }
 

@@ -70,10 +70,23 @@ namespace Tasks
                     var unique = peptidesToProteins.Where(p => p.Value.Select(p => p.Protein).Distinct().Count() == 1).ToList();
                     var shared = peptidesToProteins.Where(p => p.Value.Select(p => p.Protein).Distinct().Count() > 1).ToList();
                     var sharedPeptidesInOneDb = shared.Where(p => p.Value.Select(p => p.Database).Distinct().Count() == 1);
+                    var uniquePeptidesInOneDb = unique.Where(p => p.Value.Select(p => p.Database).Distinct().Count() == 1);
 
                     List<InSilicoPep> peptidesInOneDb = new List<InSilicoPep>();
+                    int sharedCount = shared.Count;
+                    int uniqueCount = unique.Count;
 
-                    foreach (var pep in unique)
+                    foreach (var entry in unique)
+                    {
+                        if (entry.Value.Select(p => p.Database).Distinct().ToList().Count > 1)
+                        {
+                            uniqueCount = uniqueCount - 1;
+                            sharedCount = sharedCount + 1;                            
+                        }                       
+
+                    }
+                    
+                    foreach (var pep in uniquePeptidesInOneDb)
                     {
                         peptidesInOneDb.AddRange(pep.Value);
                     }
@@ -90,8 +103,8 @@ namespace Tasks
                     summary.Add("            Number of Distinct Peptide Sequences: " + peptidesToProteins.Count());
                     var peptidesForSingleDatabase = peptidesInOneDb.GroupBy(p => p.Database).ToDictionary(group => group.Key, group => group.ToList());
 
-                    summary.Add("Number of Unique Peptide Sequences: " + unique.Count());
-                    summary.Add("Number of Shared Peptide Sequences: " + shared.Count());
+                    summary.Add("Number of Unique Peptide Sequences: " + uniqueCount);
+                    summary.Add("Number of Shared Peptide Sequences: " + sharedCount);
 
                     foreach (var db in peptidesForSingleDatabase)
                     {
