@@ -103,7 +103,7 @@ namespace GUI
                     {
                         peptidesToProteins = allPeptides.GroupBy(p => p.BaseSequence).ToDictionary(group => group.Key, group => group.ToList());
                     }
-                    var unique = peptidesToProteins.Where(p => p.Value.Select(p => p.Protein).Distinct().Count() == 1).ToDictionary(group => group.Key, group => group.Value);
+                    var unique = peptidesToProteins.Where(p => p.Value.Select(p => p.Protein).Distinct().Count() == 1 && p.Value.Select(p=>p.Database).Distinct().Count() ==1 ).ToDictionary(group => group.Key, group => group.Value);
                     var shared = peptidesToProteins.Where(p => p.Value.Select(p => p.Protein).Distinct().Count() > 1).ToDictionary(group => group.Key, group => group.Value);
 
                     foreach (var db in dbSelected)
@@ -670,7 +670,7 @@ namespace GUI
         }
 
         //calculate the protein seqeunce coverage of each protein based on its digested peptides (for all peptides and unique peptides)
-        private Dictionary<string, Dictionary<Protein, (double, double)>> CalculateProteinSequenceCoverage(Dictionary<string, Dictionary<Protein, List<InSilicoPep>>> peptidesByProtease)
+        private Dictionary<string, Dictionary<Protein, (double, double)>> CalculateProteinSequenceCoverage(Dictionary<string, Dictionary<Protein, List<InSilicoPep>>> peptidesByProtease )
         {
             Dictionary<string, Dictionary<Protein, (double, double)>> proteinSequenceCoverageByProtease = new Dictionary<string, Dictionary<Protein, (double, double)>>();
             foreach (var protease in peptidesByProtease)
@@ -691,9 +691,9 @@ namespace GUI
                             if (peptide.Unique == true)
                             {
                                 coveredOneBasesResiduesUnique.Add(i);
-                            }                           
+                            }
 
-                        }                       
+                        }
 
                     }
                     //divide the number of covered residues by the total residues in the protein                    

@@ -41,8 +41,8 @@ namespace GUI
         //Fill in list boxes with options
         private void PopulateListBoxes()
         {
-            cleavageSpecificityListBox.Items.Add("Full");
-            cleavageSpecificityListBox.Items.Add("Semi");
+            cleavageSpecificityListBox.Items.Add("full");
+            cleavageSpecificityListBox.Items.Add("semi");
             cleavageTerminusListBox.Items.Add("C");
             cleavageTerminusListBox.Items.Add("N");
         }

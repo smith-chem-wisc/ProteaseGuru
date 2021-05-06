@@ -75,43 +75,15 @@ namespace Tasks
                     });
 
                 }
-            });
-            
-            foreach (var file in PeptideByFile)
-            {
-                foreach (var protease in file.Value)
-                {
-                    foreach (var protein in protease.Value)
-                    {
-                        if (AllPeptidesByProtease.ContainsKey(protease.Key))
-                        {
-                            if (AllPeptidesByProtease[protease.Key].ContainsKey(protein.Key))
-                            {
-                                AllPeptidesByProtease[protease.Key][protein.Key].AddRange(protein.Value);
-                            }
-                            else
-                            {
-                                AllPeptidesByProtease[protease.Key].Add(protein.Key, protein.Value);
-                            }
-                        }
-                        else 
-                        {
-                            Dictionary<Protein, List<InSilicoPep>> proteinDic = new Dictionary<Protein, List<InSilicoPep>>();
-                            proteinDic.Add(protein.Key, protein.Value);
-                            AllPeptidesByProtease.Add(protease.Key, proteinDic);
-                        }
-                    }
-                    
-                }
-            }
-
-            SequenceCoverageByProtease = CalculateProteinSequenceCoverage(AllPeptidesByProtease);
+            });                                           
 
             Status("Writing Peptide Output...", "peptides");
-            WritePeptidesToTsv(PeptideByFile, OutputFolder, DigestionParameters);            
+            WritePeptidesToTsv(PeptideByFile, OutputFolder, DigestionParameters);
+            SequenceCoverageByProtease = CalculateProteinSequenceCoverage(PeptideByFile);
             MyTaskResults myRunResults = new MyTaskResults(this);
             Status("Writing Results Summary...", "summary");
-           
+            
+            
             return myRunResults;
         }
         // Load proteins from XML or FASTA databases and keep them associated with the database file name from which they came from
@@ -307,13 +279,39 @@ namespace Tasks
             return modifications.Select(n => n.OriginalId).Intersect(shiftingModifications).Count();
         }
 
-        private Dictionary<string, Dictionary<Protein, (double, double)>> CalculateProteinSequenceCoverage(Dictionary<string, Dictionary<Protein, List<InSilicoPep>>> peptidesByProtease)
-        {
-            Dictionary<string, Dictionary<Protein, (double, double)>> proteinSequenceCoverageByProtease = new Dictionary<string, Dictionary<Protein, (double, double)>>();
-            foreach (var protease in peptidesByProtease)
+        private Dictionary<string, Dictionary<Protein, (double, double)>> CalculateProteinSequenceCoverage(Dictionary<string, Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>> peptideByFile)
+        {            
+            Dictionary<string, List<InSilicoPep>> allDatabasePeptidesByProtease = new Dictionary<string, List<InSilicoPep>>();
+            HashSet<Protein> proteins = new HashSet<Protein>();
+            foreach (var database in peptideByFile)
             {
+                foreach (var protease in database.Value)
+                {
+                    if (allDatabasePeptidesByProtease.ContainsKey(protease.Key))
+                    {
+                        foreach (var protein in protease.Value)
+                        {
+                            allDatabasePeptidesByProtease[protease.Key].AddRange(protein.Value);
+                            proteins.Add(protein.Key);
+                        }
+                    }
+                    else
+                    {
+                        allDatabasePeptidesByProtease.Add(protease.Key, protease.Value.SelectMany(p => p.Value).ToList());
+                        foreach (var protein in protease.Value)
+                        {
+                            proteins.Add(protein.Key);
+                        }
+                    }
+                }
+            }
+
+            Dictionary<string, Dictionary<Protein, (double, double)>> proteinSequenceCoverageByProtease = new Dictionary<string, Dictionary<Protein, (double, double)>>();
+            foreach (var protease in allDatabasePeptidesByProtease)
+            {
+                var proteinForProtease = protease.Value.GroupBy(p => p.Protein).ToDictionary(group => group.Key, group => group.ToList());
                 Dictionary<Protein, (double, double)> sequenceCoverages = new Dictionary<Protein, (double, double)>();
-                foreach (var protein in protease.Value)
+                foreach (var protein in proteinForProtease)
                 {
                     //count which residues are covered at least one time by a peptide
                     HashSet<int> coveredOneBasesResidues = new HashSet<int>();
@@ -334,11 +332,10 @@ namespace Tasks
                     double seqCoverageFract = (double)coveredOneBasesResidues.Count / protein.Key.Length;
                     double seqCoverageFractUnique = (double)coveredOneBasesResiduesUnique.Count / protein.Key.Length;
 
-                    sequenceCoverages.Add(protein.Key, (Math.Round(seqCoverageFract, 3), Math.Round(seqCoverageFractUnique, 3)));
+                    sequenceCoverages.Add(proteins.Where(p=>p.Accession == protein.Key).First(), (Math.Round(seqCoverageFract, 3), Math.Round(seqCoverageFractUnique, 3)));
                 }
                 proteinSequenceCoverageByProtease.Add(protease.Key, sequenceCoverages);
             }
-
             return proteinSequenceCoverageByProtease;
         }
 
@@ -398,13 +395,27 @@ namespace Tasks
                     
                     foreach (var entry in unique)
                     {
-                        foreach (var peptide in entry.Value)
+                        if (entry.Value.Select(p=>p.Database).Distinct().ToList().Count >1)
                         {
-                            peptide.UniqueAllDbs = true;
-                            peptide.SeqOnlyInThisDb = true;
-                            allPeptides.Add(peptide);                           
+                            foreach (var peptide in entry.Value)
+                            {
+                                peptide.UniqueAllDbs = false;
+                                peptide.SeqOnlyInThisDb = false;
+                                allPeptides.Add(peptide);
 
-                        }                        
+                            }
+                        }
+                        else
+                        {
+                            foreach (var peptide in entry.Value)
+                            {
+                                peptide.UniqueAllDbs = true;
+                                peptide.SeqOnlyInThisDb = true;
+                                allPeptides.Add(peptide);
+
+                            }
+                        }
+                                             
                     }
                     foreach (var entry in shared)
                     {
