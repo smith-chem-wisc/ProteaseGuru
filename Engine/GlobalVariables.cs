@@ -103,7 +103,6 @@ namespace Engine
 
         // File locations
         public static string DataDir { get; }
-
         public static bool StopLoops { get; set; }
         public static string ElementsLocation { get; }
         public static string ProteaseGuruVersion { get; }        
