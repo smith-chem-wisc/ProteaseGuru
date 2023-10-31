@@ -25,7 +25,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="mzLib" Version="1.0.485" />
+    <PackageReference Include="mzLib" Version="1.0.541" />
     <PackageReference Include="Nett" Version="0.15.0" />
   </ItemGroup>
 

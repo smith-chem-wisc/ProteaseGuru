@@ -9,6 +9,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using UsefulProteomicsDatabases;
+using TopDownProteomics.IO.Obo;
 
 namespace Engine
 {
