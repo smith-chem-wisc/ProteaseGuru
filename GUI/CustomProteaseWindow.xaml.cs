@@ -22,6 +22,7 @@ using System.Globalization;
 using static Tasks.ProteaseGuruTask;
 using MzLibUtil;
 using System.ComponentModel;
+using Easy.Common.Extensions;
 
 namespace GUI
 {
@@ -84,7 +85,8 @@ namespace GUI
 
             if (allCleavageResidues != "")
             {
-                singleCleavageSites = allCleavageResidues.Split(',').ToList();
+                //it is possible that someone will put two commas in a row, which would result in whitespace which is not acceptable
+                singleCleavageSites = allCleavageResidues.Split(',').Where(s=>!s.IsNullOrEmptyOrWhiteSpace()).ToList();
             }
 
             if (allResiduesStoppingCleavage != "")
