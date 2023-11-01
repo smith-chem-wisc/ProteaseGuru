@@ -91,7 +91,8 @@ namespace GUI
 
             if (allResiduesStoppingCleavage != "")
             {
-                singlePreventionSites = allResiduesStoppingCleavage.Split(',').ToList();
+                //it is possible that someone will put two commas in a row, which would result in whitespace which is not acceptable
+                singlePreventionSites = allResiduesStoppingCleavage.Split(',').Where(s=>!s.ToString().IsNullOrEmptyOrWhiteSpace()).ToList();
             }
 
             if (cleavageTerminus == "C")
