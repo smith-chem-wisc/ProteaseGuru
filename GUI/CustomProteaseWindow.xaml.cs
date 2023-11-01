@@ -167,6 +167,5 @@ namespace GUI
             psiAccessionNumber.Clear();
             psiName.Clear();
         }
-
     }
 }
