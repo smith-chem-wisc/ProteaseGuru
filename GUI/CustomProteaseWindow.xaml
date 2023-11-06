@@ -21,7 +21,7 @@
                             <Style.Resources>
                                 <VisualBrush x:Key="CueBannerBrush" AlignmentX="Left" AlignmentY="Center" Stretch="None">
                                     <VisualBrush.Visual>
-                                        <Label Content="ex: 'trypsin'" Foreground="Gray" />
+                                        <Label Content="trypsin" Foreground="Gray" />
                                     </VisualBrush.Visual>
                                 </VisualBrush>
                             </Style.Resources>
@@ -44,16 +44,16 @@
             <StackPanel Orientation="Horizontal">
                 <Label Content="Sequences Inducing Cleavage" Width="180" Style="{StaticResource xSmallHeaderLabelStyle}"></Label>
                 <Label Content="*" Foreground="Red" FontWeight="Bold" />
-                <TextBox Name="sequencesInducingCleavageTextBox" Width="155" Height="20">
+                <local:MotifTextBoxControl x:Name="sequencesInducingCleavageTextBox" Width="155" Height="20">
                     <ToolTipService.ToolTip>
-                        <ToolTip Content="Use single letter code and separate with ','"/>
+                        <ToolTip Content="Use single letter code and separate with comma"/>
                     </ToolTipService.ToolTip>
                     <TextBox.Style>
-                        <Style TargetType="TextBox" xmlns:sys="clr-namespace:System;assembly=mscorlib">
+                        <Style TargetType="local:MotifTextBoxControl" xmlns:sys="clr-namespace:System;assembly=mscorlib">
                             <Style.Resources>
                                 <VisualBrush x:Key="CueBannerBrush" AlignmentX="Left" AlignmentY="Center" Stretch="None">
                                     <VisualBrush.Visual>
-                                        <Label Content="ex: 'K,R'" Foreground="Gray" />
+                                        <Label Content= "K,R" Foreground="Gray" />
                                     </VisualBrush.Visual>
                                 </VisualBrush>
                             </Style.Resources>
@@ -70,22 +70,22 @@
                             </Style.Triggers>
                         </Style>
                     </TextBox.Style>
-                </TextBox>
+                </local:MotifTextBoxControl>
             </StackPanel>
             <!--What Stops it from Cleaving there-->
             <StackPanel Orientation="Horizontal">
                 <Label Content="Sequences Preventing Cleavage" Width="180" Style="{StaticResource xSmallHeaderLabelStyle}"></Label>
                 <Label Content="*" Foreground="Red" FontWeight="Bold" />
-                <TextBox Name="sequencesPreventingCleavageBox" Width="155" Height="20">
+                <local:MotifTextBoxControl x:Name="sequencesPreventingCleavageBox" Width="155" Height="20">
                     <ToolTipService.ToolTip>
-                        <ToolTip Content="Use single amino acid code and separate with ','"/>
+                        <ToolTip Content="Use single amino acid code and separate with comma"/>
                     </ToolTipService.ToolTip>
                     <TextBox.Style>
-                        <Style TargetType="TextBox" xmlns:sys="clr-namespace:System;assembly=mscorlib">
+                        <Style TargetType="local:MotifTextBoxControl" xmlns:sys="clr-namespace:System;assembly=mscorlib">
                             <Style.Resources>
                                 <VisualBrush x:Key="CueBannerBrush" AlignmentX="Left" AlignmentY="Center" Stretch="None">
                                     <VisualBrush.Visual>
-                                        <Label Content="ex: 'P'" Foreground="Gray" />
+                                        <Label Content="P" Foreground="Gray" />
                                     </VisualBrush.Visual>
                                 </VisualBrush>
                             </Style.Resources>
@@ -102,7 +102,7 @@
                             </Style.Triggers>
                         </Style>
                     </TextBox.Style>
-                </TextBox>
+                </local:MotifTextBoxControl>
             </StackPanel>            
             <!--Location Restriction-->
             <StackPanel Orientation="Horizontal">

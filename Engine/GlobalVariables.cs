@@ -9,6 +9,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using UsefulProteomicsDatabases;
+using TopDownProteomics.IO.Obo;
 
 namespace Engine
 {
@@ -102,7 +103,6 @@ namespace Engine
 
         // File locations
         public static string DataDir { get; }
-
         public static bool StopLoops { get; set; }
         public static string ElementsLocation { get; }
         public static string ProteaseGuruVersion { get; }        
