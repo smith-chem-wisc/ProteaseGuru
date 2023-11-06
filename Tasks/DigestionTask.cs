@@ -9,7 +9,9 @@ using System.Data;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
+using Easy.Common.Extensions;
 using UsefulProteomicsDatabases;
 
 namespace Tasks
@@ -36,12 +38,59 @@ namespace Tasks
             AllPeptidesByProtease = new Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>();
             PeptideByFile =
                 new Dictionary<string, Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>>(dbFileList.Count);
-            int threads_1 = Environment.ProcessorCount - 1 > dbFileList.Count() ? dbFileList.Count : Environment.ProcessorCount - 1;
-            int[] threadArray_1 = Enumerable.Range(0, threads_1).ToArray();
+            int maxThreadsPerFile = Environment.ProcessorCount - 1;
+            int[] threads = Enumerable.Range(0, maxThreadsPerFile).ToArray();
 
-            Parallel.ForEach(threadArray_1, (j) =>
+            object myLock = new object();
+
+            List<HashSet<PeptideWithSetModifications>> allPeptides = new List<HashSet<PeptideWithSetModifications>>();
+            List<HashSet<int>> allPeptidesFullSequences = new List<HashSet<int>>();
+            for (int j = 0; j < dbFileList.Count; j++)
             {
-                for (; j < dbFileList.Count(); j += threads_1)
+                HashSet<PeptideWithSetModifications> allPeptidesInDatabase = new HashSet<PeptideWithSetModifications>();
+                HashSet<int> allPeptidesFullSequenceHashInDatabase = new HashSet<int>();
+                Status("Loading Protein Database(s)...", "loadDbs");
+                List<Protein> proteins = LoadProteins(dbFileList[j]);
+                if (proteins.Any())
+                {
+                    foreach (var protease in DigestionParameters.ProteasesForDigestion)
+                    {
+                        DigestionParams p = new DigestionParams(protease.ToString(),
+                            DigestionParameters.NumberOfMissedCleavagesAllowed, DigestionParameters.MinPeptideLengthAllowed,
+                            DigestionParameters.MaxPeptideLengthAllowed);
+                        Parallel.ForEach(threads, (i) =>
+                        {
+                            List<PeptideWithSetModifications> peptides = new List<PeptideWithSetModifications>();
+                            List<int> fullSequenceHashes = new List<int>();
+                            for (; i < proteins.Count; i += maxThreadsPerFile)
+                            {
+                                List<PeptideWithSetModifications> oneProteinsPeptides =
+                                    proteins[i].Digest(p, new List<Modification>(), new List<Modification>()).ToList();
+                                peptides.AddRange(oneProteinsPeptides);
+                                fullSequenceHashes.AddRange(oneProteinsPeptides.Select(p=>p.FullSequence.GetHashCode()).ToList());
+                            }
+
+                            lock (myLock)
+                            {
+                                allPeptidesInDatabase.AddRange(peptides);
+                                allPeptidesFullSequenceHashInDatabase.AddRange(fullSequenceHashes);
+
+                            }
+                        });
+                    }
+                }
+                allPeptides.Add(allPeptidesInDatabase);
+                allPeptidesFullSequences.Add(allPeptidesFullSequenceHashInDatabase);
+            }
+
+
+
+            Parallel.ForEach(threads, (j) =>
+            {
+                
+                
+                
+                for (; j < dbFileList.Count(); j += maxThreadsPerFile)
                 {
                     var database = dbFileList[j];                    
                     Status("Loading Protein Database(s)...", "loadDbs");
@@ -85,6 +134,11 @@ namespace Tasks
             
             
             return myRunResults;
+        }
+
+        private int GetPeptideHashCode(PeptideWithSetModifications peptide)
+        {
+            return peptide.FullSequence.GetHashCode() + peptide.Protein.GetHashCode();
         }
         // Load proteins from XML or FASTA databases and keep them associated with the database file name from which they came from
         protected List<Protein> LoadProteins(DbForDigestion database)
