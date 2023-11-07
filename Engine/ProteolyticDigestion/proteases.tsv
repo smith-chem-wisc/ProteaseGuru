@@ -9,6 +9,8 @@ Glu-C (with asp)	"E|,D|"			full
 Lys-C (don't cleave before proline)	K[P]|			full	MS:1001309	Lys-C	(?<=K)(?!P)		
 Lys-C (cleave before proline)	K|			full	MS:1001310	Lys-C/P	(?<=K)		
 Lys-N	|K			full					
+pepsin	"F|,L|,Y|,W|"			full				
+papain	"L|,G|"			full				
 trypsin (cleave before proline)	"K|,R|"			full	MS:1001313	Trypsin/P	(?<=[KR])		
 trypsin (don't cleave before proline)	"K[P]|,R[P]|"			full	MS:1001251	Trypsin	(?<=[KR])(?!P) 		
 collagenase	GPX|GPX			full					
