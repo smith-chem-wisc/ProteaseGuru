@@ -21,7 +21,6 @@ using System.IO;
 using System.Globalization;
 using static Tasks.ProteaseGuruTask;
 using MzLibUtil;
-using ProteaseGuruGUI;
 using System.Diagnostics;
 using UsefulProteomicsDatabases;
 

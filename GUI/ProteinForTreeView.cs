@@ -1,9 +1,9 @@
-﻿using Proteomics;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using Proteomics;
 using Tasks;
 
-namespace ProteaseGuruGUI
+namespace GUI
 {
     //gives structure for protein information in protein search window
     class ProteinForTreeView

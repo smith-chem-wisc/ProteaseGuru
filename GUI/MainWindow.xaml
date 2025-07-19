@@ -4,7 +4,6 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:GUI"
-        xmlns:Controls="clr-namespace:ProteaseGuruGUI"
         mc:Ignorable="d"
         Drop="Window_Drop" AllowDrop="true" 
         WindowStartupLocation="CenterScreen"
@@ -709,15 +708,15 @@
             </TabItem>
 
             <TabItem Header="Results Summary" Style="{StaticResource TabItemStyle}" Name="AllResultsTab">
-                <Controls:AllResultsWindow/>
+                <local:AllResultsWindow/>
             </TabItem>
 
             <TabItem Header="Histograms" Style="{StaticResource TabItemStyle}" Name="AllHistogramsTab">
-                <Controls:HistogramWindow/>
+                <local:HistogramWindow/>
             </TabItem>
 
             <TabItem Header="Protein Search" Style="{StaticResource TabItemStyle}" Name="ProteinCovMap">
-                <Controls:ProteinResultsWindow/>
+                <local:ProteinResultsWindow/>
             </TabItem>
 
             <TabItem Header="Help" Style="{StaticResource TabItemStyle}">
