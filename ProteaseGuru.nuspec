@@ -1,0 +1,63 @@
+<?xml version="1.0"?>
+
+<package>
+	<metadata>
+		<id>ProteaseGuru</id>
+		<version>0.1.1</version>
+		<title>ProteaseGuru</title>
+		<authors>Rachel M.</authors>
+		<owners>Rachel M.</owners>
+		<license type="expression">LGPL-3.0-or-later</license>
+		<projectUrl>https://github.com/smith-chem-wisc/ProteaseGuru</projectUrl>
+		<icon>GUI/icons/proteaseGuru.png</icon>
+		<description>An in silico digestion tool for the planning of bottom-up proteomic experiments.</description>
+		<tags>Chemistry Spectrometry Proteomics</tags>
+		<dependencies>
+			<group targetFramework="net8.0">
+				<dependency id="mzLib" version="1.0.564" />
+				<dependency id="Nett" version="0.15.0" />
+				<dependency id="TopDownProteomics" version="0.0.287" />
+			</group>
+			<group targetFramework="net8.0-windows7.0">
+				<dependency id="mzLib" version="1.0.564" />
+				<dependency id="Nett" version="0.15.0" />
+				<dependency id="TopDownProteomics" version="0.0.287" />
+				<dependency id="OxyPlot.Core" version="2.0.0" />
+				<dependency id="OxyPlot.Wpf" version="2.0.0" />
+			</group>
+		</dependencies>
+	</metadata>
+	<files>
+		<!-- Engine project files -->
+		<file src="Engine\bin\x64\Release\net8.0\Engine.dll" target="lib\net8.0" />
+		<file src="Engine\Data\elements.dat" target="lib\net8.0\Data" />
+		<file src="Engine\Data\PSI-MOD.obo.xml" target="lib\net8.0\Data" />
+		<file src="Engine\Data\ptmlist.txt" target="lib\net8.0\Data" />
+		<file src="Engine\Data\unimod.xml" target="lib\net8.0\Data" />
+		<file src="Engine\Mods\aListOfmods.txt" target="lib\net8.0\Mods" />
+		<file src="Engine\Mods\glyco.txt" target="lib\net8.0\Mods" />
+		<file src="Engine\Mods\ProteaseMods.txt" target="lib\net8.0\Mods" />
+		<file src="Engine\Mods\Mods.txt" target="lib\net8.0\Mods" />
+		<file src="Engine\Mods\substitutions.txt" target="lib\net8.0\Mods" />
+		<file src="Engine\Mods\surfactants.txt" target="lib\net8.0\Mods" />
+		<file src="Engine\Mods\tmt.txt" target="lib\net8.0\Mods" />
+		<file src="Engine\ProteolyticDigestion\proteases.tsv" target="lib\net8.0\ProteolyticDigestion" />
+
+		<!-- Tasks project files -->
+		<file src="Tasks\bin\x64\Release\net8.0\Tasks.dll" target="lib\net8.0" />
+
+		<!-- GUI project files -->
+		<file src="Tasks\bin\x64\Release\net8.0\Tasks.dll" target="lib\net8.0-windows7.0" />
+		<file src="Engine\bin\x64\Release\net8.0\Engine.dll" target="lib\net8.0-windows7.0" />
+		<file src="GUI\bin\x64\Release\net8.0-windows\GUI.dll" target="lib\net8.0-windows7.0" />
+		<file src="GUI\Icons\proteaseGuru.ico" target="lib\net8.0-windows7.0\Icons" />
+		<file src="GUI\Icons\proteaseGuru.png" target="GUI/icons/" />
+
+		<file src="GUI\Icons\MMnice.bmp" target="lib\net8.0-windows7.0\Icons" />
+		<file src="GUI\Twitter_Logo_Blue.bmp" target="lib\net8.0-windows7.0" />
+		<file src="GUI\youtube_20.bmp" target="lib\net8.0-windows7.0" />
+
+		<!-- Example: add other output DLLs/resources as needed -->
+		<!-- <file src="OtherProject\bin\x64\Release\net8.0\OtherProject.dll" target="lib\net8.0" /> -->
+	</files>
+</package>
