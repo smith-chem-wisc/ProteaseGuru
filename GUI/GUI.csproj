@@ -42,10 +42,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Icons\" />
-  </ItemGroup>
-
-  <ItemGroup>
     <Resource Include="proteaseGuru.ico">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Resource>
@@ -58,6 +54,10 @@
     </None>
 
     <None Update="Icons\proteaseGuru.ico">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+
+    <None Update="Icons\proteaseGuru.png">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
 
