@@ -22,8 +22,11 @@ Check out the [wiki page](https://github.com/smith-chem-wisc/ProteaseGuru/wiki) 
 
 * Environment:
   * 64-bit operating system
-  * .NET Core 3.1:
-     * Windows: https://dotnet.microsoft.com/download/dotnet-core/thank-you/runtime-desktop-3.1.3-windows-x64-installer
+  * .NET Core 8.0:
+    * Windows: https://dotnet.microsoft.com/en-us/download/dotnet/thank-you/sdk-8.0.401-windows-x64-installer
+    * macOS, x64 Intel processor: https://dotnet.microsoft.com/en-us/download/dotnet/thank-you/sdk-8.0.401-macos-x64-installer
+    * macOS, ARM Apple Silicon processor: https://dotnet.microsoft.com/en-us/download/dotnet/thank-you/sdk-8.0.401-macos-arm64-installer
+    * Linux: https://learn.microsoft.com/dotnet/core/install/linux?WT.mc_id=dotnet-35129-website
 * Note that ProteaseGuru only works on Windows at this time.
 * 8 GB RAM recommended
 
