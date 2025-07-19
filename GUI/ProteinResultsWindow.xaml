@@ -1,10 +1,10 @@
-﻿<UserControl x:Class="ProteaseGuruGUI.ProteinResultsWindow"
+﻿<UserControl x:Class="GUI.ProteinResultsWindow"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
-             mc:Ignorable="d" 
-             xmlns:local="clr-namespace:ProteaseGuruGUI"    
+             mc:Ignorable="d"
+             xmlns:gui="clr-namespace:GUI"
              d:DesignHeight="600" d:DesignWidth="1200">
     <Grid Style="{StaticResource PageGridStyle}">
         <Grid.RowDefinitions>
@@ -100,20 +100,20 @@
                     </Grid.RowDefinitions>
                     <!--Header label-->
                     <Label Content="Protein Digestion Summary" Grid.Row="0" Style="{StaticResource SmallHeaderLabelStyle}" />
-                    <TreeView Grid.Row="1" x:Name="proteinResults" Width ="735" ItemsSource="{Binding}" DataContext="{x:Type local:ProteinSummaryForTreeView}" ScrollViewer.VerticalScrollBarVisibility="Auto">
+                    <TreeView Grid.Row="1" x:Name="proteinResults" Width ="735" ItemsSource="{Binding}" DataContext="{x:Type gui:ProteinSummaryForTreeView}" ScrollViewer.VerticalScrollBarVisibility="Auto">
 
                         <TreeView.Resources>
-                            <HierarchicalDataTemplate DataType="{x:Type local:ProteinSummaryForTreeView}" ItemsSource="{Binding Summary}">
+                            <HierarchicalDataTemplate DataType="{x:Type gui:ProteinSummaryForTreeView}" ItemsSource="{Binding Summary}">
                                 <StackPanel Orientation="Horizontal">
                                     <TextBlock Text="{Binding DisplayName}" FontSize="16" />
                                 </StackPanel>
                             </HierarchicalDataTemplate>
-                            <HierarchicalDataTemplate DataType="{x:Type local:AnalysisSummaryForTreeView}" ItemsSource="{Binding Summary}">
+                            <HierarchicalDataTemplate DataType="{x:Type gui:AnalysisSummaryForTreeView}" ItemsSource="{Binding Summary}">
                                 <StackPanel Orientation="Horizontal">
                                     <TextBlock Text="{Binding DisplayName}" FontSize="15"/>
                                 </StackPanel>
                             </HierarchicalDataTemplate>
-                            <DataTemplate DataType="{x:Type local:ProtSummaryForTreeView}">
+                            <DataTemplate DataType="{x:Type gui:ProtSummaryForTreeView}">
                                 <StackPanel Orientation="Horizontal">
                                     <TextBlock Text="{Binding DisplayName}" FontSize="13.5"/>
                                 </StackPanel>

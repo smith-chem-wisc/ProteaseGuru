@@ -1,12 +1,10 @@
-﻿<UserControl x:Class="ProteaseGuruGUI.HistogramWindow"
+﻿<UserControl x:Class="GUI.HistogramWindow"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:oxy ="http://oxyplot.org/wpf"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
-             mc:Ignorable="d" 
-             xmlns:local="clr-namespace:ProteaseGuruGUI"           
-             xmlns:Controls="clr-namespace:ProteaseGuruGUI"
+             mc:Ignorable="d"
              d:DesignHeight="600" d:DesignWidth="1200">
     <Grid Style="{StaticResource PageGridStyle}">
         <Grid.RowDefinitions>
