@@ -21,7 +21,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="mzLib" Version="1.0.541" />
+    <PackageReference Include="mzLib" Version="1.0.564" />
     <PackageReference Include="Nett" Version="0.15.0" />
     <PackageReference Include="OxyPlot.Core" Version="2.0.0" />
     <PackageReference Include="OxyPlot.Wpf" Version="2.0.0" />

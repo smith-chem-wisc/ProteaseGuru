@@ -7,6 +7,7 @@ using Proteomics.ProteolyticDigestion;
 using System.IO;
 using static Tasks.ProteaseGuruTask;
 using Easy.Common.Extensions;
+using Omics.Modifications;
 
 namespace GUI
 {
