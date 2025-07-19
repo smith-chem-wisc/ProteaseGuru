@@ -20,6 +20,8 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
+using Omics.Digestion;
+using Omics.Modifications;
 using Tasks;
 using UsefulProteomicsDatabases;
 

@@ -3,6 +3,7 @@ using Proteomics.ProteolyticDigestion;
 using System;
 using System.Collections.Generic;
 using System.Text;
+using Omics.Modifications;
 
 namespace Tasks
 {

@@ -14,12 +14,12 @@
 		<tags>Chemistry Spectrometry Proteomics</tags>
 		<dependencies>
 			<group targetFramework="net8.0">
-				<dependency id="mzLib" version="1.0.541" />
+				<dependency id="mzLib" version="1.0.564" />
 				<dependency id="Nett" version="0.15.0" />
 				<dependency id="TopDownProteomics" version="0.0.287" />
 			</group>
 			<group targetFramework="net8.0-windows7.0">
-				<dependency id="mzLib" version="1.0.541" />
+				<dependency id="mzLib" version="1.0.564" />
 				<dependency id="Nett" version="0.15.0" />
 				<dependency id="TopDownProteomics" version="0.0.287" />
 				<dependency id="OxyPlot.Core" version="2.0.0" />

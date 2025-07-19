@@ -24,6 +24,7 @@ using MzLibUtil;
 using System.ComponentModel;
 using MassSpectrometry;
 using Chemistry;
+using Omics.Modifications;
 
 namespace GUI
 {
