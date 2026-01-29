@@ -5,44 +5,43 @@ on:
   push:
     branches: [ "master", "main", "update" ]
   pull_request:
-    branches: [ "master" ]
+    branches: [ "master", "main" ]
 
 jobs:
   build:
-    name: build-and-test
-    runs-on: windows-latest
-
     strategy:
       matrix:
         configuration: [Debug, Release]
+
+    runs-on: windows-latest
 
     env:
       Solution_Name: ProteaseGuru.sln
       Test_Project_Path: Test\Test.csproj
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
 
-      - name: Install .NET
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: 8.0.x
+    - name: Install .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: 8.0.x
 
-      - name: Restore dependencies
-        run: dotnet restore ${{ env.Solution_Name }} -r win-x64
+    - name: Restore dependencies
+      run: dotnet restore ${{ env.Solution_Name }}
 
-      - name: Build
-        run: dotnet build ${{ env.Solution_Name }} --configuration ${{ matrix.configuration }} --no-restore -p:Platform=x64
+    - name: Build
+      run: dotnet build ${{ env.Solution_Name }} --configuration ${{ matrix.configuration }} --no-restore -p:Platform=x64
 
-      - name: Execute unit tests
-        run: dotnet test ${{ env.Test_Project_Path }} --configuration ${{ matrix.configuration }} --no-build -p:Platform=x64 --verbosity normal
+    - name: Execute unit tests
+      run: dotnet test ${{ env.Test_Project_Path }} --configuration ${{ matrix.configuration }} --no-build -p:Platform=x64 --verbosity normal
 
-      - name: Upload build artifacts
-        if: matrix.configuration == 'Release'
-        uses: actions/upload-artifact@v4
-        with:
-          name: ProteaseGuru-${{ matrix.configuration }}
-          path: GUI\bin\x64\Release\net8.0-windows\
+    - name: Upload build artifacts
+      if: matrix.configuration == 'Release'
+      uses: actions/upload-artifact@v4
+      with:
+        name: ProteaseGuru-${{ matrix.configuration }}
+        path: GUI\bin\x64\Release\net8.0-windows\
