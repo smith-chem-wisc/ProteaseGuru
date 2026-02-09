@@ -7,201 +7,218 @@ using Tasks;
 namespace Test;
 
 [TestFixture]
+[NonParallelizable] // Prevent parallel execution of tests in this fixture due to shared Chronologer model file
 internal class ChronologerTests
 {
+    // Lock object to synchronize access to Chronologer predictor across tests
+    private static readonly object ChronologerLock = new object();
+
     [Test]
     public static void ChronologerRetentionTimePredictionTest()
     {
-        string subFolder = Path.Combine(TestContext.CurrentContext.TestDirectory, @"ChronologerTest");
+        // Use unique folder name with GUID to prevent conflicts
+        string subFolder = Path.Combine(TestContext.CurrentContext.TestDirectory, $"ChronologerTest_{Guid.NewGuid():N}");
         Directory.CreateDirectory(subFolder);
 
-        string databasePath = Path.Combine(TestContext.CurrentContext.TestDirectory, "Databases", "TestDatabase_1.fasta");
-        DbForDigestion database = new DbForDigestion(databasePath);
-
-        Parameters param = new Parameters();
-        param.MinPeptideLengthAllowed = 7;  // Chronologer works best with peptides >= 7 AA
-        param.MaxPeptideLengthAllowed = 50; // Chronologer has max length limit
-        param.NumberOfMissedCleavagesAllowed = 0;
-        param.TreatModifiedPeptidesAsDifferent = false;
-        param.ProteasesForDigestion.Add(ProteaseDictionary.Dictionary["trypsin (cleave before proline)"]);
-        param.OutputFolder = subFolder;
-
-        DigestionTask digestion = new DigestionTask();
-        digestion.DigestionParameters = param;
-        var digestionResults = digestion.RunSpecific(subFolder, new List<DbForDigestion>() { database });
-
-        // Get all peptides from results
-        var allPeptides = digestionResults.PeptideByFile[database.FileName][param.ProteasesForDigestion.First().Name]
-            .SelectMany(entry => entry.Value)
-            .ToList();
-
-        // Verify we have peptides to test
-        Assert.That(allPeptides.Count, Is.GreaterThan(0), "Should have peptides to test");
-
-        // Test that Chronologer predictions were calculated
-        var rtPredictor = new Chromatography.RetentionTimePrediction.Chronologer.ChronologerRetentionTimePredictor();
-
-        int successfulPredictions = 0;
-        int failedPredictions = 0;
-
-        foreach (var peptide in allPeptides)
+        try
         {
-            var sequence = peptide.BaseSequence;
+            string databasePath = Path.Combine(TestContext.CurrentContext.TestDirectory, "Databases", "TestDatabase_1.fasta");
+            DbForDigestion database = new DbForDigestion(databasePath);
 
-            // Chronologer has length constraints (typically 7-50 amino acids)
-            if (sequence.Length >= 7 && sequence.Length <= 50)
+            Parameters param = new Parameters();
+            param.MinPeptideLengthAllowed = 7;  // Chronologer works best with peptides >= 7 AA
+            param.MaxPeptideLengthAllowed = 50; // Chronologer has max length limit
+            param.NumberOfMissedCleavagesAllowed = 0;
+            param.TreatModifiedPeptidesAsDifferent = false;
+            param.ProteasesForDigestion.Add(ProteaseDictionary.Dictionary["trypsin (cleave before proline)"]);
+            param.OutputFolder = subFolder;
+
+            DigestionTask digestion = new DigestionTask();
+            digestion.DigestionParameters = param;
+            var digestionResults = digestion.RunSpecific(subFolder, new List<DbForDigestion>() { database });
+
+            // Get all peptides from results
+            var allPeptides = digestionResults.PeptideByFile[database.FileName][param.ProteasesForDigestion.First().Name]
+                .SelectMany(entry => entry.Value)
+                .ToList();
+
+            // Verify we have peptides to test
+            Assert.That(allPeptides.Count, Is.GreaterThan(0), "Should have peptides to test");
+
+            int successfulPredictions = 0;
+            int failedPredictions = 0;
+
+            foreach (var peptide in allPeptides)
             {
-                // Verify the sequence only contains valid amino acids
-                bool hasValidAminoAcids = sequence.All(c => "ACDEFGHIKLMNPQRSTVWY".Contains(c));
+                var sequence = peptide.BaseSequence;
 
-                if (hasValidAminoAcids)
+                // Chronologer has length constraints (typically 7-50 amino acids)
+                if (sequence.Length >= 7 && sequence.Length <= 50)
                 {
-                    successfulPredictions++;
+                    // Verify the sequence only contains valid amino acids
+                    bool hasValidAminoAcids = sequence.All(c => "ACDEFGHIKLMNPQRSTVWY".Contains(c));
+
+                    if (hasValidAminoAcids)
+                    {
+                        successfulPredictions++;
+                    }
+                    else
+                    {
+                        failedPredictions++;
+                    }
                 }
                 else
                 {
                     failedPredictions++;
                 }
             }
-            else
-            {
-                failedPredictions++;
-            }
+
+            // Assert that we have successful predictions for valid peptides
+            Assert.That(successfulPredictions, Is.GreaterThan(0), "Should have successful RT predictions for valid peptides");
         }
-
-        // Assert that we have successful predictions for valid peptides
-        Assert.That(successfulPredictions, Is.GreaterThan(0), "Should have successful RT predictions for valid peptides");
-
-        Directory.Delete(subFolder, true);
+        finally
+        {
+            // Cleanup with retry logic for locked files
+            CleanupTestFolder(subFolder);
+        }
     }
 
     [Test]
     public static void ChronologerPredictorDirectTest()
     {
-        // Direct test of the Chronologer predictor with known peptides
-        var rtPredictor = new Chromatography.RetentionTimePrediction.Chronologer.ChronologerRetentionTimePredictor();
-
-        // Use correct protease name from the dictionary
-        var protein = new Protein(
-            "MSFVNGNEIFTAARKQGHYAVGAFNTNNLEWTRKPEPTIDESAMPLERKNTPVLIQVSMGAAKYLVKTLVEEEMR",
-            "TestProtein");
-
-        var digestionParams = new DigestionParams(
-            protease: "trypsin (cleave before proline)",
-            maxMissedCleavages: 0,
-            minPeptideLength: 7,
-            maxPeptideLength: 50);
-
-        var peptides = protein.Digest(digestionParams, new List<Modification>(), new List<Modification>()).ToList();
-
-        Assert.That(peptides.Count, Is.GreaterThan(0), "Should have peptides from digestion");
-
-        var validPredictions = new List<double>();
-        var failedPredictions = new List<string>();
-
-        foreach (var peptide in peptides)
+        // Synchronize access to Chronologer predictor
+        lock (ChronologerLock)
         {
-            // Skip peptides with non-standard amino acids
-            if (!peptide.BaseSequence.All(c => "ACDEFGHIKLMNPQRSTVWY".Contains(c)))
+            // Direct test of the Chronologer predictor with known peptides
+            using var rtPredictor = new Chromatography.RetentionTimePrediction.Chronologer.ChronologerRetentionTimePredictor();
+
+            // Use correct protease name from the dictionary
+            var protein = new Protein(
+                "MSFVNGNEIFTAARKQGHYAVGAFNTNNLEWTRKPEPTIDESAMPLERKNTPVLIQVSMGAAKYLVKTLVEEEMR",
+                "TestProtein");
+
+            var digestionParams = new DigestionParams(
+                protease: "trypsin (cleave before proline)",
+                maxMissedCleavages: 0,
+                minPeptideLength: 7,
+                maxPeptideLength: 50);
+
+            var peptides = protein.Digest(digestionParams, new List<Modification>(), new List<Modification>()).ToList();
+
+            Assert.That(peptides.Count, Is.GreaterThan(0), "Should have peptides from digestion");
+
+            var validPredictions = new List<double>();
+            var failedPredictions = new List<string>();
+
+            foreach (var peptide in peptides)
             {
-                continue;
+                // Skip peptides with non-standard amino acids
+                if (!peptide.BaseSequence.All(c => "ACDEFGHIKLMNPQRSTVWY".Contains(c)))
+                {
+                    continue;
+                }
+
+                var result = rtPredictor.PredictRetentionTime(peptide, out var failureReason);
+
+                if (result.HasValue)
+                {
+                    validPredictions.Add(result.Value);
+
+                    Assert.That(double.IsNaN(result.Value), Is.False,
+                        $"RT prediction for {peptide.BaseSequence} should not be NaN");
+                    Assert.That(double.IsInfinity(result.Value), Is.False,
+                        $"RT prediction for {peptide.BaseSequence} should not be infinite");
+                }
+                else
+                {
+                    failedPredictions.Add($"{peptide.BaseSequence}: {failureReason}");
+                }
             }
 
-            var result = rtPredictor.PredictRetentionTime(peptide, out var failureReason);
+            Assert.That(validPredictions.Count, Is.GreaterThan(0),
+                $"Should have successful predictions. Failures: {string.Join(", ", failedPredictions)}");
 
-            if (result.HasValue)
+            foreach (var prediction in validPredictions)
             {
-                validPredictions.Add(result.Value);
-
-                Assert.That(double.IsNaN(result.Value), Is.False,
-                    $"RT prediction for {peptide.BaseSequence} should not be NaN");
-                Assert.That(double.IsInfinity(result.Value), Is.False,
-                    $"RT prediction for {peptide.BaseSequence} should not be infinite");
+                Assert.That(prediction, Is.Not.EqualTo(-1), "Successful prediction should not be sentinel value");
             }
-            else
-            {
-                failedPredictions.Add($"{peptide.BaseSequence}: {failureReason}");
-            }
-        }
-
-        Assert.That(validPredictions.Count, Is.GreaterThan(0),
-            $"Should have successful predictions. Failures: {string.Join(", ", failedPredictions)}");
-
-        foreach (var prediction in validPredictions)
-        {
-            Assert.That(prediction, Is.Not.EqualTo(-1), "Successful prediction should not be sentinel value");
         }
     }
 
     [Test]
     public static void BatchChronologerRetentionTimeConsistencyTest()
     {
-        // Test that batch processing gives consistent results
-        var rtPredictor = new Chromatography.RetentionTimePrediction.Chronologer.ChronologerRetentionTimePredictor();
-
-        var protein = new Protein(
-            "MSFVNGNEIFTAARKQGHYAVGAFNTNNLEWTRKPEPTIDESAMPLERKNTPVLIQVSMGAAKYLVKTLVEEEMR",
-            "TestProtein");
-
-        // Use correct protease name from the dictionary
-        var digestionParams = new DigestionParams(
-            protease: "trypsin (cleave before proline)",
-            maxMissedCleavages: 0,
-            minPeptideLength: 7,
-            maxPeptideLength: 50);
-
-        var peptides = protein.Digest(digestionParams, new List<Modification>(), new List<Modification>()).ToList();
-
-        Assert.That(peptides.Count, Is.GreaterThan(0),
-            "Should have peptides from digestion.");
-
-        // Filter to only peptides that Chronologer can handle
-        var validPeptides = peptides
-            .Where(p => p.BaseSequence.All(c => "ACDEFGHIKLMNPQRSTVWY".Contains(c)))
-            .ToList();
-
-        if (validPeptides.Count == 0)
+        // Synchronize access to Chronologer predictor
+        lock (ChronologerLock)
         {
-            Assert.Inconclusive("No valid peptides for Chronologer testing after filtering");
-            return;
-        }
+            // Test that batch processing gives consistent results
+            using var rtPredictor = new Chromatography.RetentionTimePrediction.Chronologer.ChronologerRetentionTimePredictor();
 
-        // Calculate RT twice for the same peptides
-        var results1 = new double[validPeptides.Count];
-        var results2 = new double[validPeptides.Count];
+            var protein = new Protein(
+                "MSFVNGNEIFTAARKQGHYAVGAFNTNNLEWTRKPEPTIDESAMPLERKNTPVLIQVSMGAAKYLVKTLVEEEMR",
+                "TestProtein");
 
-        for (int i = 0; i < validPeptides.Count; i++)
-        {
-            var result1 = rtPredictor.PredictRetentionTime(validPeptides[i], out var failureReason1);
-            var result2 = rtPredictor.PredictRetentionTime(validPeptides[i], out var failureReason2);
+            // Use correct protease name from the dictionary
+            var digestionParams = new DigestionParams(
+                protease: "trypsin (cleave before proline)",
+                maxMissedCleavages: 0,
+                minPeptideLength: 7,
+                maxPeptideLength: 50);
 
-            results1[i] = result1 ?? -1;
-            results2[i] = result2 ?? -1;
+            var peptides = protein.Digest(digestionParams, new List<Modification>(), new List<Modification>()).ToList();
 
-            if (result1.HasValue != result2.HasValue)
+            Assert.That(peptides.Count, Is.GreaterThan(0),
+                "Should have peptides from digestion.");
+
+            // Filter to only peptides that Chronologer can handle
+            var validPeptides = peptides
+                .Where(p => p.BaseSequence.All(c => "ACDEFGHIKLMNPQRSTVWY".Contains(c)))
+                .ToList();
+
+            if (validPeptides.Count == 0)
             {
-                Assert.Fail($"Inconsistent success/failure for peptide {validPeptides[i].BaseSequence}");
+                Assert.Inconclusive("No valid peptides for Chronologer testing after filtering");
+                return;
             }
+
+            // Calculate RT twice for the same peptides
+            var results1 = new double[validPeptides.Count];
+            var results2 = new double[validPeptides.Count];
+
+            for (int i = 0; i < validPeptides.Count; i++)
+            {
+                var result1 = rtPredictor.PredictRetentionTime(validPeptides[i], out var failureReason1);
+                var result2 = rtPredictor.PredictRetentionTime(validPeptides[i], out var failureReason2);
+
+                results1[i] = result1 ?? -1;
+                results2[i] = result2 ?? -1;
+
+                if (result1.HasValue != result2.HasValue)
+                {
+                    Assert.Fail($"Inconsistent success/failure for peptide {validPeptides[i].BaseSequence}");
+                }
+            }
+
+            // Verify consistency - same input should give same output
+            for (int i = 0; i < validPeptides.Count; i++)
+            {
+                Assert.That(results1[i], Is.EqualTo(results2[i]).Within(0.0001),
+                    $"Chronologer predictions should be consistent for peptide {validPeptides[i].BaseSequence}");
+            }
+
+            Assert.That(results1.Length, Is.EqualTo(validPeptides.Count), "Results array should match peptides count");
+
+            int successCount = results1.Count(r => r != -1);
+            Assert.That(successCount, Is.GreaterThan(0),
+                $"Should have at least one successful prediction. Total peptides: {validPeptides.Count}");
         }
-
-        // Verify consistency - same input should give same output
-        for (int i = 0; i < validPeptides.Count; i++)
-        {
-            Assert.That(results1[i], Is.EqualTo(results2[i]).Within(0.0001),
-                $"Chronologer predictions should be consistent for peptide {validPeptides[i].BaseSequence}");
-        }
-
-        Assert.That(results1.Length, Is.EqualTo(validPeptides.Count), "Results array should match peptides count");
-
-        int successCount = results1.Count(r => r != -1);
-        Assert.That(successCount, Is.GreaterThan(0),
-            $"Should have at least one successful prediction. Total peptides: {validPeptides.Count}");
     }
+
     [Test]
     public static void ChronologerRetentionTimeInTsvOutputTest()
     {
-        // Setup test folder
-        string subFolder = Path.Combine(TestContext.CurrentContext.TestDirectory, @"ChronologerTsvTest");
+        // Use unique folder name with GUID to prevent conflicts
+        string subFolder = Path.Combine(TestContext.CurrentContext.TestDirectory, $"ChronologerTsvTest_{Guid.NewGuid():N}");
         Directory.CreateDirectory(subFolder);
 
         try
@@ -307,19 +324,16 @@ MSFVNGNEIFTAARKQGHYAVGAFNTNNLEWTRKPEPTIDESAMPLERKNTPVLIQVSMGAAKYLVKTLVEEEMRK";
         }
         finally
         {
-            // Cleanup
-            if (Directory.Exists(subFolder))
-            {
-                Directory.Delete(subFolder, true);
-            }
+            // Cleanup with retry logic for locked files
+            CleanupTestFolder(subFolder);
         }
     }
 
     [Test]
     public static void ChronologerRetentionTimeStoredInPeptideObjectTest()
     {
-        // This test verifies that ChronologerRetentionTime is properly stored in InSilicoPep objects
-        string subFolder = Path.Combine(TestContext.CurrentContext.TestDirectory, @"ChronologerObjectTest");
+        // Use unique folder name with GUID to prevent conflicts
+        string subFolder = Path.Combine(TestContext.CurrentContext.TestDirectory, $"ChronologerObjectTest_{Guid.NewGuid():N}");
         Directory.CreateDirectory(subFolder);
 
         try
@@ -385,9 +399,48 @@ MSFVNGNEIFTAARKQGHYAVGAFNTNNLEWTRKPEPTIDESAMPLERKNTPVLIQVSMGAAKYLVKTLVEEEMRK";
         }
         finally
         {
-            if (Directory.Exists(subFolder))
+            // Cleanup with retry logic for locked files
+            CleanupTestFolder(subFolder);
+        }
+    }
+
+    /// <summary>
+    /// Helper method to clean up test folders with retry logic for locked files
+    /// </summary>
+    private static void CleanupTestFolder(string folderPath)
+    {
+        if (!Directory.Exists(folderPath))
+            return;
+
+        const int maxRetries = 3;
+        const int delayMs = 500;
+
+        for (int attempt = 0; attempt < maxRetries; attempt++)
+        {
+            try
             {
-                Directory.Delete(subFolder, true);
+                // Force garbage collection to release any file handles
+                GC.Collect();
+                GC.WaitForPendingFinalizers();
+
+                Directory.Delete(folderPath, true);
+                return; // Success
+            }
+            catch (IOException) when (attempt < maxRetries - 1)
+            {
+                // Wait and retry
+                Thread.Sleep(delayMs);
+            }
+            catch (UnauthorizedAccessException) when (attempt < maxRetries - 1)
+            {
+                // Wait and retry
+                Thread.Sleep(delayMs);
+            }
+            catch (Exception ex)
+            {
+                // Log but don't fail the test for cleanup issues
+                TestContext.WriteLine($"Warning: Could not delete test folder {folderPath}: {ex.Message}");
+                return;
             }
         }
     }

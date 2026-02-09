@@ -235,25 +235,23 @@ namespace Tasks
 
             return inSilicoPeptides;
         }
+        // Add this static field at the top of the DigestionTask class:
+        private static readonly object ChronologerLock = new object();
 
+        // Then update the BatchCalculateRetentionTimesChronologer method:
         private double[] BatchCalculateRetentionTimesChronologer(List<PeptideWithSetModifications> peptides)
         {
-            var rtPredictor = new ChronologerRetentionTimePredictor();
-
             var results = new double[peptides.Count];
 
-            // Current implementation: calculate one-by-one
-            // Future implementation: send entire batch to ML model
-            for (int i = 0; i < peptides.Count; i++)
+            // Synchronize access to prevent concurrent file access to model
+            lock (ChronologerLock)
             {
-                var result = rtPredictor.PredictRetentionTime(peptides[i], out var failureReason);
-                if(result.HasValue)
+                var rtPredictor = new Chromatography.RetentionTimePrediction.Chronologer.ChronologerRetentionTimePredictor();
+
+                for (int i = 0; i < peptides.Count; i++)
                 {
-                    results[i] = result.Value;
-                }
-                else
-                {
-                    results[i] = -1; // or some other sentinel value indicating failure
+                    var result = rtPredictor.PredictRetentionTime(peptides[i], out var failureReason);
+                    results[i] = result ?? -1;
                 }
             }
 
