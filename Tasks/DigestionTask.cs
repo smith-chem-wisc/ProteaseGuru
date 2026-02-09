@@ -131,132 +131,138 @@ namespace Tasks
             
             
         }
-        //digest proteins for each database using the protease and settings provided
-        protected Dictionary<Protein, List<PeptideWithSetModifications>> DigestDatabase(List<Protein> proteinsFromDatabase,
-            Protease protease, Parameters userDigestionParams)
-        {           
-            DigestionParams dp = new DigestionParams(protease: protease.Name, maxMissedCleavages: userDigestionParams.NumberOfMissedCleavagesAllowed,
-                minPeptideLength: userDigestionParams.MinPeptideLengthAllowed, maxPeptideLength: userDigestionParams.MaxPeptideLengthAllowed);            
-            Dictionary<Protein, List<PeptideWithSetModifications>> peptidesForProtein = new Dictionary<Protein, List<PeptideWithSetModifications>>(proteinsFromDatabase.Count);
-            foreach (var protein in proteinsFromDatabase)
-            {
-                List<PeptideWithSetModifications> peptides = protein.Digest(dp, userDigestionParams.fixedMods, userDigestionParams.variableMods).ToList();
-                if (userDigestionParams.MaxPeptideMassAllowed != -1 && userDigestionParams.MinPeptideMassAllowed != -1)
-                {
-                    peptides = peptides.Where(p => p.MonoisotopicMass > userDigestionParams.MinPeptideMassAllowed && p.MonoisotopicMass < userDigestionParams.MaxPeptideMassAllowed).ToList();
-                }
-                else if (userDigestionParams.MaxPeptideMassAllowed == -1 && userDigestionParams.MinPeptideMassAllowed != -1)
-                {
-                    peptides = peptides.Where(p => p.MonoisotopicMass > userDigestionParams.MinPeptideMassAllowed).ToList();
-                }
-                else if (userDigestionParams.MaxPeptideMassAllowed != -1 && userDigestionParams.MinPeptideMassAllowed == -1)
-                {
-                    peptides = peptides.Where(p => p.MonoisotopicMass < userDigestionParams.MaxPeptideMassAllowed).ToList();
-                }                
-                peptidesForProtein.Add(protein, peptides);
-            }
-            return peptidesForProtein;
-        }        
 
-        //determine if a peptide is unqiue or shared. Also generates in silico peptide objects
+        //determine if a peptide is unique or shared. Also generates in silico peptide objects
         Dictionary<Protein, List<InSilicoPep>> DeterminePeptideStatus(string databaseName, Dictionary<Protein, List<PeptideWithSetModifications>> databasePeptides, Parameters userParams)
         {
+            // Initialize the retention time predictor using the SSRCalc 3.0 algorithm
+            // This is used to calculate hydrophobicity values for each peptide
             SSRCalc3 RTPrediction = new SSRCalc3("SSRCalc 3.0 (300A)", SSRCalc3.Column.A300);
+
+            // Output dictionary: maps each protein to its list of processed InSilicoPep objects
             Dictionary<Protein, List<InSilicoPep>> inSilicoPeptides = new Dictionary<Protein, List<InSilicoPep>>();
+
+            // Branch 1: When modified peptides should be treated as distinct sequences
+            // (e.g., PEPTIDEK and PEPTIDEK[Acetyl] are considered different)
             if (userParams.TreatModifiedPeptidesAsDifferent == true)
             {
+                // Flatten all peptides from all proteins, then group by FullSequence (includes modifications)
+                // This allows us to identify peptides that appear in multiple proteins (shared) vs. one protein (unique)
                 foreach (var peptideSequence in databasePeptides.Select(p => p.Value).SelectMany(pep => pep).GroupBy(p => p.FullSequence).ToDictionary(group => group.Key, group => group.ToList()))
                 {
+                    // Check if this peptide sequence maps to exactly one protein (unique peptide)
                     if (peptideSequence.Value.Select(p => p.Protein).Distinct().Count() == 1)
                     {
+                        // Process each peptide instance - mark as UNIQUE (true)
                         foreach (var peptide in peptideSequence.Value)
-                        {                          
-                            
+                        {
+                            // Calculate hydrophobicity and electrophoretic mobility for this peptide
+                            // Then create an InSilicoPep object with unique=true
+
                             if (inSilicoPeptides.ContainsKey(peptide.Protein))
                             {
+                                // Protein already exists in dictionary - add peptide to existing list
                                 inSilicoPeptides[peptide.Protein].Add(new InSilicoPep(peptide.BaseSequence, peptide.FullSequence, peptide.PreviousAminoAcid, peptide.NextAminoAcid, true, RTPrediction.ScoreSequence(peptide), GetCifuentesMobility(peptide), peptide.Length, peptide.MonoisotopicMass, databaseName,
                                     peptide.Protein.Accession, peptide.Protein.Name, peptide.OneBasedStartResidueInProtein, peptide.OneBasedEndResidueInProtein, peptide.DigestionParams.DigestionAgent.Name));
                             }
                             else
                             {
+                                // First peptide for this protein - create new entry in dictionary
                                 inSilicoPeptides.Add(peptide.Protein, new List<InSilicoPep>() { new InSilicoPep(peptide.BaseSequence, peptide.FullSequence, peptide.PreviousAminoAcid, peptide.NextAminoAcid, true, RTPrediction.ScoreSequence(peptide), GetCifuentesMobility(peptide), peptide.Length, peptide.MonoisotopicMass, databaseName,
-                                peptide.Protein.Accession, peptide.Protein.Name, peptide.OneBasedStartResidueInProtein, peptide.OneBasedEndResidueInProtein, peptide.DigestionParams.DigestionAgent.Name)});
+                                    peptide.Protein.Accession, peptide.Protein.Name, peptide.OneBasedStartResidueInProtein, peptide.OneBasedEndResidueInProtein, peptide.DigestionParams.DigestionAgent.Name)});
                             }
-
                         }
                     }
                     else
                     {
+                        // Peptide maps to multiple proteins - mark as SHARED (false)
                         foreach (var peptide in peptideSequence.Value)
                         {
-                            
                             if (inSilicoPeptides.ContainsKey(peptide.Protein))
                             {
-                                inSilicoPeptides[peptide.Protein].Add(new InSilicoPep(peptide.BaseSequence, peptide.FullSequence, peptide.PreviousAminoAcid, peptide.NextAminoAcid, false, RTPrediction.ScoreSequence(peptide), GetCifuentesMobility(peptide), peptide.Length, peptide.MonoisotopicMass,databaseName,
+                                // Add shared peptide to existing protein entry
+                                inSilicoPeptides[peptide.Protein].Add(new InSilicoPep(peptide.BaseSequence, peptide.FullSequence, peptide.PreviousAminoAcid, peptide.NextAminoAcid, false, RTPrediction.ScoreSequence(peptide), GetCifuentesMobility(peptide), peptide.Length, peptide.MonoisotopicMass, databaseName,
                                     peptide.Protein.Accession, peptide.Protein.Name, peptide.OneBasedStartResidueInProtein, peptide.OneBasedEndResidueInProtein, peptide.DigestionParams.DigestionAgent.Name));
                             }
                             else
                             {
+                                // Create new protein entry with shared peptide
                                 inSilicoPeptides.Add(peptide.Protein, new List<InSilicoPep>() { new InSilicoPep(peptide.BaseSequence, peptide.FullSequence, peptide.PreviousAminoAcid, peptide.NextAminoAcid, false, RTPrediction.ScoreSequence(peptide), GetCifuentesMobility(peptide), peptide.Length, peptide.MonoisotopicMass, databaseName,
-                                peptide.Protein.Accession, peptide.Protein.Name, peptide.OneBasedStartResidueInProtein, peptide.OneBasedEndResidueInProtein, peptide.DigestionParams.DigestionAgent.Name)});
+                                    peptide.Protein.Accession, peptide.Protein.Name, peptide.OneBasedStartResidueInProtein, peptide.OneBasedEndResidueInProtein, peptide.DigestionParams.DigestionAgent.Name)});
                             }
-
                         }
                     }
                 }
             }
-            else 
+            // Branch 2: When modifications should be ignored for uniqueness determination
+            // (e.g., PEPTIDEK and PEPTIDEK[Acetyl] are considered the same sequence)
+            else
             {
+                // Group by BaseSequence (ignores modifications) to determine uniqueness
                 foreach (var peptideSequence in databasePeptides.Select(p => p.Value).SelectMany(pep => pep).GroupBy(p => p.BaseSequence).ToDictionary(group => group.Key, group => group.ToList()))
                 {
+                    // Check if this base sequence maps to exactly one protein (unique)
                     if (peptideSequence.Value.Select(p => p.Protein).Distinct().Count() == 1)
                     {
                         foreach (var peptide in peptideSequence.Value)
                         {
+                            // Pre-calculate hydrophobicity and electrophoretic mobility once per peptide
+                            // (optimization: store in variables to avoid recalculating)
                             var hydrophob = RTPrediction.ScoreSequence(peptide);
                             var em = GetCifuentesMobility(peptide);
+
                             if (inSilicoPeptides.ContainsKey(peptide.Protein))
                             {
+                                // Add unique peptide to existing protein entry
                                 inSilicoPeptides[peptide.Protein].Add(new InSilicoPep(peptide.BaseSequence, peptide.FullSequence, peptide.PreviousAminoAcid, peptide.NextAminoAcid, true, hydrophob, em, peptide.Length, peptide.MonoisotopicMass, databaseName,
                                     peptide.Protein.Accession, peptide.Protein.Name, peptide.OneBasedStartResidueInProtein, peptide.OneBasedEndResidueInProtein, peptide.DigestionParams.DigestionAgent.Name));
                             }
                             else
                             {
+                                // Create new protein entry with unique peptide
                                 inSilicoPeptides.Add(peptide.Protein, new List<InSilicoPep>() { new InSilicoPep(peptide.BaseSequence, peptide.FullSequence, peptide.PreviousAminoAcid, peptide.NextAminoAcid, true, hydrophob, em, peptide.Length, peptide.MonoisotopicMass, databaseName,
-                                peptide.Protein.Accession, peptide.Protein.Name, peptide.OneBasedStartResidueInProtein, peptide.OneBasedEndResidueInProtein, peptide.DigestionParams.DigestionAgent.Name)});
+                                    peptide.Protein.Accession, peptide.Protein.Name, peptide.OneBasedStartResidueInProtein, peptide.OneBasedEndResidueInProtein, peptide.DigestionParams.DigestionAgent.Name)});
                             }
-
                         }
                     }
                     else
                     {
+                        // Peptide sequence found in multiple proteins - mark as shared
                         foreach (var peptide in peptideSequence.Value)
                         {
                             var hydrophob = RTPrediction.ScoreSequence(peptide);
                             var em = GetCifuentesMobility(peptide);
+
                             if (inSilicoPeptides.ContainsKey(peptide.Protein))
                             {
+                                // Add shared peptide to existing protein entry
                                 inSilicoPeptides[peptide.Protein].Add(new InSilicoPep(peptide.BaseSequence, peptide.FullSequence, peptide.PreviousAminoAcid, peptide.NextAminoAcid, false, hydrophob, em, peptide.Length, peptide.MonoisotopicMass, databaseName,
                                     peptide.Protein.Accession, peptide.Protein.Name, peptide.OneBasedStartResidueInProtein, peptide.OneBasedEndResidueInProtein, peptide.DigestionParams.DigestionAgent.Name));
                             }
                             else
                             {
+                                // Create new protein entry with shared peptide
                                 inSilicoPeptides.Add(peptide.Protein, new List<InSilicoPep>() { new InSilicoPep(peptide.BaseSequence, peptide.FullSequence, peptide.PreviousAminoAcid, peptide.NextAminoAcid, false, hydrophob, em, peptide.Length, peptide.MonoisotopicMass, databaseName,
-                                peptide.Protein.Accession, peptide.Protein.Name, peptide.OneBasedStartResidueInProtein, peptide.OneBasedEndResidueInProtein, peptide.DigestionParams.DigestionAgent.Name)});
+                                    peptide.Protein.Accession, peptide.Protein.Name, peptide.OneBasedStartResidueInProtein, peptide.OneBasedEndResidueInProtein, peptide.DigestionParams.DigestionAgent.Name)});
                             }
-
                         }
                     }
                 }
             }
+
+            // Handle edge case: proteins that had no valid peptides after digestion
+            // Add them to the dictionary with an empty peptide list to maintain complete protein coverage
             foreach (var protein in databasePeptides.Keys.Where(p => inSilicoPeptides.ContainsKey(p) == false))
             {
                 inSilicoPeptides.Add(protein, new List<InSilicoPep>());
             }
+
+            // Release reference to input dictionary to allow garbage collection
             databasePeptides = null;
+
             return inSilicoPeptides;
         }
-        
+
         //calculate electrophoretic mobility of a peptide
         private static double GetCifuentesMobility(PeptideWithSetModifications pwsm)
         {
