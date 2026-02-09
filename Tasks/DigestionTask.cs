@@ -196,6 +196,9 @@ namespace Tasks
                     // Get pre-calculated values
                     int index = peptideToIndex[peptide];
 
+                    // In the DeterminePeptideStatus method, update the InSilicoPep constructor call:
+                    // Replace this section (around line 190-200):
+
                     var inSilicoPep = new InSilicoPep(
                         peptide.BaseSequence,
                         peptide.FullSequence,
@@ -204,6 +207,7 @@ namespace Tasks
                         isUnique,
                         hydrophobicityValues[index],
                         mobilityValues[index],
+                        retentionTimesChronologer[index],  // Add this new parameter
                         peptide.Length,
                         peptide.MonoisotopicMass,
                         databaseName,
@@ -395,9 +399,10 @@ namespace Tasks
         protected static void WritePeptidesToTsv(Dictionary<string, Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>> peptideByFile, string filePath, Parameters userParams)
         {
             string tab = "\t";
+
             string header = "Database" + tab + "Protease" + tab + "Base Sequence" + tab + "Full Sequence" + tab + "Previous Amino Acid" + tab +
-                "Next Amino Acid" + tab +"Start Residue"+tab+"End Residue"+ tab+ "Length" + tab + "Molecular Weight" + tab + "Protein Accession" + tab + "Protein Name" + tab + "Unique Peptide (in this database)" + tab + "Unique Peptide (in all databases)" + tab+ "Peptide sequence exclusive to this Database" +tab+
-                "Hydrophobicity" + tab + "Electrophoretic Mobility";
+                "Next Amino Acid" + tab + "Start Residue" + tab + "End Residue" + tab + "Length" + tab + "Molecular Weight" + tab + "Protein Accession" + tab + "Protein Name" + tab + "Unique Peptide (in this database)" + tab + "Unique Peptide (in all databases)" + tab + "Peptide sequence exclusive to this Database" + tab +
+                "Hydrophobicity" + tab + "Electrophoretic Mobility" + tab + "Chronologer Retention Time";
             List<InSilicoPep> allPeptides = new List<InSilicoPep>();
             Dictionary<string, Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>> peptideByFileUpdated = new Dictionary<string, Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>>();
             if (peptideByFile.Count > 1)

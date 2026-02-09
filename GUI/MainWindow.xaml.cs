@@ -1,4 +1,4 @@
-﻿using Proteomics;
+using Proteomics;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -929,21 +929,28 @@ namespace GUI
                         {
                             uniqueAll = true;
                         }
-                        bool oneDb= false;
+                        bool oneDb = false;
                         if (info[14] == "True")
                         {
                             oneDb = true;
                         }
                         double hydrophobicity = Convert.ToDouble(info[15]);
                         double electrophoreticMobility = Convert.ToDouble(info[16]);
-                        InSilicoPep pep = new InSilicoPep(baseSeq, fullSeq, previousAA, nextAA, unique, hydrophobicity, electrophoreticMobility, length,
-                            molecularWeight, database, protein, proteinName, start, end, protease);
+
+                        // Handle Chronologer RT - use -1 as default for older files without this column
+                        double chronologerRetentionTime = -1;
+                        if (info.Length > 17)
+                        {
+                            chronologerRetentionTime = Convert.ToDouble(info[17]);
+                        }
+
+                        InSilicoPep pep = new InSilicoPep(baseSeq, fullSeq, previousAA, nextAA, unique, hydrophobicity, electrophoreticMobility,
+                            chronologerRetentionTime, length, molecularWeight, database, protein, proteinName, start, end, protease);
                         pep.UniqueAllDbs = uniqueAll;
                         pep.SeqOnlyInThisDb = oneDb;
                         allpeptides.Add(pep);
                     }
-                    peptideCount++;                                  
-
+                    peptideCount++;
                 }
 
                 foreach (var db in ReloadProteinDbObservableCollection)

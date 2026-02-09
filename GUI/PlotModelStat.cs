@@ -1,4 +1,4 @@
-﻿using Engine;
+using Engine;
 using OxyPlot;
 using OxyPlot.Axes;
 using OxyPlot.Legends;
@@ -346,6 +346,10 @@ namespace GUI
             {
                 histogramPlot(6);
             }
+            else if (plotType.Equals(" Chronologer Predicted Retention Time"))
+            {
+                histogramPlot(7);
+            }
             else if (plotType.Equals(" Amino Acid Distribution"))
             {
                 columnPlot();
@@ -605,6 +609,24 @@ namespace GUI
                         numbersByProtease.Add(key, PeptidesByProtease[key].Select(p => p.ElectrophoreticMobility));
                         var results = numbersByProtease[key].GroupBy(p => roundToBin(p, binSize)).OrderBy(p => p.Key).Select(p => p);
                         dictsByProtease.Add(key, results.ToDictionary(p => p.Key.ToString(), v => v.Count()));
+                    }
+                    break;
+                case 7: // Chronologer Predicted Retention Time
+                    xAxisTitle = "Chronologer Predicted Retention Time";
+                    binSize = 5;
+                    foreach (string key in PeptidesByProtease.Keys)
+                    {
+                        // Filter out failed predictions (value of -1)
+                        var validPredictions = PeptidesByProtease[key]
+                            .Where(p => p.ChronologerRetentionTime >= 0)
+                            .Select(p => p.ChronologerRetentionTime);
+
+                        if (validPredictions.Any())
+                        {
+                            numbersByProtease.Add(key, validPredictions);
+                            var results = numbersByProtease[key].GroupBy(p => roundToBin(p, binSize)).OrderBy(p => p.Key).Select(p => p);
+                            dictsByProtease.Add(key, results.ToDictionary(p => p.Key.ToString(), v => v.Count()));
+                        }
                     }
                     break;
             }

@@ -14,6 +14,7 @@ namespace Tasks
         public bool SeqOnlyInThisDb;
         public double Hydrophobicity;
         public double ElectrophoreticMobility;
+        public double ChronologerRetentionTime;
         public int Length;
         public double MolecularWeight;
         public string Database;
@@ -24,7 +25,7 @@ namespace Tasks
         public string Protease;
 
         public InSilicoPep(string baseSequence, string fullSequence, char previousAA, char nextAA, bool unique, double hydrophobicity, double electrophoreticMobility,
-            int length, double molecularWeight, string database, string protein, string proteinName,int start, int end, string protease)
+            double chronologerRetentionTime, int length, double molecularWeight, string database, string protein, string proteinName, int start, int end, string protease)
         {
             BaseSequence = baseSequence;
             FullSequence = fullSequence;
@@ -33,6 +34,7 @@ namespace Tasks
             Unique = unique;
             Hydrophobicity = hydrophobicity;
             ElectrophoreticMobility = electrophoreticMobility;
+            ChronologerRetentionTime = chronologerRetentionTime;
             Length = length;
             MolecularWeight = molecularWeight;
             Database = database;
@@ -82,23 +84,23 @@ namespace Tasks
             sb.Append(Hydrophobicity);
             sb.Append(tab);
             sb.Append(ElectrophoreticMobility);
-           return sb.ToString();
+            sb.Append(tab);
+            sb.Append(ChronologerRetentionTime);
+            return sb.ToString();
         }
         public override bool Equals(object? obj)
         {
             if (obj is not InSilicoPep q)
                 return false;
-                
+
             return BaseSequence == q.BaseSequence && Protease == q.Protease;
         }
-      
+
 
         public override int GetHashCode()
         {
             return BaseSequence.GetHashCode() + Protease.GetHashCode();
 
         }
-
-
     }
 }
