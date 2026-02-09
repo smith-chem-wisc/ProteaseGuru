@@ -1,10 +1,13 @@
+using System.Collections.Concurrent;
+using System.Data;
+using Chromatography.RetentionTimePrediction;
+using Chromatography.RetentionTimePrediction.Chronologer;
 using Engine;
+using Omics.Modifications;
 using Proteomics;
 using Proteomics.ProteolyticDigestion;
 using Proteomics.RetentionTimePrediction;
-using System.Collections.Concurrent;
-using System.Data;
-using Omics.Modifications;
+using SharpLearning.Common.Interfaces;
 using UsefulProteomicsDatabases;
 
 namespace Tasks
@@ -122,153 +125,179 @@ namespace Tasks
 
         //determine if a peptide is unique or shared. Also generates in silico peptide objects
         /// <summary>
-/// Determines if each peptide is unique (maps to one protein) or shared (maps to multiple proteins).
-/// Also calculates physicochemical properties (hydrophobicity, electrophoretic mobility) and 
-/// generates InSilicoPep objects for downstream analysis.
-/// </summary>
-/// <param name="databaseName">Name of the source database file</param>
-/// <param name="databasePeptides">Dictionary mapping proteins to their digested peptides</param>
-/// <param name="userParams">User-specified digestion parameters</param>
-/// <returns>Dictionary mapping proteins to their processed InSilicoPep objects</returns>
-Dictionary<Protein, List<InSilicoPep>> DeterminePeptideStatus(
-    string databaseName, 
-    Dictionary<Protein, List<PeptideWithSetModifications>> databasePeptides, 
-    Parameters userParams)
-{
-    // ============================================================================
-    // PHASE 1: Determine uniqueness for all peptide sequences
-    // ============================================================================
-    
-    // Flatten all peptides to determine which sequences are unique vs shared
-    var allPeptides = databasePeptides
-        .SelectMany(kvp => kvp.Value)
-        .ToList();
-
-    // Group by sequence to determine uniqueness
-    var peptideGroups = userParams.TreatModifiedPeptidesAsDifferent
-        ? allPeptides.GroupBy(p => p.FullSequence)
-        : allPeptides.GroupBy(p => p.BaseSequence);
-
-    // Build lookup: sequence -> isUnique (maps to exactly one protein)
-    var uniquenessLookup = peptideGroups.ToDictionary(
-        group => group.Key,
-        group => group.Select(p => p.Protein).Distinct().Count() == 1
-    );
-
-    // ============================================================================
-    // PHASE 2: Batch calculate hydrophobicity and electrophoretic mobility
-    // ============================================================================
-    
-    var hydrophobicityValues = BatchCalculateHydrophobicity(allPeptides);
-    var mobilityValues = BatchCalculateElectrophoreticMobility(allPeptides);
-
-    // Create a lookup from peptide to its calculated values
-    var peptideToIndex = new Dictionary<PeptideWithSetModifications, int>();
-    for (int i = 0; i < allPeptides.Count; i++)
-    {
-        peptideToIndex[allPeptides[i]] = i;
-    }
-
-    // ============================================================================
-    // PHASE 3: Build InSilicoPep objects - process protein by protein to maintain order
-    // ============================================================================
-    
-    var inSilicoPeptides = new Dictionary<Protein, List<InSilicoPep>>();
-
-    foreach (var proteinEntry in databasePeptides)
-    {
-        var protein = proteinEntry.Key;
-        var peptideList = new List<InSilicoPep>();
-
-        foreach (var peptide in proteinEntry.Value)
+        /// Determines if each peptide is unique (maps to one protein) or shared (maps to multiple proteins).
+        /// Also calculates physicochemical properties (hydrophobicity, electrophoretic mobility) and 
+        /// generates InSilicoPep objects for downstream analysis.
+        /// </summary>
+        /// <param name="databaseName">Name of the source database file</param>
+        /// <param name="databasePeptides">Dictionary mapping proteins to their digested peptides</param>
+        /// <param name="userParams">User-specified digestion parameters</param>
+        /// <returns>Dictionary mapping proteins to their processed InSilicoPep objects</returns>
+        Dictionary<Protein, List<InSilicoPep>> DeterminePeptideStatus(
+            string databaseName, 
+            Dictionary<Protein, List<PeptideWithSetModifications>> databasePeptides, 
+            Parameters userParams)
         {
-            // Look up uniqueness
-            string sequenceKey = userParams.TreatModifiedPeptidesAsDifferent 
-                ? peptide.FullSequence 
-                : peptide.BaseSequence;
-            bool isUnique = uniquenessLookup[sequenceKey];
+            // ============================================================================
+            // PHASE 1: Determine uniqueness for all peptide sequences
+            // ============================================================================
+    
+            // Flatten all peptides to determine which sequences are unique vs shared
+            var allPeptides = databasePeptides
+                .SelectMany(kvp => kvp.Value)
+                .ToList();
 
-            // Get pre-calculated values
-            int index = peptideToIndex[peptide];
+            // Group by sequence to determine uniqueness
+            var peptideGroups = userParams.TreatModifiedPeptidesAsDifferent
+                ? allPeptides.GroupBy(p => p.FullSequence)
+                : allPeptides.GroupBy(p => p.BaseSequence);
 
-            var inSilicoPep = new InSilicoPep(
-                peptide.BaseSequence,
-                peptide.FullSequence,
-                peptide.PreviousAminoAcid,
-                peptide.NextAminoAcid,
-                isUnique,
-                hydrophobicityValues[index],
-                mobilityValues[index],
-                peptide.Length,
-                peptide.MonoisotopicMass,
-                databaseName,
-                peptide.Protein.Accession,
-                peptide.Protein.Name,
-                peptide.OneBasedStartResidueInProtein,
-                peptide.OneBasedEndResidueInProtein,
-                peptide.DigestionParams.DigestionAgent.Name
+            // Build lookup: sequence -> isUnique (maps to exactly one protein)
+            var uniquenessLookup = peptideGroups.ToDictionary(
+                group => group.Key,
+                group => group.Select(p => p.Protein).Distinct().Count() == 1
             );
 
-            peptideList.Add(inSilicoPep);
+            // ============================================================================
+            // PHASE 2: Batch calculate hydrophobicity and electrophoretic mobility
+            // ============================================================================
+    
+            var hydrophobicityValues = BatchCalculateHydrophobicity(allPeptides);
+            var mobilityValues = BatchCalculateElectrophoreticMobility(allPeptides);
+            var retentionTimesChronologer = BatchCalculateRetentionTimesChronologer(allPeptides);
+
+            // Create a lookup from peptide to its calculated values
+            var peptideToIndex = new Dictionary<PeptideWithSetModifications, int>();
+
+            for (int i = 0; i < allPeptides.Count; i++)
+            {
+                peptideToIndex[allPeptides[i]] = i;
+            }
+
+            // ============================================================================
+            // PHASE 3: Build InSilicoPep objects - process protein by protein to maintain order
+            // ============================================================================
+    
+            var inSilicoPeptides = new Dictionary<Protein, List<InSilicoPep>>();
+
+            foreach (var proteinEntry in databasePeptides)
+            {
+                var protein = proteinEntry.Key;
+                var peptideList = new List<InSilicoPep>();
+
+                foreach (var peptide in proteinEntry.Value)
+                {
+                    // Look up uniqueness
+                    string sequenceKey = userParams.TreatModifiedPeptidesAsDifferent 
+                        ? peptide.FullSequence 
+                        : peptide.BaseSequence;
+                    bool isUnique = uniquenessLookup[sequenceKey];
+
+                    // Get pre-calculated values
+                    int index = peptideToIndex[peptide];
+
+                    var inSilicoPep = new InSilicoPep(
+                        peptide.BaseSequence,
+                        peptide.FullSequence,
+                        peptide.PreviousAminoAcid,
+                        peptide.NextAminoAcid,
+                        isUnique,
+                        hydrophobicityValues[index],
+                        mobilityValues[index],
+                        peptide.Length,
+                        peptide.MonoisotopicMass,
+                        databaseName,
+                        peptide.Protein.Accession,
+                        peptide.Protein.Name,
+                        peptide.OneBasedStartResidueInProtein,
+                        peptide.OneBasedEndResidueInProtein,
+                        peptide.DigestionParams.DigestionAgent.Name
+                    );
+
+                    peptideList.Add(inSilicoPep);
+                }
+
+                inSilicoPeptides[protein] = peptideList;
+            }
+
+            // ============================================================================
+            // PHASE 4: Handle proteins with no peptides
+            // ============================================================================
+    
+            foreach (var protein in databasePeptides.Keys.Where(p => !inSilicoPeptides.ContainsKey(p)))
+            {
+                inSilicoPeptides[protein] = new List<InSilicoPep>();
+            }
+
+            return inSilicoPeptides;
         }
 
-        inSilicoPeptides[protein] = peptideList;
-    }
+        private double[] BatchCalculateRetentionTimesChronologer(List<PeptideWithSetModifications> peptides)
+        {
+            var rtPredictor = new ChronologerRetentionTimePredictor();
 
-    // ============================================================================
-    // PHASE 4: Handle proteins with no peptides
-    // ============================================================================
-    
-    foreach (var protein in databasePeptides.Keys.Where(p => !inSilicoPeptides.ContainsKey(p)))
-    {
-        inSilicoPeptides[protein] = new List<InSilicoPep>();
-    }
+            var results = new double[peptides.Count];
 
-    return inSilicoPeptides;
-}
+            // Current implementation: calculate one-by-one
+            // Future implementation: send entire batch to ML model
+            for (int i = 0; i < peptides.Count; i++)
+            {
+                var result = rtPredictor.PredictRetentionTime(peptides[i], out var failureReason);
+                if(result.HasValue)
+                {
+                    results[i] = result.Value;
+                }
+                else
+                {
+                    results[i] = -1; // or some other sentinel value indicating failure
+                }
+            }
 
-/// <summary>
-/// Batch calculates hydrophobicity (retention time prediction) for a collection of peptides.
-/// This method is designed to be easily replaced with a batch-based ML prediction model.
-/// </summary>
-/// <param name="peptides">Collection of peptides to process</param>
-/// <returns>Array of hydrophobicity values in the same order as input peptides</returns>
-private double[] BatchCalculateHydrophobicity(List<PeptideWithSetModifications> peptides)
-{
-    // Initialize the retention time predictor
-    // TODO: Replace with batch-based ML model (e.g., Prosit, DeepLC, Chronologer)
-    var rtPredictor = new SSRCalc3("SSRCalc 3.0 (300A)", SSRCalc3.Column.A300);
-    
-    var results = new double[peptides.Count];
-    
-    // Current implementation: calculate one-by-one
-    // Future implementation: send entire batch to ML model
-    for (int i = 0; i < peptides.Count; i++)
-    {
-        results[i] = rtPredictor.ScoreSequence(peptides[i]);
-    }
-    
-    return results;
-}
+            return results;
+        }
 
-/// <summary>
-/// Batch calculates electrophoretic mobility for a collection of peptides.
-/// Uses the Cifuentes mobility equation based on charge and mass.
-/// </summary>
-/// <param name="peptides">Collection of peptides to process</param>
-/// <returns>Array of electrophoretic mobility values in the same order as input peptides</returns>
-private double[] BatchCalculateElectrophoreticMobility(List<PeptideWithSetModifications> peptides)
-{
-    var results = new double[peptides.Count];
+        /// <summary>
+        /// Batch calculates hydrophobicity (retention time prediction) for a collection of peptides.
+        /// This method is designed to be easily replaced with a batch-based ML prediction model.
+        /// </summary>
+        /// <param name="peptides">Collection of peptides to process</param>
+        /// <returns>Array of hydrophobicity values in the same order as input peptides</returns>
+        private double[] BatchCalculateHydrophobicity(List<PeptideWithSetModifications> peptides)
+        {
+            // Initialize the retention time predictor
+            // TODO: Replace with batch-based ML model (e.g., Prosit, DeepLC, Chronologer)
+            var rtPredictor = new SSRCalc3("SSRCalc 3.0 (300A)", SSRCalc3.Column.A300);
     
-    // Can be parallelized if needed for large datasets
-    for (int i = 0; i < peptides.Count; i++)
-    {
-        results[i] = GetCifuentesMobility(peptides[i]);
-    }
+            var results = new double[peptides.Count];
     
-    return results;
-}
+            // Current implementation: calculate one-by-one
+            // Future implementation: send entire batch to ML model
+            for (int i = 0; i < peptides.Count; i++)
+            {
+                results[i] = rtPredictor.ScoreSequence(peptides[i]);
+            }
+    
+            return results;
+        }
+
+        /// <summary>
+        /// Batch calculates electrophoretic mobility for a collection of peptides.
+        /// Uses the Cifuentes mobility equation based on charge and mass.
+        /// </summary>
+        /// <param name="peptides">Collection of peptides to process</param>
+        /// <returns>Array of electrophoretic mobility values in the same order as input peptides</returns>
+        private double[] BatchCalculateElectrophoreticMobility(List<PeptideWithSetModifications> peptides)
+        {
+            var results = new double[peptides.Count];
+    
+            // Can be parallelized if needed for large datasets
+            for (int i = 0; i < peptides.Count; i++)
+            {
+                results[i] = GetCifuentesMobility(peptides[i]);
+            }
+    
+            return results;
+        }
         //calculate electrophoretic mobility of a peptide
         private static double GetCifuentesMobility(PeptideWithSetModifications pwsm)
         {
