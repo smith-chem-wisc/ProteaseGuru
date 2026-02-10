@@ -55,6 +55,7 @@ namespace GUI
             EverythingRunnerEngine.NewDbsHandler += AddNewDB;
             EverythingRunnerEngine.WarnHandler += GuiWarnHandler;
             DigestionTask.OutLabelStatusHandler += NewoutLabelStatus;
+            DigestionTask.ProgressHandler += UpdateProgress;
             SummaryForTreeViewObservableCollection = new ObservableCollection<RunSummaryForTreeView>();
             ResetDigestionTask.IsEnabled = false;
         }        
@@ -778,20 +779,23 @@ namespace GUI
                 ProteinDbObservableCollection.Select(b => new DbForDigestion(b.FilePath)).ToList(),
                 OutputFolderTextBox.Text);
 
-            ProgressBar runProgressBar = new ProgressBar();
-            runProgressBar.Orientation = Orientation.Horizontal;
-            runProgressBar.Width = 300;
-            runProgressBar.Height = 30;
-            runProgressBar.IsIndeterminate = true;
+            // Reset and initialize the progress bar
+            TaskProgressBar.Value = 0;
+            TaskProgressBar.Maximum = 100;
+            ProgressTextBox.Text = "Starting...";
+            
             Stopwatch stopwatch = new Stopwatch();
             stopwatch.Start();
-            RunStatus.Items.Add(runProgressBar);
+            
             var results = await Task.Run(() => a.Run());
             Dictionary<string, Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>> peptidesByFile = results.PeptideByFile;
             Dictionary<string, Dictionary<Protein, (double, double)>> sequenceCoverageByProtease = results.SequenceCoverageByProtease;
             stopwatch.Stop();
 
-            runProgressBar.IsIndeterminate = false;
+            // Update progress bar to show completion
+            TaskProgressBar.Value = TaskProgressBar.Maximum;
+            ProgressTextBox.Text = $"Complete! (Elapsed: {stopwatch.Elapsed.TotalSeconds:F1}s)";
+            
             // when done with tasks
             StaticTasksObservableCollection.Clear();
             AllResultsTab.Content = new AllResultsWindow(peptidesByFile, UserParameters); // update results display
@@ -1182,6 +1186,7 @@ namespace GUI
             }
 
 
+
         }
 
         private void NewoutLabelStatus(object sender, StringEventArgs s)
@@ -1193,6 +1198,23 @@ namespace GUI
             else
             {
                 ProgressTextBox.Text = s.S;
+            }
+        }
+
+        /// <summary>
+        /// Updates the progress bar and status text based on progress events from the digestion task.
+        /// </summary>
+        private void UpdateProgress(object sender, ProgressEventArgs e)
+        {
+            if (!Dispatcher.CheckAccess())
+            {
+                Dispatcher.BeginInvoke(new Action(() => UpdateProgress(sender, e)));
+            }
+            else
+            {
+                TaskProgressBar.Maximum = e.MaxProgress;
+                TaskProgressBar.Value = e.CurrentProgress;
+                ProgressTextBox.Text = e.StatusMessage;
             }
         }
 
