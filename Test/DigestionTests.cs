@@ -5,23 +5,31 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using Tasks;
 using UsefulProteomicsDatabases;
 
 namespace Test
 {
     [TestFixture]
-    [NonParallelizable] // Prevent parallel execution due to shared Chronologer model file
+    [NonParallelizable]
     public class DigestionTests
     {
-        // Semaphore to ensure only one test uses Chronologer at a time across all fixtures
-        private static readonly SemaphoreSlim ChronologerSemaphore = new SemaphoreSlim(1, 1);
+        // Named mutex for cross-process synchronization of Chronologer file access
+        private const string ChronologerMutexName = "Global\\ProteaseGuru_Chronologer_Mutex";
+        private Mutex _chronologerMutex;
 
         [SetUp]
         public void SetUp()
         {
-            // Acquire semaphore before each test to prevent Chronologer file conflicts
-            ChronologerSemaphore.Wait();
+            // Create or open a system-wide named mutex
+            _chronologerMutex = new Mutex(false, ChronologerMutexName);
+            
+            // Wait to acquire the mutex (with timeout to prevent deadlocks)
+            if (!_chronologerMutex.WaitOne(TimeSpan.FromMinutes(5)))
+            {
+                throw new TimeoutException("Timed out waiting for Chronologer mutex");
+            }
         }
 
         [TearDown]
@@ -31,8 +39,23 @@ namespace Test
             GC.Collect();
             GC.WaitForPendingFinalizers();
             
-            // Release semaphore after test completes
-            ChronologerSemaphore.Release();
+            // Small delay to ensure file handles are released
+            Thread.Sleep(100);
+            
+            // Release and dispose the mutex
+            try
+            {
+                _chronologerMutex?.ReleaseMutex();
+            }
+            catch (ApplicationException)
+            {
+                // Mutex was not owned by this thread
+            }
+            finally
+            {
+                _chronologerMutex?.Dispose();
+                _chronologerMutex = null;
+            }
         }
 
         /// <summary>
@@ -59,7 +82,7 @@ namespace Test
         /// <summary>
         /// Helper method to clean up test folders with retry logic for locked files
         /// </summary>
-        private static void CleanupTestFolder(string folderPath)
+        private void CleanupTestFolder(string folderPath)
         {
             if (!Directory.Exists(folderPath))
                 return;
@@ -93,7 +116,7 @@ namespace Test
         }
 
         [Test]
-        public static void SingleDatabase()
+        public void SingleDatabase()
         {
             string subFolder = Path.Combine(TestContext.CurrentContext.TestDirectory, $"DigestionTest_{Guid.NewGuid():N}");
             Directory.CreateDirectory(subFolder);
@@ -158,7 +181,7 @@ namespace Test
         }
 
         [Test]
-        public static void MultipleDatabases()
+        public void MultipleDatabases()
         {
             string subFolder = Path.Combine(TestContext.CurrentContext.TestDirectory, $"DigestionTest_{Guid.NewGuid():N}");
             Directory.CreateDirectory(subFolder);
@@ -203,7 +226,7 @@ namespace Test
         }
 
         [Test]
-        public static void ProteaseModTest()
+        public void ProteaseModTest()
         {
             string subFolder = Path.Combine(TestContext.CurrentContext.TestDirectory, $"DigestionTest_{Guid.NewGuid():N}");
             Directory.CreateDirectory(subFolder);
@@ -245,7 +268,7 @@ namespace Test
         }
 
         [Test]
-        public static void InitiatorMethionineTest()
+        public void InitiatorMethionineTest()
         {
             string subFolder = Path.Combine(TestContext.CurrentContext.TestDirectory, $"DigestionTest_{Guid.NewGuid():N}");
             Directory.CreateDirectory(subFolder);
