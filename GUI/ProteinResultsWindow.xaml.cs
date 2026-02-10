@@ -8,7 +8,7 @@ using Omics.BioPolymer;
 using Omics.Modifications;
 using Proteomics;
 using Tasks;
-using Tasks.ProteinCoverageAnalysis;
+using Tasks.CoverageMapConfiguration;
 
 namespace GUI
 {

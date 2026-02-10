@@ -1,6 +1,6 @@
 using Proteomics;
 
-namespace Tasks.ProteinCoverageAnalysis
+namespace Tasks.CoverageMapConfiguration
 {
     /// <summary>
     /// Analyzes protein digestion results and organizes peptide data for coverage analysis.

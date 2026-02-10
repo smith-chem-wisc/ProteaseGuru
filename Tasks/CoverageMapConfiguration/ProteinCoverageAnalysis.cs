@@ -1,4 +1,4 @@
-namespace Tasks.ProteinCoverageAnalysis
+namespace Tasks.CoverageMapConfiguration
 {
     /// <summary>
     /// Simple RGB color representation that is platform-agnostic.

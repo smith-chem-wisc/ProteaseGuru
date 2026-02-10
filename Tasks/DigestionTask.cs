@@ -322,67 +322,188 @@ namespace Tasks
 
             return modifications.Select(n => n.OriginalId).Intersect(shiftingModifications).Count();
         }
+        /// <summary>
+        /// Calculates protein sequence coverage for each protease across all databases.
+        /// 
+        /// Sequence coverage is defined as the percentage of residues in a protein's sequence
+        /// that are covered by at least one peptide from the digestion.
+        /// 
+        /// Returns both total coverage (all peptides) and unique coverage (unique peptides only).
+        /// Coverage values are returned as percentages (0-100), rounded to 2 decimal places.
+        /// </summary>
+        /// <param name="peptideByFile">
+        /// Hierarchical dictionary structure:
+        ///   Database filename -> Protease name -> Protein object -> List of InSilicoPep peptides
+        /// </param>
+        /// <returns>
+        /// Dictionary structure:
+        ///   Protease name -> Protein object -> (total coverage %, unique coverage %)
+        /// </returns>
+        /// <remarks>
+        /// Algorithm:
+        /// 1. Flatten peptides from all databases, grouped by protease
+        /// 2. Build a mapping from protein accession strings to Protein objects
+        /// 3. For each protease, group peptides by protein accession
+        /// 4. For each protein:
+        ///    a. Track which residue positions are covered by any peptide
+        ///    b. Track which residue positions are covered by UNIQUE peptides only
+        ///    c. Calculate coverage as: (covered residues / protein length) * 100
+        /// 5. Return the coverage percentages for each protein-protease combination
+        /// </remarks>
+        private Dictionary<string, Dictionary<Protein, (double, double)>> CalculateProteinSequenceCoverage(
+            Dictionary<string, Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>> peptideByFile)
+        {
+            // ============================================================================
+            // PHASE 1: Aggregate peptides from all databases, organized by protease
+            // ============================================================================
 
-        private Dictionary<string, Dictionary<Protein, (double, double)>> CalculateProteinSequenceCoverage(Dictionary<string, Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>> peptideByFile)
-        {            
+            // Key: protease name, Value: all peptides digested by that protease (across all databases)
             Dictionary<string, List<InSilicoPep>> allDatabasePeptidesByProtease = new Dictionary<string, List<InSilicoPep>>();
-            HashSet<Protein> proteins = new HashSet<Protein>();
+
+            // Maps protein accession string -> actual Protein object
+            // This is needed because InSilicoPep stores protein accession as a string,
+            // but we need to return Protein objects in the result and access their Length property
+            Dictionary<string, Protein> accessionToProtein = new Dictionary<string, Protein>();
+
+            // Iterate through each database file
             foreach (var database in peptideByFile)
             {
+                // Iterate through each protease used on this database
                 foreach (var protease in database.Value)
                 {
-                    if (allDatabasePeptidesByProtease.ContainsKey(protease.Key))
+                    string proteaseName = protease.Key;
+
+                    // If we've already seen this protease (from another database), add to existing list
+                    if (allDatabasePeptidesByProtease.ContainsKey(proteaseName))
                     {
-                        foreach (var protein in protease.Value)
+                        // Add peptides from each protein in this database
+                        foreach (var proteinEntry in protease.Value)
                         {
-                            allDatabasePeptidesByProtease[protease.Key].AddRange(protein.Value);
-                            proteins.Add(protein.Key);
+                            Protein protein = proteinEntry.Key;
+                            List<InSilicoPep> peptides = proteinEntry.Value;
+
+                            allDatabasePeptidesByProtease[proteaseName].AddRange(peptides);
+
+                            // Store the accession -> Protein mapping
+                            // (overwrites if same accession appears in multiple databases, which is fine)
+                            accessionToProtein[protein.Accession] = protein;
                         }
                     }
                     else
                     {
-                        allDatabasePeptidesByProtease.Add(protease.Key, protease.Value.SelectMany(p => p.Value).ToList());
-                        foreach (var protein in protease.Value)
+                        // First time seeing this protease - create new entry
+                        allDatabasePeptidesByProtease.Add(
+                            proteaseName,
+                            protease.Value.SelectMany(p => p.Value).ToList()
+                        );
+
+                        // Store protein mappings for all proteins digested by this protease
+                        foreach (var proteinEntry in protease.Value)
                         {
-                            proteins.Add(protein.Key);
+                            accessionToProtein[proteinEntry.Key.Accession] = proteinEntry.Key;
                         }
                     }
                 }
             }
 
-            Dictionary<string, Dictionary<Protein, (double, double)>> proteinSequenceCoverageByProtease = new Dictionary<string, Dictionary<Protein, (double, double)>>();
+            // ============================================================================
+            // PHASE 2: Calculate coverage for each protease-protein combination
+            // ============================================================================
+
+            // Result structure: Protease name -> Protein -> (total coverage %, unique coverage %)
+            Dictionary<string, Dictionary<Protein, (double, double)>> proteinSequenceCoverageByProtease =
+                new Dictionary<string, Dictionary<Protein, (double, double)>>();
+
+            // Process each protease
             foreach (var protease in allDatabasePeptidesByProtease)
             {
-                var proteinForProtease = protease.Value.GroupBy(p => p.Protein).ToDictionary(group => group.Key, group => group.ToList());
-                Dictionary<Protein, (double, double)> sequenceCoverages = new Dictionary<Protein, (double, double)>();
-                foreach (var protein in proteinForProtease)
+                string proteaseName = protease.Key;
+                List<InSilicoPep> peptidesForProtease = protease.Value;
+
+                // ------------------------------------------------------------------------
+                // Group peptides by their parent protein accession
+                // NOTE: InSilicoPep.Protein is a STRING (the accession), not a Protein object!
+                // ------------------------------------------------------------------------
+                var peptidesByProteinAccession = peptidesForProtease
+                    .GroupBy(p => p.Protein)  // p.Protein is the accession string
+                    .ToDictionary(
+                        group => group.Key,      // Key is the accession string
+                        group => group.ToList()  // Value is list of peptides for that protein
+                    );
+
+                // Storage for coverage results for this protease
+                Dictionary<Protein, (double, double)> sequenceCoverages =
+                    new Dictionary<Protein, (double, double)>();
+
+                // Calculate coverage for each protein
+                foreach (var proteinGroup in peptidesByProteinAccession)
                 {
-                    //count which residues are covered at least one time by a peptide
-                    HashSet<int> coveredOneBasesResidues = new HashSet<int>();
-                    HashSet<int> coveredOneBasesResiduesUnique = new HashSet<int>();
-                    var minPeptideList = protein.Value.ToHashSet();
-                    foreach (var peptide in minPeptideList)
+                    string proteinAccession = proteinGroup.Key;
+                    List<InSilicoPep> peptidesForThisProtein = proteinGroup.Value;
+
+                    // ------------------------------------------------------------------------
+                    // CRITICAL: Look up the actual Protein object to get the correct sequence length
+                    // The proteinAccession is a STRING, so proteinAccession.Length would give us
+                    // the length of the accession string (e.g., "P68871" = 7), NOT the protein length!
+                    // ------------------------------------------------------------------------
+                    if (!accessionToProtein.TryGetValue(proteinAccession, out Protein actualProtein))
                     {
-                        for (int i = peptide.StartResidue; i <= peptide.EndResidue; i++)
+                        // Skip if we can't find the protein (shouldn't happen, but defensive)
+                        continue;
+                    }
+
+                    // Get the actual protein sequence length (e.g., 147 for HBB_HUMAN)
+                    int proteinSequenceLength = actualProtein.Length;
+
+                    // ------------------------------------------------------------------------
+                    // Track which residue positions (1-based) are covered by peptides
+                    // Using HashSet ensures each position is only counted once, even if
+                    // multiple peptides cover the same residue
+                    // ------------------------------------------------------------------------
+                    HashSet<int> coveredResidues = new HashSet<int>();       // All peptides
+                    HashSet<int> coveredResiduesUnique = new HashSet<int>(); // Unique peptides only
+
+                    // Use HashSet to avoid counting duplicate peptides multiple times
+                    var uniquePeptideSet = peptidesForThisProtein.ToHashSet();
+
+                    // For each peptide, mark all residues it covers
+                    foreach (var peptide in uniquePeptideSet)
+                    {
+                        // peptide.StartResidue and EndResidue are 1-based positions in the protein
+                        for (int residuePosition = peptide.StartResidue; residuePosition <= peptide.EndResidue; residuePosition++)
                         {
-                            coveredOneBasesResidues.Add(i);
-                            if (peptide.Unique == true)
+                            // This residue is covered by at least one peptide
+                            coveredResidues.Add(residuePosition);
+
+                            // If the peptide is unique (maps to only one protein), also add to unique coverage
+                            if (peptide.Unique)
                             {
-                                coveredOneBasesResiduesUnique.Add(i);
+                                coveredResiduesUnique.Add(residuePosition);
                             }
                         }
                     }
-                    //divide the number of covered residues by the total residues in the protein
-                    double seqCoverageFract = (double)coveredOneBasesResidues.Count / protein.Key.Length;
-                    double seqCoverageFractUnique = (double)coveredOneBasesResiduesUnique.Count / protein.Key.Length;
 
-                    sequenceCoverages.Add(proteins.Where(p=>p.Accession == protein.Key).First(), (Math.Round(seqCoverageFract, 3), Math.Round(seqCoverageFractUnique, 3)));
+                    // ------------------------------------------------------------------------
+                    // Calculate coverage percentages
+                    // Coverage = (number of covered residues / total residues) * 100
+                    // ------------------------------------------------------------------------
+                    double totalCoveragePercent = (double)coveredResidues.Count / proteinSequenceLength * 100.0;
+                    double uniqueCoveragePercent = (double)coveredResiduesUnique.Count / proteinSequenceLength * 100.0;
+
+                    // Round to 2 decimal places for cleaner display
+                    totalCoveragePercent = Math.Round(totalCoveragePercent, 2);
+                    uniqueCoveragePercent = Math.Round(uniqueCoveragePercent, 2);
+
+                    // Store the results using the actual Protein object as the key
+                    sequenceCoverages.Add(actualProtein, (totalCoveragePercent, uniqueCoveragePercent));
                 }
-                proteinSequenceCoverageByProtease.Add(protease.Key, sequenceCoverages);
+
+                // Add this protease's coverage results to the final output
+                proteinSequenceCoverageByProtease.Add(proteaseName, sequenceCoverages);
             }
+
             return proteinSequenceCoverageByProtease;
         }
-
         private void Warn(string v)
         {
             DigestionWarnHandler?.Invoke(null, new StringEventArgs(v, null));

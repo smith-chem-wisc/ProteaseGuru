@@ -1,7 +1,7 @@
 using Omics.BioPolymer;
 using Omics.Modifications;
 
-namespace Tasks.ProteinCoverageAnalysis
+namespace Tasks.CoverageMapConfiguration
 {
     /// <summary>
     /// Prepares protein and peptide data for coverage map visualization.

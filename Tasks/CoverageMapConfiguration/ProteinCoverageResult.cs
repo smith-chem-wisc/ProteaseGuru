@@ -1,7 +1,7 @@
 using Proteomics;
 using Tasks;
 
-namespace Tasks.ProteinCoverageAnalysis
+namespace Tasks.CoverageMapConfiguration
 {
     /// <summary>
     /// Holds the coverage analysis results for a single protein.
