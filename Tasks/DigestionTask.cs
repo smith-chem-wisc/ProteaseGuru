@@ -15,9 +15,9 @@ namespace Tasks
     //digest the provided databases with the proteases and parameters provided by the user
     public class DigestionTask : ProteaseGuruTask
     {
-        public DigestionTask(): base(MyTask.Digestion)
-        { 
-          DigestionParameters = new Parameters();
+        public DigestionTask() : base(MyTask.Digestion)
+        {
+            DigestionParameters = new Parameters();
         }
         public static event EventHandler<StringEventArgs> DigestionWarnHandler;
         public Parameters DigestionParameters { get; set; }
@@ -25,7 +25,7 @@ namespace Tasks
         public Dictionary<string, Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>>? PeptideByFile;
 
         public static event EventHandler<StringEventArgs> OutLabelStatusHandler;
-        
+
         /// <summary>
         /// Event fired to report progress during digestion operations.
         /// </summary>
@@ -33,15 +33,27 @@ namespace Tasks
 
         public static Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>? AllPeptidesByProtease;
 
-        public  Dictionary<string, Dictionary<Protein, (double, double)>> SequenceCoverageByProtease = new Dictionary<string, Dictionary<Protein, (double, double)>>();
+        public Dictionary<string, Dictionary<Protein, (double, double)>> SequenceCoverageByProtease = new Dictionary<string, Dictionary<Protein, (double, double)>>();
         public override MyTaskResults RunSpecific(string OutputFolder, List<DbForDigestion> dbFileList)
         {
             AllPeptidesByProtease = new Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>();
             PeptideByFile = new Dictionary<string, Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>>(dbFileList.Count);
 
-            Parallel.ForEach(threadArray_1, (j) =>
+            // Use a thread-safe dictionary for parallel writes
+            var concurrentPeptideByFile = new ConcurrentDictionary<string, ConcurrentDictionary<string, Dictionary<Protein, List<InSilicoPep>>>>();
+
+            // Calculate total work units for progress reporting
+            int totalProteases = DigestionParameters.ProteasesForDigestion.Count;
+            int totalDatabases = dbFileList.Count;
+            int totalWorkUnits = totalDatabases * totalProteases;
+            int completedWorkUnits = 0;
+
+            // Report initial progress
+            ReportProgress(0, totalWorkUnits, "Starting digestion...");
+
+            // Process each database in parallel
+            Parallel.ForEach(dbFileList, database =>
             {
-                Status("Loading Protein Database(s)...", "loadDbs");
                 List<Protein> proteins = LoadProteins(database);
 
                 // Initialize the entry for this database
@@ -55,13 +67,21 @@ namespace Tasks
                 // Process each protease in parallel for this database
                 Parallel.ForEach(DigestionParameters.ProteasesForDigestion, protease =>
                 {
-                    Status("Digesting Proteins...", "digestDbs");
+                    // Report what we're working on (before the work)
+                    ReportProgress(completedWorkUnits, totalWorkUnits,
+                        $"Digesting {databaseFileName} with {protease.Name}...");
 
+                    // Do the actual work
                     var peptides = DigestDatabase(proteinsForDigestion, protease, DigestionParameters);
                     var peptidesFormatted = DeterminePeptideStatus(databaseFileName, peptides, DigestionParameters);
 
                     // Thread-safe add to the concurrent dictionary
                     proteaseResults[protease.Name] = peptidesFormatted;
+
+                    // Increment progress AFTER the work completes
+                    int currentUnit = Interlocked.Increment(ref completedWorkUnits);
+                    ReportProgress(currentUnit, totalWorkUnits,
+                        $"Completed {protease.Name} ({currentUnit}/{totalWorkUnits})");
                 });
             });
 
@@ -75,16 +95,16 @@ namespace Tasks
 
             ReportProgress(totalWorkUnits, totalWorkUnits, "Writing peptide output...");
             WritePeptidesToTsv(PeptideByFile, OutputFolder, DigestionParameters);
-            
+
             ReportProgress(totalWorkUnits, totalWorkUnits, "Calculating sequence coverage...");
             SequenceCoverageByProtease = CalculateProteinSequenceCoverage(PeptideByFile);
-            
+
             MyTaskResults myRunResults = new MyTaskResults(this);
-            Status("Writing Results Summary...", "summary");
+            ReportProgress(totalWorkUnits, totalWorkUnits, "Complete!");
 
             return myRunResults;
         }
-        
+
         /// <summary>
         /// Reports progress to subscribers of the ProgressHandler event.
         /// </summary>
@@ -94,47 +114,47 @@ namespace Tasks
         }
         // Load proteins from XML or FASTA databases and keep them associated with the database file name from which they came from
         protected List<Protein> LoadProteins(DbForDigestion database)
-        {                        
-                List<string> dbErrors = new List<string>();
-                List<Protein> proteinList = new List<Protein>();
-                
-                string theExtension = Path.GetExtension(database.FilePath).ToLowerInvariant();
-                bool compressed = theExtension.EndsWith("gz"); // allows for .bgz and .tgz, too which are used on occasion
-                theExtension = compressed ? Path.GetExtension(Path.GetFileNameWithoutExtension(database.FilePath)).ToLowerInvariant() : theExtension;
+        {
+            List<string> dbErrors = new List<string>();
+            List<Protein> proteinList = new List<Protein>();
 
-                if (theExtension.Equals(".fasta") || theExtension.Equals(".fa"))
+            string theExtension = Path.GetExtension(database.FilePath).ToLowerInvariant();
+            bool compressed = theExtension.EndsWith("gz"); // allows for .bgz and .tgz, too which are used on occasion
+            theExtension = compressed ? Path.GetExtension(Path.GetFileNameWithoutExtension(database.FilePath)).ToLowerInvariant() : theExtension;
+
+            if (theExtension.Equals(".fasta") || theExtension.Equals(".fa"))
+            {
+                proteinList = ProteinDbLoader.LoadProteinFasta(database.FilePath, true, DecoyType.None, false, out dbErrors, ProteinDbLoader.UniprotAccessionRegex,
+                    ProteinDbLoader.UniprotFullNameRegex, ProteinDbLoader.UniprotFullNameRegex, ProteinDbLoader.UniprotGeneNameRegex,
+                    ProteinDbLoader.UniprotOrganismRegex, -1);
+                if (!proteinList.Any())
                 {
-                    proteinList = ProteinDbLoader.LoadProteinFasta(database.FilePath, true, DecoyType.None, false, out dbErrors, ProteinDbLoader.UniprotAccessionRegex,
-                        ProteinDbLoader.UniprotFullNameRegex, ProteinDbLoader.UniprotFullNameRegex, ProteinDbLoader.UniprotGeneNameRegex,
-                        ProteinDbLoader.UniprotOrganismRegex,  -1);
-                    if (!proteinList.Any())
-                    {
-                        Warn("Warning: No protein entries were found in the database");
-                        return new List<Protein>() { };
-                    }
-                    else
-                    {
-                        return proteinList;
-                    }
-
+                    Warn("Warning: No protein entries were found in the database");
+                    return new List<Protein>() { };
                 }
                 else
                 {
-                    List<string> modTypesToExclude = new List<string> { };
-                    proteinList = ProteinDbLoader.LoadProteinXML(database.FilePath, true, DecoyType.None, GlobalVariables.AllModsKnown, false, modTypesToExclude,
-                        out Dictionary<string, Modification> um, -1, 4, 1);
-                    if (!proteinList.Any())
-                    {
-                        Warn("Warning: No protein entries were found in the database");
-                        return new List<Protein>() { };
+                    return proteinList;
                 }
-                    else
-                    {
-                        return proteinList;
-                    }
+
+            }
+            else
+            {
+                List<string> modTypesToExclude = new List<string> { };
+                proteinList = ProteinDbLoader.LoadProteinXML(database.FilePath, true, DecoyType.None, GlobalVariables.AllModsKnown, false, modTypesToExclude,
+                    out Dictionary<string, Modification> um, -1, 4, 1);
+                if (!proteinList.Any())
+                {
+                    Warn("Warning: No protein entries were found in the database");
+                    return new List<Protein>() { };
                 }
-            
-            
+                else
+                {
+                    return proteinList;
+                }
+            }
+
+
         }
 
         //determine if a peptide is unique or shared. Also generates in silico peptide objects
@@ -148,18 +168,20 @@ namespace Tasks
         /// <param name="userParams">User-specified digestion parameters</param>
         /// <returns>Dictionary mapping proteins to their processed InSilicoPep objects</returns>
         Dictionary<Protein, List<InSilicoPep>> DeterminePeptideStatus(
-            string databaseName, 
-            Dictionary<Protein, List<PeptideWithSetModifications>> databasePeptides, 
+            string databaseName,
+            Dictionary<Protein, List<PeptideWithSetModifications>> databasePeptides,
             Parameters userParams)
         {
             // ============================================================================
             // PHASE 1: Determine uniqueness for all peptide sequences
             // ============================================================================
-    
+
             // Flatten all peptides to determine which sequences are unique vs shared
             var allPeptides = databasePeptides
                 .SelectMany(kvp => kvp.Value)
                 .ToList();
+
+            ReportProgress(0, 5, $"Analyzing {allPeptides.Count:N0} peptides - determining uniqueness...");
 
             // Group by sequence to determine uniqueness
             var peptideGroups = userParams.TreatModifiedPeptidesAsDifferent
@@ -175,10 +197,17 @@ namespace Tasks
             // ============================================================================
             // PHASE 2: Batch calculate hydrophobicity and electrophoretic mobility
             // ============================================================================
-    
+
+            ReportProgress(1, 5, $"Calculating hydrophobicity for {allPeptides.Count:N0} peptides...");
             var hydrophobicityValues = BatchCalculateHydrophobicity(allPeptides);
+
+            ReportProgress(2, 5, $"Calculating electrophoretic mobility for {allPeptides.Count:N0} peptides...");
             var mobilityValues = BatchCalculateElectrophoreticMobility(allPeptides);
+
+            ReportProgress(3, 5, $"Predicting retention times for {allPeptides.Count:N0} peptides...");
             var retentionTimesChronologer = BatchCalculateRetentionTimesChronologer(allPeptides);
+
+            ReportProgress(4, 5, $"Building peptide objects for {allPeptides.Count:N0} peptides...");
 
             // Create a lookup from peptide to its calculated values
             var peptideToIndex = new Dictionary<PeptideWithSetModifications, int>();
@@ -188,10 +217,12 @@ namespace Tasks
                 peptideToIndex[allPeptides[i]] = i;
             }
 
+
+
             // ============================================================================
             // PHASE 3: Build InSilicoPep objects - process protein by protein to maintain order
             // ============================================================================
-    
+
             var inSilicoPeptides = new Dictionary<Protein, List<InSilicoPep>>();
 
             foreach (var proteinEntry in databasePeptides)
@@ -202,8 +233,8 @@ namespace Tasks
                 foreach (var peptide in proteinEntry.Value)
                 {
                     // Look up uniqueness
-                    string sequenceKey = userParams.TreatModifiedPeptidesAsDifferent 
-                        ? peptide.FullSequence 
+                    string sequenceKey = userParams.TreatModifiedPeptidesAsDifferent
+                        ? peptide.FullSequence
                         : peptide.BaseSequence;
                     bool isUnique = uniquenessLookup[sequenceKey];
 
@@ -239,35 +270,57 @@ namespace Tasks
             }
 
             // ============================================================================
-            // PHASE 4: Handle proteins with no peptides
+            // PHASE 4: Handle proteins with no peptides  
             // ============================================================================
-    
+
             foreach (var protein in databasePeptides.Keys.Where(p => !inSilicoPeptides.ContainsKey(p)))
             {
                 inSilicoPeptides[protein] = new List<InSilicoPep>();
             }
 
+            ReportProgress(5, 5, $"Completed processing {allPeptides.Count:N0} peptides");
             return inSilicoPeptides;
         }
-        // Add this static field at the top of the DigestionTask class:
-        private static readonly object ChronologerLock = new object();
 
-        // Then update the BatchCalculateRetentionTimesChronologer method:
+        // Lock for sequential creation of Chronologer predictors (file loading must be serialized)
+        private static readonly object ChronologerCreationLock = new object();
+
+        /// <summary>
+        /// Batch calculates Chronologer retention times for a collection of peptides.
+        /// Uses parallel processing with a pool of pre-created ChronologerRetentionTimePredictor instances.
+        /// Predictor creation is serialized to avoid file access conflicts, but predictions run in parallel.
+        /// </summary>
+        /// <param name="peptides">Collection of peptides to process</param>
+        /// <returns>Array of retention time values in the same order as input peptides</returns>
         private double[] BatchCalculateRetentionTimesChronologer(List<PeptideWithSetModifications> peptides)
         {
             var results = new double[peptides.Count];
 
-            // Synchronize access to prevent concurrent file access to model
-            lock (ChronologerLock)
-            {
-                var rtPredictor = new Chromatography.RetentionTimePrediction.Chronologer.ChronologerRetentionTimePredictor();
+            // Determine the number of threads to use
+            int threadCount = Math.Min(Environment.ProcessorCount, peptides.Count);
+            if (threadCount < 1) threadCount = 1;
 
-                for (int i = 0; i < peptides.Count; i++)
-                {
-                    var result = rtPredictor.PredictRetentionTime(peptides[i], out var failureReason);
-                    results[i] = result ?? -1;
-                }
+            // Pre-create predictor instances SEQUENTIALLY to avoid file access conflicts
+            // The Chronologer model file cannot be opened by multiple threads simultaneously
+            var predictorPool = new ChronologerRetentionTimePredictor[threadCount];
+            for (int i = 0; i < threadCount; i++)
+            {
+                predictorPool[i] = new ChronologerRetentionTimePredictor();
             }
+
+            // Now run predictions in parallel using the pre-created predictors
+            // Each thread gets assigned a predictor from the pool based on thread ID
+            Parallel.For(0, peptides.Count,
+                new ParallelOptions { MaxDegreeOfParallelism = threadCount },
+                () => Thread.CurrentThread.ManagedThreadId % threadCount,  // Thread-local: pool index
+                (i, loopState, poolIndex) =>
+                {
+                    var result = predictorPool[poolIndex].PredictRetentionTime(peptides[i], out var failureReason);
+                    results[i] = result ?? -1;
+                    return poolIndex;
+                },
+                (poolIndex) => { }  // No cleanup needed
+            );
 
             return results;
         }
@@ -275,49 +328,67 @@ namespace Tasks
         /// <summary>
         /// Batch calculates hydrophobicity (retention time prediction) for a collection of peptides.
         /// This method is designed to be easily replaced with a batch-based ML prediction model.
+        /// Uses parallel processing with thread-local SSRCalc3 instances for improved performance.
         /// </summary>
         /// <param name="peptides">Collection of peptides to process</param>
         /// <returns>Array of hydrophobicity values in the same order as input peptides</returns>
         private double[] BatchCalculateHydrophobicity(List<PeptideWithSetModifications> peptides)
         {
-            // Initialize the retention time predictor
-            // TODO: Replace with batch-based ML model (e.g., Prosit, DeepLC, Chronologer)
-            var rtPredictor = new SSRCalc3("SSRCalc 3.0 (300A)", SSRCalc3.Column.A300);
-    
             var results = new double[peptides.Count];
-    
-            // Current implementation: calculate one-by-one
-            // Future implementation: send entire batch to ML model
-            for (int i = 0; i < peptides.Count; i++)
-            {
-                results[i] = rtPredictor.ScoreSequence(peptides[i]);
-            }
-    
+
+            // Use Parallel.For with thread-local SSRCalc3 instances for thread safety
+            // SSRCalc3 is stateless for scoring, so each thread can have its own instance
+            Parallel.For(0, peptides.Count,
+                // Thread-local initialization: create a new SSRCalc3 instance per thread
+                () => new SSRCalc3("SSRCalc 3.0 (300A)", SSRCalc3.Column.A300),
+                // Body: calculate hydrophobicity using thread-local predictor
+                (i, loopState, rtPredictor) =>
+                {
+                    results[i] = rtPredictor.ScoreSequence(peptides[i]);
+                    return rtPredictor;
+                },
+                // Finalizer: nothing to dispose
+                (rtPredictor) => { }
+            );
+
             return results;
         }
 
         /// <summary>
         /// Batch calculates electrophoretic mobility for a collection of peptides.
         /// Uses the Cifuentes mobility equation based on charge and mass.
+        /// Parallelized for improved performance with large datasets.
         /// </summary>
         /// <param name="peptides">Collection of peptides to process</param>
         /// <returns>Array of electrophoretic mobility values in the same order as input peptides</returns>
         private double[] BatchCalculateElectrophoreticMobility(List<PeptideWithSetModifications> peptides)
         {
             var results = new double[peptides.Count];
-    
-            // Can be parallelized if needed for large datasets
-            for (int i = 0; i < peptides.Count; i++)
+
+            // Parallelized for large datasets - GetCifuentesMobility is thread-safe (static, no shared state)
+            Parallel.For(0, peptides.Count, i =>
             {
                 results[i] = GetCifuentesMobility(peptides[i]);
-            }
-    
+            });
+
             return results;
         }
         //calculate electrophoretic mobility of a peptide
         private static double GetCifuentesMobility(PeptideWithSetModifications pwsm)
         {
-            int charge = 1 + pwsm.BaseSequence.Count(f => f == 'K') + pwsm.BaseSequence.Count(f => f == 'R') + pwsm.BaseSequence.Count(f => f == 'H') - CountModificationsThatShiftMobility(pwsm.AllModsOneIsNterminus.Values.AsEnumerable());// the 1 + is for N-terminal
+            // Count K, R, H in a single pass through the sequence (instead of 3 separate LINQ calls)
+            int kCount = 0, rCount = 0, hCount = 0;
+            foreach (char c in pwsm.BaseSequence)
+            {
+                switch (c)
+                {
+                    case 'K': kCount++; break;
+                    case 'R': rCount++; break;
+                    case 'H': hCount++; break;
+                }
+            }
+
+            int charge = 1 + kCount + rCount + hCount - CountModificationsThatShiftMobility(pwsm.AllModsOneIsNterminus.Values);
 
             double mobility = (Math.Log(1 + 0.35 * (double)charge)) / Math.Pow(pwsm.MonoisotopicMass, 0.411);
             if (Double.IsNaN(mobility))
@@ -331,10 +402,10 @@ namespace Tasks
         private static readonly HashSet<string> ShiftingModifications = new HashSet<string>(StringComparer.Ordinal)
         {
             "Acetylation", "Ammonia loss", "Carbamyl", "Deamidation", "Formylation",
-            "N2-acetylarginine", "N6-acetyllysine", "N-acetylalanine", "N-acetylaspartate", 
-            "N-acetylcysteine", "N-acetylglutamate", "N-acetylglycine", "N-acetylisoleucine", 
-            "N-acetylmethionine", "N-acetylproline", "N-acetylserine", "N-acetylthreonine", 
-            "N-acetyltyrosine", "N-acetylvaline", "Phosphorylation", "Phosphoserine", 
+            "N2-acetylarginine", "N6-acetyllysine", "N-acetylalanine", "N-acetylaspartate",
+            "N-acetylcysteine", "N-acetylglutamate", "N-acetylglycine", "N-acetylisoleucine",
+            "N-acetylmethionine", "N-acetylproline", "N-acetylserine", "N-acetylthreonine",
+            "N-acetyltyrosine", "N-acetylvaline", "Phosphorylation", "Phosphoserine",
             "Phosphothreonine", "Phosphotyrosine", "Sulfonation"
         };
 
@@ -543,7 +614,7 @@ namespace Tasks
         {
             throw new NotImplementedException();
         }
-        
+
         // write peptides to tsv files as results
         protected static void WritePeptidesToTsv(Dictionary<string, Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>> peptideByFile, string filePath, Parameters userParams)
         {
@@ -571,7 +642,7 @@ namespace Tasks
                         else
                         {
                             allDatabasePeptidesByProtease.Add(protease.Key, protease.Value.SelectMany(p => p.Value).ToList());
-                        }                        
+                        }
                     }
                 }
                 foreach (var protease in allDatabasePeptidesByProtease)
@@ -588,10 +659,10 @@ namespace Tasks
 
                     var unique = peptidesToProteins.Where(p => p.Value.Select(p => p.Protein).Distinct().Count() == 1).ToList();
                     var shared = peptidesToProteins.Where(p => p.Value.Select(p => p.Protein).Distinct().Count() > 1).ToList();
-                    
+
                     foreach (var entry in unique)
                     {
-                        if (entry.Value.Select(p=>p.Database).Distinct().ToList().Count >1)
+                        if (entry.Value.Select(p => p.Database).Distinct().ToList().Count > 1)
                         {
                             foreach (var peptide in entry.Value)
                             {
@@ -611,7 +682,7 @@ namespace Tasks
 
                             }
                         }
-                                             
+
                     }
                     foreach (var entry in shared)
                     {
@@ -622,7 +693,7 @@ namespace Tasks
                             {
                                 peptide.UniqueAllDbs = false;
                                 peptide.SeqOnlyInThisDb = true;
-                                allPeptides.Add(peptide);                                
+                                allPeptides.Add(peptide);
                             }
                         }
                         else
@@ -631,11 +702,11 @@ namespace Tasks
                             {
                                 peptide.UniqueAllDbs = false;
                                 peptide.SeqOnlyInThisDb = false;
-                                allPeptides.Add(peptide);                                
+                                allPeptides.Add(peptide);
                             }
-                        }                        
+                        }
                     }
-                    
+
                 }
             }
             else
@@ -645,49 +716,48 @@ namespace Tasks
                     foreach (var protease in database.Value)
                     {
                         foreach (var protein in protease.Value)
-                        {                           
+                        {
                             foreach (var peptide in protein.Value)
                             {
                                 peptide.UniqueAllDbs = peptide.Unique;
-                                peptide.SeqOnlyInThisDb = true;                                
+                                peptide.SeqOnlyInThisDb = true;
                                 allPeptides.Add(peptide);
-                            }                            
+                            }
                         }
                     }
                 }
             }
-                       
-            
+
+
             var numberOfPeptides = allPeptides.Count();
             double numberOfFiles = Math.Ceiling(numberOfPeptides / 1000000.0);
             var peptidesInFile = 1;
             var peptideIndex = 0;
-            var fileCount = 1;           
+            var fileCount = 1;
 
-                while (fileCount <= Convert.ToInt32(numberOfFiles))
+            while (fileCount <= Convert.ToInt32(numberOfFiles))
+            {
+                using (StreamWriter output = new StreamWriter(filePath + @"\ProteaseGuruPeptides_" + fileCount + ".tsv"))
                 {
-                    using (StreamWriter output = new StreamWriter(filePath + @"\ProteaseGuruPeptides_" + fileCount + ".tsv"))
+                    output.WriteLine(header);
+                    while (peptidesInFile < 1000000)
                     {
-                        output.WriteLine(header);
-                        while (peptidesInFile < 1000000)
+                        if (peptideIndex < numberOfPeptides)
                         {
-                            if (peptideIndex < numberOfPeptides)
-                            {
-                                output.WriteLine(allPeptides[peptideIndex].ToString());
-                                peptideIndex++;
-                            }                            
-                            peptidesInFile++;
-                                                        
+                            output.WriteLine(allPeptides[peptideIndex].ToString());
+                            peptideIndex++;
                         }
-                        output.Close();
-                        peptidesInFile = 1;
-                    }                    
-                    fileCount++;
+                        peptidesInFile++;
+
+                    }
+                    output.Close();
+                    peptidesInFile = 1;
                 }
+                fileCount++;
+            }
 
             List<string> parameters = new List<string>();
             parameters.Add("Digestion Conditions:");
-            parameters.Add("Database: " + string.Join(',', peptideByFile.Keys));
             parameters.Add("Proteases: " + string.Join(',', userParams.ProteasesForDigestion.Select(p => p.Name).ToList()));
             parameters.Add("Max Missed Cleavages: " + userParams.NumberOfMissedCleavagesAllowed);
             parameters.Add("Min Peptide Length: " + userParams.MinPeptideLengthAllowed);
@@ -697,7 +767,7 @@ namespace Tasks
             parameters.Add("Max Peptide Mass: " + userParams.MaxPeptideLengthAllowed);
 
             File.WriteAllLines(filePath + @"\DigestionConditions.txt", parameters);
-            
+
         }
 
         protected void Status(string v, string id)
@@ -708,9 +778,9 @@ namespace Tasks
         //digest proteins for each database using the protease and settings provided
         protected Dictionary<Protein, List<PeptideWithSetModifications>> DigestDatabase(List<Protein> proteinsFromDatabase,
             Protease protease, Parameters userDigestionParams)
-        {           
+        {
             DigestionParams dp = new DigestionParams(protease: protease.Name, maxMissedCleavages: userDigestionParams.NumberOfMissedCleavagesAllowed,
-                minPeptideLength: userDigestionParams.MinPeptideLengthAllowed, maxPeptideLength: userDigestionParams.MaxPeptideLengthAllowed);            
+                minPeptideLength: userDigestionParams.MinPeptideLengthAllowed, maxPeptideLength: userDigestionParams.MaxPeptideLengthAllowed);
             Dictionary<Protein, List<PeptideWithSetModifications>> peptidesForProtein = new Dictionary<Protein, List<PeptideWithSetModifications>>(proteinsFromDatabase.Count);
             foreach (var protein in proteinsFromDatabase)
             {
@@ -726,7 +796,7 @@ namespace Tasks
                 else if (userDigestionParams.MaxPeptideMassAllowed != -1 && userDigestionParams.MinPeptideMassAllowed == -1)
                 {
                     peptides = peptides.Where(p => p.MonoisotopicMass < userDigestionParams.MaxPeptideMassAllowed).ToList();
-                }                
+                }
                 peptidesForProtein.Add(protein, peptides);
             }
             return peptidesForProtein;
