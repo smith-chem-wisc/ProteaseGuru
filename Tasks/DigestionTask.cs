@@ -320,24 +320,52 @@ namespace Tasks
         //calculate electrophoretic mobility of a peptide
         private static double GetCifuentesMobility(PeptideWithSetModifications pwsm)
         {
-            int charge = 1 + pwsm.BaseSequence.Count(f => f == 'K') + pwsm.BaseSequence.Count(f => f == 'R') + pwsm.BaseSequence.Count(f => f == 'H') - CountModificationsThatShiftMobility(pwsm.AllModsOneIsNterminus.Values.AsEnumerable());// the 1 + is for N-terminal
+            // Count K, R, H in a single pass through the sequence (instead of 3 separate LINQ calls)
+            int kCount = 0, rCount = 0, hCount = 0;
+            foreach (char c in pwsm.BaseSequence)
+            {
+                switch (c)
+                {
+                    case 'K': kCount++; break;
+                    case 'R': rCount++; break;
+                    case 'H': hCount++; break;
+                }
+            }
+            
+            int charge = 1 + kCount + rCount + hCount - CountModificationsThatShiftMobility(pwsm.AllModsOneIsNterminus.Values);
 
             double mobility = (Math.Log(1 + 0.35 * (double)charge)) / Math.Pow(pwsm.MonoisotopicMass, 0.411);
-            if (Double.IsNaN(mobility)==true)
+            if (Double.IsNaN(mobility))
             {
                 mobility = 0;
             }
             return mobility;
         }
 
+        // Static HashSet for O(1) lookup - created once, reused for all calls
+        private static readonly HashSet<string> ShiftingModifications = new HashSet<string>(StringComparer.Ordinal)
+        {
+            "Acetylation", "Ammonia loss", "Carbamyl", "Deamidation", "Formylation",
+            "N2-acetylarginine", "N6-acetyllysine", "N-acetylalanine", "N-acetylaspartate", 
+            "N-acetylcysteine", "N-acetylglutamate", "N-acetylglycine", "N-acetylisoleucine", 
+            "N-acetylmethionine", "N-acetylproline", "N-acetylserine", "N-acetylthreonine", 
+            "N-acetyltyrosine", "N-acetylvaline", "Phosphorylation", "Phosphoserine", 
+            "Phosphothreonine", "Phosphotyrosine", "Sulfonation"
+        };
+
         public static int CountModificationsThatShiftMobility(IEnumerable<Modification> modifications)
         {
-            List<string> shiftingModifications = new List<string> { "Acetylation", "Ammonia loss", "Carbamyl", "Deamidation", "Formylation",
-                "N2-acetylarginine", "N6-acetyllysine", "N-acetylalanine", "N-acetylaspartate", "N-acetylcysteine", "N-acetylglutamate", "N-acetylglycine",
-                "N-acetylisoleucine", "N-acetylmethionine", "N-acetylproline", "N-acetylserine", "N-acetylthreonine", "N-acetyltyrosine", "N-acetylvaline",
-                "Phosphorylation", "Phosphoserine", "Phosphothreonine", "Phosphotyrosine", "Sulfonation" };
-
-            return modifications.Select(n => n.OriginalId).Intersect(shiftingModifications).Count();
+            // Direct iteration with HashSet lookup - O(n) with O(1) lookups
+            // Avoids creating intermediate collections from Select/Intersect
+            int count = 0;
+            foreach (var mod in modifications)
+            {
+                if (mod.OriginalId != null && ShiftingModifications.Contains(mod.OriginalId))
+                {
+                    count++;
+                }
+            }
+            return count;
         }
         /// <summary>
         /// Calculates protein sequence coverage for each protease across all databases.
