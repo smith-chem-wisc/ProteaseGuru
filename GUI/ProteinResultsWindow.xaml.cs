@@ -357,96 +357,86 @@ namespace GUI
             }
             else
             {
-                var protein = ProteinsForTreeView.FirstOrDefault().Value;
-                if (protein != null)
-                {
-                    SelectedProtein = protein;
-                }
+                SelectedProtein = ProteinsForTreeView.FirstOrDefault().Value;
             }
 
-            var ptv = SelectedProtein;
+            if (SelectedProtein == null) return;
+
+            // Build summary using analyzer data
+            BuildProteinSummary();
+
+            // Redraw the sequence coverage map
+            DrawSequenceCoverageMap(SelectedProtein, SelectedProteases);
+        }
+
+        /// <summary>
+        /// Builds the protein summary table using analyzer data
+        /// </summary>
+        private void BuildProteinSummary()
+        {
+            var coverageResult = _analyzer.ProteinCoverageResults[SelectedProtein.Protein];
             var proteaseList = UserParams.ProteasesForDigestion.Select(p => p.Name).ToList();
-            var uniquePeps = ptv.UniquePeptides.GroupBy(p => p.Protease).ToDictionary(group => group.Key, group => group.ToList());
-            var sharedPeps = ptv.SharedPeptides.GroupBy(p => p.Protease).ToDictionary(group => group.Key, group => group.ToList());
 
-            ProteinSummaryForTreeView thisProtein = new ProteinSummaryForTreeView("Digestion Results for " + ptv.Protein.Accession + ":");
-            AnalysisSummaryForTreeView uniquePep = new AnalysisSummaryForTreeView("Number of Unique Peptides: ");
-            foreach (var protease in proteaseList)
-            {
-                if (uniquePeps.ContainsKey(protease))
-                {
-                    uniquePep.Summary.Add(new ProtSummaryForTreeView(protease + ": " + uniquePeps[protease].Count()));
-                }
-                else
-                {
-                    uniquePep.Summary.Add(new ProtSummaryForTreeView(protease + ": 0"));
-                }
+            var uniquePepCounts = coverageResult.GetUniquePeptideCountsByProtease();
+            var sharedPepCounts = coverageResult.GetSharedPeptideCountsByProtease();
 
-            }
-            thisProtein.Summary.Add(uniquePep);
-            AnalysisSummaryForTreeView sharedPep = new AnalysisSummaryForTreeView("Number of Shared Peptides: ");           
-            foreach (var protease in proteaseList)
-            {
-                if (sharedPeps.ContainsKey(protease))
-                {
-                    sharedPep.Summary.Add(new ProtSummaryForTreeView(protease + ": " + sharedPeps[protease].ToHashSet().Count()));
-                }
-                else
-                {
-            AnalysisSummaryForTreeView percentCov = new AnalysisSummaryForTreeView("Percent Sequence Coverage (all peptides):" );
-            foreach (var protease in SequenceCoverageByProtease)
-            {
-                var coverage = Math.Round(protease.Value[SelectedProtein.Protein].Item1,2);
-                percentCov.Summary.Add(new ProtSummaryForTreeView(protease.Key + ": " + Math.Round(coverage , 3) + "%")); // break down by protease
-            }
-            thisProtein.Summary.Add(percentCov);
-            foreach (var protease in _analyzer.SequenceCoverageByProtease)
             // Update the header label
             proteinSummaryHeader.Content = $"Digestion Results for {coverageResult.DisplayName}";
 
             // Build table rows
             var summaryRows = new List<ProteinDigestionSummaryRow>();
-            // Unique peptide coverage
-            var percentCovUniq = new AnalysisSummaryForTreeView("Percent Sequence Coverage (unique peptides):");
-            if (_analyzer.IsMultiDatabase)
+
+            foreach (var proteaseName in proteaseList)
             {
-                foreach (var (proteaseName, fraction) in _analyzer.CalculateSequenceCoverageUnique(SelectedProtein.Protein))
+                int uniqueCount = uniquePepCounts.TryGetValue(proteaseName, out var uc) ? uc : 0;
+                int sharedCount = sharedPepCounts.TryGetValue(proteaseName, out var sc) ? sc : 0;
+
+                // Get coverage values
+                string totalCoverage = "N/A";
+                string uniqueCoverage = "N/A";
+
+                if (_analyzer.SequenceCoverageByProtease.TryGetValue(proteaseName, out var proteaseCoverage) &&
+                    proteaseCoverage.TryGetValue(SelectedProtein.Protein, out var coverageValues))
                 {
-                    percentCovUniq.Summary.Add(new ProtSummaryForTreeView($"{proteaseName}: {Math.Round(fraction, 3)}%"));
+                    totalCoverage = $"{Math.Round(coverageValues.Item1, 2)}%";
+
+                    if (_analyzer.IsMultiDatabase)
+                    {
+                        // For multi-database, calculate unique coverage differently
+                        var uniqueCoverageCalc = _analyzer.CalculateSequenceCoverageUnique(SelectedProtein.Protein)
+                            .FirstOrDefault(x => x.ProteaseName == proteaseName);
+                        uniqueCoverage = uniqueCoverageCalc.ProteaseName != null
+                            ? $"{Math.Round(uniqueCoverageCalc.CoverageFraction, 2)}%"
+                            : "N/A";
+                    }
+                    else
+                    {
+                        uniqueCoverage = $"{Math.Round(coverageValues.Item2, 2)}%";
+                    }
                 }
-            }
-            else
-            {
-                foreach (var protease in _analyzer.SequenceCoverageByProtease)
+
+                summaryRows.Add(new ProteinDigestionSummaryRow
                 {
-                    var coverage = protease.Value[SelectedProtein.Protein].Item2;
-                    percentCovUniq.Summary.Add(new ProtSummaryForTreeView($"{protease.Key}: {Math.Round(coverage, 3)}%"));
-                }
+                    Protease = proteaseName,
+                    UniquePeptides = uniqueCount,
+                    SharedPeptides = sharedCount,
+                    TotalCoverage = totalCoverage,
+                    UniqueCoverage = uniqueCoverage
+                });
             }
-            thisProtein.Summary.Add(percentCovUniq);
-            ProteinDigestionSummary.Clear();
-            // Update display
-            ProteinDigestionSummary.Clear();
-            ProteinDigestionSummary.Add(thisProtein);
-            proteinResults.DataContext = ProteinDigestionSummary;
+
+            // Bind to the DataGrid
+            proteinSummaryGrid.ItemsSource = summaryRows;
         }
-            thisProtein.Summary.Add(percentCovUniq);
+
         #endregion
-                        variantsInArea.Add(numberToAdd);
+
         #region Sequence Coverage Map Drawing
-                        }
+
         /// <summary>
         /// Main method for drawing the protein sequence coverage map.
         /// </summary>
         private void DrawSequenceCoverageMap(ProteinForTreeView protein, List<string> proteases)
-                }
-                splitVariants.Add(variantsInArea.Distinct().ToList());
-            }
-            return splitVariants;
-        }
-
-        //draw the sequence coverage map, write out the protein seqeunce, overlay modifications, and display peptides for all proteases
-        private void DrawSequenceCoverageMap(ProteinForTreeView protein, List<string> proteases) 
         {
             const int residuesPerLine = CoverageMapDataPreparer.DefaultResiduesPerLine;
             int height = 10;
@@ -801,21 +791,33 @@ namespace GUI
                 dc.DrawRectangle(new VisualBrush(mapGrid), null, new Rect(new Point(), bounds.Size));
             }
             rtb.Render(dv);
+
+            var pngEncoder = new PngBitmapEncoder();
+            pngEncoder.Frames.Add(BitmapFrame.Create(rtb));
+            using var ms = new MemoryStream();
+            pngEncoder.Save(ms);
+            var filePath = Path.Combine(subFolder, fileName);
+            File.WriteAllBytes(filePath, ms.ToArray());
+
+            // Save results summary
             // Save results summary
             var resultsFile = $"{proteinName}_DigestionResults.txt";
-            var results = new List<string>();
-            foreach (var protein in ProteinDigestionSummary)
+            var results = new List<string>
             {
-                results.Add(protein.DisplayName);
-                foreach (var analysis in protein.Summary)
+                $"Digestion Results for {proteinName}",
+                "",
+                "Protease\tUnique Peptides\tShared Peptides\tTotal Peptides\tTotal Coverage\tUnique Coverage"
+            };
+
+            // Get data from the summary grid
+            if (proteinSummaryGrid.ItemsSource is List<ProteinDigestionSummaryRow> summaryRows)
+            {
+                foreach (var row in summaryRows)
                 {
-                    results.Add($"   {analysis.DisplayName}");
-                    foreach (var protease in analysis.Summary)
-                    {
-                        results.Add($"       {protease.DisplayName}");
-                    }
+                    results.Add($"{row.Protease}\t{row.UniquePeptides}\t{row.SharedPeptides}\t{row.TotalPeptides}\t{row.TotalCoverage}\t{row.UniqueCoverage}");
                 }
             }
+
             File.WriteAllLines(Path.Combine(subFolder, resultsFile), results);
 
             // Get peptides using analyzer
@@ -840,7 +842,7 @@ namespace GUI
                 Clipboard.SetText(clipboardText);
             }
         }
-                "Hydrophobicity" + tab + "Electrophoretic Mobility";
+
         private void SaveMetadata(string subFolder, string proteinName, Protein protein, List<InSilicoPep> allPeptides)
         {
             const string tab = "\t";
@@ -874,7 +876,7 @@ namespace GUI
 
             File.WriteAllLines(Path.Combine(subFolder, $"{proteinName}_MapMetaData.txt"), metaData);
         }
-                    {
+
         private static string BuildPeptideHeader()
         {
             return string.Join("\t",
@@ -890,13 +892,13 @@ namespace GUI
             const int maxPerFile = 1000000;
             int fileCount = 1;
             int peptideIndex = 0;
-                        while (uniquePeptidesInFile < 1000000)
+
             while (peptideIndex < peptides.Count)
             {
                 var filePath = Path.Combine(subFolder, $"{filePrefix}_{proteinName}_{fileCount}.tsv");
                 using var output = new StreamWriter(filePath);
                 output.WriteLine(header);
-                        {
+
                 var written = new HashSet<string>();
                 int inFile = 0;
                 while (inFile < maxPerFile && peptideIndex < peptides.Count)
@@ -913,13 +915,5 @@ namespace GUI
         }
 
         #endregion
-                var messageBox = MessageBox.Show(message, "", MessageBoxButton.YesNo);
-                if (messageBox == MessageBoxResult.Yes)
-                {
-                    Clipboard.SetText("Coverage Map: " + filePath + "\r\n Coverage Map MetaData: " + System.IO.Path.Combine(subFolder, metaFile) + "\r\nResults Summary File: " + System.IO.Path.Combine(subFolder, resultsFile) + "\r\nAll Peptide Files: " + subFolder + @"\ProteaseGuruPeptides_" + proteinName + "_" + 1 + ".tsv");
-                }
-            }
-            
-        }
     }
 }
