@@ -6,6 +6,82 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
              mc:Ignorable="d"
              d:DesignHeight="600" d:DesignWidth="1200">
+    <UserControl.Resources>
+        <SolidColorBrush x:Key="DataGridHeaderColor" Color="#F9690E" />
+        <SolidColorBrush x:Key="DataGridBackgroundColor" Color="#D5D5D5" />
+        <SolidColorBrush x:Key="BackgroundColor" Color="#D5D5D5" />
+        <SolidColorBrush x:Key="TextColor1" Color="#131313" />
+        <SolidColorBrush x:Key="BorderColor" Color="#444449" />
+        <SolidColorBrush x:Key="AccentColor" Color="#F9690E" />
+        <Style x:Key="SmallHeaderLabelStyle" TargetType="Label">
+            <Setter Property="HorizontalAlignment" Value="Left"/>
+            <Setter Property="FontSize" Value="15"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Foreground" Value="{StaticResource TextColor1}"/>
+            <Setter Property="Margin" Value="5,2,0,0"/>
+        </Style>
+        <Style x:Key="DataGridColumnHeaderStyle" TargetType="DataGridColumnHeader">
+            <Setter Property="Background" Value="{StaticResource DataGridHeaderColor}"/>
+            <Setter Property="FontSize" Value="13" />
+        </Style>
+        <Style x:Key="x:DataGridStyle" TargetType="DataGrid">
+            <Setter Property="Foreground" Value="{StaticResource TextColor1}"/>
+            <Setter Property="Background" Value="{StaticResource DataGridBackgroundColor}"/>
+            <Setter Property="Height" Value="Auto"/>
+            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="BorderBrush" Value="{StaticResource BorderColor}"/>
+            <Setter Property="Margin" Value="10,0,10,10"/>
+            <Setter Property="SelectedItem" Value="{Binding SelectedRow, Mode=TwoWay}"/>
+            <Setter Property="HeadersVisibility" Value="Column"/>
+            <Setter Property="HorizontalGridLinesBrush" Value="{StaticResource DataGridHeaderColor}"/>
+            <Setter Property="VerticalGridLinesBrush" Value="{StaticResource DataGridHeaderColor}"/>
+            <Setter Property="AutoGenerateColumns" Value="False"/>
+        </Style>
+        <!--Styling for the grid that defines each page-->
+        <Style x:Key="PageGridStyle" TargetType="Grid">
+            <Setter Property="Background" Value="{StaticResource BackgroundColor}"/>
+            <Setter Property="Margin" Value="-3,-2,-2,-2"/>
+        </Style>
+        <!--Styling for the "important" buttons like add task, add DB, etc.-->
+        <Style x:Key="ImportantButtonStyle" TargetType="Button">
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Width" Value="200"/>
+            <Setter Property="Background" Value="{StaticResource AccentColor}"/>
+            <Setter Property="Foreground" Value="{StaticResource TextColor1}"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}" BorderBrush="#131313" BorderThickness="1">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#f58c49"/>
+                    <Setter Property="BorderBrush" Value="#131313"/>
+                    <Setter Property="Foreground" Value="#131313"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="TextBlockStyle" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{StaticResource TextColor1}"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="TextWrapping" Value="WrapWithOverflow" />
+            <Setter Property="Margin" Value="15,0,10,0"/>
+        </Style>
+        <Style x:Key="HeaderLabelStyle" TargetType="Label">
+            <Setter Property="HorizontalAlignment" Value="Left"/>
+            <Setter Property="FontSize" Value="26"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Foreground" Value="{StaticResource TextColor1}"/>
+            <Setter Property="Margin" Value="10,5,0,0"/>
+        </Style>
+    </UserControl.Resources>
     <Grid Style="{StaticResource PageGridStyle}">
         <Grid.RowDefinitions>
             <RowDefinition Height="50"/>
