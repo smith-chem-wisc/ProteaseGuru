@@ -235,28 +235,39 @@ namespace Tasks
 
             return inSilicoPeptides;
         }
-        // Add this static field at the top of the DigestionTask class:
-        private static readonly object ChronologerLock = new object();
 
-        // Then update the BatchCalculateRetentionTimesChronologer method:
+        /// <summary>
+        /// Batch calculates Chronologer retention times for a collection of peptides.
+        /// Uses parallel processing with thread-local ChronologerRetentionTimePredictor instances.
+        /// Each thread loads its own model instance to avoid file access contention.
+        /// </summary>
+        /// <param name="peptides">Collection of peptides to process</param>
+        /// <returns>Array of retention time values in the same order as input peptides</returns>
         private double[] BatchCalculateRetentionTimesChronologer(List<PeptideWithSetModifications> peptides)
         {
             var results = new double[peptides.Count];
 
-            // Synchronize access to prevent concurrent file access to model
-            lock (ChronologerLock)
-            {
-                var rtPredictor = new Chromatography.RetentionTimePrediction.Chronologer.ChronologerRetentionTimePredictor();
-
-                for (int i = 0; i < peptides.Count; i++)
+            // Use Parallel.For with thread-local ChronologerRetentionTimePredictor instances
+            // Each thread creates its own predictor instance, avoiding the need for locks
+            // The model file is loaded once per thread, not once per peptide
+            Parallel.For(0, peptides.Count,
+                // Thread-local initialization: create a new predictor instance per thread
+                () => new Chromatography.RetentionTimePrediction.Chronologer.ChronologerRetentionTimePredictor(),
+                // Body: predict retention time using thread-local predictor
+                (i, loopState, rtPredictor) =>
                 {
                     var result = rtPredictor.PredictRetentionTime(peptides[i], out var failureReason);
                     results[i] = result ?? -1;
-                }
-            }
+                    return rtPredictor;
+                },
+                // Finalizer: nothing to dispose
+                (rtPredictor) => { }
+            );
 
             return results;
         }
+
+
 
         /// <summary>
         /// Batch calculates hydrophobicity (retention time prediction) for a collection of peptides.
