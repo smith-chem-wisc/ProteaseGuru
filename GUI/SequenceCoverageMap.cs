@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Windows;
@@ -13,7 +13,7 @@ namespace GUI
         private const int spacing = 25;
 
         public static int Highlight(int start, int end, Canvas map, Dictionary<int, List<int>> indices,
-            int height, Color clr, bool unique, bool startPep, bool endPep,int partial = -1)
+            int height, Color clr, bool unique, bool startPep, bool endPep, int partial = -1)
         {
             int increment = 0;
             int i;
@@ -21,7 +21,8 @@ namespace GUI
             if (partial >= 0) // if partial peptide 
             {
                 increment = partial * 10;
-                i = partial;            }
+                i = partial;
+            }
             else
             {
                 // determine where to highlight peptide
@@ -41,7 +42,7 @@ namespace GUI
 
                     increment += 10;
                 }
-            }           
+            }
 
             // update list of drawn/highlighted peptides
             if (indices.ContainsKey(i))
@@ -56,21 +57,25 @@ namespace GUI
             // highlight peptide
             if (unique)
             {
-                peptideLineDrawing(map, new Point(start * spacing + 65, height + increment), 
-                    new Point(end * spacing+65, height + increment), clr, false, startPep, endPep);
+                peptideLineDrawing(map, new Point(start * spacing + 65, height + increment),
+                    new Point(end * spacing + 65, height + increment), clr, false, startPep, endPep);
             }
             else
             {
-                peptideLineDrawing(map, new Point(start * spacing + 65, height + increment), 
-                    new Point(end * spacing+65, height + increment), clr, true, startPep, endPep);
+                peptideLineDrawing(map, new Point(start * spacing + 65, height + increment),
+                    new Point(end * spacing + 65, height + increment), clr, true, startPep, endPep);
             }
 
             return i;
         }
-        
+
+        /// <summary>
+        /// Draws a single amino acid character for COVERED residues.
+        /// Uses Bold font for unique peptides, ExtraBold for shared peptides.
+        /// </summary>
         public static void txtDrawing(Canvas cav, Point loc, string txt, Brush clr)
-        {            
-            TextBlock tb = new TextBlock();                      
+        {
+            TextBlock tb = new TextBlock();
             tb.Foreground = clr;
             tb.Text = txt;
             tb.FontSize = 15;
@@ -82,15 +87,65 @@ namespace GUI
             {
                 tb.FontWeight = FontWeights.ExtraBold;
             }
-            tb.FontFamily = new FontFamily("Arial"); // monospaced font
+            tb.FontFamily = new FontFamily("Arial");
 
             Canvas.SetTop(tb, loc.Y);
             Canvas.SetLeft(tb, loc.X);
-            Panel.SetZIndex(tb, 2); //lower priority
+            Panel.SetZIndex(tb, 2);
             cav.Children.Add(tb);
             cav.UpdateLayout();
         }
 
+        /// <summary>
+        /// Draws a single amino acid character for UNCOVERED residues.
+        /// Uses normal font weight with underline decoration.
+        /// </summary>
+        public static void txtDrawingUncovered(Canvas cav, Point loc, string txt, Brush clr)
+        {
+            TextBlock tb = new TextBlock();
+            tb.Foreground = clr;
+            tb.Text = txt;
+            tb.FontSize = 15;
+            tb.FontWeight = FontWeights.Normal;
+            tb.FontFamily = new FontFamily("Arial");
+
+            // Add underline decoration for uncovered amino acids
+            tb.TextDecorations = TextDecorations.Underline;
+
+            Canvas.SetTop(tb, loc.Y);
+            Canvas.SetLeft(tb, loc.X);
+            Panel.SetZIndex(tb, 2);
+            cav.Children.Add(tb);
+            cav.UpdateLayout();
+        }
+        /// <summary>
+        /// Draws a single amino acid character for residues covered by SHARED peptides only.
+        /// Uses normal font weight with reduced opacity (translucent), no underline.
+        /// </summary>
+        public static void txtDrawingShared(Canvas cav, Point loc, string txt, Brush clr)
+        {
+            TextBlock tb = new TextBlock();
+            tb.Text = txt;
+            tb.FontSize = 15;
+            tb.FontWeight = FontWeights.Normal;
+            tb.FontFamily = new FontFamily("Arial");
+
+            // Create a translucent brush for shared peptide coverage
+            if (clr == Brushes.Red)
+            {
+                tb.Foreground = new SolidColorBrush(Colors.Red) { Opacity = 0.5 };
+            }
+            else
+            {
+                tb.Foreground = new SolidColorBrush(Colors.Black) { Opacity = 0.5 };
+            }
+
+            Canvas.SetTop(tb, loc.Y);
+            Canvas.SetLeft(tb, loc.X);
+            Panel.SetZIndex(tb, 2);
+            cav.Children.Add(tb);
+            cav.UpdateLayout();
+        }
         public static void txtDrawingLabel(Canvas cav, Point loc, string txt, Brush clr)
         {
             TextBlock tb = new TextBlock();
@@ -105,11 +160,11 @@ namespace GUI
             {
                 tb.FontWeight = FontWeights.ExtraBold;
             }
-            tb.FontFamily = new FontFamily("Arial"); // monospaced font
+            tb.FontFamily = new FontFamily("Arial");
 
             Canvas.SetTop(tb, loc.Y);
             Canvas.SetLeft(tb, loc.X);
-            Panel.SetZIndex(tb, 2); //lower priority
+            Panel.SetZIndex(tb, 2);
             cav.Children.Add(tb);
             cav.UpdateLayout();
         }
@@ -117,13 +172,13 @@ namespace GUI
         // draw line for peptides
         public static void peptideLineDrawing(Canvas cav, Point start, Point end, Color clr, bool shared, bool pepStart, bool pepEnd)
         {
-            
+
             // draw top
             Line top = new Line();
             top.Stroke = new SolidColorBrush(clr);
             if (pepStart == false)
             {
-                top.X1 = start.X-10;
+                top.X1 = start.X - 10;
             }
             else
             {
@@ -134,25 +189,25 @@ namespace GUI
             {
                 top.X2 = end.X + 21;
             }
-            else 
+            else
             {
                 top.X2 = end.X + 11;
             }
-                        
+
             top.Y1 = start.Y + 20;
             top.Y2 = end.Y + 20;
-            top.StrokeThickness = 3.25;            
+            top.StrokeThickness = 3.25;
             top.StrokeStartLineCap = PenLineCap.Round;
             top.StrokeEndLineCap = PenLineCap.Round;
 
             if (shared)
-            {                
+            {
                 top.Stroke.Opacity = 0.35;
             }
 
             cav.Children.Add(top);
 
-            Canvas.SetZIndex(top, 1); //on top of any other things in canvas
+            Canvas.SetZIndex(top, 1);
         }
 
         public static void circledTxtDraw(Canvas cav, Point loc, SolidColorBrush clr)
@@ -167,7 +222,7 @@ namespace GUI
                 Opacity = 0.85
             };
             Canvas.SetLeft(circle, loc.X);
-            Canvas.SetTop(circle, loc.Y-.75);
+            Canvas.SetTop(circle, loc.Y - .75);
             Panel.SetZIndex(circle, 1);
             cav.Children.Add(circle);
         }
@@ -186,13 +241,13 @@ namespace GUI
                     Fill = mod,
                     Opacity = 0.85
                 };
-                Canvas.SetLeft(circle, loc.X );
-                Canvas.SetTop(circle, ((loc.Y - .75)-(circleCount*18)));
+                Canvas.SetLeft(circle, loc.X);
+                Canvas.SetTop(circle, ((loc.Y - .75) - (circleCount * 18)));
                 Panel.SetZIndex(circle, 1);
                 cav.Children.Add(circle);
                 circleCount++;
             }
-            
+
         }
 
         public static void drawLegend(Canvas cav, Dictionary<string, Color> proteaseByColor, List<string> proteases, Grid legend, bool variants)
@@ -204,50 +259,83 @@ namespace GUI
             legend.Children.Add(legendLabel);
             Grid.SetRow(legendLabel, 0);
             legend.RowDefinitions.Add(new RowDefinition());
-            int proteaseRows = Convert.ToInt32(Math.Ceiling((proteases.Count()/3.0)));
+            int proteaseRows = Convert.ToInt32(Math.Ceiling((proteases.Count() / 3.0)));
             int j = 0;
             while (j < proteaseRows)
             {
                 legend.RowDefinitions.Add(new RowDefinition());
                 j++;
-            }            
+            }
             legend.RowDefinitions.Add(new RowDefinition());
 
             legend.ColumnDefinitions.Add(new ColumnDefinition());
             legend.ColumnDefinitions.Add(new ColumnDefinition());
             legend.ColumnDefinitions.Add(new ColumnDefinition());
             legend.ColumnDefinitions.Add(new ColumnDefinition());
-            string[] peptides = new string[2] { "Shared peptides (translucent)", "Unique peptides (bold)" };
-            foreach (string peptide in peptides)
+            legend.ColumnDefinitions.Add(new ColumnDefinition());
+            legend.ColumnDefinitions.Add(new ColumnDefinition());
+
+            // Updated to include three categories
+            string[] peptideCategories = new string[3]
             {
-                Line pepLine = new Line();
-                pepLine.X1 = 0;
-                pepLine.X2 = 50;
-                pepLine.Y1 = 0;
-                pepLine.Y2 = 0;
-                pepLine.StrokeThickness = 4;
-                pepLine.Stroke = new SolidColorBrush(Colors.Black);
-                if (peptide.Equals("Shared peptides (translucent)"))
+                "Shared peptides (translucent)",
+                "Unique peptides (bold)",
+                "Not covered (underlined)"
+            };
+
+            foreach (string peptide in peptideCategories)
+            {
+                if (peptide.Equals("Not covered (underlined)"))
                 {
-                    
-                    pepLine.Stroke.Opacity = 0.35;                   
+                    // Draw underlined text example for uncovered residues
+                    TextBlock uncoveredExample = new TextBlock();
+                    uncoveredExample.Text = "ABC";
+                    uncoveredExample.FontSize = 12;
+                    uncoveredExample.FontWeight = FontWeights.Normal;
+                    uncoveredExample.TextDecorations = TextDecorations.Underline;
+                    uncoveredExample.HorizontalAlignment = HorizontalAlignment.Center;
+                    uncoveredExample.VerticalAlignment = VerticalAlignment.Center;
+
+                    Label pepLabel = new Label();
+                    pepLabel.Content = peptide;
+                    pepLabel.FontSize = 12;
+
+                    legend.Children.Add(uncoveredExample);
+                    legend.Children.Add(pepLabel);
+                    Grid.SetColumn(uncoveredExample, ++i);
+                    Grid.SetRow(uncoveredExample, 1);
+                    Grid.SetColumn(pepLabel, ++i);
+                    Grid.SetRow(pepLabel, 1);
                 }
-                pepLine.HorizontalAlignment = HorizontalAlignment.Center;
-                pepLine.VerticalAlignment = VerticalAlignment.Center;
+                else
+                {
+                    Line pepLine = new Line();
+                    pepLine.X1 = 0;
+                    pepLine.X2 = 50;
+                    pepLine.Y1 = 0;
+                    pepLine.Y2 = 0;
+                    pepLine.StrokeThickness = 4;
+                    pepLine.Stroke = new SolidColorBrush(Colors.Black);
+                    if (peptide.Equals("Shared peptides (translucent)"))
+                    {
+                        pepLine.Stroke.Opacity = 0.35;
+                    }
+                    pepLine.HorizontalAlignment = HorizontalAlignment.Center;
+                    pepLine.VerticalAlignment = VerticalAlignment.Center;
 
-                Label pepLabel = new Label();
-                pepLabel.Content = peptide ;
-                pepLabel.FontSize = 12;
+                    Label pepLabel = new Label();
+                    pepLabel.Content = peptide;
+                    pepLabel.FontSize = 12;
 
-                
-
-                legend.Children.Add(pepLine);
-                legend.Children.Add(pepLabel);
-                Grid.SetColumn(pepLine, ++i);
-                Grid.SetRow(pepLine, 1);
-                Grid.SetColumn(pepLabel, ++i);
-                Grid.SetRow(pepLabel, 1);
+                    legend.Children.Add(pepLine);
+                    legend.Children.Add(pepLabel);
+                    Grid.SetColumn(pepLine, ++i);
+                    Grid.SetRow(pepLine, 1);
+                    Grid.SetColumn(pepLabel, ++i);
+                    Grid.SetRow(pepLabel, 1);
+                }
             }
+
             if (variants == true)
             {
                 legend.ColumnDefinitions.Add(new ColumnDefinition());
@@ -275,7 +363,7 @@ namespace GUI
                 Rectangle proteaseColor = new Rectangle();
                 proteaseColor.Fill = new SolidColorBrush(proteaseByColor[protease]);
                 proteaseColor.Width = 20;
-                proteaseColor.Height = 10;                
+                proteaseColor.Height = 10;
                 if (proteaseCount == 1)
                 {
                     j++;
@@ -305,17 +393,18 @@ namespace GUI
                     Grid.SetColumn(proteaseName, 5);
                     proteaseCount = 0;
                 }
-                
-            }            
+
+            }
 
             cav.Visibility = Visibility.Visible;
         }
+
         public static void drawLegendMods(Canvas cav, Dictionary<string, Color> proteaseByColor, Dictionary<string, SolidColorBrush> modsByColor, List<string> proteases, Grid legend, bool variants)
         {
             int i = -1;
             legend.RowDefinitions.Add(new RowDefinition());
             Label legendLabel = new Label();
-            legendLabel.Content = "Key: ";                       
+            legendLabel.Content = "Key: ";
             legend.Children.Add(legendLabel);
             Grid.SetRow(legendLabel, 0);
             legend.RowDefinitions.Add(new RowDefinition());
@@ -332,33 +421,68 @@ namespace GUI
             legend.ColumnDefinitions.Add(new ColumnDefinition());
             legend.ColumnDefinitions.Add(new ColumnDefinition());
             legend.ColumnDefinitions.Add(new ColumnDefinition());
-            string[] peptides = new string[2] { "Shared peptides (translucent)", "Unique peptides (bold)" };
-            foreach (string peptide in peptides)
+            legend.ColumnDefinitions.Add(new ColumnDefinition());
+            legend.ColumnDefinitions.Add(new ColumnDefinition());
+
+            // Updated to include three categories
+            string[] peptideCategories = new string[3]
             {
-                Line pepLine = new Line();
-                pepLine.X1 = 0;
-                pepLine.X2 = 50;
-                pepLine.Y1 = 0;
-                pepLine.Y2 = 0;
-                pepLine.StrokeThickness = 1;
-                pepLine.Stroke = new SolidColorBrush(Colors.Black);
-                if (peptide.Equals("Shared peptides (translucent)"))
-                {                    
-                    pepLine.Stroke.Opacity = 0.35;
+                "Shared peptides (translucent)",
+                "Unique peptides (bold)",
+                "Not covered (underlined)"
+            };
+
+            foreach (string peptide in peptideCategories)
+            {
+                if (peptide.Equals("Not covered (underlined)"))
+                {
+                    // Draw underlined text example for uncovered residues
+                    TextBlock uncoveredExample = new TextBlock();
+                    uncoveredExample.Text = "ABC";
+                    uncoveredExample.FontSize = 12;
+                    uncoveredExample.FontWeight = FontWeights.Normal;
+                    uncoveredExample.TextDecorations = TextDecorations.Underline;
+                    uncoveredExample.HorizontalAlignment = HorizontalAlignment.Center;
+                    uncoveredExample.VerticalAlignment = VerticalAlignment.Center;
+
+                    Label pepLabel = new Label();
+                    pepLabel.Content = peptide;
+                    pepLabel.FontSize = 12;
+
+                    legend.Children.Add(uncoveredExample);
+                    legend.Children.Add(pepLabel);
+                    Grid.SetColumn(uncoveredExample, ++i);
+                    Grid.SetRow(uncoveredExample, 1);
+                    Grid.SetColumn(pepLabel, ++i);
+                    Grid.SetRow(pepLabel, 1);
                 }
-                pepLine.HorizontalAlignment = HorizontalAlignment.Center;
-                pepLine.VerticalAlignment = VerticalAlignment.Center;
+                else
+                {
+                    Line pepLine = new Line();
+                    pepLine.X1 = 0;
+                    pepLine.X2 = 50;
+                    pepLine.Y1 = 0;
+                    pepLine.Y2 = 0;
+                    pepLine.StrokeThickness = 1;
+                    pepLine.Stroke = new SolidColorBrush(Colors.Black);
+                    if (peptide.Equals("Shared peptides (translucent)"))
+                    {
+                        pepLine.Stroke.Opacity = 0.35;
+                    }
+                    pepLine.HorizontalAlignment = HorizontalAlignment.Center;
+                    pepLine.VerticalAlignment = VerticalAlignment.Center;
 
-                Label pepLabel = new Label();
-                pepLabel.Content = peptide;
-                pepLabel.FontSize= 12;
+                    Label pepLabel = new Label();
+                    pepLabel.Content = peptide;
+                    pepLabel.FontSize = 12;
 
-                legend.Children.Add(pepLine);
-                legend.Children.Add(pepLabel);
-                Grid.SetColumn(pepLine, ++i);
-                Grid.SetRow(pepLine, 1);
-                Grid.SetColumn(pepLabel, ++i);
-                Grid.SetRow(pepLabel, 1);
+                    legend.Children.Add(pepLine);
+                    legend.Children.Add(pepLabel);
+                    Grid.SetColumn(pepLine, ++i);
+                    Grid.SetRow(pepLine, 1);
+                    Grid.SetColumn(pepLabel, ++i);
+                    Grid.SetRow(pepLabel, 1);
+                }
             }
 
             if (variants == true)
@@ -375,7 +499,7 @@ namespace GUI
             }
 
             i = -1;
-                     
+
             j = 1;
             int proteaseCount = 0;
             foreach (var protease in proteases)
@@ -399,7 +523,7 @@ namespace GUI
                     Grid.SetColumn(proteaseColor, 0);
                     legend.Children.Add(proteaseName);
                     Grid.SetRow(proteaseName, j);
-                    Grid.SetColumn(proteaseName, 1);                    
+                    Grid.SetColumn(proteaseName, 1);
                 }
                 if (proteaseCount == 2)
                 {
@@ -422,20 +546,20 @@ namespace GUI
                 }
 
             }
-            
+
             int modCount = 0;
-           
+
             foreach (var mod in modsByColor)
             {
                 modCount++;
-                
+
                 Ellipse circle = new Ellipse()
                 {
                     Width = 17,
-                    Height = 17,                    
+                    Height = 17,
                     StrokeThickness = 1,
                     Opacity = 0.85
-                    
+
                 };
                 circle.Fill = mod.Value;
                 circle.Stroke = mod.Value;
@@ -450,11 +574,11 @@ namespace GUI
                     legend.Children.Add(circle);
                     Grid.SetRow(circle, j);
                     Grid.SetColumn(circle, 0);
-                    
+
                     modName.Content = mod.Key;
                     legend.Children.Add(modName);
                     Grid.SetRow(modName, j);
-                    Grid.SetColumn(modName, 1);                    
+                    Grid.SetColumn(modName, 1);
                 }
 
                 if (modCount == 2)
@@ -462,18 +586,18 @@ namespace GUI
                     legend.Children.Add(circle);
                     Grid.SetRow(circle, j);
                     Grid.SetColumn(circle, 2);
-                    
+
                     modName.Content = mod.Key;
                     legend.Children.Add(modName);
                     Grid.SetRow(modName, j);
-                    Grid.SetColumn(modName, 3);                    
+                    Grid.SetColumn(modName, 3);
                 }
                 if (modCount == 3)
                 {
                     legend.Children.Add(circle);
                     Grid.SetRow(circle, j);
                     Grid.SetColumn(circle, 4);
-                    
+
                     modName.Content = mod.Key;
                     legend.Children.Add(modName);
                     Grid.SetRow(modName, j);

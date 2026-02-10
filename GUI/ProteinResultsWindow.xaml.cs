@@ -476,13 +476,18 @@ namespace GUI
             legendGrid.Children.Clear();
             ModsByColor.Clear();
 
-            // Collect peptides to draw
+            // Collect peptides to draw (only from selected proteases)
             var peptidesToDraw = new List<InSilicoPep>();
             foreach (var protease in proteases)
             {
                 peptidesToDraw.AddRange(_analyzer.GetPeptidesForProteinAndProtease(protein.Protein, protease));
             }
             peptidesToDraw = peptidesToDraw.Distinct().ToList();
+
+            // Calculate covered residues from ALL peptides (all proteases)
+            // Separates unique vs shared coverage for proper text styling
+            var allPeptidesForProtein = _analyzer.GetAllPeptidesForProtein(protein.Protein);
+            var (uniqueCovered, sharedOnlyCovered) = CalculateCoveredResiduesByType(allPeptidesForProtein);
 
             // Draw title
             var mapTitle = $"Sequence Coverage Map of {protein.Protein.Accession}:";
@@ -502,8 +507,9 @@ namespace GUI
                 // Draw line number label
                 SequenceCoverageMap.txtDrawingLabel(map, new Point(0, height), lineLabel.ToString(), Brushes.Black);
 
-                // Draw sequence characters
-                DrawSequenceCharacters(line, lineIndex, variantsByLine, height, residuesPerLine);
+                // Draw sequence characters with coverage information
+                int lineStartResidue = lineIndex * residuesPerLine + 1; // 1-based
+                DrawSequenceCharacters(line, lineIndex, variantsByLine, height, residuesPerLine, uniqueCovered, sharedOnlyCovered, lineStartResidue);
 
                 // Draw modification indicators
                 if (mods.Count > 0 && lineIndex < modsSplitByLine.Count)
@@ -540,18 +546,100 @@ namespace GUI
         }
 
         /// <summary>
-        /// Draws sequence characters, highlighting variants in red
+        /// Calculates which residues are covered by at least one peptide.
+        /// Returns a HashSet of 1-based residue positions that are covered.
         /// </summary>
-        private void DrawSequenceCharacters(string line, int lineIndex, List<List<int>> variantsByLine, int height, int spacing)
+        private HashSet<int> CalculateCoveredResidues(List<InSilicoPep> peptides)
+        {
+            var coveredResidues = new HashSet<int>();
+
+            foreach (var peptide in peptides)
+            {
+                // StartResidue and EndResidue are 1-based positions
+                for (int i = peptide.StartResidue; i <= peptide.EndResidue; i++)
+                {
+                    coveredResidues.Add(i);
+                }
+            }
+
+            return coveredResidues;
+        }
+
+        /// <summary>
+        /// Calculates which residues are covered by unique peptides vs shared peptides.
+        /// Returns two HashSets: one for unique coverage, one for shared-only coverage.
+        /// </summary>
+        private (HashSet<int> uniqueCovered, HashSet<int> sharedOnlyCovered) CalculateCoveredResiduesByType(List<InSilicoPep> peptides)
+        {
+            var uniqueCovered = new HashSet<int>();
+            var sharedCovered = new HashSet<int>();
+
+            foreach (var peptide in peptides)
+            {
+                // Determine if peptide is unique based on multi-database setting
+                bool isUnique = _analyzer.IsMultiDatabase ? peptide.UniqueAllDbs : peptide.Unique;
+
+                for (int i = peptide.StartResidue; i <= peptide.EndResidue; i++)
+                {
+                    if (isUnique)
+                    {
+                        uniqueCovered.Add(i);
+                    }
+                    else
+                    {
+                        sharedCovered.Add(i);
+                    }
+                }
+            }
+
+            // Shared-only means covered by shared but NOT by any unique peptide
+            var sharedOnlyCovered = new HashSet<int>(sharedCovered.Except(uniqueCovered));
+
+            return (uniqueCovered, sharedOnlyCovered);
+        }
+
+        /// <summary>
+        /// Draws sequence characters with three styles:
+        /// - Covered by unique peptides: Bold
+        /// - Covered by shared peptides only: Normal weight (translucent)
+        /// - Not covered: Normal weight, Underlined
+        /// Variants are always shown in Red.
+        /// </summary>
+        private void DrawSequenceCharacters(string line, int lineIndex, List<List<int>> variantsByLine,
+            int height, int spacing, HashSet<int> uniqueCovered, HashSet<int> sharedOnlyCovered, int lineStartResidue)
         {
             bool hasVariants = variantsByLine.Count > lineIndex && variantsByLine[lineIndex].Count > 0;
 
             for (int r = 0; r < line.Length; r++)
             {
-                var brush = hasVariants && variantsByLine[lineIndex].Contains(r + 1)
-                    ? Brushes.Red
-                    : Brushes.Black;
-                SequenceCoverageMap.txtDrawing(map, new Point(r * spacing + 65, height), line[r].ToString().ToUpper(), brush);
+                // Calculate the 1-based residue position in the full protein sequence
+                int residuePosition = lineStartResidue + r;
+
+                // Check if this is a variant position (r+1 is 1-based position within the line for variants)
+                bool isVariant = hasVariants && variantsByLine[lineIndex].Contains(r + 1);
+
+                // Determine coverage type
+                bool isCoveredByUnique = uniqueCovered.Contains(residuePosition);
+                bool isCoveredBySharedOnly = sharedOnlyCovered.Contains(residuePosition);
+
+                var brush = isVariant ? Brushes.Red : Brushes.Black;
+                string character = line[r].ToString().ToUpper();
+
+                if (isCoveredByUnique)
+                {
+                    // Covered by unique peptides: Bold
+                    SequenceCoverageMap.txtDrawing(map, new Point(r * spacing + 65, height), character, brush);
+                }
+                else if (isCoveredBySharedOnly)
+                {
+                    // Covered by shared peptides only: Normal weight, translucent (no underline)
+                    SequenceCoverageMap.txtDrawingShared(map, new Point(r * spacing + 65, height), character, brush);
+                }
+                else
+                {
+                    // Not covered: Normal weight with underline
+                    SequenceCoverageMap.txtDrawingUncovered(map, new Point(r * spacing + 65, height), character, brush);
+                }
             }
         }
 
@@ -564,7 +652,7 @@ namespace GUI
             {
                 if (mod.Value.Count > 1)
                 {
-                    // Multiple mods at same position
+                    // Multiple mods at same position - stack circles
                     var colors = mod.Value
                         .Select(m => GetPtmBrush(Convert.ToDouble(m.MonoisotopicMass)))
                         .ToList();
@@ -572,6 +660,7 @@ namespace GUI
                 }
                 else
                 {
+                    // Single mod - draw one circle
                     var mass = Convert.ToDouble(mod.Value.First().MonoisotopicMass);
                     var brush = GetPtmBrush(mass);
                     SequenceCoverageMap.circledTxtDraw(map, new Point(mod.Key * spacing + 38, height), brush);
