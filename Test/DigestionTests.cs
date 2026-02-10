@@ -14,6 +14,27 @@ namespace Test
     [NonParallelizable] // Prevent parallel execution due to shared Chronologer model file
     public class DigestionTests
     {
+        // Semaphore to ensure only one test uses Chronologer at a time across all fixtures
+        private static readonly SemaphoreSlim ChronologerSemaphore = new SemaphoreSlim(1, 1);
+
+        [SetUp]
+        public void SetUp()
+        {
+            // Acquire semaphore before each test to prevent Chronologer file conflicts
+            ChronologerSemaphore.Wait();
+        }
+
+        [TearDown]
+        public void TearDown()
+        {
+            // Force garbage collection to release file handles
+            GC.Collect();
+            GC.WaitForPendingFinalizers();
+            
+            // Release semaphore after test completes
+            ChronologerSemaphore.Release();
+        }
+
         /// <summary>
         /// Helper method to find a peptide by its base sequence
         /// </summary>
