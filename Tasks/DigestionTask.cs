@@ -261,43 +261,49 @@ namespace Tasks
         /// <summary>
         /// Batch calculates hydrophobicity (retention time prediction) for a collection of peptides.
         /// This method is designed to be easily replaced with a batch-based ML prediction model.
+        /// Uses parallel processing with thread-local SSRCalc3 instances for improved performance.
         /// </summary>
         /// <param name="peptides">Collection of peptides to process</param>
         /// <returns>Array of hydrophobicity values in the same order as input peptides</returns>
         private double[] BatchCalculateHydrophobicity(List<PeptideWithSetModifications> peptides)
         {
-            // Initialize the retention time predictor
-            // TODO: Replace with batch-based ML model (e.g., Prosit, DeepLC, Chronologer)
-            var rtPredictor = new SSRCalc3("SSRCalc 3.0 (300A)", SSRCalc3.Column.A300);
-    
             var results = new double[peptides.Count];
-    
-            // Current implementation: calculate one-by-one
-            // Future implementation: send entire batch to ML model
-            for (int i = 0; i < peptides.Count; i++)
-            {
-                results[i] = rtPredictor.ScoreSequence(peptides[i]);
-            }
-    
+
+            // Use Parallel.For with thread-local SSRCalc3 instances for thread safety
+            // SSRCalc3 is stateless for scoring, so each thread can have its own instance
+            Parallel.For(0, peptides.Count,
+                // Thread-local initialization: create a new SSRCalc3 instance per thread
+                () => new SSRCalc3("SSRCalc 3.0 (300A)", SSRCalc3.Column.A300),
+                // Body: calculate hydrophobicity using thread-local predictor
+                (i, loopState, rtPredictor) =>
+                {
+                    results[i] = rtPredictor.ScoreSequence(peptides[i]);
+                    return rtPredictor;
+                },
+                // Finalizer: nothing to dispose
+                (rtPredictor) => { }
+            );
+
             return results;
         }
 
         /// <summary>
         /// Batch calculates electrophoretic mobility for a collection of peptides.
         /// Uses the Cifuentes mobility equation based on charge and mass.
+        /// Parallelized for improved performance with large datasets.
         /// </summary>
         /// <param name="peptides">Collection of peptides to process</param>
         /// <returns>Array of electrophoretic mobility values in the same order as input peptides</returns>
         private double[] BatchCalculateElectrophoreticMobility(List<PeptideWithSetModifications> peptides)
         {
             var results = new double[peptides.Count];
-    
-            // Can be parallelized if needed for large datasets
-            for (int i = 0; i < peptides.Count; i++)
+
+            // Parallelized for large datasets - GetCifuentesMobility is thread-safe (static, no shared state)
+            Parallel.For(0, peptides.Count, i =>
             {
                 results[i] = GetCifuentesMobility(peptides[i]);
-            }
-    
+            });
+
             return results;
         }
         //calculate electrophoretic mobility of a peptide
