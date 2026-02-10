@@ -42,18 +42,10 @@ namespace Tasks
             // Use a thread-safe dictionary for parallel writes
             var concurrentPeptideByFile = new ConcurrentDictionary<string, ConcurrentDictionary<string, Dictionary<Protein, List<InSilicoPep>>>>();
 
-            // Calculate total work units for progress reporting
-            int totalProteases = DigestionParameters.ProteasesForDigestion.Count;
-            int totalDatabases = dbFileList.Count;
-            int totalWorkUnits = totalDatabases * totalProteases;
-            int completedWorkUnits = 0;
-
-            // Report initial progress
-            ReportProgress(0, totalWorkUnits, "Starting digestion...");
-
             // Process each database in parallel
             Parallel.ForEach(dbFileList, database =>
             {
+                Status("Loading Protein Database(s)...", "loadDbs");
                 List<Protein> proteins = LoadProteins(database);
 
                 // Initialize the entry for this database
@@ -67,21 +59,13 @@ namespace Tasks
                 // Process each protease in parallel for this database
                 Parallel.ForEach(DigestionParameters.ProteasesForDigestion, protease =>
                 {
-                    // Report what we're working on (before the work)
-                    ReportProgress(completedWorkUnits, totalWorkUnits, 
-                        $"Digesting {databaseFileName} with {protease.Name}...");
+                    Status("Digesting Proteins...", "digestDbs");
 
-                    // Do the actual work
                     var peptides = DigestDatabase(proteinsForDigestion, protease, DigestionParameters);
                     var peptidesFormatted = DeterminePeptideStatus(databaseFileName, peptides, DigestionParameters);
 
                     // Thread-safe add to the concurrent dictionary
                     proteaseResults[protease.Name] = peptidesFormatted;
-
-                    // Increment progress AFTER the work completes
-                    int currentUnit = Interlocked.Increment(ref completedWorkUnits);
-                    ReportProgress(currentUnit, totalWorkUnits, 
-                        $"Completed {protease.Name} ({currentUnit}/{totalWorkUnits})");
                 });
             });
 
@@ -92,15 +76,11 @@ namespace Tasks
             }
 
 
-
             ReportProgress(totalWorkUnits, totalWorkUnits, "Writing peptide output...");
             WritePeptidesToTsv(PeptideByFile, OutputFolder, DigestionParameters);
-            
-            ReportProgress(totalWorkUnits, totalWorkUnits, "Calculating sequence coverage...");
             SequenceCoverageByProtease = CalculateProteinSequenceCoverage(PeptideByFile);
-            
             MyTaskResults myRunResults = new MyTaskResults(this);
-            ReportProgress(totalWorkUnits, totalWorkUnits, "Complete!");
+            Status("Writing Results Summary...", "summary");
 
             return myRunResults;
         }
@@ -181,8 +161,6 @@ namespace Tasks
                 .SelectMany(kvp => kvp.Value)
                 .ToList();
 
-            ReportProgress(0, 5, $"Analyzing {allPeptides.Count:N0} peptides - determining uniqueness...");
-
             // Group by sequence to determine uniqueness
             var peptideGroups = userParams.TreatModifiedPeptidesAsDifferent
                 ? allPeptides.GroupBy(p => p.FullSequence)
@@ -198,17 +176,10 @@ namespace Tasks
             // PHASE 2: Batch calculate hydrophobicity and electrophoretic mobility
             // ============================================================================
     
-            ReportProgress(1, 5, $"Calculating hydrophobicity for {allPeptides.Count:N0} peptides...");
             var hydrophobicityValues = BatchCalculateHydrophobicity(allPeptides);
-            
-            ReportProgress(2, 5, $"Calculating electrophoretic mobility for {allPeptides.Count:N0} peptides...");
             var mobilityValues = BatchCalculateElectrophoreticMobility(allPeptides);
-            
-            ReportProgress(3, 5, $"Predicting retention times for {allPeptides.Count:N0} peptides...");
             var retentionTimesChronologer = BatchCalculateRetentionTimesChronologer(allPeptides);
 
-            ReportProgress(4, 5, $"Building peptide objects for {allPeptides.Count:N0} peptides...");
-            
             // Create a lookup from peptide to its calculated values
             var peptideToIndex = new Dictionary<PeptideWithSetModifications, int>();
 
@@ -216,8 +187,6 @@ namespace Tasks
             {
                 peptideToIndex[allPeptides[i]] = i;
             }
-
-
 
             // ============================================================================
             // PHASE 3: Build InSilicoPep objects - process protein by protein to maintain order
@@ -278,49 +247,27 @@ namespace Tasks
                 inSilicoPeptides[protein] = new List<InSilicoPep>();
             }
 
-            ReportProgress(5, 5, $"Completed processing {allPeptides.Count:N0} peptides");
             return inSilicoPeptides;
         }
+        // Add this static field at the top of the DigestionTask class:
+        private static readonly object ChronologerLock = new object();
 
-        // Lock for sequential creation of Chronologer predictors (file loading must be serialized)
-        private static readonly object ChronologerCreationLock = new object();
-
-        /// <summary>
-        /// Batch calculates Chronologer retention times for a collection of peptides.
-        /// Uses parallel processing with a pool of pre-created ChronologerRetentionTimePredictor instances.
-        /// Predictor creation is serialized to avoid file access conflicts, but predictions run in parallel.
-        /// </summary>
-        /// <param name="peptides">Collection of peptides to process</param>
-        /// <returns>Array of retention time values in the same order as input peptides</returns>
+        // Then update the BatchCalculateRetentionTimesChronologer method:
         private double[] BatchCalculateRetentionTimesChronologer(List<PeptideWithSetModifications> peptides)
         {
             var results = new double[peptides.Count];
-            
-            // Determine the number of threads to use
-            int threadCount = Math.Min(Environment.ProcessorCount, peptides.Count);
-            if (threadCount < 1) threadCount = 1;
 
-            // Pre-create predictor instances SEQUENTIALLY to avoid file access conflicts
-            // The Chronologer model file cannot be opened by multiple threads simultaneously
-            var predictorPool = new ChronologerRetentionTimePredictor[threadCount];
-            for (int i = 0; i < threadCount; i++)
+            // Synchronize access to prevent concurrent file access to model
+            lock (ChronologerLock)
             {
-                predictorPool[i] = new ChronologerRetentionTimePredictor();
-            }
+                var rtPredictor = new Chromatography.RetentionTimePrediction.Chronologer.ChronologerRetentionTimePredictor();
 
-            // Now run predictions in parallel using the pre-created predictors
-            // Each thread gets assigned a predictor from the pool based on thread ID
-            Parallel.For(0, peptides.Count,
-                new ParallelOptions { MaxDegreeOfParallelism = threadCount },
-                () => Thread.CurrentThread.ManagedThreadId % threadCount,  // Thread-local: pool index
-                (i, loopState, poolIndex) =>
+                for (int i = 0; i < peptides.Count; i++)
                 {
-                    var result = predictorPool[poolIndex].PredictRetentionTime(peptides[i], out var failureReason);
+                    var result = rtPredictor.PredictRetentionTime(peptides[i], out var failureReason);
                     results[i] = result ?? -1;
-                    return poolIndex;
-                },
-                (poolIndex) => { }  // No cleanup needed
-            );
+                }
+            }
 
             return results;
         }
@@ -328,49 +275,43 @@ namespace Tasks
         /// <summary>
         /// Batch calculates hydrophobicity (retention time prediction) for a collection of peptides.
         /// This method is designed to be easily replaced with a batch-based ML prediction model.
-        /// Uses parallel processing with thread-local SSRCalc3 instances for improved performance.
         /// </summary>
         /// <param name="peptides">Collection of peptides to process</param>
         /// <returns>Array of hydrophobicity values in the same order as input peptides</returns>
         private double[] BatchCalculateHydrophobicity(List<PeptideWithSetModifications> peptides)
         {
+            // Initialize the retention time predictor
+            // TODO: Replace with batch-based ML model (e.g., Prosit, DeepLC, Chronologer)
+            var rtPredictor = new SSRCalc3("SSRCalc 3.0 (300A)", SSRCalc3.Column.A300);
+    
             var results = new double[peptides.Count];
-
-            // Use Parallel.For with thread-local SSRCalc3 instances for thread safety
-            // SSRCalc3 is stateless for scoring, so each thread can have its own instance
-            Parallel.For(0, peptides.Count,
-                // Thread-local initialization: create a new SSRCalc3 instance per thread
-                () => new SSRCalc3("SSRCalc 3.0 (300A)", SSRCalc3.Column.A300),
-                // Body: calculate hydrophobicity using thread-local predictor
-                (i, loopState, rtPredictor) =>
-                {
-                    results[i] = rtPredictor.ScoreSequence(peptides[i]);
-                    return rtPredictor;
-                },
-                // Finalizer: nothing to dispose
-                (rtPredictor) => { }
-            );
-
+    
+            // Current implementation: calculate one-by-one
+            // Future implementation: send entire batch to ML model
+            for (int i = 0; i < peptides.Count; i++)
+            {
+                results[i] = rtPredictor.ScoreSequence(peptides[i]);
+            }
+    
             return results;
         }
 
         /// <summary>
         /// Batch calculates electrophoretic mobility for a collection of peptides.
         /// Uses the Cifuentes mobility equation based on charge and mass.
-        /// Parallelized for improved performance with large datasets.
         /// </summary>
         /// <param name="peptides">Collection of peptides to process</param>
         /// <returns>Array of electrophoretic mobility values in the same order as input peptides</returns>
         private double[] BatchCalculateElectrophoreticMobility(List<PeptideWithSetModifications> peptides)
         {
             var results = new double[peptides.Count];
-
-            // Parallelized for large datasets - GetCifuentesMobility is thread-safe (static, no shared state)
-            Parallel.For(0, peptides.Count, i =>
+    
+            // Can be parallelized if needed for large datasets
+            for (int i = 0; i < peptides.Count; i++)
             {
                 results[i] = GetCifuentesMobility(peptides[i]);
-            });
-
+            }
+    
             return results;
         }
         //calculate electrophoretic mobility of a peptide
@@ -758,6 +699,7 @@ namespace Tasks
 
             List<string> parameters = new List<string>();
             parameters.Add("Digestion Conditions:");
+            parameters.Add("Database: " + string.Join(',', peptideByFile.Keys));
             parameters.Add("Proteases: " + string.Join(',', userParams.ProteasesForDigestion.Select(p => p.Name).ToList()));
             parameters.Add("Max Missed Cleavages: " + userParams.NumberOfMissedCleavagesAllowed);
             parameters.Add("Min Peptide Length: " + userParams.MinPeptideLengthAllowed);

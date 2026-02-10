@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Text;
@@ -47,5 +47,6 @@ namespace GUI
         }
 
         public string DisplayName { get; }
+        public bool Expanded { get; set; } = true;
     }
 }
