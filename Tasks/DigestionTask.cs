@@ -657,6 +657,7 @@ namespace Tasks
 
             List<string> parameters = new List<string>();
             parameters.Add("Digestion Conditions:");
+            parameters.Add("Database: " + string.Join(',', peptideByFile.Keys));
             parameters.Add("Proteases: " + string.Join(',', userParams.ProteasesForDigestion.Select(p => p.Name).ToList()));
             parameters.Add("Max Missed Cleavages: " + userParams.NumberOfMissedCleavagesAllowed);
             parameters.Add("Min Peptide Length: " + userParams.MinPeptideLengthAllowed);

@@ -29,7 +29,7 @@ namespace Engine
 #if DEBUG
                 ProteaseGuruVersion = "Not a release version. DEBUG.";
 #else
-                ProteaseGuruVersion = "0.0.23";
+                ProteaseGuruVersion = "Not a release version. RELEASE";
 #endif
             }
             else
