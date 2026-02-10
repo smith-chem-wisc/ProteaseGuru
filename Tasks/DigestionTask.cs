@@ -270,7 +270,7 @@ namespace Tasks
             }
 
             // ============================================================================
-            // PHASE 4: Handle proteins with no peptides 
+            // PHASE 4: Handle proteins with no peptides  
             // ============================================================================
     
             foreach (var protein in databasePeptides.Keys.Where(p => !inSilicoPeptides.ContainsKey(p)))
