@@ -283,43 +283,65 @@ namespace Tasks
         }
 
         // Lock for sequential creation of Chronologer predictors (file loading must be serialized)
-        private static readonly object ChronologerCreationLock = new object();
+        private static readonly object ChronologerLock = new object();
+        private static ChronologerRetentionTimePredictor[] _sharedPredictorPool;
+        private static int _predictorPoolRefCount;
 
         /// <summary>
-        /// Batch calculates Chronologer retention times for a collection of peptides.
-        /// Uses parallel processing with a pool of pre-created ChronologerRetentionTimePredictor instances.
-        /// Predictor creation is serialized to avoid file access conflicts, but predictions run in parallel.
+        /// Initializes the shared Chronologer predictor pool (thread-safe, creates only once)
         /// </summary>
-        /// <param name="peptides">Collection of peptides to process</param>
-        /// <returns>Array of retention time values in the same order as input peptides</returns>
+        private static ChronologerRetentionTimePredictor[] GetOrCreatePredictorPool(int threadCount)
+        {
+            lock (ChronologerLock)
+            {
+                if (_sharedPredictorPool == null || _sharedPredictorPool.Length < threadCount)
+                {
+                    // Dispose existing predictors if resizing
+                    if (_sharedPredictorPool != null)
+                    {
+                        foreach (var predictor in _sharedPredictorPool)
+                            (predictor as IDisposable)?.Dispose();
+                    }
+                    
+                    _sharedPredictorPool = new ChronologerRetentionTimePredictor[threadCount];
+                    for (int i = 0; i < threadCount; i++)
+                    {
+                        _sharedPredictorPool[i] = new ChronologerRetentionTimePredictor();
+                    }
+                }
+                _predictorPoolRefCount++;
+                return _sharedPredictorPool;
+            }
+        }
+
+        /// <summary>
+        /// Batch calculates retention times using Chronologer.
+        /// </summary>
         private double[] BatchCalculateRetentionTimesChronologer(List<PeptideWithSetModifications> peptides)
         {
             var results = new double[peptides.Count];
+            if (peptides.Count == 0) return results;
 
-            // Determine the number of threads to use
             int threadCount = Math.Min(Environment.ProcessorCount, peptides.Count);
             if (threadCount < 1) threadCount = 1;
 
-            // Pre-create predictor instances SEQUENTIALLY to avoid file access conflicts
-            // The Chronologer model file cannot be opened by multiple threads simultaneously
-            var predictorPool = new ChronologerRetentionTimePredictor[threadCount];
-            for (int i = 0; i < threadCount; i++)
-            {
-                predictorPool[i] = new ChronologerRetentionTimePredictor();
-            }
+            // Get shared predictor pool (thread-safe creation)
+            var predictorPool = GetOrCreatePredictorPool(threadCount);
 
-            // Now run predictions in parallel using the pre-created predictors
-            // Each thread gets assigned a predictor from the pool based on thread ID
+            // Now run predictions in parallel using the shared predictors
             Parallel.For(0, peptides.Count,
                 new ParallelOptions { MaxDegreeOfParallelism = threadCount },
-                () => Thread.CurrentThread.ManagedThreadId % threadCount,  // Thread-local: pool index
+                () => Thread.CurrentThread.ManagedThreadId % threadCount,
                 (i, loopState, poolIndex) =>
                 {
-                    var result = predictorPool[poolIndex].PredictRetentionTime(peptides[i], out var failureReason);
-                    results[i] = result ?? -1;
+                    lock (predictorPool[poolIndex]) // Ensure thread-safe access to each predictor
+                    {
+                        var result = predictorPool[poolIndex].PredictRetentionTime(peptides[i], out var failureReason);
+                        results[i] = result ?? -1;
+                    }
                     return poolIndex;
                 },
-                (poolIndex) => { }  // No cleanup needed
+                (poolIndex) => { }
             );
 
             return results;
