@@ -25,6 +25,11 @@ namespace Tasks
         public Dictionary<string, Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>>? PeptideByFile;
 
         public static event EventHandler<StringEventArgs> OutLabelStatusHandler;
+        
+        /// <summary>
+        /// Event fired to report progress during digestion operations.
+        /// </summary>
+        public static event EventHandler<ProgressEventArgs> ProgressHandler;
 
         public static Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>? AllPeptidesByProtease;
 
@@ -34,11 +39,7 @@ namespace Tasks
             AllPeptidesByProtease = new Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>();
             PeptideByFile = new Dictionary<string, Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>>(dbFileList.Count);
 
-            // Use a thread-safe dictionary for parallel writes
-            var concurrentPeptideByFile = new ConcurrentDictionary<string, ConcurrentDictionary<string, Dictionary<Protein, List<InSilicoPep>>>>();
-
-            // Process each database in parallel
-            Parallel.ForEach(dbFileList, database =>
+            Parallel.ForEach(threadArray_1, (j) =>
             {
                 Status("Loading Protein Database(s)...", "loadDbs");
                 List<Protein> proteins = LoadProteins(database);
@@ -70,13 +71,26 @@ namespace Tasks
                 PeptideByFile[dbEntry.Key] = new Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>(dbEntry.Value);
             }
 
-            Status("Writing Peptide Output...", "peptides");
+
+
+            ReportProgress(totalWorkUnits, totalWorkUnits, "Writing peptide output...");
             WritePeptidesToTsv(PeptideByFile, OutputFolder, DigestionParameters);
+            
+            ReportProgress(totalWorkUnits, totalWorkUnits, "Calculating sequence coverage...");
             SequenceCoverageByProtease = CalculateProteinSequenceCoverage(PeptideByFile);
+            
             MyTaskResults myRunResults = new MyTaskResults(this);
             Status("Writing Results Summary...", "summary");
 
             return myRunResults;
+        }
+        
+        /// <summary>
+        /// Reports progress to subscribers of the ProgressHandler event.
+        /// </summary>
+        private void ReportProgress(int current, int max, string message)
+        {
+            ProgressHandler?.Invoke(this, new ProgressEventArgs(current, max, message));
         }
         // Load proteins from XML or FASTA databases and keep them associated with the database file name from which they came from
         protected List<Protein> LoadProteins(DbForDigestion database)
@@ -306,21 +320,37 @@ namespace Tasks
             int charge = 1 + pwsm.BaseSequence.Count(f => f == 'K') + pwsm.BaseSequence.Count(f => f == 'R') + pwsm.BaseSequence.Count(f => f == 'H') - CountModificationsThatShiftMobility(pwsm.AllModsOneIsNterminus.Values.AsEnumerable());// the 1 + is for N-terminal
 
             double mobility = (Math.Log(1 + 0.35 * (double)charge)) / Math.Pow(pwsm.MonoisotopicMass, 0.411);
-            if (Double.IsNaN(mobility)==true)
+            if (Double.IsNaN(mobility))
             {
                 mobility = 0;
             }
             return mobility;
         }
 
+        // Static HashSet for O(1) lookup - created once, reused for all calls
+        private static readonly HashSet<string> ShiftingModifications = new HashSet<string>(StringComparer.Ordinal)
+        {
+            "Acetylation", "Ammonia loss", "Carbamyl", "Deamidation", "Formylation",
+            "N2-acetylarginine", "N6-acetyllysine", "N-acetylalanine", "N-acetylaspartate", 
+            "N-acetylcysteine", "N-acetylglutamate", "N-acetylglycine", "N-acetylisoleucine", 
+            "N-acetylmethionine", "N-acetylproline", "N-acetylserine", "N-acetylthreonine", 
+            "N-acetyltyrosine", "N-acetylvaline", "Phosphorylation", "Phosphoserine", 
+            "Phosphothreonine", "Phosphotyrosine", "Sulfonation"
+        };
+
         public static int CountModificationsThatShiftMobility(IEnumerable<Modification> modifications)
         {
-            List<string> shiftingModifications = new List<string> { "Acetylation", "Ammonia loss", "Carbamyl", "Deamidation", "Formylation",
-                "N2-acetylarginine", "N6-acetyllysine", "N-acetylalanine", "N-acetylaspartate", "N-acetylcysteine", "N-acetylglutamate", "N-acetylglycine",
-                "N-acetylisoleucine", "N-acetylmethionine", "N-acetylproline", "N-acetylserine", "N-acetylthreonine", "N-acetyltyrosine", "N-acetylvaline",
-                "Phosphorylation", "Phosphoserine", "Phosphothreonine", "Phosphotyrosine", "Sulfonation" };
-
-            return modifications.Select(n => n.OriginalId).Intersect(shiftingModifications).Count();
+            // Direct iteration with HashSet lookup - O(n) with O(1) lookups
+            // Avoids creating intermediate collections from Select/Intersect
+            int count = 0;
+            foreach (var mod in modifications)
+            {
+                if (mod.OriginalId != null && ShiftingModifications.Contains(mod.OriginalId))
+                {
+                    count++;
+                }
+            }
+            return count;
         }
         /// <summary>
         /// Calculates protein sequence coverage for each protease across all databases.
