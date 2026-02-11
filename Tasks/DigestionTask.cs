@@ -186,8 +186,6 @@ namespace Tasks
                 .SelectMany(kvp => kvp.Value)
                 .ToList();
 
-            ReportProgress(0, 5, $"Analyzing {allPeptides.Count:N0} peptides - determining uniqueness...");
-
             // Group by sequence to determine uniqueness
             var peptideGroups = userParams.TreatModifiedPeptidesAsDifferent
                 ? allPeptides.GroupBy(p => p.FullSequence)
@@ -203,16 +201,9 @@ namespace Tasks
             // PHASE 2: Batch calculate hydrophobicity and electrophoretic mobility
             // ============================================================================
 
-            ReportProgress(1, 5, $"Calculating hydrophobicity for {allPeptides.Count:N0} peptides...");
             var hydrophobicityValues = BatchCalculateHydrophobicity(allPeptides);
-
-            ReportProgress(2, 5, $"Calculating electrophoretic mobility for {allPeptides.Count:N0} peptides...");
             var mobilityValues = BatchCalculateElectrophoreticMobility(allPeptides);
-
-            ReportProgress(3, 5, $"Predicting retention times for {allPeptides.Count:N0} peptides...");
             var retentionTimesChronologer = BatchCalculateRetentionTimesChronologer(allPeptides);
-
-            ReportProgress(4, 5, $"Building peptide objects for {allPeptides.Count:N0} peptides...");
 
             // Create a lookup from peptide to its calculated values
             var peptideToIndex = new Dictionary<PeptideWithSetModifications, int>();
@@ -221,8 +212,6 @@ namespace Tasks
             {
                 peptideToIndex[allPeptides[i]] = i;
             }
-
-
 
             // ============================================================================
             // PHASE 3: Build InSilicoPep objects - process protein by protein to maintain order
@@ -246,9 +235,6 @@ namespace Tasks
                     // Get pre-calculated values
                     int index = peptideToIndex[peptide];
 
-                    // In the DeterminePeptideStatus method, update the InSilicoPep constructor call:
-                    // Replace this section (around line 190-200):
-
                     var inSilicoPep = new InSilicoPep(
                         peptide.BaseSequence,
                         peptide.FullSequence,
@@ -257,7 +243,7 @@ namespace Tasks
                         isUnique,
                         hydrophobicityValues[index],
                         mobilityValues[index],
-                        retentionTimesChronologer[index],  // Add this new parameter
+                        retentionTimesChronologer[index],
                         peptide.Length,
                         peptide.MonoisotopicMass,
                         databaseName,
@@ -283,7 +269,6 @@ namespace Tasks
                 inSilicoPeptides[protein] = new List<InSilicoPep>();
             }
 
-            ReportProgress(5, 5, $"Completed processing {allPeptides.Count:N0} peptides");
             return inSilicoPeptides;
         }
 
@@ -362,22 +347,25 @@ namespace Tasks
             // Get shared predictor pool (thread-safe creation)
             var predictorPool = GetOrCreatePredictorPool(threadCount);
 
+            // Atomic counter to assign unique predictor indices to each worker thread
+            int nextPredictorIndex = -1;
+
             try
             {
-                // Now run predictions in parallel using the shared predictors
+                // Run predictions in parallel - each worker gets a unique predictor via atomic counter
                 Parallel.For(0, peptides.Count,
                     new ParallelOptions { MaxDegreeOfParallelism = threadCount },
-                    () => Thread.CurrentThread.ManagedThreadId % threadCount,
-                    (i, loopState, poolIndex) =>
+                    // Thread-local init: atomically claim a unique predictor index for this worker
+                    () => Interlocked.Increment(ref nextPredictorIndex) % threadCount,
+                    // Body: use the assigned predictor (no lock needed - each worker has exclusive access)
+                    (i, loopState, predictorIndex) =>
                     {
-                        lock (predictorPool[poolIndex])
-                        {
-                            var result = predictorPool[poolIndex].PredictRetentionTime(peptides[i], out var failureReason);
-                            results[i] = result ?? -1;
-                        }
-                        return poolIndex;
+                        var result = predictorPool[predictorIndex].PredictRetentionTime(peptides[i], out _);
+                        results[i] = result ?? -1;
+                        return predictorIndex;
                     },
-                    (poolIndex) => { }
+                    // Finalizer: nothing to clean up
+                    _ => { }
                 );
             }
             finally
@@ -475,17 +463,8 @@ namespace Tasks
 
         public static int CountModificationsThatShiftMobility(IEnumerable<Modification> modifications)
         {
-            // Direct iteration with HashSet lookup - O(n) with O(1) lookups
-            // Avoids creating intermediate collections from Select/Intersect
-            int count = 0;
-            foreach (var mod in modifications)
-            {
-                if (mod.OriginalId != null && ShiftingModifications.Contains(mod.OriginalId))
-                {
-                    count++;
-                }
-            }
-            return count;
+            return modifications.Count(mod =>
+                mod.OriginalId != null && ShiftingModifications.Contains(mod.OriginalId));
         }
         /// <summary>
         /// Calculates protein sequence coverage for each protease across all databases.

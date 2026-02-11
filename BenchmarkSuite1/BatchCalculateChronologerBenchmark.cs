@@ -51,11 +51,11 @@ namespace Benchmarks
         [Benchmark]
         public double[] BatchCalculateRetentionTimesChronologer()
         {
-            var rtPredictor = new ChronologerRetentionTimePredictor();
+            using var rtPredictor = new ChronologerRetentionTimePredictor();
             var results = new double[_peptides.Count];
             for (int i = 0; i < _peptides.Count; i++)
             {
-                var result = rtPredictor.PredictRetentionTime(_peptides[i], out var failureReason);
+                var result = rtPredictor.PredictRetentionTime(_peptides[i], out _);
                 results[i] = result ?? -1;
             }
 

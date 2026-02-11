@@ -56,13 +56,6 @@ namespace Test
         [TearDown]
         public void TearDown()
         {
-            // Force garbage collection to release file handles
-            GC.Collect();
-            GC.WaitForPendingFinalizers();
-            
-            // Small delay to ensure file handles are released
-            Thread.Sleep(100);
-            
             // Release and dispose the mutex
             try
             {
@@ -103,7 +96,7 @@ namespace Test
         /// <summary>
         /// Helper method to clean up test folders with retry logic for locked files
         /// </summary>
-        private void CleanupTestFolder(string folderPath)
+        private static void CleanupTestFolder(string folderPath)
         {
             if (!Directory.Exists(folderPath))
                 return;
@@ -115,13 +108,12 @@ namespace Test
             {
                 try
                 {
-                    GC.Collect();
-                    GC.WaitForPendingFinalizers();
                     Directory.Delete(folderPath, true);
                     return;
                 }
                 catch (IOException) when (attempt < maxRetries - 1)
                 {
+                    // Brief delay to allow file handles to be released
                     Thread.Sleep(delayMs);
                 }
                 catch (UnauthorizedAccessException) when (attempt < maxRetries - 1)
