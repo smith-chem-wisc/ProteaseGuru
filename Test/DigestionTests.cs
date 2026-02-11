@@ -7,63 +7,82 @@ namespace Test
 {
     [TestFixture]
     [NonParallelizable]
-    public class DigestionTests
+    public class DigestionTests : IDisposable
     {
         // Named mutex for cross-process synchronization of Chronologer file access
         private const string ChronologerMutexName = "Global\\ProteaseGuru_Chronologer_Mutex";
-        private Mutex _chronologerMutex;
+        private ChronologerMutexLock _mutexLock;
+
+        /// <summary>
+        /// Disposable wrapper for Chronologer mutex acquisition and release
+        /// </summary>
+        private sealed class ChronologerMutexLock : IDisposable
+        {
+            private Mutex _mutex;
+            private bool _owned;
+
+            public static ChronologerMutexLock Acquire(string mutexName, TimeSpan timeout)
+            {
+                var lockObj = new ChronologerMutexLock();
+                lockObj._mutex = new Mutex(false, mutexName);
+
+                try
+                {
+                    lockObj._owned = lockObj._mutex.WaitOne(timeout);
+                    if (!lockObj._owned)
+                    {
+                        lockObj._mutex.Dispose();
+                        lockObj._mutex = null;
+                        throw new TimeoutException($"Timed out waiting for mutex: {mutexName}");
+                    }
+                }
+                catch (AbandonedMutexException)
+                {
+                    // Previous owner terminated without releasing - mutex is still acquired
+                    lockObj._owned = true;
+                    TestContext.WriteLine("Warning: Acquired abandoned Chronologer mutex from a crashed process");
+                }
+                catch when (lockObj._mutex != null)
+                {
+                    lockObj._mutex.Dispose();
+                    lockObj._mutex = null;
+                    throw;
+                }
+
+                return lockObj;
+            }
+
+            public void Dispose()
+            {
+                if (_mutex != null)
+                {
+                    if (_owned)
+                    {
+                        try { _mutex.ReleaseMutex(); }
+                        catch (ApplicationException) { /* Not owned by this thread */ }
+                    }
+                    _mutex.Dispose();
+                    _mutex = null;
+                }
+            }
+        }
 
         [SetUp]
         public void SetUp()
         {
-            // Create or open a system-wide named mutex
-            _chronologerMutex = new Mutex(false, ChronologerMutexName);
-
-            try
-            {
-                // Wait to acquire the mutex (with timeout to prevent deadlocks)
-                // AbandonedMutexException means a previous owner crashed without releasing,
-                // but the mutex IS acquired in this case, so we can proceed
-                bool acquired = _chronologerMutex.WaitOne(TimeSpan.FromMinutes(5));
-                if (!acquired)
-                {
-                    _chronologerMutex.Dispose();
-                    _chronologerMutex = null;
-                    throw new TimeoutException("Timed out waiting for Chronologer mutex");
-                }
-            }
-            catch (AbandonedMutexException)
-            {
-                // Previous owner terminated without releasing - mutex is still acquired
-                // Log warning but continue with the test
-                TestContext.WriteLine("Warning: Acquired abandoned Chronologer mutex from a crashed process");
-            }
-            catch (Exception) when (_chronologerMutex != null)
-            {
-                // For any other exception, dispose the mutex before re-throwing
-                _chronologerMutex.Dispose();
-                _chronologerMutex = null;
-                throw;
-            }
+            _mutexLock = ChronologerMutexLock.Acquire(ChronologerMutexName, TimeSpan.FromMinutes(5));
         }
 
         [TearDown]
         public void TearDown()
         {
-            // Release and dispose the mutex
-            try
-            {
-                _chronologerMutex?.ReleaseMutex();
-            }
-            catch (ApplicationException)
-            {
-                // Mutex was not owned by this thread
-            }
-            finally
-            {
-                _chronologerMutex?.Dispose();
-                _chronologerMutex = null;
-            }
+            _mutexLock?.Dispose();
+            _mutexLock = null;
+        }
+
+        public void Dispose()
+        {
+            _mutexLock?.Dispose();
         }
 
         /// <summary>
