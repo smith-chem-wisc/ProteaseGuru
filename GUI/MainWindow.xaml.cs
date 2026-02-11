@@ -1191,35 +1191,54 @@ namespace GUI
         }
 
         private DateTime _lastProgressUpdate = DateTime.MinValue;
-        private readonly TimeSpan _progressUpdateInterval = TimeSpan.FromMilliseconds(50); // Update at most every 50ms
-        private ProgressEventArgs _latestProgress;
+        private readonly TimeSpan _progressUpdateInterval = TimeSpan.FromMilliseconds(100);
+        private volatile ProgressEventArgs _latestProgress;
+        private System.Windows.Threading.DispatcherTimer _progressTimer;
 
         /// <summary>
         /// Updates the progress bar and status text based on progress events from the digestion task.
-        /// Throttles updates to prevent UI thread flooding from rapid parallel progress events.
+        /// Uses a timer-based approach to avoid deadlocks from Dispatcher.Invoke in parallel code.
         /// </summary>
         private void UpdateProgress(object sender, ProgressEventArgs e)
         {
+            // Store the latest progress (thread-safe via volatile)
             _latestProgress = e;
-            
-            // Throttle: skip update if we updated recently (unless it's the final update)
-            var now = DateTime.UtcNow;
-            bool isFinalUpdate = e.CurrentProgress >= e.MaxProgress;
-            
-            if (!isFinalUpdate && (now - _lastProgressUpdate) < _progressUpdateInterval)
-            {
-                return; // Skip this update, too soon
-            }
-            
-            _lastProgressUpdate = now;
 
-            if (!Dispatcher.CheckAccess())
+            // Start timer on first progress event (must be on UI thread)
+            if (_progressTimer == null)
             {
-                Dispatcher.Invoke(() => UpdateProgressUI(e), System.Windows.Threading.DispatcherPriority.Render);
+                Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    if (_progressTimer == null)
+                    {
+                        _progressTimer = new System.Windows.Threading.DispatcherTimer
+                        {
+                            Interval = _progressUpdateInterval
+                        };
+                        _progressTimer.Tick += ProgressTimer_Tick;
+                        _progressTimer.Start();
+                    }
+                }));
             }
-            else
+
+            // For the final update, force immediate UI refresh
+            if (e.CurrentProgress >= e.MaxProgress)
             {
-                UpdateProgressUI(e);
+                Dispatcher.BeginInvoke(new Action(() => 
+                {
+                    _progressTimer?.Stop();
+                    _progressTimer = null;
+                    UpdateProgressUI(e);
+                }), System.Windows.Threading.DispatcherPriority.Send);
+            }
+        }
+
+        private void ProgressTimer_Tick(object sender, EventArgs e)
+        {
+            var progress = _latestProgress;
+            if (progress != null)
+            {
+                UpdateProgressUI(progress);
             }
         }
 
