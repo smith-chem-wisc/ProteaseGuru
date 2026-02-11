@@ -1,13 +1,11 @@
 using System.Collections.Concurrent;
 using System.Data;
-using Chromatography.RetentionTimePrediction;
 using Chromatography.RetentionTimePrediction.Chronologer;
 using Engine;
 using Omics.Modifications;
 using Proteomics;
 using Proteomics.ProteolyticDigestion;
 using Proteomics.RetentionTimePrediction;
-using SharpLearning.Common.Interfaces;
 using UsefulProteomicsDatabases;
 
 namespace Tasks
@@ -121,7 +119,7 @@ namespace Tasks
         protected List<Protein> LoadProteins(DbForDigestion database)
         {
             List<string> dbErrors = new List<string>();
-            List<Protein> proteinList = new List<Protein>();
+            List<Protein> proteinList;
 
             string theExtension = Path.GetExtension(database.FilePath).ToLowerInvariant();
             bool compressed = theExtension.EndsWith("gz"); // allows for .bgz and .tgz, too which are used on occasion

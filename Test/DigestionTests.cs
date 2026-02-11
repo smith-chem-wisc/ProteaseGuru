@@ -1,13 +1,7 @@
 using Engine;
 using NUnit.Framework;
 using Proteomics.ProteolyticDigestion;
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Threading;
 using Tasks;
-using UsefulProteomicsDatabases;
 
 namespace Test
 {
