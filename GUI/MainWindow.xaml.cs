@@ -1,25 +1,14 @@
 using Proteomics;
-using System;
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
 using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
-using System.Windows.Shapes;
 using Engine;
 using Tasks;
 using Proteomics.ProteolyticDigestion;
 using System.IO;
 using System.Globalization;
-using static Tasks.ProteaseGuruTask;
 using MzLibUtil;
 using System.Diagnostics;
 using Omics.Digestion;
@@ -1201,21 +1190,44 @@ namespace GUI
             }
         }
 
+        private DateTime _lastProgressUpdate = DateTime.MinValue;
+        private readonly TimeSpan _progressUpdateInterval = TimeSpan.FromMilliseconds(50); // Update at most every 50ms
+        private ProgressEventArgs _latestProgress;
+
         /// <summary>
         /// Updates the progress bar and status text based on progress events from the digestion task.
+        /// Throttles updates to prevent UI thread flooding from rapid parallel progress events.
         /// </summary>
         private void UpdateProgress(object sender, ProgressEventArgs e)
         {
+            _latestProgress = e;
+            
+            // Throttle: skip update if we updated recently (unless it's the final update)
+            var now = DateTime.UtcNow;
+            bool isFinalUpdate = e.CurrentProgress >= e.MaxProgress;
+            
+            if (!isFinalUpdate && (now - _lastProgressUpdate) < _progressUpdateInterval)
+            {
+                return; // Skip this update, too soon
+            }
+            
+            _lastProgressUpdate = now;
+
             if (!Dispatcher.CheckAccess())
             {
-                Dispatcher.BeginInvoke(new Action(() => UpdateProgress(sender, e)));
+                Dispatcher.Invoke(() => UpdateProgressUI(e), System.Windows.Threading.DispatcherPriority.Render);
             }
             else
             {
-                TaskProgressBar.Maximum = e.MaxProgress;
-                TaskProgressBar.Value = e.CurrentProgress;
-                ProgressTextBox.Text = e.StatusMessage;
+                UpdateProgressUI(e);
             }
+        }
+
+        private void UpdateProgressUI(ProgressEventArgs e)
+        {
+            TaskProgressBar.Maximum = e.MaxProgress;
+            TaskProgressBar.Value = e.CurrentProgress;
+            ProgressTextBox.Text = e.StatusMessage;
         }
 
         private void HandlePreviewMouseWheel(object sender, MouseWheelEventArgs e)
