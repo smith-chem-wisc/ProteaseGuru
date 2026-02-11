@@ -727,6 +727,11 @@ namespace GUI
             }
         }
 
+        private DateTime _lastProgressUpdate = DateTime.MinValue;
+        private readonly TimeSpan _progressUpdateInterval = TimeSpan.FromMilliseconds(100);
+        private volatile ProgressEventArgs _latestProgress;
+        private System.Windows.Threading.DispatcherTimer _progressTimer;
+
         //run in silico digestion and trigger result windows after complete
         private async void RunTaskButton_Click(object sender, RoutedEventArgs e)
         {
@@ -772,11 +777,19 @@ namespace GUI
             TaskProgressBar.Value = 0;
             TaskProgressBar.Maximum = 100;
             ProgressTextBox.Text = "Starting...";
+            _latestProgress = null;
+
+            // Start the progress timer BEFORE the background work begins
+            StartProgressTimer();
             
             Stopwatch stopwatch = new Stopwatch();
             stopwatch.Start();
             
             var results = await Task.Run(() => a.Run());
+            
+            // Stop the timer after work completes
+            StopProgressTimer();
+            
             Dictionary<string, Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>> peptidesByFile = results.PeptideByFile;
             Dictionary<string, Dictionary<Protein, (double, double)>> sequenceCoverageByProtease = results.SequenceCoverageByProtease;
             stopwatch.Stop();
@@ -792,6 +805,47 @@ namespace GUI
             AllHistogramsTab.Content = new HistogramWindow(peptidesByFile, UserParameters, sequenceCoverageByProtease);
             AllResultsTab.IsSelected = true; // switch to results tab
             RunTaskButton.IsEnabled = true; // allow user to run new task
+        }
+
+        private void StartProgressTimer()
+        {
+            _progressTimer = new System.Windows.Threading.DispatcherTimer
+            {
+                Interval = TimeSpan.FromMilliseconds(50) // Update every 50ms
+            };
+            _progressTimer.Tick += ProgressTimer_Tick;
+            _progressTimer.Start();
+        }
+
+        private void StopProgressTimer()
+        {
+            if (_progressTimer != null)
+            {
+                _progressTimer.Stop();
+                _progressTimer.Tick -= ProgressTimer_Tick;
+                _progressTimer = null;
+            }
+        }
+
+        /// <summary>
+        /// Updates the progress bar and status text based on progress events from the digestion task.
+        /// Simply stores the latest progress for the timer to pick up.
+        /// </summary>
+        private void UpdateProgress(object sender, ProgressEventArgs e)
+        {
+            // Just store the latest progress - the timer will pick it up
+            _latestProgress = e;
+        }
+
+        private void ProgressTimer_Tick(object sender, EventArgs e)
+        {
+            var progress = _latestProgress;
+            if (progress != null)
+            {
+                TaskProgressBar.Maximum = progress.MaxProgress;
+                TaskProgressBar.Value = progress.CurrentProgress;
+                ProgressTextBox.Text = progress.StatusMessage;
+            }
         }
 
         //logic for loading in resutls from previous runs and opening up the results windows
