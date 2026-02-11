@@ -406,7 +406,7 @@ namespace GUI
                         var uniqueCoverageCalc = _analyzer.CalculateSequenceCoverageUnique(SelectedProtein.Protein)
                             .FirstOrDefault(x => x.ProteaseName == proteaseName);
                         uniqueCoverage = uniqueCoverageCalc.ProteaseName != null
-                            ? $"{Math.Round(uniqueCoverageCalc.CoverageFraction, 2)}%"
+                            ? $"{Math.Round(uniqueCoverageCalc.CoverageFraction * 100, 2)}%"
                             : "N/A";
                     }
                     else

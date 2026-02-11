@@ -24,11 +24,32 @@ namespace Test
         {
             // Create or open a system-wide named mutex
             _chronologerMutex = new Mutex(false, ChronologerMutexName);
-            
-            // Wait to acquire the mutex (with timeout to prevent deadlocks)
-            if (!_chronologerMutex.WaitOne(TimeSpan.FromMinutes(5)))
+
+            try
             {
-                throw new TimeoutException("Timed out waiting for Chronologer mutex");
+                // Wait to acquire the mutex (with timeout to prevent deadlocks)
+                // AbandonedMutexException means a previous owner crashed without releasing,
+                // but the mutex IS acquired in this case, so we can proceed
+                bool acquired = _chronologerMutex.WaitOne(TimeSpan.FromMinutes(5));
+                if (!acquired)
+                {
+                    _chronologerMutex.Dispose();
+                    _chronologerMutex = null;
+                    throw new TimeoutException("Timed out waiting for Chronologer mutex");
+                }
+            }
+            catch (AbandonedMutexException)
+            {
+                // Previous owner terminated without releasing - mutex is still acquired
+                // Log warning but continue with the test
+                TestContext.WriteLine("Warning: Acquired abandoned Chronologer mutex from a crashed process");
+            }
+            catch (Exception) when (_chronologerMutex != null)
+            {
+                // For any other exception, dispose the mutex before re-throwing
+                _chronologerMutex.Dispose();
+                _chronologerMutex = null;
+                throw;
             }
         }
 

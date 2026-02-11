@@ -91,8 +91,6 @@ namespace Tasks
                 PeptideByFile[dbEntry.Key] = new Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>(dbEntry.Value);
             }
 
-
-
             ReportProgress(totalWorkUnits, totalWorkUnits, "Writing peptide output...");
             WritePeptidesToTsv(PeptideByFile, OutputFolder, DigestionParameters);
 
@@ -288,7 +286,8 @@ namespace Tasks
         private static int _predictorPoolRefCount;
 
         /// <summary>
-        /// Initializes the shared Chronologer predictor pool (thread-safe, creates only once)
+        /// Initializes the shared Chronologer predictor pool (thread-safe, creates only once).
+        /// Call <see cref="ReleasePredictorPool"/> when done to allow cleanup.
         /// </summary>
         private static ChronologerRetentionTimePredictor[] GetOrCreatePredictorPool(int threadCount)
         {
@@ -297,12 +296,8 @@ namespace Tasks
                 if (_sharedPredictorPool == null || _sharedPredictorPool.Length < threadCount)
                 {
                     // Dispose existing predictors if resizing
-                    if (_sharedPredictorPool != null)
-                    {
-                        foreach (var predictor in _sharedPredictorPool)
-                            (predictor as IDisposable)?.Dispose();
-                    }
-                    
+                    DisposePredictorPoolUnsafe();
+
                     _sharedPredictorPool = new ChronologerRetentionTimePredictor[threadCount];
                     for (int i = 0; i < threadCount; i++)
                     {
@@ -311,6 +306,38 @@ namespace Tasks
                 }
                 _predictorPoolRefCount++;
                 return _sharedPredictorPool;
+            }
+        }
+
+        /// <summary>
+        /// Releases a reference to the predictor pool. When the last reference is released,
+        /// the pool is disposed to free file handles.
+        /// </summary>
+        private static void ReleasePredictorPool()
+        {
+            lock (ChronologerLock)
+            {
+                _predictorPoolRefCount--;
+                if (_predictorPoolRefCount <= 0)
+                {
+                    DisposePredictorPoolUnsafe();
+                    _predictorPoolRefCount = 0;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Disposes the predictor pool without locking. Must be called within ChronologerLock.
+        /// </summary>
+        private static void DisposePredictorPoolUnsafe()
+        {
+            if (_sharedPredictorPool != null)
+            {
+                foreach (var predictor in _sharedPredictorPool)
+                {
+                    (predictor as IDisposable)?.Dispose();
+                }
+                _sharedPredictorPool = null;
             }
         }
 
@@ -328,21 +355,29 @@ namespace Tasks
             // Get shared predictor pool (thread-safe creation)
             var predictorPool = GetOrCreatePredictorPool(threadCount);
 
-            // Now run predictions in parallel using the shared predictors
-            Parallel.For(0, peptides.Count,
-                new ParallelOptions { MaxDegreeOfParallelism = threadCount },
-                () => Thread.CurrentThread.ManagedThreadId % threadCount,
-                (i, loopState, poolIndex) =>
-                {
-                    lock (predictorPool[poolIndex]) // Ensure thread-safe access to each predictor
+            try
+            {
+                // Now run predictions in parallel using the shared predictors
+                Parallel.For(0, peptides.Count,
+                    new ParallelOptions { MaxDegreeOfParallelism = threadCount },
+                    () => Thread.CurrentThread.ManagedThreadId % threadCount,
+                    (i, loopState, poolIndex) =>
                     {
-                        var result = predictorPool[poolIndex].PredictRetentionTime(peptides[i], out var failureReason);
-                        results[i] = result ?? -1;
-                    }
-                    return poolIndex;
-                },
-                (poolIndex) => { }
-            );
+                        lock (predictorPool[poolIndex])
+                        {
+                            var result = predictorPool[poolIndex].PredictRetentionTime(peptides[i], out var failureReason);
+                            results[i] = result ?? -1;
+                        }
+                        return poolIndex;
+                    },
+                    (poolIndex) => { }
+                );
+            }
+            finally
+            {
+                // Release reference to allow cleanup when all callers are done
+                ReleasePredictorPool();
+            }
 
             return results;
         }
@@ -750,43 +785,38 @@ namespace Tasks
                 }
             }
 
+            var numberOfPeptides = allPeptides.Count;
+            const int peptdesPerFile = 1_000_000;
+            int numberOfFiles = (int)Math.Ceiling(numberOfPeptides / (double)peptdesPerFile);
+            int peptideIndex = 0;
 
-            var numberOfPeptides = allPeptides.Count();
-            double numberOfFiles = Math.Ceiling(numberOfPeptides / 1000000.0);
-            var peptidesInFile = 1;
-            var peptideIndex = 0;
-            var fileCount = 1;
-
-            while (fileCount <= Convert.ToInt32(numberOfFiles))
+            for (int fileCount = 1; fileCount <= numberOfFiles; fileCount++)
             {
-                using (StreamWriter output = new StreamWriter(filePath + @"\ProteaseGuruPeptides_" + fileCount + ".tsv"))
+                string outputPath = Path.Combine(filePath, $"ProteaseGuruPeptides_{fileCount}.tsv");
+                using (StreamWriter output = new StreamWriter(outputPath))
                 {
                     output.WriteLine(header);
-                    while (peptidesInFile < 1000000)
-                    {
-                        if (peptideIndex < numberOfPeptides)
-                        {
-                            output.WriteLine(allPeptides[peptideIndex].ToString());
-                            peptideIndex++;
-                        }
-                        peptidesInFile++;
 
+                    int peptdesWrittenToThisFile = 0;
+                    while (peptdesWrittenToThisFile < peptdesPerFile && peptideIndex < numberOfPeptides)
+                    {
+                        output.WriteLine(allPeptides[peptideIndex].ToString());
+                        peptideIndex++;
+                        peptdesWrittenToThisFile++;
                     }
-                    output.Close();
-                    peptidesInFile = 1;
                 }
-                fileCount++;
             }
 
             List<string> parameters = new List<string>();
             parameters.Add("Digestion Conditions:");
-            parameters.Add("Proteases: " + string.Join(',', userParams.ProteasesForDigestion.Select(p => p.Name).ToList()));
+            parameters.Add("Databases: " + string.Join(", ", peptideByFile.Keys));
+            parameters.Add("Proteases: " + string.Join(", ", userParams.ProteasesForDigestion.Select(p => p.Name)));
             parameters.Add("Max Missed Cleavages: " + userParams.NumberOfMissedCleavagesAllowed);
             parameters.Add("Min Peptide Length: " + userParams.MinPeptideLengthAllowed);
             parameters.Add("Max Peptide Length: " + userParams.MaxPeptideLengthAllowed);
             parameters.Add("Treat modified peptides as different peptides: " + userParams.TreatModifiedPeptidesAsDifferent);
-            parameters.Add("Min Peptide Mass: " + userParams.MinPeptideLengthAllowed);
-            parameters.Add("Max Peptide Mass: " + userParams.MaxPeptideLengthAllowed);
+            parameters.Add("Min Peptide Mass: " + userParams.MinPeptideMassAllowed);
+            parameters.Add("Max Peptide Mass: " + userParams.MaxPeptideMassAllowed);
 
             File.WriteAllLines(filePath + @"\DigestionConditions.txt", parameters);
 
