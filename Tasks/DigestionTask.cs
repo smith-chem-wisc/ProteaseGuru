@@ -43,9 +43,12 @@ namespace Tasks
             var concurrentPeptideByFile = new ConcurrentDictionary<string, ConcurrentDictionary<string, Dictionary<Protein, List<InSilicoPep>>>>();
 
             // Calculate total work units for progress reporting
+            // Include digestion units + post-processing phases
             int totalProteases = DigestionParameters.ProteasesForDigestion.Count;
             int totalDatabases = dbFileList.Count;
-            int totalWorkUnits = totalDatabases * totalProteases;
+            int digestionWorkUnits = totalDatabases * totalProteases;
+            const int postProcessingUnits = 2; // WritePeptidesToTsv + CalculateProteinSequenceCoverage
+            int totalWorkUnits = digestionWorkUnits + postProcessingUnits;
             int completedWorkUnits = 0;
 
             // Report initial progress
@@ -81,7 +84,7 @@ namespace Tasks
                     // Increment progress AFTER the work completes
                     int currentUnit = Interlocked.Increment(ref completedWorkUnits);
                     ReportProgress(currentUnit, totalWorkUnits,
-                        $"Completed {protease.Name} ({currentUnit}/{totalWorkUnits})");
+                        $"Completed {protease.Name} ({currentUnit}/{digestionWorkUnits} digestions)");
                 });
             });
 
@@ -91,11 +94,15 @@ namespace Tasks
                 PeptideByFile[dbEntry.Key] = new Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>(dbEntry.Value);
             }
 
-            ReportProgress(totalWorkUnits, totalWorkUnits, "Writing peptide output...");
+            // Post-processing phase 1: Write output
+            ReportProgress(completedWorkUnits, totalWorkUnits, "Writing peptide output...");
             WritePeptidesToTsv(PeptideByFile, OutputFolder, DigestionParameters);
+            completedWorkUnits++;
 
-            ReportProgress(totalWorkUnits, totalWorkUnits, "Calculating sequence coverage...");
+            // Post-processing phase 2: Calculate coverage
+            ReportProgress(completedWorkUnits, totalWorkUnits, "Calculating sequence coverage...");
             SequenceCoverageByProtease = CalculateProteinSequenceCoverage(PeptideByFile);
+            completedWorkUnits++;
 
             MyTaskResults myRunResults = new MyTaskResults(this);
             ReportProgress(totalWorkUnits, totalWorkUnits, "Complete!");
