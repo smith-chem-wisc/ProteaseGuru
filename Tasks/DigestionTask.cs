@@ -294,7 +294,21 @@ namespace Tasks
             }
         }
 
-        // Then update the BatchCalculateRetentionTimesChronologer method:
+        /// <summary>
+        /// Batch calculates Chronologer-predicted retention times for a collection of peptides.
+        /// Uses a shared, thread-safe predictor pool to avoid file access conflicts when loading
+        /// the Chronologer model. Predictions are parallelized across available processor cores.
+        /// </summary>
+        /// <param name="peptides">Collection of peptides to process</param>
+        /// <returns>
+        /// Array of predicted retention time values in the same order as input peptides.
+        /// Returns -1 for peptides where prediction fails.
+        /// </returns>
+        /// <remarks>
+        /// The predictor pool is reference-counted and shared across calls to avoid repeatedly
+        /// loading the Chronologer model file. Each worker thread is assigned a unique predictor
+        /// via atomic counter to ensure thread safety without locking during predictions.
+        /// </remarks>
         private double[] BatchCalculateRetentionTimesChronologer(List<PeptideWithSetModifications> peptides)
         {
             var results = new double[peptides.Count];
