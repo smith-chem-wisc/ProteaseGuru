@@ -30,7 +30,7 @@ internal class ChronologerTests
             param.MaxPeptideLengthAllowed = 50; // Chronologer has max length limit
             param.NumberOfMissedCleavagesAllowed = 0;
             param.TreatModifiedPeptidesAsDifferent = false;
-            param.ProteasesForDigestion.Add(ProteaseDictionary.Dictionary["trypsin (cleave before proline)"]);
+            param.ProteasesForDigestion.Add(ProteaseDictionary.Dictionary["trypsin|P"]);
             param.OutputFolder = subFolder;
 
             DigestionTask digestion = new DigestionTask();
@@ -98,7 +98,7 @@ internal class ChronologerTests
                 "TestProtein");
 
             var digestionParams = new DigestionParams(
-                protease: "trypsin (cleave before proline)",
+                protease: "trypsin|P",
                 maxMissedCleavages: 0,
                 minPeptideLength: 7,
                 maxPeptideLength: 50);
@@ -160,7 +160,7 @@ internal class ChronologerTests
 
             // Use correct protease name from the dictionary
             var digestionParams = new DigestionParams(
-                protease: "trypsin (cleave before proline)",
+                protease: "trypsin|P",
                 maxMissedCleavages: 0,
                 minPeptideLength: 7,
                 maxPeptideLength: 50);
@@ -238,7 +238,7 @@ MSFVNGNEIFTAARKQGHYAVGAFNTNNLEWTRKPEPTIDESAMPLERKNTPVLIQVSMGAAKYLVKTLVEEEMRK";
             param.MaxPeptideLengthAllowed = 50;
             param.NumberOfMissedCleavagesAllowed = 0;
             param.TreatModifiedPeptidesAsDifferent = false;
-            param.ProteasesForDigestion.Add(ProteaseDictionary.Dictionary["trypsin (cleave before proline)"]);
+            param.ProteasesForDigestion.Add(ProteaseDictionary.Dictionary["trypsin|P"]);
             param.OutputFolder = subFolder;
 
             // Run digestion
@@ -347,7 +347,7 @@ MSFVNGNEIFTAARKQGHYAVGAFNTNNLEWTRKPEPTIDESAMPLERKNTPVLIQVSMGAAKYLVKTLVEEEMRK";
             param.MaxPeptideLengthAllowed = 50;
             param.NumberOfMissedCleavagesAllowed = 0;
             param.TreatModifiedPeptidesAsDifferent = false;
-            param.ProteasesForDigestion.Add(ProteaseDictionary.Dictionary["trypsin (cleave before proline)"]);
+            param.ProteasesForDigestion.Add(ProteaseDictionary.Dictionary["trypsin|P"]);
             param.OutputFolder = subFolder;
 
             DigestionTask digestion = new DigestionTask();
