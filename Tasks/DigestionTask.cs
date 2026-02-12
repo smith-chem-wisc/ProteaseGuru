@@ -233,82 +233,81 @@ namespace Tasks
 
             return inSilicoPeptides;
         }
-        // Add this static field at the top of the DigestionTask class:
+        // Replace the existing predictor pool implementation (lines ~227-280) with this:
+        
         private static readonly object ChronologerLock = new object();
-        private static ChronologerRetentionTimePredictor[] _sharedPredictorPool;
-        private static int _predictorPoolRefCount;
+        private static ConcurrentBag<ChronologerRetentionTimePredictor> _predictorPool;
+        private static int _poolSize;
+        private static int _predictorsCreated;
 
         /// <summary>
-        /// Initializes the shared Chronologer predictor pool (thread-safe, creates only once).
-        /// Call <see cref="ReleasePredictorPool"/> when done to allow cleanup.
+        /// Initializes the shared Chronologer predictor pool if not already created.
         /// </summary>
-        private static ChronologerRetentionTimePredictor[] GetOrCreatePredictorPool(int threadCount)
+        private static void EnsurePredictorPoolInitialized(int desiredSize)
         {
+            if (_predictorPool != null && _poolSize >= desiredSize)
+                return;
+
             lock (ChronologerLock)
             {
-                if (_sharedPredictorPool == null || _sharedPredictorPool.Length < threadCount)
-                {
-                    // Dispose existing predictors if resizing
-                    DisposePredictorPoolUnsafe();
+                if (_predictorPool != null && _poolSize >= desiredSize)
+                    return;
 
-                    _sharedPredictorPool = new ChronologerRetentionTimePredictor[threadCount];
-                    for (int i = 0; i < threadCount; i++)
-                    {
-                        _sharedPredictorPool[i] = new ChronologerRetentionTimePredictor();
-                    }
+                // Dispose existing pool if resizing
+                if (_predictorPool != null)
+                {
+                    while (_predictorPool.TryTake(out var old))
+                        (old as IDisposable)?.Dispose();
                 }
-                _predictorPoolRefCount++;
-                return _sharedPredictorPool;
-            }
-        }
 
-        /// <summary>
-        /// Releases a reference to the predictor pool. When the last reference is released,
-        /// the pool is disposed to free file handles.
-        /// </summary>
-        private static void ReleasePredictorPool()
-        {
-            lock (ChronologerLock)
-            {
-                _predictorPoolRefCount--;
-                if (_predictorPoolRefCount <= 0)
+                _predictorPool = new ConcurrentBag<ChronologerRetentionTimePredictor>();
+                _poolSize = desiredSize;
+                _predictorsCreated = 0;
+
+                // Pre-create predictors sequentially to avoid file access conflicts
+                for (int i = 0; i < desiredSize; i++)
                 {
-                    DisposePredictorPoolUnsafe();
-                    _predictorPoolRefCount = 0;
+                    _predictorPool.Add(new ChronologerRetentionTimePredictor());
+                    _predictorsCreated++;
                 }
             }
         }
 
         /// <summary>
-        /// Disposes the predictor pool without locking. Must be called within ChronologerLock.
+        /// Checks out a predictor from the pool. Blocks if none available.
         /// </summary>
-        private static void DisposePredictorPoolUnsafe()
+        private static ChronologerRetentionTimePredictor CheckoutPredictor()
         {
-            if (_sharedPredictorPool != null)
+            ChronologerRetentionTimePredictor predictor;
+            
+            // Spin-wait with backoff until a predictor becomes available
+            SpinWait spinner = default;
+            while (!_predictorPool.TryTake(out predictor))
             {
-                foreach (var predictor in _sharedPredictorPool)
-                {
-                    (predictor as IDisposable)?.Dispose();
-                }
-                _sharedPredictorPool = null;
+                spinner.SpinOnce();
             }
+            
+            return predictor;
+        }
+
+        /// <summary>
+        /// Returns a predictor to the pool for reuse.
+        /// </summary>
+        private static void ReturnPredictor(ChronologerRetentionTimePredictor predictor)
+        {
+            _predictorPool.Add(predictor);
         }
 
         /// <summary>
         /// Batch calculates Chronologer-predicted retention times for a collection of peptides.
-        /// Uses a shared, thread-safe predictor pool to avoid file access conflicts when loading
-        /// the Chronologer model. Predictions are parallelized across available processor cores.
+        /// Uses a thread-safe predictor pool with checkout/return semantics to ensure each
+        /// predictor is used by at most one worker at a time across all concurrent callers.
         /// </summary>
         /// <param name="peptides">Collection of peptides to process</param>
         /// <returns>
         /// Array of predicted retention time values in the same order as input peptides.
         /// Returns -1 for peptides where prediction fails.
         /// </returns>
-        /// <remarks>
-        /// The predictor pool is reference-counted and shared across calls to avoid repeatedly
-        /// loading the Chronologer model file. Each worker thread is assigned a unique predictor
-        /// via atomic counter to ensure thread safety without locking during predictions.
-        /// </remarks>
         private double[] BatchCalculateRetentionTimesChronologer(List<PeptideWithSetModifications> peptides)
         {
             var results = new double[peptides.Count];
@@ -318,35 +317,28 @@ namespace Tasks
             int threadCount = Math.Min(Environment.ProcessorCount, peptides.Count);
             if (threadCount < 1) threadCount = 1;
 
-            // Get shared predictor pool (thread-safe creation)
-            var predictorPool = GetOrCreatePredictorPool(threadCount);
+            // Ensure pool has enough predictors
+            EnsurePredictorPoolInitialized(threadCount);
 
-            // Atomic counter to assign unique predictor indices to each worker thread
-            int nextPredictorIndex = -1;
-
-            try
-            {
-                // Run predictions in parallel - each worker gets a unique predictor via atomic counter
-                Parallel.For(0, peptides.Count,
-                    new ParallelOptions { MaxDegreeOfParallelism = threadCount },
-                    // Thread-local init: atomically claim a unique predictor index for this worker
-                    () => Interlocked.Increment(ref nextPredictorIndex) % threadCount,
-                    // Body: use the assigned predictor (no lock needed - each worker has exclusive access)
-                    (i, loopState, predictorIndex) =>
+            // Run predictions in parallel - each iteration checks out/returns a predictor
+            Parallel.For(0, peptides.Count,
+                new ParallelOptions { MaxDegreeOfParallelism = threadCount },
+                i =>
+                {
+                    // Checkout: get exclusive access to a predictor
+                    var predictor = CheckoutPredictor();
+                    try
                     {
-                        var result = predictorPool[predictorIndex].PredictRetentionTime(peptides[i], out _);
+                        var result = predictor.PredictRetentionTime(peptides[i], out _);
                         results[i] = result ?? -1;
-                        return predictorIndex;
-                    },
-                    // Finalizer: nothing to clean up
-                    _ => { }
-                );
-            }
-            finally
-            {
-                // Release reference to allow cleanup when all callers are done
-                ReleasePredictorPool();
-            }
+                    }
+                    finally
+                    {
+                        // Return: make predictor available to other workers
+                        ReturnPredictor(predictor);
+                    }
+                }
+            );
 
             return results;
         }
