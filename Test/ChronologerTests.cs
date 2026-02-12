@@ -30,7 +30,7 @@ internal class ChronologerTests
             param.OutputFolder = subFolder;
 
             DigestionParams trypsin = new DigestionParams(
-                protease: "trypsin (cleave before proline)",
+                protease: "trypsin|P",
                 maxMissedCleavages: 0,
                 minPeptideLength: 7,// Chronologer works best with peptides >= 7 AA
                 maxPeptideLength: 50);// Chronologer has max length limit
@@ -243,7 +243,7 @@ MSFVNGNEIFTAARKQGHYAVGAFNTNNLEWTRKPEPTIDESAMPLERKNTPVLIQVSMGAAKYLVKTLVEEEMRK";
             param.OutputFolder = subFolder;
 
             DigestionParams trypsin = new DigestionParams(
-                protease: "trypsin (cleave before proline)",
+                protease: "trypsin|P",
                 maxMissedCleavages: 0,
                 minPeptideLength: 7,// Chronologer works best with peptides >= 7 AA
                 maxPeptideLength: 50);// Chronologer has max length limit
@@ -357,7 +357,7 @@ MSFVNGNEIFTAARKQGHYAVGAFNTNNLEWTRKPEPTIDESAMPLERKNTPVLIQVSMGAAKYLVKTLVEEEMRK";
             param.OutputFolder = subFolder;
 
             DigestionParams trypsin = new DigestionParams(
-                protease: "trypsin (cleave before proline)",
+                protease: "trypsin|P",
                 maxMissedCleavages: 0,
                 minPeptideLength: 7,// Chronologer works best with peptides >= 7 AA
                 maxPeptideLength: 50);// Chronologer has max length limit
