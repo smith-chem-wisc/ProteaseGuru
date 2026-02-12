@@ -77,7 +77,7 @@ namespace Tasks
             Status("Writing Results Summary...", "summary");
 
             return myRunResults;
-        }
+        } 
         // Load proteins from XML or FASTA databases and keep them associated with the database file name from which they came from
         protected List<Protein> LoadProteins(DbForDigestion database)
         {                        
