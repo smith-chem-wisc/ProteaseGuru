@@ -409,17 +409,11 @@ namespace GUI
                 {
                     totalCoverage = $"{Math.Round(coverageValues.Item1, 2)}%";
 
-                    if (_analyzer.IsMultiDatabase)
-                    {
-                        // Look up pre-computed unique coverage
-                        uniqueCoverage = uniqueCoverageByProtease!.TryGetValue(proteaseName, out var fraction)
+                    uniqueCoverage = _analyzer.IsMultiDatabase
+                        ? uniqueCoverageByProtease!.TryGetValue(proteaseName, out var fraction)
                             ? $"{Math.Round(fraction * 100, 2)}%"
-                            : "N/A";
-                    }
-                    else
-                    {
-                        uniqueCoverage = $"{Math.Round(coverageValues.Item2, 2)}%";
-                    }
+                            : "N/A"
+                        : $"{Math.Round(coverageValues.Item2, 2)}%";
                 }
 
                 summaryRows.Add(new ProteinDigestionSummaryRow

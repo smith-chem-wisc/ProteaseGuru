@@ -13,6 +13,10 @@ namespace Tasks
     //digest the provided databases with the proteases and parameters provided by the user
     public class DigestionTask : ProteaseGuruTask
     {
+        // Shared concurrency limiter for all parallel operations in this task
+        private static readonly int MaxConcurrency = Environment.ProcessorCount;
+        private SemaphoreSlim _concurrencyLimiter;
+
         public DigestionTask(): base(MyTask.Digestion)
         { 
           DigestionParameters = new Parameters();
@@ -32,11 +36,20 @@ namespace Tasks
             AllPeptidesByProtease = new Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>();
             PeptideByFile = new Dictionary<string, Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>>(dbFileList.Count);
 
+            // Initialize concurrency limiter for this run
+            _concurrencyLimiter = new SemaphoreSlim(MaxConcurrency, MaxConcurrency);
+
             // Use a thread-safe dictionary for parallel writes
             var concurrentPeptideByFile = new ConcurrentDictionary<string, ConcurrentDictionary<string, Dictionary<Protein, List<InSilicoPep>>>>();
 
-            // Process each database in parallel
-            Parallel.ForEach(dbFileList, database =>
+            // Limit outer parallelism to avoid oversubscription with inner parallel loops
+            var outerParallelOptions = new ParallelOptions 
+            { 
+                MaxDegreeOfParallelism = Math.Max(1, MaxConcurrency / 2) 
+            };
+
+            // Process each database in parallel (limited)
+            Parallel.ForEach(dbFileList, outerParallelOptions, database =>
             {
                 Status("Loading Protein Database(s)...", "loadDbs");
                 List<Protein> proteins = LoadProteins(database);
@@ -49,17 +62,17 @@ namespace Tasks
                 string databaseFileName = database.FileName;
                 List<Protein> proteinsForDigestion = proteins;
 
-                // Process each protease in parallel for this database
-                Parallel.ForEach(DigestionParameters.ProteasesForDigestion, protease =>
+                // Process each protease sequentially within each database
+                // (inner batch methods handle parallelism)
+                foreach (var protease in DigestionParameters.ProteasesForDigestion)
                 {
                     Status("Digesting Proteins...", "digestDbs");
 
                     var peptides = DigestDatabase(proteinsForDigestion, protease, DigestionParameters);
                     var peptidesFormatted = DeterminePeptideStatus(databaseFileName, peptides, DigestionParameters);
 
-                    // Thread-safe add to the concurrent dictionary
                     proteaseResults[protease.Name] = peptidesFormatted;
-                });
+                }
             });
 
             // Convert concurrent dictionary back to regular dictionary
@@ -352,19 +365,22 @@ namespace Tasks
         private double[] BatchCalculateHydrophobicity(List<PeptideWithSetModifications> peptides)
         {
             var results = new double[peptides.Count];
+            if (peptides.Count == 0) return results;
 
-            // Use Parallel.For with thread-local SSRCalc3 instances for thread safety
-            // SSRCalc3 is stateless for scoring, so each thread can have its own instance
+            // Use limited parallelism to avoid oversubscription
+            var options = new ParallelOptions 
+            { 
+                MaxDegreeOfParallelism = Math.Max(1, _concurrencyLimiter?.CurrentCount ?? MaxConcurrency) 
+            };
+
             Parallel.For(0, peptides.Count,
-                // Thread-local initialization: create a new SSRCalc3 instance per thread
+                options,
                 () => new SSRCalc3("SSRCalc 3.0 (300A)", SSRCalc3.Column.A300),
-                // Body: calculate hydrophobicity using thread-local predictor
                 (i, loopState, rtPredictor) =>
                 {
                     results[i] = rtPredictor.ScoreSequence(peptides[i]);
                     return rtPredictor;
                 },
-                // Finalizer: nothing to dispose
                 (rtPredictor) => { }
             );
 
@@ -380,9 +396,15 @@ namespace Tasks
         private double[] BatchCalculateElectrophoreticMobility(List<PeptideWithSetModifications> peptides)
         {
             var results = new double[peptides.Count];
+            if (peptides.Count == 0) return results;
 
-            // Parallelized for large datasets - GetCifuentesMobility is thread-safe (static, no shared state)
-            Parallel.For(0, peptides.Count, i =>
+            // Use limited parallelism to avoid oversubscription
+            var options = new ParallelOptions 
+            { 
+                MaxDegreeOfParallelism = Math.Max(1, _concurrencyLimiter?.CurrentCount ?? MaxConcurrency) 
+            };
+
+            Parallel.For(0, peptides.Count, options, i =>
             {
                 results[i] = GetCifuentesMobility(peptides[i]);
             });
