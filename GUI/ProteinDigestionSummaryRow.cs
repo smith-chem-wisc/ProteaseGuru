@@ -6,11 +6,11 @@ namespace GUI
     /// </summary>
     public class ProteinDigestionSummaryRow
     {
-        public string Protease { get; set; }
+        public string Protease { get; set; } = string.Empty;
         public int UniquePeptides { get; set; }
         public int SharedPeptides { get; set; }
         public int TotalPeptides => UniquePeptides + SharedPeptides;
-        public string TotalCoverage { get; set; }
-        public string UniqueCoverage { get; set; }
+        public string TotalCoverage { get; set; } = string.Empty;
+        public string UniqueCoverage { get; set; } = string.Empty;
     }
 }
