@@ -13,9 +13,8 @@ namespace Tasks
     //digest the provided databases with the proteases and parameters provided by the user
     public class DigestionTask : ProteaseGuruTask
     {
-        // Shared concurrency limiter for all parallel operations in this task
+        // Maximum concurrency for parallel operations
         private static readonly int MaxConcurrency = Environment.ProcessorCount;
-        private SemaphoreSlim? _concurrencyLimiter;
 
         public DigestionTask(): base(MyTask.Digestion)
         { 
@@ -35,9 +34,6 @@ namespace Tasks
         {
             AllPeptidesByProtease = new Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>();
             PeptideByFile = new Dictionary<string, Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>>(dbFileList.Count);
-
-            // Initialize concurrency limiter for this run
-            _concurrencyLimiter = new SemaphoreSlim(MaxConcurrency, MaxConcurrency);
 
             // Use a thread-safe dictionary for parallel writes
             var concurrentPeptideByFile = new ConcurrentDictionary<string, ConcurrentDictionary<string, Dictionary<Protein, List<InSilicoPep>>>>();
@@ -246,8 +242,8 @@ namespace Tasks
 
             return inSilicoPeptides;
         }
-        // Replace the existing predictor pool implementation (lines ~227-280) with this:
-        
+
+        //Shared Chronologer predictor pool and synchronization primitives for thread-safe access across all parallel workers
         private static readonly object ChronologerLock = new object();
         private static ConcurrentBag<ChronologerRetentionTimePredictor> _predictorPool;
         private static int _poolSize;
@@ -367,10 +363,9 @@ namespace Tasks
             var results = new double[peptides.Count];
             if (peptides.Count == 0) return results;
 
-            // Use limited parallelism to avoid oversubscription
             var options = new ParallelOptions 
             { 
-                MaxDegreeOfParallelism = Math.Max(1, _concurrencyLimiter?.CurrentCount ?? MaxConcurrency) 
+                MaxDegreeOfParallelism = MaxConcurrency 
             };
 
             Parallel.For(0, peptides.Count,
@@ -398,10 +393,9 @@ namespace Tasks
             var results = new double[peptides.Count];
             if (peptides.Count == 0) return results;
 
-            // Use limited parallelism to avoid oversubscription
             var options = new ParallelOptions 
             { 
-                MaxDegreeOfParallelism = Math.Max(1, _concurrencyLimiter?.CurrentCount ?? MaxConcurrency) 
+                MaxDegreeOfParallelism = MaxConcurrency 
             };
 
             Parallel.For(0, peptides.Count, options, i =>
