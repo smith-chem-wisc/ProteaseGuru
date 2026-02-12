@@ -1,19 +1,90 @@
 using Engine;
 using NUnit.Framework;
 using Proteomics.ProteolyticDigestion;
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
 using Tasks;
-using UsefulProteomicsDatabases;
 
 namespace Test
 {
     [TestFixture]
-    [NonParallelizable] // Prevent parallel execution due to shared Chronologer model file
-    public class DigestionTests
+    [NonParallelizable]
+    public class DigestionTests : IDisposable
     {
+        // Named mutex for cross-process synchronization of Chronologer file access
+        private const string ChronologerMutexName = "Local\\ProteaseGuru_Chronologer_Mutex";
+        private ChronologerMutexLock? _mutexLock;
+
+        /// <summary>
+        /// Disposable wrapper for Chronologer mutex acquisition and release
+        /// </summary>
+        private sealed class ChronologerMutexLock : IDisposable
+        {
+            private Mutex? _mutex;
+            private bool _owned;
+
+            public static ChronologerMutexLock Acquire(string mutexName, TimeSpan timeout)
+            {
+                var lockObj = new ChronologerMutexLock();
+                lockObj._mutex = new Mutex(false, mutexName);
+
+                try
+                {
+                    lockObj._owned = lockObj._mutex.WaitOne(timeout);
+                    if (!lockObj._owned)
+                    {
+                        lockObj._mutex.Dispose();
+                        lockObj._mutex = null;
+                        throw new TimeoutException($"Timed out waiting for mutex: {mutexName}");
+                    }
+                }
+                catch (AbandonedMutexException)
+                {
+                    // Previous owner terminated without releasing - mutex is still acquired
+                    lockObj._owned = true;
+                    TestContext.WriteLine("Warning: Acquired abandoned Chronologer mutex from a crashed process");
+                }
+                catch when (lockObj._mutex != null)
+                {
+                    lockObj._mutex.Dispose();
+                    lockObj._mutex = null;
+                    throw;
+                }
+
+                return lockObj;
+            }
+
+            public void Dispose()
+            {
+                if (_mutex != null)
+                {
+                    if (_owned)
+                    {
+                        try { _mutex.ReleaseMutex(); }
+                        catch (ApplicationException) { /* Not owned by this thread */ }
+                    }
+                    _mutex.Dispose();
+                    _mutex = null;
+                }
+            }
+        }
+
+        [SetUp]
+        public void SetUp()
+        {
+            _mutexLock = ChronologerMutexLock.Acquire(ChronologerMutexName, TimeSpan.FromMinutes(5));
+        }
+
+        [TearDown]
+        public void TearDown()
+        {
+            _mutexLock?.Dispose();
+            _mutexLock = null;
+        }
+
+        public void Dispose()
+        {
+            _mutexLock?.Dispose();
+        }
+
         /// <summary>
         /// Helper method to find a peptide by its base sequence
         /// </summary>
@@ -50,13 +121,12 @@ namespace Test
             {
                 try
                 {
-                    GC.Collect();
-                    GC.WaitForPendingFinalizers();
                     Directory.Delete(folderPath, true);
                     return;
                 }
                 catch (IOException) when (attempt < maxRetries - 1)
                 {
+                    // Retry with delay after I/O exception
                     Thread.Sleep(delayMs);
                 }
                 catch (UnauthorizedAccessException) when (attempt < maxRetries - 1)
@@ -72,7 +142,7 @@ namespace Test
         }
 
         [Test]
-        public static void SingleDatabase()
+        public void SingleDatabase()
         {
             string subFolder = Path.Combine(TestContext.CurrentContext.TestDirectory, $"DigestionTest_{Guid.NewGuid():N}");
             Directory.CreateDirectory(subFolder);
@@ -137,7 +207,7 @@ namespace Test
         }
 
         [Test]
-        public static void MultipleDatabases()
+        public void MultipleDatabases()
         {
             string subFolder = Path.Combine(TestContext.CurrentContext.TestDirectory, $"DigestionTest_{Guid.NewGuid():N}");
             Directory.CreateDirectory(subFolder);
@@ -182,7 +252,7 @@ namespace Test
         }
 
         [Test]
-        public static void ProteaseModTest()
+        public void ProteaseModTest()
         {
             string subFolder = Path.Combine(TestContext.CurrentContext.TestDirectory, $"DigestionTest_{Guid.NewGuid():N}");
             Directory.CreateDirectory(subFolder);
@@ -224,7 +294,7 @@ namespace Test
         }
 
         [Test]
-        public static void InitiatorMethionineTest()
+        public void InitiatorMethionineTest()
         {
             string subFolder = Path.Combine(TestContext.CurrentContext.TestDirectory, $"DigestionTest_{Guid.NewGuid():N}");
             Directory.CreateDirectory(subFolder);

@@ -40,11 +40,6 @@ namespace GUI
         private ObservableCollection<string> filteredList;
 
         /// <summary>
-        /// Tree view data for displaying protein digestion summary statistics
-        /// </summary>
-        private ObservableCollection<ProteinSummaryForTreeView> ProteinDigestionSummary;
-
-        /// <summary>
         /// Maps Protein objects to their tree view representation (GUI-specific)
         /// </summary>
         private Dictionary<Protein, ProteinForTreeView> ProteinsForTreeView;
@@ -124,7 +119,6 @@ namespace GUI
             MessageShow = true;
 
             // Initialize GUI collections
-            ProteinDigestionSummary = new ObservableCollection<ProteinSummaryForTreeView>();
             proteinList = new ObservableCollection<string>();
             filteredList = new ObservableCollection<string>();
             ProteinsForTreeView = new Dictionary<Protein, ProteinForTreeView>();
@@ -376,7 +370,7 @@ namespace GUI
         }
 
         /// <summary>
-        /// Builds the protein summary tree view using analyzer data
+        /// Builds the protein summary table using analyzer data
         /// </summary>
         private void BuildProteinSummary()
         {
@@ -386,59 +380,54 @@ namespace GUI
             var uniquePepCounts = coverageResult.GetUniquePeptideCountsByProtease();
             var sharedPepCounts = coverageResult.GetSharedPeptideCountsByProtease();
 
-            // Create tree view structure
-            var thisProtein = new ProteinSummaryForTreeView($"Digestion Results for {coverageResult.DisplayName}:");
+            // Update the header label
+            proteinSummaryHeader.Content = $"Digestion Results for {coverageResult.DisplayName}";
 
-            // Unique peptide counts
-            var uniquePep = new AnalysisSummaryForTreeView("Number of Unique Peptides: ");
-            foreach (var protease in proteaseList)
-            {
-                int count = uniquePepCounts.TryGetValue(protease, out var c) ? c : 0;
-                uniquePep.Summary.Add(new ProtSummaryForTreeView($"{protease}: {count}"));
-            }
-            thisProtein.Summary.Add(uniquePep);
-
-            // Shared peptide counts
-            var sharedPep = new AnalysisSummaryForTreeView("Number of Shared Peptides: ");
-            foreach (var protease in proteaseList)
-            {
-                int count = sharedPepCounts.TryGetValue(protease, out var c) ? c : 0;
-                sharedPep.Summary.Add(new ProtSummaryForTreeView($"{protease}: {count}"));
-            }
-            thisProtein.Summary.Add(sharedPep);
-
-            // Total sequence coverage
-            var percentCov = new AnalysisSummaryForTreeView("Percent Sequence Coverage (all peptides):");
-            foreach (var protease in _analyzer.SequenceCoverageByProtease)
-            {
-                var coverage = Math.Round(protease.Value[SelectedProtein.Protein].Item1, 2);
-                percentCov.Summary.Add(new ProtSummaryForTreeView($"{protease.Key}: {Math.Round(coverage, 3)}%"));
-            }
-            thisProtein.Summary.Add(percentCov);
-
-            // Unique peptide coverage
-            var percentCovUniq = new AnalysisSummaryForTreeView("Percent Sequence Coverage (unique peptides):");
+            // Pre-compute unique coverage for multi-database scenario (once, not per-protease)
+            Dictionary<string, double>? uniqueCoverageByProtease = null;
             if (_analyzer.IsMultiDatabase)
             {
-                foreach (var (proteaseName, fraction) in _analyzer.CalculateSequenceCoverageUnique(SelectedProtein.Protein))
-                {
-                    percentCovUniq.Summary.Add(new ProtSummaryForTreeView($"{proteaseName}: {Math.Round(fraction, 3)}%"));
-                }
+                uniqueCoverageByProtease = _analyzer
+                    .CalculateSequenceCoverageUnique(SelectedProtein.Protein)
+                    .ToDictionary(x => x.ProteaseName, x => x.CoverageFraction);
             }
-            else
-            {
-                foreach (var protease in _analyzer.SequenceCoverageByProtease)
-                {
-                    var coverage = protease.Value[SelectedProtein.Protein].Item2;
-                    percentCovUniq.Summary.Add(new ProtSummaryForTreeView($"{protease.Key}: {Math.Round(coverage, 3)}%"));
-                }
-            }
-            thisProtein.Summary.Add(percentCovUniq);
 
-            // Update display
-            ProteinDigestionSummary.Clear();
-            ProteinDigestionSummary.Add(thisProtein);
-            proteinResults.DataContext = ProteinDigestionSummary;
+            // Build table rows
+            var summaryRows = new List<ProteinDigestionSummaryRow>();
+
+            foreach (var proteaseName in proteaseList)
+            {
+                int uniqueCount = uniquePepCounts.TryGetValue(proteaseName, out var uc) ? uc : 0;
+                int sharedCount = sharedPepCounts.TryGetValue(proteaseName, out var sc) ? sc : 0;
+
+                // Get coverage values
+                string totalCoverage = "N/A";
+                string uniqueCoverage = "N/A";
+
+                if (_analyzer.SequenceCoverageByProtease.TryGetValue(proteaseName, out var proteaseCoverage) &&
+                    proteaseCoverage.TryGetValue(SelectedProtein.Protein, out var coverageValues))
+                {
+                    totalCoverage = $"{Math.Round(coverageValues.Item1, 2)}%";
+
+                    uniqueCoverage = _analyzer.IsMultiDatabase
+                        ? uniqueCoverageByProtease!.TryGetValue(proteaseName, out var fraction)
+                            ? $"{Math.Round(fraction * 100, 2)}%"
+                            : "N/A"
+                        : $"{Math.Round(coverageValues.Item2, 2)}%";
+                }
+
+                summaryRows.Add(new ProteinDigestionSummaryRow
+                {
+                    Protease = proteaseName,
+                    UniquePeptides = uniqueCount,
+                    SharedPeptides = sharedCount,
+                    TotalCoverage = totalCoverage,
+                    UniqueCoverage = uniqueCoverage
+                });
+            }
+
+            // Bind to the DataGrid
+            proteinSummaryGrid.ItemsSource = summaryRows;
         }
 
         #endregion
@@ -813,18 +802,17 @@ namespace GUI
 
             // Save results summary
             var resultsFile = $"{proteinName}_DigestionResults.txt";
-            var results = new List<string>();
-            foreach (var protein in ProteinDigestionSummary)
+            var results = new List<string>
             {
-                results.Add(protein.DisplayName);
-                foreach (var analysis in protein.Summary)
-                {
-                    results.Add($"   {analysis.DisplayName}");
-                    foreach (var protease in analysis.Summary)
-                    {
-                        results.Add($"       {protease.DisplayName}");
-                    }
-                }
+                $"Digestion Results for {proteinName}",
+                "",
+                "Protease\tUnique Peptides\tShared Peptides\tTotal Peptides\tTotal Coverage\tUnique Coverage"
+            };
+
+            // Get data from the summary grid - use Items.OfType for robustness
+            foreach (var row in proteinSummaryGrid.Items.OfType<ProteinDigestionSummaryRow>())
+            {
+                results.Add($"{row.Protease}\t{row.UniquePeptides}\t{row.SharedPeptides}\t{row.TotalPeptides}\t{row.TotalCoverage}\t{row.UniqueCoverage}");
             }
             File.WriteAllLines(Path.Combine(subFolder, resultsFile), results);
 

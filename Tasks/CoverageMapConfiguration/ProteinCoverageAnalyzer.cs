@@ -167,7 +167,7 @@ namespace Tasks.CoverageMapConfiguration
         /// Calculates sequence coverage using only unique peptides for a specific protein
         /// </summary>
         /// <param name="protein">The protein to calculate coverage for</param>
-        /// <returns>Enumerable of (protease name, coverage fraction) tuples</returns>
+        /// <returns>Enumerable of (protease name, coverage fraction) tuples where fraction is 0.0-1.0 (unrounded)</returns>
         public IEnumerable<(string ProteaseName, double CoverageFraction)> CalculateSequenceCoverageUnique(Protein protein)
         {
             if (!PeptideByProteaseAndProtein.ContainsKey(protein))
@@ -193,9 +193,9 @@ namespace Tasks.CoverageMapConfiguration
                     }
                 }
 
-                // Calculate coverage fraction
+                // Return unrounded fraction - let caller handle display formatting
                 var fraction = (double)coveredOneBasedResidues.Count / protein.Length;
-                yield return (proteaseKvp.Key, Math.Round(fraction, 2));
+                yield return (proteaseKvp.Key, fraction);
             }
         }
 
