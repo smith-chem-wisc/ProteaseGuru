@@ -126,7 +126,7 @@ namespace Test
                 }
                 catch (IOException) when (attempt < maxRetries - 1)
                 {
-                    // Brief delay to allow file handles to be released
+                    // Retry with delay after I/O exception
                     Thread.Sleep(delayMs);
                 }
                 catch (UnauthorizedAccessException) when (attempt < maxRetries - 1)
