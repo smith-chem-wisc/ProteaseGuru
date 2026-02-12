@@ -24,11 +24,6 @@ namespace Tasks
 
         public static event EventHandler<StringEventArgs> OutLabelStatusHandler;
 
-        /// <summary>
-        /// Event fired to report progress during digestion operations.
-        /// </summary>
-        public static event EventHandler<ProgressEventArgs> ProgressHandler;
-
         public static Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>? AllPeptidesByProtease;
 
         public Dictionary<string, Dictionary<Protein, (double, double)>> SequenceCoverageByProtease = new Dictionary<string, Dictionary<Protein, (double, double)>>();
@@ -40,21 +35,10 @@ namespace Tasks
             // Use a thread-safe dictionary for parallel writes
             var concurrentPeptideByFile = new ConcurrentDictionary<string, ConcurrentDictionary<string, Dictionary<Protein, List<InSilicoPep>>>>();
 
-            // Calculate total work units for progress reporting
-            // Include digestion units + post-processing phases
-            int totalProteases = DigestionParameters.ProteasesForDigestion.Count;
-            int totalDatabases = dbFileList.Count;
-            int digestionWorkUnits = totalDatabases * totalProteases;
-            const int postProcessingUnits = 2; // WritePeptidesToTsv + CalculateProteinSequenceCoverage
-            int totalWorkUnits = digestionWorkUnits + postProcessingUnits;
-            int completedWorkUnits = 0;
-
-            // Report initial progress
-            ReportProgress(0, totalWorkUnits, "Starting digestion...");
-
             // Process each database in parallel
             Parallel.ForEach(dbFileList, database =>
             {
+                Status("Loading Protein Database(s)...", "loadDbs");
                 List<Protein> proteins = LoadProteins(database);
 
                 // Initialize the entry for this database
@@ -68,21 +52,13 @@ namespace Tasks
                 // Process each protease in parallel for this database
                 Parallel.ForEach(DigestionParameters.ProteasesForDigestion, protease =>
                 {
-                    // Report what we're working on (before the work)
-                    ReportProgress(completedWorkUnits, totalWorkUnits,
-                        $"Digesting {databaseFileName} with {protease.Name}...");
+                    Status("Digesting Proteins...", "digestDbs");
 
-                    // Do the actual work
                     var peptides = DigestDatabase(proteinsForDigestion, protease, DigestionParameters);
                     var peptidesFormatted = DeterminePeptideStatus(databaseFileName, peptides, DigestionParameters);
 
                     // Thread-safe add to the concurrent dictionary
                     proteaseResults[protease.Name] = peptidesFormatted;
-
-                    // Increment progress AFTER the work completes
-                    int currentUnit = Interlocked.Increment(ref completedWorkUnits);
-                    ReportProgress(currentUnit, totalWorkUnits,
-                        $"Completed {protease.Name} ({currentUnit}/{digestionWorkUnits} digestions)");
                 });
             });
 
@@ -92,28 +68,13 @@ namespace Tasks
                 PeptideByFile[dbEntry.Key] = new Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>(dbEntry.Value);
             }
 
-            // Post-processing phase 1: Write output
-            ReportProgress(completedWorkUnits, totalWorkUnits, "Writing peptide output...");
+            Status("Writing Peptide Output...", "peptides");
             WritePeptidesToTsv(PeptideByFile, OutputFolder, DigestionParameters);
-            completedWorkUnits++;
-
-            // Post-processing phase 2: Calculate coverage
-            ReportProgress(completedWorkUnits, totalWorkUnits, "Calculating sequence coverage...");
             SequenceCoverageByProtease = CalculateProteinSequenceCoverage(PeptideByFile);
-            completedWorkUnits++;
-
             MyTaskResults myRunResults = new MyTaskResults(this);
-            ReportProgress(totalWorkUnits, totalWorkUnits, "Complete!");
+            Status("Writing Results Summary...", "summary");
 
             return myRunResults;
-        }
-
-        /// <summary>
-        /// Reports progress to subscribers of the ProgressHandler event.
-        /// </summary>
-        private void ReportProgress(int current, int max, string message)
-        {
-            ProgressHandler?.Invoke(this, new ProgressEventArgs(current, max, message));
         }
         // Load proteins from XML or FASTA databases and keep them associated with the database file name from which they came from
         protected List<Protein> LoadProteins(DbForDigestion database)
