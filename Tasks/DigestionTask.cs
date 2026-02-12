@@ -80,7 +80,7 @@ namespace Tasks
         protected List<Protein> LoadProteins(DbForDigestion database)
         {
             List<string> dbErrors = new List<string>();
-            List<Protein> proteinList;
+            List<Protein> proteinList = new List<Protein>();
 
             string theExtension = Path.GetExtension(database.FilePath).ToLowerInvariant();
             bool compressed = theExtension.EndsWith("gz"); // allows for .bgz and .tgz, too which are used on occasion
