@@ -729,36 +729,31 @@ namespace Tasks
                        
             
             var numberOfPeptides = allPeptides.Count();
-            double numberOfFiles = Math.Ceiling(numberOfPeptides / 1000000.0);
-            var peptidesInFile = 1;
+            const int peptidesPerFile = 1000000;
+            double numberOfFiles = (int)Math.Ceiling(numberOfPeptides / (double)peptidesPerFile);
             var peptideIndex = 0;
-            var fileCount = 1;           
 
-                while (fileCount <= Convert.ToInt32(numberOfFiles))
+            for (int fileCount = 1; fileCount <= numberOfFiles; fileCount++)
+            {
+                string outputPath = Path.Combine(filePath, $"ProteaseGuruPeptides_{fileCount}.tsv");
+                using (StreamWriter output = new StreamWriter(outputPath))
                 {
-                    using (StreamWriter output = new StreamWriter(filePath + @"\ProteaseGuruPeptides_" + fileCount + ".tsv"))
+                    output.WriteLine(header);
+
+                    int peptdesWrittenToThisFile = 0;
+                    while (peptdesWrittenToThisFile < peptidesPerFile && peptideIndex < numberOfPeptides)
                     {
-                        output.WriteLine(header);
-                        while (peptidesInFile < 1000000)
-                        {
-                            if (peptideIndex < numberOfPeptides)
-                            {
-                                output.WriteLine(allPeptides[peptideIndex].ToString());
-                                peptideIndex++;
-                            }                            
-                            peptidesInFile++;
-                                                        
-                        }
-                        output.Close();
-                        peptidesInFile = 1;
-                    }                    
-                    fileCount++;
+                        output.WriteLine(allPeptides[peptideIndex].ToString());
+                        peptideIndex++;
+                        peptdesWrittenToThisFile++;
+                    }
                 }
+            }
 
             List<string> parameters = new List<string>();
             parameters.Add("Digestion Conditions:");
             parameters.Add("Database: " + string.Join(',', peptideByFile.Keys));
-            parameters.Add("Proteases: " + string.Join(',', userParams.ProteasesForDigestion.Select(p => p.Name).ToList()));
+            parameters.Add("Proteases: " + string.Join(", ", userParams.ProteasesForDigestion.Select(p => p.Name)));
             parameters.Add("Max Missed Cleavages: " + userParams.NumberOfMissedCleavagesAllowed);
             parameters.Add("Min Peptide Length: " + userParams.MinPeptideLengthAllowed);
             parameters.Add("Max Peptide Length: " + userParams.MaxPeptideLengthAllowed);
@@ -778,9 +773,9 @@ namespace Tasks
         //digest proteins for each database using the protease and settings provided
         protected Dictionary<Protein, List<PeptideWithSetModifications>> DigestDatabase(List<Protein> proteinsFromDatabase,
             Protease protease, Parameters userDigestionParams)
-        {           
+        {
             DigestionParams dp = new DigestionParams(protease: protease.Name, maxMissedCleavages: userDigestionParams.NumberOfMissedCleavagesAllowed,
-                minPeptideLength: userDigestionParams.MinPeptideLengthAllowed, maxPeptideLength: userDigestionParams.MaxPeptideLengthAllowed);            
+                minPeptideLength: userDigestionParams.MinPeptideLengthAllowed, maxPeptideLength: userDigestionParams.MaxPeptideLengthAllowed);
             Dictionary<Protein, List<PeptideWithSetModifications>> peptidesForProtein = new Dictionary<Protein, List<PeptideWithSetModifications>>(proteinsFromDatabase.Count);
             foreach (var protein in proteinsFromDatabase)
             {
