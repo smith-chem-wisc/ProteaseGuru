@@ -588,8 +588,8 @@
                                             </TextBlock>
                                         </TextBox.ToolTip>
                                         <TextBox.Style>
-                                            <Style TargetType="TextBox" xmlns:sys="clr-namespace:System;assembly=mscorlib">                                                
-                                                <Style.Triggers>                                                    
+                                            <Style TargetType="TextBox" xmlns:sys="clr-namespace:System;assembly=mscorlib">
+                                                <Style.Triggers>
                                                     <Trigger Property="IsKeyboardFocused" Value="True">
                                                         <Setter Property="Background" Value="White" />
                                                     </Trigger>
@@ -608,9 +608,9 @@
                                             </TextBlock>
                                         </TextBox.ToolTip>
                                         <TextBox.Style>
-                                            <Style TargetType="TextBox" xmlns:sys="clr-namespace:System;assembly=mscorlib">                                               
+                                            <Style TargetType="TextBox" xmlns:sys="clr-namespace:System;assembly=mscorlib">
                                                 <Style.Triggers>
-                                                   
+
                                                     <Trigger Property="IsKeyboardFocused" Value="True">
                                                         <Setter Property="Background" Value="White" />
                                                     </Trigger>
@@ -698,49 +698,44 @@
                         </TreeView>
                     </Grid>
 
-                        <Grid Grid.Row="3" Background="{StaticResource DataGridBackgroundColor}" >
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="20"/>
-                                <RowDefinition Height="5"/>
-                                <RowDefinition Height="40"/>
-                                <RowDefinition Height="35"/>
-                            </Grid.RowDefinitions>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width=".75*"/>
-                                <ColumnDefinition Width=".25*"/>
-                            </Grid.ColumnDefinitions>
+                    <Grid Grid.Row="3" Background="{StaticResource DataGridBackgroundColor}" >
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="20"/>
+                            <RowDefinition Height="5"/>
+                            <RowDefinition Height="40"/>
+                            <RowDefinition Height="35"/>
+                        </Grid.RowDefinitions>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width=".75*"/>
+                            <ColumnDefinition Width=".25*"/>
+                        </Grid.ColumnDefinitions>
 
-                            <DockPanel Margin="5" Grid.Row="2" LastChildFill="True" Grid.ColumnSpan="2">
-                                <Button x:Name="OpenOutputFolderButton" Content="Open" Width="40" DockPanel.Dock="Right" Click="OpenOutputFolder_Click" Style="{StaticResource ImportantButtonStyle}"></Button>
-                                <Label Content="Output Folder:"/>
-                                <TextBox x:Name="OutputFolderTextBox"/>
-                            </DockPanel>
-                            <Button x:Name="RunTaskButton" Content="Run!" Click="RunTaskButton_Click" FontSize="24" Grid.Row="3" Grid.ColumnSpan="2" Width="400" Style="{StaticResource ImportantButtonStyle}"/>
-                            
-                        </Grid>
+                        <DockPanel Margin="5" Grid.Row="2" LastChildFill="True" Grid.ColumnSpan="2">
+                            <Button x:Name="OpenOutputFolderButton" Content="Open" Width="40" DockPanel.Dock="Right" Click="OpenOutputFolder_Click" Style="{StaticResource ImportantButtonStyle}"></Button>
+                            <Label Content="Output Folder:"/>
+                            <TextBox x:Name="OutputFolderTextBox"/>
+                        </DockPanel>
+                        <Button x:Name="RunTaskButton" Content="Run!" Click="RunTaskButton_Click" FontSize="24" Grid.Row="3" Grid.ColumnSpan="2" Width="400" Style="{StaticResource ImportantButtonStyle}"/>
+
+                    </Grid>
                     <Grid Grid.Row="5" Background="{StaticResource BackgroundColor}">
                         <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto"></ColumnDefinition>
-                            <ColumnDefinition Width="*"></ColumnDefinition>
-                            <ColumnDefinition Width="Auto"></ColumnDefinition>
+                            <ColumnDefinition></ColumnDefinition>
+                            <ColumnDefinition></ColumnDefinition>
                         </Grid.ColumnDefinitions>
                         <StatusBar Name="RunStatus" Grid.Column="0" Background="{StaticResource BackgroundColor}">
                             <StatusBarItem>
-                                <TextBlock Style="{StaticResource StatusBarTextStyle}">Progress:</TextBlock>
+                                <TextBlock Style="{StaticResource StatusBarTextStyle}">Running:</TextBlock>
                             </StatusBarItem>
                         </StatusBar>
-                        <ProgressBar x:Name="TaskProgressBar" Grid.Column="1" 
-                                     Height="20" Margin="5,5,5,5" 
-                                     Minimum="0" Maximum="100" Value="0"
-                                     IsIndeterminate="False"/>
-                        <DockPanel Margin="5" Grid.Column="2" MinWidth="350">
-                            <Label Content="Status:" Style="{StaticResource ProgressTextStyle}"/>
-                            <TextBox x:Name="ProgressTextBox" Background="{StaticResource BackgroundColor}" BorderThickness="0" VerticalAlignment="Center"/>
+                        <DockPanel Margin="5" Grid.Column="1">
+                            <Label Content="Run Status:" Style="{StaticResource ProgressTextStyle}"/>
+                            <TextBox x:Name="ProgressTextBox"  Background="{StaticResource BackgroundColor}" BorderThickness="0"/>
                         </DockPanel>
-                        
+
                     </Grid>
-                   
-                   
+
+
                 </Grid>
             </TabItem>
             <TabItem Header="Load Previous Results" Style="{StaticResource TabItemStyle}" Name="LoadTab">
@@ -929,8 +924,8 @@
 
                         <TextBlock Grid.Row="0" Grid.Column="1" Style="{StaticResource TextBlockStyle}" Margin="0">
                             You may also want to:
-                        </TextBlock>                        
-                        
+                        </TextBlock>
+
                         <Button Grid.Row="1" Grid.Column="1" HorizontalContentAlignment="Left" BorderThickness="0" Click="MenuItem_Twitter_Click">
                             <StackPanel Orientation="Horizontal">
                                 <Image Source="Icons/Twitter_Logo_Blue.bmp" Width="20" Height="20" Margin="0,0,5,0"/>
