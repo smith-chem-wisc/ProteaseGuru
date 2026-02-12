@@ -15,6 +15,10 @@ namespace Tasks
     {
         // Maximum concurrency for parallel operations
         private static readonly int MaxConcurrency = Environment.ProcessorCount;
+        
+        // Calculated parallelism limits to avoid oversubscription
+        private static readonly int OuterParallelism = Math.Max(1, MaxConcurrency / 2);
+        private static readonly int InnerParallelism = Math.Max(1, MaxConcurrency / OuterParallelism);
 
         public DigestionTask(): base(MyTask.Digestion)
         { 
@@ -38,10 +42,11 @@ namespace Tasks
             // Use a thread-safe dictionary for parallel writes
             var concurrentPeptideByFile = new ConcurrentDictionary<string, ConcurrentDictionary<string, Dictionary<Protein, List<InSilicoPep>>>>();
 
-            // Limit outer parallelism to avoid oversubscription with inner parallel loops
+            // Outer parallelism: limited to avoid oversubscription with inner parallel loops
+            // With 8 cores: OuterParallelism = 4, InnerParallelism = 2, total max = 4 * 2 = 8 threads
             var outerParallelOptions = new ParallelOptions 
             { 
-                MaxDegreeOfParallelism = Math.Max(1, MaxConcurrency / 2) 
+                MaxDegreeOfParallelism = OuterParallelism 
             };
 
             // Process each database in parallel (limited)
@@ -323,7 +328,8 @@ namespace Tasks
 
             if (peptides.Count == 0) return results;
 
-            int threadCount = Math.Min(Environment.ProcessorCount, peptides.Count);
+            // Use inner parallelism, but also limited by pool size and peptide count
+            int threadCount = Math.Min(InnerParallelism, Math.Min(_poolSize, peptides.Count));
             if (threadCount < 1) threadCount = 1;
 
             // Ensure pool has enough predictors
@@ -363,9 +369,10 @@ namespace Tasks
             var results = new double[peptides.Count];
             if (peptides.Count == 0) return results;
 
+            // Use inner parallelism to avoid oversubscription when called from outer parallel loop
             var options = new ParallelOptions 
             { 
-                MaxDegreeOfParallelism = MaxConcurrency 
+                MaxDegreeOfParallelism = InnerParallelism 
             };
 
             Parallel.For(0, peptides.Count,
@@ -395,7 +402,7 @@ namespace Tasks
 
             var options = new ParallelOptions 
             { 
-                MaxDegreeOfParallelism = MaxConcurrency 
+                MaxDegreeOfParallelism = InnerParallelism 
             };
 
             Parallel.For(0, peptides.Count, options, i =>
