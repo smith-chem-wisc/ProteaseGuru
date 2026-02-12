@@ -1,0 +1,127 @@
+<UserControl x:Class="GUI.ProteaseSpecificDigestionControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:local="clr-namespace:GUI"
+             xmlns:guiFunctions="clr-namespace:GuiFunctions;assembly=GuiFunctions"
+             mc:Ignorable="d" 
+             d:DesignHeight="120" d:DesignWidth="600"
+             d:DataContext="{d:DesignInstance guiFunctions:ProteaseSpecificParametersViewModel, IsDesignTimeCreatable=False}">
+    
+    <UserControl.Resources>
+        <SolidColorBrush x:Key="DataGridBackgroundColor" Color="#D5D5D5" />
+        <SolidColorBrush x:Key="BorderColor" Color="#444449" />
+        <SolidColorBrush x:Key="TextColor1" Color="#131313" />
+        <SolidColorBrush x:Key="TextColor2" Color="#EEEEEE" />
+
+        <BooleanToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
+        <local:SelectedProteaseToBackgroundConverter x:Key="SelectedProteaseToBackgroundConverter" />
+    </UserControl.Resources>
+
+    <Border BorderBrush="{StaticResource BorderColor}" BorderThickness="1" 
+            Background="{Binding IsSelected, Converter={StaticResource SelectedProteaseToBackgroundConverter}}"
+            Margin="5,2,5,2" Padding="2" CornerRadius="10">
+        <Grid Background="{Binding IsSelected, Converter={StaticResource SelectedProteaseToBackgroundConverter}}">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+            
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="2*"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Header -->
+            <StackPanel Grid.Column="0" Grid.Row="0" Grid.ColumnSpan="2" Orientation="Horizontal">
+
+                <!-- Selection Checkbox and Protease Name -->
+                <CheckBox IsChecked="{Binding IsSelected, Mode=TwoWay}"
+                          VerticalAlignment="Center" Margin="0,0,5,0"/>
+
+                <TextBlock Text="{Binding DigestionAgentName}"
+                           Foreground="{StaticResource TextColor1}"
+                           FontWeight="Bold" FontSize="16"
+                           ToolTip="{Binding ToolTip}"
+                           VerticalAlignment="Center"/>
+            </StackPanel>
+
+            <!-- Parameters Grid -->
+            <DockPanel Grid.Row="0" Grid.Column="1" Margin="0,5,0,0"
+                       Background="{Binding IsSelected, Converter={StaticResource SelectedProteaseToBackgroundConverter}}"
+                  IsEnabled="{Binding IsSelected}">
+
+                <!-- Length Range (Min - Max) -->
+                <StackPanel DockPanel.Dock="Right"  Orientation="Horizontal" VerticalAlignment="Center">
+                    <Grid 
+                        Background="{Binding IsSelected, Converter={StaticResource SelectedProteaseToBackgroundConverter}}">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Min label -->
+                        <TextBlock Grid.Row="0" Grid.Column="0" 
+                                   Text="min" FontSize="10" Foreground="{StaticResource TextColor1}"
+                                   Margin="0 -6 0 0"
+                                   HorizontalAlignment="Center"/>
+
+                        <!-- Dash label -->
+                        <TextBlock Grid.Row="0" Grid.Column="1" 
+                                   Text="-" FontSize="10" 
+                                   HorizontalAlignment="Center"/>
+
+                        <!-- Max label -->
+                        <TextBlock Grid.Row="0" Grid.Column="2"
+                                   Margin="0 -6 0 0"
+                                   Text="max" FontSize="10" Foreground="{StaticResource TextColor1}"
+                                   HorizontalAlignment="Center"/>
+
+                        <!-- Min Length TextBox -->
+                        <local:IntegerTextBoxControl Grid.Row="1" Grid.Column="0"
+                                                     Foreground="{StaticResource TextColor1}"
+                                                     Text="{Binding MinLength, UpdateSourceTrigger=PropertyChanged, Mode=TwoWay}"
+                                                     AllowNegative="False" Width="50" 
+                                                     HorizontalAlignment="Left"
+                                                     Margin="0 -6 0 0"
+                                                     ToolTip="Minimum allowed peptide length"/>
+
+                        <!-- Dash separator -->
+                        <TextBlock Grid.Row="1" Grid.Column="1"
+                                   Foreground="{StaticResource TextColor1}"
+                                   Text="-" FontSize="14" FontWeight="Bold"
+                                   VerticalAlignment="Center" HorizontalAlignment="Center"/>
+
+                        <!-- Max Length TextBox -->
+                        <local:IntegerTextBoxControl Grid.Row="1" Grid.Column="2"
+                                                     Foreground="{StaticResource TextColor1}"
+                                                     Text="{Binding MaxLength, UpdateSourceTrigger=PropertyChanged, Mode=TwoWay}"
+                                                     Margin="0 -6 0 0"
+                                                     AllowNegative="False" Width="50" 
+                                                     HorizontalAlignment="Left"
+                                                     ToolTip="Maximum allowed peptide length"/>
+                    </Grid>
+                </StackPanel>
+               
+                <!-- Length Label -->
+                <Label DockPanel.Dock="Right" Content="Length:" 
+                       VerticalAlignment="Center" />
+                
+                <local:IntegerTextBoxControl  DockPanel.Dock="Right" 
+                                              Text="{Binding MaxMissedCleavages, UpdateSourceTrigger=PropertyChanged, Mode=TwoWay}"
+                                              AllowNegative="False" Width="50" 
+                                              HorizontalAlignment="Left"
+                                              ToolTip="Maximum number of missed proteolytic cleavages allowed"/>
+                <!-- Max Missed Cleavages -->
+                <Label DockPanel.Dock="Right" Content="Missed Cleavages:" 
+                       VerticalAlignment="Center" Margin="0,0,5,0"/>
+            </DockPanel>
+        </Grid>
+    </Border>
+</UserControl>
