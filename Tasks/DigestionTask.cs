@@ -1,13 +1,11 @@
 using System.Collections.Concurrent;
 using System.Data;
-using Chromatography.RetentionTimePrediction;
 using Chromatography.RetentionTimePrediction.Chronologer;
 using Engine;
 using Omics.Modifications;
 using Proteomics;
 using Proteomics.ProteolyticDigestion;
 using Proteomics.RetentionTimePrediction;
-using SharpLearning.Common.Interfaces;
 using UsefulProteomicsDatabases;
 
 namespace Tasks
@@ -237,22 +235,103 @@ namespace Tasks
         }
         // Add this static field at the top of the DigestionTask class:
         private static readonly object ChronologerLock = new object();
+        private static ChronologerRetentionTimePredictor[] _sharedPredictorPool;
+        private static int _predictorPoolRefCount;
+
+        /// <summary>
+        /// Initializes the shared Chronologer predictor pool (thread-safe, creates only once).
+        /// Call <see cref="ReleasePredictorPool"/> when done to allow cleanup.
+        /// </summary>
+        private static ChronologerRetentionTimePredictor[] GetOrCreatePredictorPool(int threadCount)
+        {
+            lock (ChronologerLock)
+            {
+                if (_sharedPredictorPool == null || _sharedPredictorPool.Length < threadCount)
+                {
+                    // Dispose existing predictors if resizing
+                    DisposePredictorPoolUnsafe();
+
+                    _sharedPredictorPool = new ChronologerRetentionTimePredictor[threadCount];
+                    for (int i = 0; i < threadCount; i++)
+                    {
+                        _sharedPredictorPool[i] = new ChronologerRetentionTimePredictor();
+                    }
+                }
+                _predictorPoolRefCount++;
+                return _sharedPredictorPool;
+            }
+        }
+
+        /// <summary>
+        /// Releases a reference to the predictor pool. When the last reference is released,
+        /// the pool is disposed to free file handles.
+        /// </summary>
+        private static void ReleasePredictorPool()
+        {
+            lock (ChronologerLock)
+            {
+                _predictorPoolRefCount--;
+                if (_predictorPoolRefCount <= 0)
+                {
+                    DisposePredictorPoolUnsafe();
+                    _predictorPoolRefCount = 0;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Disposes the predictor pool without locking. Must be called within ChronologerLock.
+        /// </summary>
+        private static void DisposePredictorPoolUnsafe()
+        {
+            if (_sharedPredictorPool != null)
+            {
+                foreach (var predictor in _sharedPredictorPool)
+                {
+                    (predictor as IDisposable)?.Dispose();
+                }
+                _sharedPredictorPool = null;
+            }
+        }
 
         // Then update the BatchCalculateRetentionTimesChronologer method:
         private double[] BatchCalculateRetentionTimesChronologer(List<PeptideWithSetModifications> peptides)
         {
             var results = new double[peptides.Count];
 
-            // Synchronize access to prevent concurrent file access to model
-            lock (ChronologerLock)
-            {
-                var rtPredictor = new Chromatography.RetentionTimePrediction.Chronologer.ChronologerRetentionTimePredictor();
+            if (peptides.Count == 0) return results;
 
-                for (int i = 0; i < peptides.Count; i++)
-                {
-                    var result = rtPredictor.PredictRetentionTime(peptides[i], out var failureReason);
-                    results[i] = result ?? -1;
-                }
+            int threadCount = Math.Min(Environment.ProcessorCount, peptides.Count);
+            if (threadCount < 1) threadCount = 1;
+
+            // Get shared predictor pool (thread-safe creation)
+            var predictorPool = GetOrCreatePredictorPool(threadCount);
+
+            // Atomic counter to assign unique predictor indices to each worker thread
+            int nextPredictorIndex = -1;
+
+            try
+            {
+                // Run predictions in parallel - each worker gets a unique predictor via atomic counter
+                Parallel.For(0, peptides.Count,
+                    new ParallelOptions { MaxDegreeOfParallelism = threadCount },
+                    // Thread-local init: atomically claim a unique predictor index for this worker
+                    () => Interlocked.Increment(ref nextPredictorIndex) % threadCount,
+                    // Body: use the assigned predictor (no lock needed - each worker has exclusive access)
+                    (i, loopState, predictorIndex) =>
+                    {
+                        var result = predictorPool[predictorIndex].PredictRetentionTime(peptides[i], out _);
+                        results[i] = result ?? -1;
+                        return predictorIndex;
+                    },
+                    // Finalizer: nothing to clean up
+                    _ => { }
+                );
+            }
+            finally
+            {
+                // Release reference to allow cleanup when all callers are done
+                ReleasePredictorPool();
             }
 
             return results;
@@ -266,19 +345,23 @@ namespace Tasks
         /// <returns>Array of hydrophobicity values in the same order as input peptides</returns>
         private double[] BatchCalculateHydrophobicity(List<PeptideWithSetModifications> peptides)
         {
-            // Initialize the retention time predictor
-            // TODO: Replace with batch-based ML model (e.g., Prosit, DeepLC, Chronologer)
-            var rtPredictor = new SSRCalc3("SSRCalc 3.0 (300A)", SSRCalc3.Column.A300);
-    
             var results = new double[peptides.Count];
-    
-            // Current implementation: calculate one-by-one
-            // Future implementation: send entire batch to ML model
-            for (int i = 0; i < peptides.Count; i++)
-            {
-                results[i] = rtPredictor.ScoreSequence(peptides[i]);
-            }
-    
+
+            // Use Parallel.For with thread-local SSRCalc3 instances for thread safety
+            // SSRCalc3 is stateless for scoring, so each thread can have its own instance
+            Parallel.For(0, peptides.Count,
+                // Thread-local initialization: create a new SSRCalc3 instance per thread
+                () => new SSRCalc3("SSRCalc 3.0 (300A)", SSRCalc3.Column.A300),
+                // Body: calculate hydrophobicity using thread-local predictor
+                (i, loopState, rtPredictor) =>
+                {
+                    results[i] = rtPredictor.ScoreSequence(peptides[i]);
+                    return rtPredictor;
+                },
+                // Finalizer: nothing to dispose
+                (rtPredictor) => { }
+            );
+
             return results;
         }
 
@@ -291,36 +374,53 @@ namespace Tasks
         private double[] BatchCalculateElectrophoreticMobility(List<PeptideWithSetModifications> peptides)
         {
             var results = new double[peptides.Count];
-    
-            // Can be parallelized if needed for large datasets
-            for (int i = 0; i < peptides.Count; i++)
+
+            // Parallelized for large datasets - GetCifuentesMobility is thread-safe (static, no shared state)
+            Parallel.For(0, peptides.Count, i =>
             {
                 results[i] = GetCifuentesMobility(peptides[i]);
-            }
-    
+            });
+
             return results;
         }
         //calculate electrophoretic mobility of a peptide
         private static double GetCifuentesMobility(PeptideWithSetModifications pwsm)
         {
-            int charge = 1 + pwsm.BaseSequence.Count(f => f == 'K') + pwsm.BaseSequence.Count(f => f == 'R') + pwsm.BaseSequence.Count(f => f == 'H') - CountModificationsThatShiftMobility(pwsm.AllModsOneIsNterminus.Values.AsEnumerable());// the 1 + is for N-terminal
+            // Count K, R, H in a single pass through the sequence (instead of 3 separate LINQ calls)
+            int kCount = 0, rCount = 0, hCount = 0;
+            foreach (char c in pwsm.BaseSequence)
+            {
+                switch (c)
+                {
+                    case 'K': kCount++; break;
+                    case 'R': rCount++; break;
+                    case 'H': hCount++; break;
+                }
+            }
+
+            int charge = 1 + kCount + rCount + hCount - CountModificationsThatShiftMobility(pwsm.AllModsOneIsNterminus.Values);
 
             double mobility = (Math.Log(1 + 0.35 * (double)charge)) / Math.Pow(pwsm.MonoisotopicMass, 0.411);
-            if (Double.IsNaN(mobility)==true)
+            if (Double.IsNaN(mobility))
             {
                 mobility = 0;
             }
             return mobility;
         }
-
+        // Static HashSet for O(1) lookup - created once, reused for all calls
+        private static readonly HashSet<string> ShiftingModifications = new HashSet<string>(StringComparer.Ordinal)
+        {
+            "Acetylation", "Ammonia loss", "Carbamyl", "Deamidation", "Formylation",
+            "N2-acetylarginine", "N6-acetyllysine", "N-acetylalanine", "N-acetylaspartate",
+            "N-acetylcysteine", "N-acetylglutamate", "N-acetylglycine", "N-acetylisoleucine",
+            "N-acetylmethionine", "N-acetylproline", "N-acetylserine", "N-acetylthreonine",
+            "N-acetyltyrosine", "N-acetylvaline", "Phosphorylation", "Phosphoserine",
+            "Phosphothreonine", "Phosphotyrosine", "Sulfonation"
+        };
         public static int CountModificationsThatShiftMobility(IEnumerable<Modification> modifications)
         {
-            List<string> shiftingModifications = new List<string> { "Acetylation", "Ammonia loss", "Carbamyl", "Deamidation", "Formylation",
-                "N2-acetylarginine", "N6-acetyllysine", "N-acetylalanine", "N-acetylaspartate", "N-acetylcysteine", "N-acetylglutamate", "N-acetylglycine",
-                "N-acetylisoleucine", "N-acetylmethionine", "N-acetylproline", "N-acetylserine", "N-acetylthreonine", "N-acetyltyrosine", "N-acetylvaline",
-                "Phosphorylation", "Phosphoserine", "Phosphothreonine", "Phosphotyrosine", "Sulfonation" };
-
-            return modifications.Select(n => n.OriginalId).Intersect(shiftingModifications).Count();
+            return modifications.Count(mod =>
+                mod.OriginalId != null && ShiftingModifications.Contains(mod.OriginalId));
         }
         /// <summary>
         /// Calculates protein sequence coverage for each protease across all databases.
