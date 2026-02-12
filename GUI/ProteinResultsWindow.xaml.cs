@@ -809,13 +809,10 @@ namespace GUI
                 "Protease\tUnique Peptides\tShared Peptides\tTotal Peptides\tTotal Coverage\tUnique Coverage"
             };
 
-            // Get data from the summary grid
-            if (proteinSummaryGrid.ItemsSource is List<ProteinDigestionSummaryRow> summaryRows)
+            // Get data from the summary grid - use Items.OfType for robustness
+            foreach (var row in proteinSummaryGrid.Items.OfType<ProteinDigestionSummaryRow>())
             {
-                foreach (var row in summaryRows)
-                {
-                    results.Add($"{row.Protease}\t{row.UniquePeptides}\t{row.SharedPeptides}\t{row.TotalPeptides}\t{row.TotalCoverage}\t{row.UniqueCoverage}");
-                }
+                results.Add($"{row.Protease}\t{row.UniquePeptides}\t{row.SharedPeptides}\t{row.TotalPeptides}\t{row.TotalCoverage}\t{row.UniqueCoverage}");
             }
             File.WriteAllLines(Path.Combine(subFolder, resultsFile), results);
 

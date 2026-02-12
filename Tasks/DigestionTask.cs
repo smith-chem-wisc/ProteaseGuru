@@ -15,7 +15,7 @@ namespace Tasks
     {
         // Shared concurrency limiter for all parallel operations in this task
         private static readonly int MaxConcurrency = Environment.ProcessorCount;
-        private SemaphoreSlim _concurrencyLimiter;
+        private SemaphoreSlim? _concurrencyLimiter;
 
         public DigestionTask(): base(MyTask.Digestion)
         { 
