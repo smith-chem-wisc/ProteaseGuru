@@ -383,6 +383,15 @@ namespace GUI
             // Update the header label
             proteinSummaryHeader.Content = $"Digestion Results for {coverageResult.DisplayName}";
 
+            // Pre-compute unique coverage for multi-database scenario (once, not per-protease)
+            Dictionary<string, double>? uniqueCoverageByProtease = null;
+            if (_analyzer.IsMultiDatabase)
+            {
+                uniqueCoverageByProtease = _analyzer
+                    .CalculateSequenceCoverageUnique(SelectedProtein.Protein)
+                    .ToDictionary(x => x.ProteaseName, x => x.CoverageFraction);
+            }
+
             // Build table rows
             var summaryRows = new List<ProteinDigestionSummaryRow>();
 
@@ -402,11 +411,9 @@ namespace GUI
 
                     if (_analyzer.IsMultiDatabase)
                     {
-                        // For multi-database, calculate unique coverage differently
-                        var uniqueCoverageCalc = _analyzer.CalculateSequenceCoverageUnique(SelectedProtein.Protein)
-                            .FirstOrDefault(x => x.ProteaseName == proteaseName);
-                        uniqueCoverage = uniqueCoverageCalc.ProteaseName != null
-                            ? $"{Math.Round(uniqueCoverageCalc.CoverageFraction * 100, 2)}%"
+                        // Look up pre-computed unique coverage
+                        uniqueCoverage = uniqueCoverageByProtease!.TryGetValue(proteaseName, out var fraction)
+                            ? $"{Math.Round(fraction * 100, 2)}%"
                             : "N/A";
                     }
                     else

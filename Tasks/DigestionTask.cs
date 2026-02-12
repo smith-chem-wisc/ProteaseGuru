@@ -736,7 +736,7 @@ namespace Tasks
             
             var numberOfPeptides = allPeptides.Count();
             const int peptidesPerFile = 1000000;
-            double numberOfFiles = (int)Math.Ceiling(numberOfPeptides / (double)peptidesPerFile);
+            int numberOfFiles = (int)Math.Ceiling(numberOfPeptides / (double)peptidesPerFile);
             var peptideIndex = 0;
 
             for (int fileCount = 1; fileCount <= numberOfFiles; fileCount++)
@@ -746,12 +746,12 @@ namespace Tasks
                 {
                     output.WriteLine(header);
 
-                    int peptdesWrittenToThisFile = 0;
-                    while (peptdesWrittenToThisFile < peptidesPerFile && peptideIndex < numberOfPeptides)
+                    int peptidesWrittenToThisFile = 0;
+                    while (peptidesWrittenToThisFile < peptidesPerFile && peptideIndex < numberOfPeptides)
                     {
                         output.WriteLine(allPeptides[peptideIndex].ToString());
                         peptideIndex++;
-                        peptdesWrittenToThisFile++;
+                        peptidesWrittenToThisFile++;
                     }
                 }
             }

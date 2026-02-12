@@ -10,15 +10,15 @@ namespace Test
     public class DigestionTests : IDisposable
     {
         // Named mutex for cross-process synchronization of Chronologer file access
-        private const string ChronologerMutexName = "Global\\ProteaseGuru_Chronologer_Mutex";
-        private ChronologerMutexLock _mutexLock;
+        private const string ChronologerMutexName = "Local\\ProteaseGuru_Chronologer_Mutex";
+        private ChronologerMutexLock? _mutexLock;
 
         /// <summary>
         /// Disposable wrapper for Chronologer mutex acquisition and release
         /// </summary>
         private sealed class ChronologerMutexLock : IDisposable
         {
-            private Mutex _mutex;
+            private Mutex? _mutex;
             private bool _owned;
 
             public static ChronologerMutexLock Acquire(string mutexName, TimeSpan timeout)
