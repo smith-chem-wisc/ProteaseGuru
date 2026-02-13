@@ -26,19 +26,24 @@ internal class ChronologerTests
             DbForDigestion database = new DbForDigestion(databasePath);
 
             Parameters param = new Parameters();
-            param.MinPeptideLengthAllowed = 7;  // Chronologer works best with peptides >= 7 AA
-            param.MaxPeptideLengthAllowed = 50; // Chronologer has max length limit
-            param.NumberOfMissedCleavagesAllowed = 0;
             param.TreatModifiedPeptidesAsDifferent = false;
-            param.ProteasesForDigestion.Add(ProteaseDictionary.Dictionary["trypsin (cleave before proline)"]);
             param.OutputFolder = subFolder;
+
+            DigestionParams trypsin = new DigestionParams(
+                protease: "trypsin (cleave before proline)",
+                maxMissedCleavages: 0,
+                minPeptideLength: 7,// Chronologer works best with peptides >= 7 AA
+                maxPeptideLength: 50);// Chronologer has max length limit
+
+            param.ProteaseSpecificParameters.Add(new ProteaseSpecificParameters(trypsin));
+
 
             DigestionTask digestion = new DigestionTask();
             digestion.DigestionParameters = param;
             var digestionResults = digestion.RunSpecific(subFolder, new List<DbForDigestion>() { database });
 
             // Get all peptides from results
-            var allPeptides = digestionResults.PeptideByFile[database.FileName][param.ProteasesForDigestion.First().Name]
+            var allPeptides = digestionResults.PeptideByFile[database.FileName][param.ProteaseSpecificParameters.First().DigestionAgentName]
                 .SelectMany(entry => entry.Value)
                 .ToList();
 
@@ -234,12 +239,17 @@ MSFVNGNEIFTAARKQGHYAVGAFNTNNLEWTRKPEPTIDESAMPLERKNTPVLIQVSMGAAKYLVKTLVEEEMRK";
 
             // Set up parameters with trypsin and default settings
             Parameters param = new Parameters();
-            param.MinPeptideLengthAllowed = 7;
-            param.MaxPeptideLengthAllowed = 50;
-            param.NumberOfMissedCleavagesAllowed = 0;
             param.TreatModifiedPeptidesAsDifferent = false;
-            param.ProteasesForDigestion.Add(ProteaseDictionary.Dictionary["trypsin (cleave before proline)"]);
             param.OutputFolder = subFolder;
+
+            DigestionParams trypsin = new DigestionParams(
+                protease: "trypsin (cleave before proline)",
+                maxMissedCleavages: 0,
+                minPeptideLength: 7,// Chronologer works best with peptides >= 7 AA
+                maxPeptideLength: 50);// Chronologer has max length limit
+
+            param.ProteaseSpecificParameters.Add(new ProteaseSpecificParameters(trypsin));
+
 
             // Run digestion
             DigestionTask digestion = new DigestionTask();
@@ -343,19 +353,24 @@ MSFVNGNEIFTAARKQGHYAVGAFNTNNLEWTRKPEPTIDESAMPLERKNTPVLIQVSMGAAKYLVKTLVEEEMRK";
             DbForDigestion database = new DbForDigestion(databasePath);
 
             Parameters param = new Parameters();
-            param.MinPeptideLengthAllowed = 7;
-            param.MaxPeptideLengthAllowed = 50;
-            param.NumberOfMissedCleavagesAllowed = 0;
             param.TreatModifiedPeptidesAsDifferent = false;
-            param.ProteasesForDigestion.Add(ProteaseDictionary.Dictionary["trypsin (cleave before proline)"]);
             param.OutputFolder = subFolder;
+
+            DigestionParams trypsin = new DigestionParams(
+                protease: "trypsin (cleave before proline)",
+                maxMissedCleavages: 0,
+                minPeptideLength: 7,// Chronologer works best with peptides >= 7 AA
+                maxPeptideLength: 50);// Chronologer has max length limit
+
+            param.ProteaseSpecificParameters.Add(new ProteaseSpecificParameters(trypsin));
+
 
             DigestionTask digestion = new DigestionTask();
             digestion.DigestionParameters = param;
             var digestionResults = digestion.RunSpecific(subFolder, new List<DbForDigestion>() { database });
 
             // Get all peptides from results
-            var allPeptides = digestionResults.PeptideByFile[database.FileName][param.ProteasesForDigestion.First().Name]
+            var allPeptides = digestionResults.PeptideByFile[database.FileName][param.ProteaseSpecificParameters.First().DigestionAgentName]
                 .SelectMany(entry => entry.Value)
                 .ToList();
 

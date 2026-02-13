@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 18
-VisualStudioVersion = 18.2.11415.280 d18.0
+# Visual Studio Version 17
+VisualStudioVersion = 17.14.36908.2 d17.14
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GUI", "GUI\GUI.csproj", "{2AB94619-9C3F-40A7-847A-F68CCBED5B1D}"
 EndProject
@@ -17,6 +17,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "workflows", "workflows", "{
 	ProjectSection(SolutionItems) = preProject
 		dotnet-desktop.yml = dotnet-desktop.yml
 	EndProjectSection
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GuiFunctions", "GuiFunctions\GuiFunctions.csproj", "{5A171BFC-8B6E-48D0-80C5-A1B6A5DE3CAD}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -40,6 +42,10 @@ Global
 		{D21C3C88-E27A-47D2-9A93-CE156B46F566}.Debug|x64.Build.0 = Debug|x64
 		{D21C3C88-E27A-47D2-9A93-CE156B46F566}.Release|x64.ActiveCfg = Release|x64
 		{D21C3C88-E27A-47D2-9A93-CE156B46F566}.Release|x64.Build.0 = Release|x64
+		{5A171BFC-8B6E-48D0-80C5-A1B6A5DE3CAD}.Debug|x64.ActiveCfg = Debug|x64
+		{5A171BFC-8B6E-48D0-80C5-A1B6A5DE3CAD}.Debug|x64.Build.0 = Debug|x64
+		{5A171BFC-8B6E-48D0-80C5-A1B6A5DE3CAD}.Release|x64.ActiveCfg = Release|x64
+		{5A171BFC-8B6E-48D0-80C5-A1B6A5DE3CAD}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

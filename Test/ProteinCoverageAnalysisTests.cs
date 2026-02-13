@@ -3,6 +3,7 @@ using Proteomics;
 using Proteomics.ProteolyticDigestion;
 using Tasks;
 using Tasks.CoverageMapConfiguration;
+using Omics.Digestion;
 
 namespace Test
 {
@@ -155,12 +156,16 @@ KEFTPPVQAAYQKVVAGVANALAHKYH";
 
                 var trypsin = ProteaseDictionary.Dictionary["trypsin (don't cleave before proline)"];
                 Parameters param = new Parameters();
-                param.MinPeptideLengthAllowed = 7;
-                param.MaxPeptideLengthAllowed = 100;
-                param.NumberOfMissedCleavagesAllowed = 0;
                 param.TreatModifiedPeptidesAsDifferent = false;
-                param.ProteasesForDigestion.Add(trypsin);
                 param.OutputFolder = subFolder;
+
+                DigestionParams trypsinDigestion = new DigestionParams(
+                    protease: trypsin.Name,
+                    maxMissedCleavages: 0,
+                    minPeptideLength: 7,
+                    maxPeptideLength: 100);
+
+                param.ProteaseSpecificParameters.Add(new ProteaseSpecificParameters(trypsinDigestion));
 
                 DigestionTask digestion = new DigestionTask();
                 digestion.DigestionParameters = param;
@@ -220,6 +225,7 @@ KEFTPPVQAAYQKVVAGVANALAHKYH";
                 }
             }
         }
+        
         [Test]
         public void IntegrationTest_HBB_HUMAN_VerifyPeptidePositions()
         {
@@ -241,12 +247,16 @@ KEFTPPVQAAYQKVVAGVANALAHKYH";
 
                 var trypsin = ProteaseDictionary.Dictionary["trypsin (don't cleave before proline)"];
                 Parameters param = new Parameters();
-                param.MinPeptideLengthAllowed = 7;
-                param.MaxPeptideLengthAllowed = 100;
-                param.NumberOfMissedCleavagesAllowed = 0;
                 param.TreatModifiedPeptidesAsDifferent = false;
-                param.ProteasesForDigestion.Add(trypsin);
                 param.OutputFolder = subFolder;
+
+                DigestionParams trypsinDigestion = new DigestionParams(
+                    protease: trypsin.Name,
+                    maxMissedCleavages: 0,
+                    minPeptideLength: 7,
+                    maxPeptideLength: 100);
+
+                param.ProteaseSpecificParameters.Add(new ProteaseSpecificParameters(trypsinDigestion));
 
                 string proteaseName = trypsin.Name;
 
@@ -349,12 +359,16 @@ KEFTPPVQAAYQKVVAGVANALAHKYH";
 
                 var trypsin = ProteaseDictionary.Dictionary["trypsin (don't cleave before proline)"];
                 Parameters param = new Parameters();
-                param.MinPeptideLengthAllowed = 7;
-                param.MaxPeptideLengthAllowed = 100;
-                param.NumberOfMissedCleavagesAllowed = 0;
                 param.TreatModifiedPeptidesAsDifferent = false;
-                param.ProteasesForDigestion.Add(trypsin);
                 param.OutputFolder = subFolder;
+
+                DigestionParams trypsinDigestion = new DigestionParams(
+                    protease: trypsin.Name,
+                    maxMissedCleavages: 0,
+                    minPeptideLength: 7,
+                    maxPeptideLength: 100);
+
+                param.ProteaseSpecificParameters.Add(new ProteaseSpecificParameters(trypsinDigestion));
 
                 string proteaseName = trypsin.Name;
 
