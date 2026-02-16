@@ -375,7 +375,7 @@ namespace GUI
         private void BuildProteinSummary()
         {
             var coverageResult = _analyzer.ProteinCoverageResults[SelectedProtein.Protein];
-            var proteaseList = UserParams.ProteasesForDigestion.Select(p => p.Name).ToList();
+            var proteaseList = UserParams.ProteaseSpecificParameters.Select(p => p.DigestionAgentName).ToList();
 
             var uniquePepCounts = coverageResult.GetUniquePeptideCountsByProtease();
             var sharedPepCounts = coverageResult.GetSharedPeptideCountsByProtease();

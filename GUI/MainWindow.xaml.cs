@@ -25,6 +25,7 @@ using System.Diagnostics;
 using Omics.Digestion;
 using Omics.Modifications;
 using UsefulProteomicsDatabases;
+using GuiFunctions;
 
 namespace GUI
 {
@@ -37,17 +38,20 @@ namespace GUI
         private readonly ObservableCollection<ProteinDbForDataGrid> ReloadProteinDbObservableCollection = new ObservableCollection<ProteinDbForDataGrid>();
         private readonly ObservableCollection<ResultsForDataGrid> ResultsObservableCollection = new ObservableCollection<ResultsForDataGrid>();
         private readonly ObservableCollection<ParametersForDataGrid> ParametersObservableCollection = new ObservableCollection<ParametersForDataGrid>();
-        private readonly ObservableCollection<PreRunTask> StaticTasksObservableCollection = new ObservableCollection<PreRunTask>();
-        private ObservableCollection<InRunTask> DynamicTasksObservableCollection;
         private readonly ObservableCollection<RunSummaryForTreeView> SummaryForTreeViewObservableCollection;
-        private Parameters UserParameters;
+
+        private readonly DigestionConditionsSetupViewModel ParametersViewModel;
+
         //set up the main window that users interact with
         public MainWindow()
         {
             InitializeComponent();
             Title = "ProteaseGuru: Version " + GlobalVariables.ProteaseGuruVersion;
-            UserParameters = new Parameters();
-            PopulateProteaseList();            
+
+            // TODO: Set up default parameters to check for
+            ParametersViewModel = new(new Parameters());
+            digestionConditionsControl.DataContext = ParametersViewModel;
+          
             dataGridProteinDatabases.DataContext = ProteinDbObservableCollection;
             dataGridResults.DataContext = ResultsObservableCollection;
             dataGridParameters.DataContext = ParametersObservableCollection;
@@ -56,8 +60,8 @@ namespace GUI
             EverythingRunnerEngine.WarnHandler += GuiWarnHandler;
             DigestionTask.OutLabelStatusHandler += NewoutLabelStatus;
             SummaryForTreeViewObservableCollection = new ObservableCollection<RunSummaryForTreeView>();
-            ResetDigestionTask.IsEnabled = false;
-        }        
+        }
+
         //the add button for loading previous peptide result files
         private void AddResults_Click(object sender, RoutedEventArgs e)
         {
@@ -275,108 +279,6 @@ namespace GUI
             }
         }
 
-        // when user changes the proteases selected, or the digestion parameters, make sure this is saved internally
-        private void UpdateFieldsFromUser(DigestionTask run)
-        {
-            if (!string.IsNullOrWhiteSpace(MissedCleavagesTextBox.Text))
-            {
-                try
-                {
-                    int value = Convert.ToInt32(MissedCleavagesTextBox.Text);
-                    UserParameters.NumberOfMissedCleavagesAllowed = value;
-
-                }
-                catch (FormatException)
-                {
-                    MessageBox.Show("Error: The value provided for the 'Number of Missed Cleavages' is invalid, please replace with an integer value before proceeding with analysis.");
-                    return;
-                }
-                
-            }
-            if (!string.IsNullOrWhiteSpace(MinPeptideLengthTextBox.Text))
-            {
-                try
-                {
-                    int value = Convert.ToInt32(MinPeptideLengthTextBox.Text);
-                    UserParameters.MinPeptideLengthAllowed = value;
-
-                }
-                catch (FormatException)
-                {
-                    MessageBox.Show("Error: The value provided for the 'Min Peptide Length' is invalid, please replace with an integer value before proceeding with analysis.");
-                    return;
-                }
-            }
-            if (!string.IsNullOrWhiteSpace(MaxPeptideLengthTextBox.Text))
-            {
-                try
-                {
-                    int value = Convert.ToInt32(MaxPeptideLengthTextBox.Text);
-                    UserParameters.MaxPeptideLengthAllowed = value;
-
-                }
-                catch (FormatException)
-                {
-                    MessageBox.Show("Error: The value provided for the 'Max Peptide Length' is invalid, please replace with an integer value before proceeding with analysis.");
-                    return;
-                }
-            }            
-            UserParameters.TreatModifiedPeptidesAsDifferent = Convert.ToBoolean(ModPepsAreUnique.IsChecked);
-            if (Convert.ToBoolean(FixedCarbamido.IsChecked))
-            {               
-                UserParameters.fixedMods = GlobalVariables.AllModsKnown.Where(p => p.IdWithMotif == "Carbamidomethyl on C").ToList();
-            }
-            if (Convert.ToBoolean(VariableOx.IsChecked))
-            {
-                UserParameters.variableMods = GlobalVariables.AllModsKnown.Where(p => p.IdWithMotif == "Oxidation on M").ToList(); 
-            }
-            if (!string.IsNullOrWhiteSpace(MinPeptideMassTextBox.Text))
-            {
-                try
-                {
-                    int value = Convert.ToInt32(MinPeptideMassTextBox.Text);
-                    UserParameters.MinPeptideMassAllowed = value;
-
-                }
-                catch (FormatException)
-                {
-                    MessageBox.Show("Error: The value provided for the 'Min Peptide Mass' is invalid, please replace with an integer value before proceeding with analysis.");
-                    return;
-                }
-            }
-            else
-            {
-                int value = -1;
-                UserParameters.MinPeptideMassAllowed = value;
-            }
-            if (!string.IsNullOrWhiteSpace(MaxPeptideMassTextBox.Text))
-            {
-                try
-                {
-                    int value = Convert.ToInt32(MaxPeptideMassTextBox.Text);
-                    UserParameters.MaxPeptideMassAllowed = value;
-
-                }
-                catch (FormatException)
-                {
-                    MessageBox.Show("Error: The value provided for the 'Max Peptide Mass' is invalid, please replace with an integer value before proceeding with analysis.");
-                    return;
-                }
-            }
-            else 
-            {
-                int value = -1;
-                UserParameters.MaxPeptideMassAllowed = value;
-            }
-            List<Protease> proteases = new List<Protease>();
-            foreach (var protease in ProteaseSelectedForUse.SelectedItems)
-            {
-                var name = protease.ToString().Split(':')[1].Trim();
-                proteases.Add(ProteaseDictionary.Dictionary[name]);
-            }
-            UserParameters.ProteasesForDigestion = proteases;
-            run.DigestionParameters = UserParameters;
-        }
         private void AddNewDB(object sender, XmlForTaskListEventArgs e)
         {
             if (!Dispatcher.CheckAccess())
@@ -397,24 +299,6 @@ namespace GUI
             }
         }
 
-        private void UpdateOutputFolderTextbox()
-        {
-            if (ProteinDbObservableCollection.Any())
-            {
-                // if current output folder is blank and there is a database, use the file's path as the output path
-                if (string.IsNullOrWhiteSpace(OutputFolderTextBox.Text))
-                {
-                    var pathOfFirstSpectraFile = System.IO.Path.GetDirectoryName(ProteinDbObservableCollection.First().FilePath);
-                    OutputFolderTextBox.Text = System.IO.Path.Combine(pathOfFirstSpectraFile, @"$DATETIME");
-                }
-                // else do nothing (do not override if there is a path already there; might clear user-defined path)
-            }
-            else
-            {
-                // no spectra files; clear the output folder from the GUI
-                OutputFolderTextBox.Clear();
-            }
-        }
         private void OpenOutputFolder_Click(object sender, RoutedEventArgs e)
         {
             string outputFolder = OutputFolderTextBox.Text;
@@ -493,56 +377,6 @@ namespace GUI
 
             }
 
-        }
-
-        //takes all information provided by the user for the digestion (databases, parameters etc) and make sure it is up to date and prepares for the run
-        private void AddDigestionTask_Click(object sender, RoutedEventArgs e)
-        {
-            if(StaticTasksObservableCollection.Count() != 0)
-            {
-                StaticTasksObservableCollection.Clear();
-            }
-            // disable button so that no more tasks are added
-            AddDigestionTask.IsEnabled = false;
-            ResetDigestionTask.IsEnabled = true;
-
-            // disable fields to show that those parameters are used for the task
-            ProteaseSelectedForUse.IsEnabled = false;
-            MissedCleavagesTextBox.IsEnabled = false;
-            MinPeptideLengthTextBox.IsEnabled = false;
-            MaxPeptideLengthTextBox.IsEnabled = false;
-
-            DigestionTask task = new DigestionTask();
-            UpdateFieldsFromUser(task);
-            AddTaskToCollection(task);
-            OutputFolderTextBox.IsEnabled = true;
-
-            GenerateRunSummary();
-
-            // output folder
-            if (string.IsNullOrWhiteSpace(OutputFolderTextBox.Text))
-            {
-                if (ProteinDbObservableCollection.Count() == 0)
-                {
-                    MessageBox.Show("Error: No databases are provided for digestion. Please add databases before proceeding with analysis.");
-                    return;
-                }
-                var pathOfFirstDbFile = System.IO.Path.GetDirectoryName(ProteinDbObservableCollection.First().FilePath);
-                OutputFolderTextBox.Text = System.IO.Path.Combine(pathOfFirstDbFile, @"$DATETIME");
-            }
-
-            var startTimeForAllFilenames = DateTime.Now.ToString("yyyy-MM-dd-HH-mm-ss", CultureInfo.InvariantCulture);
-            string outputFolder = OutputFolderTextBox.Text.Replace("$DATETIME", startTimeForAllFilenames);
-            OutputFolderTextBox.Text = outputFolder;
-            UserParameters.OutputFolder = outputFolder;
-        }
-        
-
-        private void AddTaskToCollection(ProteaseGuruTask task)
-        {
-            PreRunTask pre = new PreRunTask(task);
-
-            StaticTasksObservableCollection.Add(pre);            
         }
 
         //clear the list of databases in code and in the GUI
@@ -681,61 +515,7 @@ namespace GUI
                 }
             }            
         }
-
-        //button allowing for selection of the 6 most commonly used proteases
-        private void SelectDefaultProteases_Click(object sender, RoutedEventArgs e)
-        {
-            ProteaseSelectedForUse.SelectedItems.Clear();
-            ProteaseSelectedForUse.SelectedItems.Add(ProteaseSelectedForUse.Items.GetItemAt(0));
-            ProteaseSelectedForUse.SelectedItems.Add(ProteaseSelectedForUse.Items.GetItemAt(1));
-            ProteaseSelectedForUse.SelectedItems.Add(ProteaseSelectedForUse.Items.GetItemAt(2));
-            ProteaseSelectedForUse.SelectedItems.Add(ProteaseSelectedForUse.Items.GetItemAt(6));
-            ProteaseSelectedForUse.SelectedItems.Add(ProteaseSelectedForUse.Items.GetItemAt(7));
-            ProteaseSelectedForUse.SelectedItems.Add(ProteaseSelectedForUse.Items.GetItemAt(10));
-        }
-
-        //read int he protease file to populate lsit of all possible proteases for digestion
-        private void PopulateProteaseList()
-        {
-            string proteaseDirectory = System.IO.Path.Combine(GlobalVariables.DataDir, @"ProteolyticDigestion");
-            string proteaseFilePath = System.IO.Path.Combine(proteaseDirectory, @"proteases.tsv");
-            Dictionary<string, Protease> dict = ProteaseDictionary.LoadProteaseDictionary(proteaseFilePath, GlobalVariables.ProteaseMods);
-            var myLines = File.ReadAllLines(proteaseFilePath);
-            myLines = myLines.Skip(1).ToArray();
-            Dictionary<string, string> motif = new Dictionary<string, string>();
-            foreach (string line in myLines)
-            {
-                if (line.Trim() != string.Empty) // skip empty lines
-                {
-                    string[] fields = line.Split('\t');                    
-                    motif.Add(fields[0], fields[1]);
-                }
-            }            
-            foreach (Protease protease in dict.Values)
-            {                
-                ListBoxItem item = new ListBoxItem();
-                item.Content = protease;
-                item.ToolTip = "Cleavage specificity: " + motif[protease.Name].Trim(new char[] { '"' });
-                ProteaseSelectedForUse.Items.Add(item);
-            }
-        }
         
-        //clear the list of proteases selected for use
-        private void ClearSelectedProteases_Click(object sender, RoutedEventArgs e)
-        {
-            ProteaseSelectedForUse.SelectedItems.Clear();
-        }
-
-        //triggers the opening of the customprotease window
-        private void AddCustomProtease_Click(object sender, RoutedEventArgs e)
-        {
-            var dialog = new CustomProteaseWindow();
-            dialog.ShowDialog();
-            if (dialog.proteaseAdded == true)
-            {
-                PopulateProteaseList();
-            }
-        }
 
         //run in silico digestion and trigger result windows after complete
         private async void RunTaskButton_Click(object sender, RoutedEventArgs e)
@@ -745,9 +525,9 @@ namespace GUI
             GlobalVariables.StopLoops = false;
             
             // check for valid tasks/spectra files/protein databases
-            if (!StaticTasksObservableCollection.Any())
+            if (ParametersViewModel.ProteaseSpecificParameters.All(p => !p.IsSelected))
             {
-                MessageBox.Show("Warning: No digestion conditions have been saved. Set and save digestion conditions before proceeding with analysis.");
+                MessageBox.Show("Warning: No protease has been selected. Please select at least one protease in 'Digestion Conditions' before continuing");
                 RunTaskButton.IsEnabled = true;
                 return;
             }
@@ -759,22 +539,19 @@ namespace GUI
                 return;
             }
 
-            if (!UserParameters.ProteasesForDigestion.Any())
+            if (!ParametersViewModel.Parameters.ProteaseSpecificParameters.Any())
             {
                 MessageBox.Show("Warning: No proteases have been selected for digestion. Select at least one protease and save the updated digestion conditions before proceeding with analysis.");
                 RunTaskButton.IsEnabled = true;
                 return;
             }
 
-            DynamicTasksObservableCollection = new ObservableCollection<InRunTask>();
-
-            for (int i = 0; i < StaticTasksObservableCollection.Count; i++)
-            {
-                DynamicTasksObservableCollection.Add(new InRunTask("Task" + (i + 1) + "-" + StaticTasksObservableCollection[i].proteaseGuruTask.TaskType, StaticTasksObservableCollection[i].proteaseGuruTask));
-            }
+            var task = new DigestionTask();
+            task.DigestionParameters = ParametersViewModel.Parameters;
+            string taskId = $"Task1-{task.TaskType}";
 
             // everything is OK to run
-            EverythingRunnerEngine a = new EverythingRunnerEngine(DynamicTasksObservableCollection.Select(b => (b.DisplayName, b.Task)).ToList(),
+            EverythingRunnerEngine a = new EverythingRunnerEngine([(taskId, task)],
                 ProteinDbObservableCollection.Select(b => new DbForDigestion(b.FilePath)).ToList(),
                 OutputFolderTextBox.Text);
 
@@ -792,16 +569,16 @@ namespace GUI
             stopwatch.Stop();
 
             runProgressBar.IsIndeterminate = false;
+
             // when done with tasks
-            StaticTasksObservableCollection.Clear();
-            AllResultsTab.Content = new AllResultsWindow(peptidesByFile, UserParameters); // update results display
-            ProteinCovMap.Content = new ProteinResultsWindow(peptidesByFile, UserParameters, sequenceCoverageByProtease);
-            AllHistogramsTab.Content = new HistogramWindow(peptidesByFile, UserParameters, sequenceCoverageByProtease);
+            AllResultsTab.Content = new AllResultsWindow(peptidesByFile, ParametersViewModel.Parameters); // update results display
+            ProteinCovMap.Content = new ProteinResultsWindow(peptidesByFile, ParametersViewModel.Parameters, sequenceCoverageByProtease);
+            AllHistogramsTab.Content = new HistogramWindow(peptidesByFile, ParametersViewModel.Parameters, sequenceCoverageByProtease);
             AllResultsTab.IsSelected = true; // switch to results tab
             RunTaskButton.IsEnabled = true; // allow user to run new task
         }
 
-        //logic for loading in resutls from previous runs and opening up the results windows
+        //logic for loading in results from previous runs and opening up the results windows
         private void LoadResults_Click(object sender, RoutedEventArgs e)
         {
             Dictionary<string, Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>> PeptidesByFileSetUp = new Dictionary<string, Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>>();
@@ -833,11 +610,14 @@ namespace GUI
             foreach (var parameterFile in ParametersObservableCollection)
             {
                 var fileData = File.ReadAllLines(parameterFile.FilePath);
-                List<Protease> proteases = new List<Protease>();
+                List<string> proteaseNames = new List<string>();
                 int missedCleavages = 0;
                 int minPeptideLength = 0;
                 int maxPeptideLength = 0;
                 bool treatModPeps = false;
+                int minPeptideMass = -1;
+                int maxPeptideMass = -1;
+
                 foreach (var parameter in fileData)
                 {
                     var info = parameter.Split(": ");
@@ -846,17 +626,9 @@ namespace GUI
                         case "Digestion Conditions:":
                             break;
                         case "Proteases":
-                            var proteaseNames = info[1].Split(",");
-                            foreach (var protease in proteaseNames)
-                            {
-                                if (dict.ContainsKey(protease))
-                                {
-                                    proteases.Add(dict[protease]);
-                                }
-
-                            }
+                            proteaseNames = info[1].Split(",").Select(p => p.Trim()).ToList();
                             break;
-                        case "Max Missed Cleavages":
+                        case "Missed Cleavages":
                             missedCleavages = Convert.ToInt32(info[1]);
                             break;
                         case "Min Peptide Length":
@@ -872,23 +644,36 @@ namespace GUI
                             }
                             break;
                         case "Min Peptide Mass":
-                            minPeptideLength = Convert.ToInt32(info[1]);
+                            minPeptideMass = Convert.ToInt32(info[1]);
                             break;
                         case "Max Peptide Mass":
-                            maxPeptideLength = Convert.ToInt32(info[1]);
+                            maxPeptideMass = Convert.ToInt32(info[1]);
                             break;
                         default:
-                            MessageBox.Show("Error: Parameters file provided is not from a previous ProteaseGuru run.");
-                            return;
-
-                    } 
+                            // Could be protease-specific parameters or unknown
+                            break;
+                    }
                 }
 
-                loadedParams.ProteasesForDigestion = proteases;
-                loadedParams.NumberOfMissedCleavagesAllowed = missedCleavages;
-                loadedParams.MinPeptideLengthAllowed = minPeptideLength;
-                loadedParams.MaxPeptideLengthAllowed = maxPeptideLength;
+                // Create ProteaseSpecificParameters for each protease
+                foreach (var proteaseName in proteaseNames)
+                {
+                    if (dict.ContainsKey(proteaseName))
+                    {
+                        DigestionParams digestionParams = new DigestionParams(
+                            protease: proteaseName,
+                            maxMissedCleavages: missedCleavages,
+                            minPeptideLength: minPeptideLength,
+                            maxPeptideLength: maxPeptideLength);
+
+                        loadedParams.ProteaseSpecificParameters.Add(
+                            new ProteaseSpecificParameters(digestionParams));
+                    }
+                }
+
                 loadedParams.TreatModifiedPeptidesAsDifferent = treatModPeps;
+                loadedParams.MinPeptideMassAllowed = minPeptideMass;
+                loadedParams.MaxPeptideMassAllowed = maxPeptideMass;
             }
 
             List<InSilicoPep> allpeptides = new List<InSilicoPep>();
@@ -957,7 +742,7 @@ namespace GUI
                 {
                     var dbName = db.FileName;
                     var proteinsFromDb = LoadProteins(new DbForDigestion(db.FilePath));
-                    var proteases = loadedParams.ProteasesForDigestion;
+                    var proteaseParams = loadedParams.ProteaseSpecificParameters;
 
                     Dictionary<Protein, List<InSilicoPep>> proteinDic = new Dictionary<Protein, List<InSilicoPep>>();
 
@@ -969,11 +754,11 @@ namespace GUI
                         }                        
                     }
                     Dictionary<string, Dictionary<Protein, List<InSilicoPep>>> proteaseDic = new Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>();
-                    foreach (var protease in proteases)
+                    foreach (var proteaseParam in proteaseParams)
                     {
-                        if (!proteaseDic.ContainsKey(protease.Name))
+                        if (!proteaseDic.ContainsKey(proteaseParam.DigestionAgentName))
                         {
-                            proteaseDic.Add(protease.Name, proteinDic);
+                            proteaseDic.Add(proteaseParam.DigestionAgentName, proteinDic);
                         }
                     }
                     if (!PeptidesByFileSetUp.ContainsKey(dbName))
@@ -1022,95 +807,38 @@ namespace GUI
             GlobalVariables.StartProcess(e.Uri.ToString());
         }
         
-        // ensure digestion parameters that are supposed to be numbers are numbers
-        private void CheckIfNumber(object sender, TextCompositionEventArgs e)
-        {
-            e.Handled = !CheckIsNumber(e.Text);
-        }
-        public static bool CheckIsNumber(string text)
-        {
-            bool result = true;
-            foreach (var character in text)
-            {
-                if (!Char.IsDigit(character) && !(character == '.') && !(character == '-'))
-                {
-                    result = false;
-                }
-            }
-            return result;
-        }
-        
-        //clear all digestion conditions for reset
-        private void ResetDigestionTask_Click(object sender, RoutedEventArgs e)
-        {
-            // remove all tasks
-            StaticTasksObservableCollection.Clear();
-
-            AddDigestionTask.IsEnabled = true;
-            ResetDigestionTask.IsEnabled = false;
-
-            ProteaseSelectedForUse.IsEnabled = true;
-            MissedCleavagesTextBox.Clear();
-            MissedCleavagesTextBox.IsEnabled = true;
-            MinPeptideLengthTextBox.Clear();
-            MinPeptideLengthTextBox.IsEnabled = true;
-            MaxPeptideLengthTextBox.Clear();
-            MaxPeptideLengthTextBox.IsEnabled = true;
-            MinPeptideMassTextBox.Clear();
-            MinPeptideMassTextBox.IsEnabled = true;
-            MaxPeptideMassTextBox.Clear();
-            MaxPeptideMassTextBox.IsEnabled = true;
-
-            ModPepsAreUnique.IsChecked = false;
-
-            SummaryForTreeViewObservableCollection.Clear();
-        }
-
         private void OnRunTabSelection(object sender, RoutedEventArgs e)
         {
-            // disable button so that no more tasks are added
-            if (AddDigestionTask.IsEnabled == true)
+            DigestionTask task = new DigestionTask();
+            task.DigestionParameters = ParametersViewModel.Parameters;
+
+            OutputFolderTextBox.IsEnabled = true;
+
+            GenerateRunSummary();
+
+            // output folder
+            if (string.IsNullOrWhiteSpace(OutputFolderTextBox.Text))
             {
-                if (StaticTasksObservableCollection.Count() == 0)
+                if (ProteinDbObservableCollection.Count == 0)
                 {
-                    ResetDigestionTask.IsEnabled = true;
-                    ProteaseSelectedForUse.IsEnabled = false;
-                    MissedCleavagesTextBox.IsEnabled = false;
-                    MinPeptideLengthTextBox.IsEnabled = false;
-                    MaxPeptideLengthTextBox.IsEnabled = false;
-
-                    DigestionTask task = new DigestionTask();
-                    UpdateFieldsFromUser(task);
-                    AddTaskToCollection(task);
-                    OutputFolderTextBox.IsEnabled = true;
-
-                    GenerateRunSummary();
-
-                    // output folder
-                    if (string.IsNullOrWhiteSpace(OutputFolderTextBox.Text))
-                    {
-                        if (ProteinDbObservableCollection.Count() == 0)
-                        {
-                            MessageBox.Show("Error: No databases are provided for digestion. Please add databases before proceeding with analysis.");
-                            return;
-                        }
-                        var pathOfFirstSpectraFile = System.IO.Path.GetDirectoryName(ProteinDbObservableCollection.First().FilePath);
-                        OutputFolderTextBox.Text = System.IO.Path.Combine(pathOfFirstSpectraFile, @"$DATETIME");
-                    }
-
-                    var startTimeForAllFilenames = DateTime.Now.ToString("yyyy-MM-dd-HH-mm-ss", CultureInfo.InvariantCulture);
-                    string outputFolder = OutputFolderTextBox.Text.Replace("$DATETIME", startTimeForAllFilenames);
-                    OutputFolderTextBox.Text = outputFolder;
-                    UserParameters.OutputFolder = outputFolder;
-
+                    MessageBox.Show("Error: No databases are provided for digestion. Please add databases before proceeding with analysis.");
+                    return;
                 }
+                var pathOfFirstSpectraFile = System.IO.Path.GetDirectoryName(ProteinDbObservableCollection.First().FilePath);
+                OutputFolderTextBox.Text = System.IO.Path.Combine(pathOfFirstSpectraFile, @"$DATETIME");
             }
-            
+
+            var startTimeForAllFilenames = DateTime.Now.ToString("yyyy-MM-dd-HH-mm-ss", CultureInfo.InvariantCulture);
+            string outputFolder = OutputFolderTextBox.Text.Replace("$DATETIME", startTimeForAllFilenames);
+            OutputFolderTextBox.Text = outputFolder;
+            task.DigestionParameters.OutputFolder = outputFolder;
         }
                 
         // generate summary for users to see all the databases, proteases and parameters that were selected before the run is started
         private void GenerateRunSummary()
         {
+            SummaryForTreeViewObservableCollection.Clear();
+
             RunSummaryForTreeView runSummary = new RunSummaryForTreeView("Digestion Plan:");
             CategorySummaryForTreeView databases = new CategorySummaryForTreeView("Databases:");
             foreach (var db in ProteinDbObservableCollection)
@@ -1118,22 +846,59 @@ namespace GUI
                 databases.Summary.Add(new FeatureForTreeView(db.FileName));
             }
             runSummary.Summary.Add(databases);
+            
             CategorySummaryForTreeView proteases = new CategorySummaryForTreeView("Proteases:");
-            foreach (var prot in UserParameters.ProteasesForDigestion)
+            foreach (var proteaseParam in ParametersViewModel.ProteaseSpecificParameters.Where(p => p.IsSelected))
             {
-                proteases.Summary.Add(new FeatureForTreeView(prot.Name));
+                proteases.Summary.Add(new FeatureForTreeView(proteaseParam.DigestionAgentName));
             }
             runSummary.Summary.Add(proteases);
+            
             CategorySummaryForTreeView parameters = new CategorySummaryForTreeView("Digestion Parameters:");
-            FeatureForTreeView missedCleavages = new FeatureForTreeView("Number of Missed Cleavages: " + UserParameters.NumberOfMissedCleavagesAllowed);
-            FeatureForTreeView minPep = new FeatureForTreeView("Minimum Peptide Length: " + UserParameters.MinPeptideLengthAllowed);
-            FeatureForTreeView maxPep = new FeatureForTreeView("Maximum Peptide Length: " + UserParameters.MaxPeptideLengthAllowed);
-            FeatureForTreeView modPep = new FeatureForTreeView("Treat Modified Peptides as Different Peptides: " + UserParameters.TreatModifiedPeptidesAsDifferent);           
-            FeatureForTreeView minMass = new FeatureForTreeView("Minimum Peptide Mass: " + UserParameters.MinPeptideMassAllowed);                    
-            FeatureForTreeView maxMass = new FeatureForTreeView("Maximum Peptide Mass: " + UserParameters.MaxPeptideMassAllowed);
-            parameters.Summary.Add(missedCleavages);
-            parameters.Summary.Add(minPep);
-            parameters.Summary.Add(maxPep);
+
+            // Get common parameters across all proteases
+            if (ParametersViewModel.ProteaseSpecificParameters.Any())
+            {
+                var firstParams = ParametersViewModel.ProteaseSpecificParameters.First();
+                bool allSameMissedCleavages = ParametersViewModel.ProteaseSpecificParameters.All(p => p.MaxMissedCleavages == firstParams.MaxMissedCleavages);
+                bool allSameMinLength = ParametersViewModel.ProteaseSpecificParameters.All(p => p.MinLength == firstParams.MinLength);
+                bool allSameMaxLength = ParametersViewModel.ProteaseSpecificParameters.All(p => p.MaxLength == firstParams.MaxLength);
+
+                if (allSameMissedCleavages)
+                {
+                    FeatureForTreeView missedCleavages = new FeatureForTreeView("Number of Missed Cleavages: " + firstParams.MaxMissedCleavages);
+                    parameters.Summary.Add(missedCleavages);
+                }
+                else
+                {
+                    parameters.Summary.Add(new FeatureForTreeView("Number of Missed Cleavages: Varies by protease"));
+                }
+
+                if (allSameMinLength)
+                {
+                    FeatureForTreeView minPep = new FeatureForTreeView("Minimum Peptide Length: " + firstParams.MinLength);
+                    parameters.Summary.Add(minPep);
+                }
+                else
+                {
+                    parameters.Summary.Add(new FeatureForTreeView("Minimum Peptide Length: Varies by protease"));
+                }
+
+                if (allSameMaxLength)
+                {
+                    FeatureForTreeView maxPep = new FeatureForTreeView("Maximum Peptide Length: " + firstParams.MaxLength);
+                    parameters.Summary.Add(maxPep);
+                }
+                else
+                {
+                    parameters.Summary.Add(new FeatureForTreeView("Maximum Peptide Length: Varies by protease"));
+                }
+            }
+
+            FeatureForTreeView modPep = new FeatureForTreeView("Treat Modified Peptides as Different Peptides: " + ParametersViewModel.TreatModifiedPeptidesAsDifferent);           
+            FeatureForTreeView minMass = new FeatureForTreeView("Minimum Peptide Mass: " + ParametersViewModel.MinPeptideMass);                    
+            FeatureForTreeView maxMass = new FeatureForTreeView("Maximum Peptide Mass: " + ParametersViewModel.MaxPeptideMass);
+            
             parameters.Summary.Add(modPep);
             parameters.Summary.Add(minMass);
             parameters.Summary.Add(maxMass);
@@ -1141,7 +906,6 @@ namespace GUI
 
             SummaryForTreeViewObservableCollection.Add(runSummary);
             RunSummaryTreeView.DataContext = SummaryForTreeViewObservableCollection;
-
         }
 
         //make it easy for users to email us with issues
@@ -1194,28 +958,6 @@ namespace GUI
             {
                 ProgressTextBox.Text = s.S;
             }
-        }
-
-        private void HandlePreviewMouseWheel(object sender, MouseWheelEventArgs e)
-
-        {
-            var scrollControl = sender as ScrollViewer;
-            if (!e.Handled && sender != null)
-            {
-                bool cancelScrolling = false;
-                if ((e.Delta > 0 && scrollControl.VerticalOffset == 0)
-                    || (e.Delta <= 0 && scrollControl.VerticalOffset >= scrollControl.ExtentHeight - scrollControl.ViewportHeight))
-                {
-                    e.Handled = true;
-                    var eventArg = new MouseWheelEventArgs(e.MouseDevice, e.Timestamp, e.Delta);
-                    eventArg.RoutedEvent = UIElement.MouseWheelEvent;
-                    eventArg.Source = sender;
-                    var parent = ((Control)sender).Parent as UIElement;
-                    parent.RaiseEvent(eventArg);
-                }
-
-            }
-
         }
 
         private Dictionary<string, Dictionary<Protein, (double, double)>> CalculateProteinSequenceCoverage(Dictionary<string, Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>> peptideByFile)
