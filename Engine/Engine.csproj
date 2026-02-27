@@ -6,7 +6,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="mzLib" Version="1.0.572" />
+    <PackageReference Include="mzLib" Version="1.0.574" />
     <PackageReference Include="TopDownProteomics" Version="0.0.298" />
   </ItemGroup>
 

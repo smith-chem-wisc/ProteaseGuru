@@ -3,6 +3,7 @@ using Proteomics.AminoAcidPolymer;
 using Proteomics.ProteolyticDigestion;
 using System.Diagnostics;
 using Omics.Modifications;
+using Omics.Modifications.IO;
 
 namespace Engine
 {
@@ -69,7 +70,7 @@ namespace Engine
 
             foreach (var modFile in Directory.GetFiles(Path.Combine(DataDir, @"Mods")))
             {
-                AddMods(UsefulProteomicsDatabases.PtmListLoader.ReadModsFromFile(modFile, out var errorMods), false);
+                AddMods(Omics.Modifications.IO.ModificationLoader.ReadModsFromFile(modFile, out var errorMods), false);
             }
 
             AddMods(UniprotDeseralized.OfType<Modification>(), false);
@@ -86,8 +87,8 @@ namespace Engine
                 // no error thrown if multiple mods with this ID are present - just pick one
             }
 
-            ProteaseMods = UsefulProteomicsDatabases.PtmListLoader.ReadModsFromFile(Path.Combine(DataDir, @"Mods", @"ProteaseMods.txt"), out var errors).ToList();
-            ProteaseDictionary.Dictionary = ProteaseDictionary.LoadProteaseDictionary(Path.Combine(DataDir, @"ProteolyticDigestion", @"proteases.tsv"), ProteaseMods);
+            ProteaseMods = Omics.Modifications.IO.ModificationLoader.ReadModsFromFile(Path.Combine(DataDir, @"Mods", @"ProteaseMods.txt"), out var errors).ToList();
+            var t = ProteaseDictionary.LoadAndMergeCustomProteases(Path.Combine(DataDir, @"ProteolyticDigestion", @"proteases.tsv"), ProteaseMods);
 
             RefreshAminoAcidDictionary();            
         }
@@ -101,7 +102,7 @@ namespace Engine
         public static string ProteaseGuruVersion { get; }        
         public static IEnumerable<Modification> UnimodDeserialized { get; }
         public static IEnumerable<Modification> UniprotDeseralized { get; }
-        public static UsefulProteomicsDatabases.Generated.obo PsiModDeserialized { get; }
+        public static obo PsiModDeserialized { get; }
         public static IEnumerable<Modification> AllModsKnown { get { return _AllModsKnown.AsEnumerable(); } }
         public static IEnumerable<string> AllModTypesKnown { get { return _AllModTypesKnown.AsEnumerable(); } }
         public static Dictionary<string, Modification> AllModsKnownDictionary { get; private set; }        
