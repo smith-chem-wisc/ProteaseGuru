@@ -22,8 +22,6 @@ public class SeekMaximumCoverage
         /// <summary>
         /// Determines if a peptide passes this detectability rule.
         /// </summary>
-        /// <param name="peptide">The peptide to evaluate</param>
-        /// <returns>True if the peptide is detectable according to this rule</returns>
         bool IsDetectable(PeptideWithSetModifications peptide);
 
         /// <summary>
@@ -66,7 +64,7 @@ public class SeekMaximumCoverage
     }
 
     /// <summary>
-    /// Rule: Peptide must not contain specified amino acids (e.g., exclude methionine-containing peptides).
+    /// Rule: Peptide must not contain specified amino acids.
     /// </summary>
     public class ExcludeResiduesRule : IDetectabilityRule
     {
@@ -130,36 +128,6 @@ public class SeekMaximumCoverage
 
     #endregion
 
-    #region Configuration
-
-    /// <summary>
-    /// Configuration options for the coverage analysis.
-    /// </summary>
-    public class CoverageAnalysisConfig
-    {
-        /// <summary>
-        /// Maximum number of missed cleavages allowed during digestion.
-        /// </summary>
-        public int MaxMissedCleavages { get; set; } = 2;
-
-        /// <summary>
-        /// Minimum peptide length for digestion (separate from detectability rules).
-        /// </summary>
-        public int MinPeptideLength { get; set; } = 1;
-
-        /// <summary>
-        /// Maximum peptide length for digestion (separate from detectability rules).
-        /// </summary>
-        public int MaxPeptideLength { get; set; } = 100;
-
-        /// <summary>
-        /// The detectability rule(s) to apply. If null, no filtering is applied.
-        /// </summary>
-        public IDetectabilityRule? DetectabilityRule { get; set; }
-    }
-
-    #endregion
-
     #region Result Types
 
     /// <summary>
@@ -186,19 +154,21 @@ public class SeekMaximumCoverage
 
     #region Fields
 
-    private readonly CoverageAnalysisConfig _config;
+    private readonly IDetectabilityRule? _detectabilityRule;
 
     #endregion
 
     #region Constructor
 
     /// <summary>
-    /// Creates a new SeekMaximumCoverage analyzer with the specified configuration.
+    /// Creates a new SeekMaximumCoverage analyzer with an optional detectability rule.
+    /// Digestion parameters (missed cleavages, peptide length bounds) are supplied
+    /// per-protease via <see cref="ProteaseSpecificParameters"/> rather than duplicated here.
     /// </summary>
-    /// <param name="config">Configuration options. If null, default config is used.</param>
-    public SeekMaximumCoverage(CoverageAnalysisConfig? config = null)
+    /// <param name="detectabilityRule">Optional rule to filter peptides. If null, all peptides are used.</param>
+    public SeekMaximumCoverage(IDetectabilityRule? detectabilityRule = null)
     {
-        _config = config ?? new CoverageAnalysisConfig();
+        _detectabilityRule = detectabilityRule;
     }
 
     /// <summary>
@@ -222,10 +192,7 @@ public class SeekMaximumCoverage
             rules.Add(new BasicResidueRule());
         }
 
-        return new SeekMaximumCoverage(new CoverageAnalysisConfig
-        {
-            DetectabilityRule = new CompositeRule(rules)
-        });
+        return new SeekMaximumCoverage(new CompositeRule(rules));
     }
 
     #endregion
@@ -233,74 +200,68 @@ public class SeekMaximumCoverage
     #region STEP 1: Coverage Calculation
 
     /// <summary>
-    /// Digests a protein with each protease, filters peptides by detectability rules,
-    /// and maps each valid peptide back to its residue index positions (0-based).
+    /// Digests a protein using each protease's own <see cref="ProteaseSpecificParameters"/>,
+    /// filters peptides by the detectability rule, and maps valid peptides to 0-based residue indices.
     /// </summary>
     /// <param name="protein">The protein to digest</param>
-    /// <param name="proteases">List of proteases to use</param>
+    /// <param name="proteaseParams">
+    /// Per-protease digestion settings. Missed cleavages, peptide length bounds, and
+    /// modifications are read from each entry's <see cref="ProteaseSpecificParameters.DigestionParams"/>.
+    /// </param>
     /// <returns>Dictionary mapping protease name to set of covered residue indices (0-based)</returns>
-    /// <remarks>
-    /// Handles peptides that appear multiple times in the protein sequence by
-    /// finding all occurrences and mapping each to its correct position.
-    /// </remarks>
     public Dictionary<string, HashSet<int>> CalculateCoverageByProtease(
         Protein protein,
-        IEnumerable<Protease> proteases)
+        IEnumerable<ProteaseSpecificParameters> proteaseParams)
     {
         var coverage = new Dictionary<string, HashSet<int>>();
 
-        foreach (var protease in proteases)
+        foreach (var proteaseParam in proteaseParams)
         {
             var coveredIndices = new HashSet<int>();
 
-            // Create digestion parameters
-            var digestionParams = new DigestionParams(
-                protease: protease.Name,
-                maxMissedCleavages: _config.MaxMissedCleavages,
-                minPeptideLength: _config.MinPeptideLength,
-                maxPeptideLength: _config.MaxPeptideLength);
+            var peptides = protein.Digest(
+                proteaseParam.DigestionParams,
+                proteaseParam.FixedMods,
+                proteaseParam.VariableMods);
 
-            // Digest the protein
-            var peptides = protein.Digest(digestionParams, new List<Modification>(), new List<Modification>());
-
-            foreach (var peptide in peptides)
+            foreach (PeptideWithSetModifications peptide in peptides)
             {
-                // Apply detectability rules
-                if (_config.DetectabilityRule != null && !_config.DetectabilityRule.IsDetectable(peptide))
-                {
+                if (_detectabilityRule != null && !_detectabilityRule.IsDetectable(peptide))
                     continue;
-                }
 
-                // Map peptide to residue indices (0-based)
                 // OneBasedStartResidueInProtein is 1-based, convert to 0-based
-                int startIndex = peptide.OneBasedStartResidueInProtein - 1;
-                int endIndex = peptide.OneBasedEndResidueInProtein - 1;
+                int startIndex = peptide.OneBasedStartResidue - 1;
+                int endIndex = peptide.OneBasedEndResidue - 1;
 
-                // Add all covered residue indices
                 for (int i = startIndex; i <= endIndex; i++)
                 {
                     coveredIndices.Add(i);
                 }
             }
 
-            coverage[protease.Name] = coveredIndices;
+            coverage[proteaseParam.DigestionAgentName] = coveredIndices;
         }
 
         return coverage;
     }
 
     /// <summary>
-    /// Overload that accepts protease names and looks them up in the standard dictionary.
+    /// Overload that accepts protease names and looks them up in the standard dictionary,
+    /// using default digestion parameters.
     /// </summary>
     public Dictionary<string, HashSet<int>> CalculateCoverageByProtease(
         Protein protein,
         IEnumerable<string> proteaseNames)
     {
-        var proteases = proteaseNames
+        var proteaseParams = proteaseNames
             .Where(name => ProteaseDictionary.Dictionary.ContainsKey(name))
-            .Select(name => ProteaseDictionary.Dictionary[name]);
+            .Select(name =>
+            {
+                var dp = new DigestionParams(protease: name);
+                return new ProteaseSpecificParameters(dp);
+            });
 
-        return CalculateCoverageByProtease(protein, proteases);
+        return CalculateCoverageByProtease(protein, proteaseParams);
     }
 
     #endregion
@@ -311,49 +272,31 @@ public class SeekMaximumCoverage
     /// Implements a greedy set cover algorithm to find a minimal set of proteases
     /// that achieves maximum coverage.
     /// </summary>
-    /// <param name="coverageDict">Dictionary mapping protease name to covered residue indices</param>
-    /// <param name="region">Optional tuple (start, end) restricting coverage to a region (0-based, inclusive)</param>
-    /// <returns>SetCoverResult containing selected proteases and final coverage</returns>
-    /// <remarks>
-    /// Algorithm:
-    /// 1. Start with empty coverage set
-    /// 2. Repeatedly select the protease that covers the most uncovered residues
-    /// 3. Stop when no protease can add new coverage
-    /// 
-    /// Time complexity: O(P * R) where P = number of proteases, R = number of residues
-    /// </remarks>
     public SetCoverResult GreedyMinimumProteaseSet(
         Dictionary<string, HashSet<int>> coverageDict,
         (int Start, int End)? region = null)
     {
-        // Filter coverage to region if specified
         var workingCoverage = FilterCoverageToRegion(coverageDict, region);
 
-        // Determine total residues in region
         int totalResidues = region.HasValue
             ? region.Value.End - region.Value.Start + 1
             : workingCoverage.Values.SelectMany(s => s).DefaultIfEmpty(-1).Max() + 1;
 
-        // Track selected proteases and cumulative coverage
         var selectedProteases = new List<string>();
         var totalCovered = new HashSet<int>();
 
-        // Create mutable copy of coverage sets
         var remainingCoverage = workingCoverage.ToDictionary(
             kvp => kvp.Key,
             kvp => new HashSet<int>(kvp.Value));
 
-        // Greedy selection loop
         while (true)
         {
-            // Find protease that covers the most NEW residues
             string? bestProtease = null;
             int bestNewCoverage = 0;
             HashSet<int>? bestNewResidues = null;
 
             foreach (var kvp in remainingCoverage)
             {
-                // Calculate residues this protease covers that aren't already covered
                 var newResidues = new HashSet<int>(kvp.Value);
                 newResidues.ExceptWith(totalCovered);
 
@@ -365,17 +308,11 @@ public class SeekMaximumCoverage
                 }
             }
 
-            // Stop if no protease adds new coverage
             if (bestProtease == null || bestNewCoverage == 0)
-            {
                 break;
-            }
 
-            // Add best protease to selection
             selectedProteases.Add(bestProtease);
             totalCovered.UnionWith(bestNewResidues!);
-
-            // Remove selected protease from candidates
             remainingCoverage.Remove(bestProtease);
         }
 
@@ -387,17 +324,12 @@ public class SeekMaximumCoverage
         );
     }
 
-    /// <summary>
-    /// Filters coverage dictionaries to only include residues within the specified region.
-    /// </summary>
     private static Dictionary<string, HashSet<int>> FilterCoverageToRegion(
         Dictionary<string, HashSet<int>> coverageDict,
         (int Start, int End)? region)
     {
         if (!region.HasValue)
-        {
             return coverageDict;
-        }
 
         int start = region.Value.Start;
         int end = region.Value.End;
@@ -412,92 +344,53 @@ public class SeekMaximumCoverage
 
     #region STEP 3: Brute-Force Combinations
 
-    /// <summary>
-    /// Finds the best pair of proteases that maximizes coverage.
-    /// </summary>
-    /// <param name="coverageDict">Dictionary mapping protease name to covered residue indices</param>
-    /// <param name="region">Optional tuple (start, end) restricting coverage to a region</param>
-    /// <returns>CombinationResult with best pair and their combined coverage</returns>
+    /// <summary>Finds the best pair of proteases that maximizes coverage.</summary>
     public CombinationResult BestPair(
         Dictionary<string, HashSet<int>> coverageDict,
         (int Start, int End)? region = null)
-    {
-        return BestCombination(coverageDict, 2, region);
-    }
+        => BestCombination(coverageDict, 2, region);
 
-    /// <summary>
-    /// Finds the best triplet of proteases that maximizes coverage.
-    /// </summary>
-    /// <param name="coverageDict">Dictionary mapping protease name to covered residue indices</param>
-    /// <param name="region">Optional tuple (start, end) restricting coverage to a region</param>
-    /// <returns>CombinationResult with best triplet and their combined coverage</returns>
+    /// <summary>Finds the best triplet of proteases that maximizes coverage.</summary>
     public CombinationResult BestTriplet(
         Dictionary<string, HashSet<int>> coverageDict,
         (int Start, int End)? region = null)
-    {
-        return BestCombination(coverageDict, 3, region);
-    }
+        => BestCombination(coverageDict, 3, region);
 
-    /// <summary>
-    /// Finds the best combination of N proteases that maximizes coverage.
-    /// </summary>
-    /// <param name="coverageDict">Dictionary mapping protease name to covered residue indices</param>
-    /// <param name="combinationSize">Number of proteases in each combination</param>
-    /// <param name="region">Optional tuple (start, end) restricting coverage to a region</param>
-    /// <returns>CombinationResult with best combination and their combined coverage</returns>
-    /// <remarks>
-    /// Uses brute-force enumeration of all combinations.
-    /// Time complexity: O(C(P, N) * R) where P = proteases, N = combination size, R = residues
-    /// </remarks>
+    /// <summary>Finds the best combination of N proteases that maximizes coverage.</summary>
     public CombinationResult BestCombination(
         Dictionary<string, HashSet<int>> coverageDict,
         int combinationSize,
         (int Start, int End)? region = null)
     {
-        // Filter coverage to region if specified
         var workingCoverage = FilterCoverageToRegion(coverageDict, region);
 
-        // Determine total residues
         int totalResidues = region.HasValue
             ? region.Value.End - region.Value.Start + 1
             : workingCoverage.Values.SelectMany(s => s).DefaultIfEmpty(-1).Max() + 1;
 
         var proteaseNames = workingCoverage.Keys.ToList();
 
-        // Handle edge cases
         if (proteaseNames.Count < combinationSize)
         {
-            // Return all proteases if we don't have enough
             var allCovered = new HashSet<int>();
             foreach (var coverage in workingCoverage.Values)
-            {
                 allCovered.UnionWith(coverage);
-            }
 
             return new CombinationResult(
-                proteaseNames,
-                allCovered,
-                allCovered.Count,
-                CoverageFraction(allCovered, totalResidues)
-            );
+                proteaseNames, allCovered, allCovered.Count,
+                CoverageFraction(allCovered, totalResidues));
         }
 
-        // Track best combination
         List<string>? bestCombination = null;
         HashSet<int>? bestCoverage = null;
         int bestCoverageCount = -1;
 
-        // Enumerate all combinations of size N
         foreach (var combination in GetCombinations(proteaseNames, combinationSize))
         {
-            // Calculate combined coverage
             var combinedCoverage = new HashSet<int>();
             foreach (var protease in combination)
-            {
                 combinedCoverage.UnionWith(workingCoverage[protease]);
-            }
 
-            // Check if this is the best so far
             if (combinedCoverage.Count > bestCoverageCount)
             {
                 bestCoverageCount = combinedCoverage.Count;
@@ -514,9 +407,6 @@ public class SeekMaximumCoverage
         );
     }
 
-    /// <summary>
-    /// Generates all combinations of a given size from a list.
-    /// </summary>
     private static IEnumerable<IEnumerable<T>> GetCombinations<T>(List<T> list, int length)
     {
         if (length == 0)
@@ -531,9 +421,7 @@ public class SeekMaximumCoverage
             var tail = list.Skip(i + 1).ToList();
 
             foreach (var combination in GetCombinations(tail, length - 1))
-            {
                 yield return new[] { head }.Concat(combination);
-            }
         }
     }
 
@@ -541,30 +429,18 @@ public class SeekMaximumCoverage
 
     #region STEP 4: Coverage Fraction
 
-    /// <summary>
-    /// Calculates the fraction of residues covered.
-    /// </summary>
-    /// <param name="coverageSet">Set of covered residue indices</param>
-    /// <param name="regionSize">Total number of residues in the region</param>
-    /// <returns>Coverage fraction as a value between 0.0 and 1.0</returns>
+    /// <summary>Calculates the fraction of residues covered (0.0–1.0).</summary>
     public static double CoverageFraction(HashSet<int> coverageSet, int regionSize)
     {
         if (regionSize <= 0)
-        {
             return 0.0;
-        }
 
         return (double)coverageSet.Count / regionSize;
     }
 
-    /// <summary>
-    /// Calculates the coverage fraction as a percentage string.
-    /// </summary>
+    /// <summary>Calculates the coverage fraction as a percentage string.</summary>
     public static string CoveragePercentage(HashSet<int> coverageSet, int regionSize, int decimals = 2)
-    {
-        return $"{Math.Round(CoverageFraction(coverageSet, regionSize) * 100, decimals)}%";
-    }
+        => $"{Math.Round(CoverageFraction(coverageSet, regionSize) * 100, decimals)}%";
 
     #endregion
-
 }
