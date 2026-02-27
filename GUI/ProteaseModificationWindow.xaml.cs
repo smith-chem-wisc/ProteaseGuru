@@ -1,4 +1,4 @@
-﻿using Proteomics;
+using Proteomics;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -126,7 +126,7 @@ namespace GUI
             {
                 List<string> temp = new List<string> { modification.ToString(), @"//" };
                 File.WriteAllLines(tempPath, temp);
-                var parsedMods = UsefulProteomicsDatabases.PtmListLoader.ReadModsFromFile(tempPath, out var errors);
+                var parsedMods = Omics.Modifications.IO.ModificationLoader.ReadModsFromFile(tempPath, out var errors);
 
                 if (parsedMods.Count() != 1)
                 {
@@ -165,7 +165,7 @@ namespace GUI
             }
 
             GlobalVariables.AddMods(new List<Modification> { modification }, false);
-            GlobalVariables.ProteaseMods = UsefulProteomicsDatabases.PtmListLoader.ReadModsFromFile(proteaseModFilePath, out var errorList).ToList();
+            GlobalVariables.ProteaseMods = Omics.Modifications.IO.ModificationLoader.ReadModsFromFile(proteaseModFilePath, out var errorList).ToList();
             DialogResult = true;
             proteaseModAdded = true;
         }
