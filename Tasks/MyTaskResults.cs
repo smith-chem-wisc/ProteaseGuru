@@ -1,4 +1,4 @@
-﻿using Proteomics;
+using Proteomics;
 using Proteomics.ProteolyticDigestion;
 using System;
 using System.Collections.Generic;
@@ -133,20 +133,21 @@ namespace Tasks
                     {
                         string prot = protease.Key;
                        summary.Add("    "+prot + " Results:");
-                        var allPeptides = protease.Value.SelectMany(p => p.Value);                        
+                        var allPeptides = protease.Value.SelectMany(p => p.Value);
+                        var allDetectable = allPeptides.Where(p => p.PflyDetectability == true);
                         if (parameters.TreatModifiedPeptidesAsDifferent)
                         {
-                            summary.Add("       Number of Peptides: " + allPeptides.Count());
-                            summary.Add("           Number of Distinct Peptide Sequences: " + allPeptides.Select(p => p.FullSequence).Distinct().Count());
-                            summary.Add("       Number of Unique Peptides: " + allPeptides.Where(pep => pep.Unique == true).Select(p => p.FullSequence).Distinct().Count());
-                            summary.Add("       Number of Shared Peptides: " + allPeptides.Where(pep => pep.Unique == false).Select(p => p.FullSequence).Distinct().Count());
+                            summary.Add("       Number of Peptides: " + allPeptides.Count() + $" ({allDetectable.Count()})");
+                            summary.Add("            Number of Distinct Peptide Sequences: " + allPeptides.Select(p => p.FullSequence).Distinct().Count() + $" ({allDetectable.Select(p => p.FullSequence).Distinct().Count()})");
+                            summary.Add("       Number of Unique Peptides: " + allPeptides.Where(pep => pep.Unique == true).Select(p => p.FullSequence).Distinct().Count() + $" ({allDetectable.Where(pep => pep.Unique == true).Select(p => p.FullSequence).Distinct().Count()})");
+                            summary.Add("       Number of Shared Peptides: " + allPeptides.Where(pep => pep.Unique == false).Select(p => p.FullSequence).Distinct().Count() + $" ({allDetectable.Where(pep => pep.Unique == false).Select(p => p.FullSequence).Distinct().Count()})");
                         }
                         else
                         {
-                            summary.Add("       Number of Peptides: " + allPeptides.Count());
-                            summary.Add("            Number of Distinct Peptide Sequences: " + allPeptides.Select(p => p.BaseSequence).Distinct().Count());
-                            summary.Add("       Number of Unique Peptides: " + allPeptides.Where(pep => pep.Unique == true).Select(p => p.BaseSequence).Distinct().Count());
-                            summary.Add("       Number of Shared Peptides: " + allPeptides.Where(pep => pep.Unique == false).Select(p => p.BaseSequence).Distinct().Count());
+                            summary.Add("       Number of Peptides: " + allPeptides.Count() + $" ({allDetectable.Count()})");
+                            summary.Add("           Number of Distinct Peptide Sequences: " + allPeptides.Select(p => p.BaseSequence).Distinct().Count() + $" ({allDetectable.Select(p => p.BaseSequence).Distinct().Count()})");
+                            summary.Add("       Number of Unique Peptides: " + allPeptides.Where(pep => pep.Unique == true).Select(p => p.BaseSequence).Distinct().Count() + $" ({allDetectable.Where(pep => pep.Unique == true).Select(p => p.BaseSequence).Distinct().Count()})");
+                            summary.Add("       Number of Shared Peptides: " + allPeptides.Where(pep => pep.Unique == false).Select(p => p.BaseSequence).Distinct().Count() + $" ({allDetectable.Where(pep => pep.Unique == false).Select(p => p.BaseSequence).Distinct().Count()})");
                         }
                         allPeptides = null;
                     }
@@ -162,19 +163,20 @@ namespace Tasks
                         string prot = protease.Key;
                         summary.Add("   "+prot + " Results:");
                         var allPeptides = protease.Value.SelectMany(p => p.Value);
+                        var allDetectable = allPeptides.Where(p => p.PflyDetectability == true);
                         if (parameters.TreatModifiedPeptidesAsDifferent)
                         {
-                            summary.Add("       Number of Peptides: " + allPeptides.Count());
-                            summary.Add("            Number of Distinct Peptide Sequences: " + allPeptides.Select(p => p.FullSequence).Distinct().Count());
-                            summary.Add("       Number of Unique Peptides: " + allPeptides.Where(pep => pep.Unique == true).Select(p => p.FullSequence).Distinct().Count());
-                            summary.Add("       Number of Shared Peptides: " + allPeptides.Where(pep => pep.Unique == false).Select(p => p.FullSequence).Distinct().Count());
+                            summary.Add("       Number of Peptides: " + allPeptides.Count() + $" ({allDetectable.Count()})");
+                            summary.Add("            Number of Distinct Peptide Sequences: " + allPeptides.Select(p => p.FullSequence).Distinct().Count() + $" ({allDetectable.Select(p => p.FullSequence).Distinct().Count()})");
+                            summary.Add("       Number of Unique Peptides: " + allPeptides.Where(pep => pep.Unique == true).Select(p => p.FullSequence).Distinct().Count() + $" ({allDetectable.Where(pep => pep.Unique == true).Select(p => p.FullSequence).Distinct().Count()})");
+                            summary.Add("       Number of Shared Peptides: " + allPeptides.Where(pep => pep.Unique == false).Select(p => p.FullSequence).Distinct().Count() + $" ({allDetectable.Where(pep => pep.Unique == false).Select(p => p.FullSequence).Distinct().Count()})");
                         }
                         else
                         {
-                            summary.Add("       Number of Peptides: " + allPeptides.Count());
-                            summary.Add("           Number of Distinct Peptide Sequences: " + allPeptides.Select(p => p.BaseSequence).Distinct().Count());
-                            summary.Add("       Number of Unique Peptides: " + allPeptides.Where(pep => pep.Unique == true).Select(p => p.BaseSequence).Distinct().Count());
-                            summary.Add("       Number of Shared Peptides: " + allPeptides.Where(pep => pep.Unique == false).Select(p => p.BaseSequence).Distinct().Count());
+                            summary.Add("       Number of Peptides: " + allPeptides.Count() + $" ({allDetectable.Count()})");
+                            summary.Add("           Number of Distinct Peptide Sequences: " + allPeptides.Select(p => p.BaseSequence).Distinct().Count() + $" ({allDetectable.Select(p => p.BaseSequence).Distinct().Count()})");
+                            summary.Add("       Number of Unique Peptides: " + allPeptides.Where(pep => pep.Unique == true).Select(p => p.BaseSequence).Distinct().Count() + $" ({allDetectable.Where(pep => pep.Unique == true).Select(p => p.BaseSequence).Distinct().Count()})");
+                            summary.Add("       Number of Shared Peptides: " + allPeptides.Where(pep => pep.Unique == false).Select(p => p.BaseSequence).Distinct().Count() + $" ({allDetectable.Where(pep => pep.Unique == false).Select(p => p.BaseSequence).Distinct().Count()})");
                         }
                         allPeptides = null;
                     }
