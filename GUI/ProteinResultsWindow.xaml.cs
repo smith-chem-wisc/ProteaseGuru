@@ -1048,7 +1048,9 @@ namespace GUI
 
         private void IndividualProteinAnalyzer_Click(object sender, RoutedEventArgs e)
         {
-            // TODO: implement Individual Protein Analyzer
+            var window = new IndividualProteinAnalyzerWindow();
+            window.Owner = Window.GetWindow(this);
+            window.Show();
         }
 
         private void proteaseComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e) => OnSelectionChanged();

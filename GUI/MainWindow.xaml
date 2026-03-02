@@ -618,13 +618,7 @@
             </TabItem>
 
             <TabItem Header="Individual Protein Analyzer" Style="{StaticResource TabItemStyle}" Name="IndividualProteinAnalyzerTab">
-                <Grid Style="{StaticResource PageGridStyle}">
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="50"/>
-                        <RowDefinition Height="*"/>
-                    </Grid.RowDefinitions>
-                    <Label Content="Individual Protein Analyzer" Grid.Row="0" Style="{StaticResource HeaderLabelStyle}"/>
-                </Grid>
+                <local:ProteinResultsWindow/>
             </TabItem>
 
             <TabItem Header="Help" Style="{StaticResource TabItemStyle}">
