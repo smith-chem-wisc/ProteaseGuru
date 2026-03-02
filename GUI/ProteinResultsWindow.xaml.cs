@@ -111,6 +111,7 @@ namespace GUI
         /// </summary>
         public ProteinResultsWindow()
         {
+            InitializeComponent();
         }
 
         /// <summary>
@@ -338,6 +339,7 @@ namespace GUI
         /// </summary>
         private void proteaseCoverageMaps_loaded(object sender, RoutedEventArgs e)
         {
+            if (_analyzer == null) return;
             ListBox combo = sender as ListBox;
             combo.ItemsSource = _analyzer.Proteases;
         }
@@ -1043,6 +1045,11 @@ namespace GUI
         #region Event Handlers
 
         private void proteins_SelectedCellsChanged(object sender, SelectionChangedEventArgs e) => OnSelectionChanged();
+
+        private void IndividualProteinAnalyzer_Click(object sender, RoutedEventArgs e)
+        {
+            // TODO: implement Individual Protein Analyzer
+        }
 
         private void proteaseComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e) => OnSelectionChanged();
 

@@ -137,6 +137,7 @@
                     <RowDefinition Height="35"/>
                     <RowDefinition Height="2*"/>
                     <RowDefinition Height="3"/>
+                    <RowDefinition Height="35"/>
                 </Grid.RowDefinitions>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
@@ -158,6 +159,10 @@
                              ItemContainerStyle="{StaticResource ListBoxItem}"
                              SelectionChanged="proteins_SelectedCellsChanged"/>
                 </Grid>
+                <Button x:Name="individualProteinAnalyzerButton" Grid.Row="4"
+                        Content="Individual Protein Analyzer"
+                        Click="IndividualProteinAnalyzer_Click"
+                        Style="{StaticResource ImportantButtonStyle}"/>
             </Grid>
 
             <GridSplitter Grid.Column="1" HorizontalAlignment="Center"

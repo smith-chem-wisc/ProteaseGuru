@@ -206,7 +206,7 @@
                 <Setter Property="Template">
                     <Setter.Value>
                         <ControlTemplate TargetType="TabItem">
-                            <Grid Height="55" Width="165" Background="{StaticResource SideBarMainColor}">
+                            <Grid Height="50" Width="165" Background="{StaticResource SideBarMainColor}">
                                 <Border Name="Border" Margin="0,0,0,0" Background="Transparent"
                                                 BorderThickness="{TemplateBinding BorderThickness}" BorderBrush="{TemplateBinding BorderBrush}" >
                                     <ContentPresenter 
@@ -246,7 +246,7 @@
                 <Setter Property="Template">
                     <Setter.Value>
                         <ControlTemplate TargetType="TabItem">
-                            <Grid Height="20" Width="125" Background="{StaticResource SideBarMainColor}">
+                            <Grid Height="10" Width="125" Background="{StaticResource SideBarMainColor}">
                                 <Border Name="Border" Margin="0,0,0,0" Background="Transparent"
                                                 BorderThickness="{TemplateBinding BorderThickness}" BorderBrush="{TemplateBinding BorderBrush}" >
                                     <ContentPresenter 
@@ -615,6 +615,16 @@
 
             <TabItem Header="Protein Search" Style="{StaticResource TabItemStyle}" Name="ProteinCovMap">
                 <local:ProteinResultsWindow/>
+            </TabItem>
+
+            <TabItem Header="Individual Protein Analyzer" Style="{StaticResource TabItemStyle}" Name="IndividualProteinAnalyzerTab">
+                <Grid Style="{StaticResource PageGridStyle}">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="50"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+                    <Label Content="Individual Protein Analyzer" Grid.Row="0" Style="{StaticResource HeaderLabelStyle}"/>
+                </Grid>
             </TabItem>
 
             <TabItem Header="Help" Style="{StaticResource TabItemStyle}">
