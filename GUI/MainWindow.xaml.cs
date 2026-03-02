@@ -26,6 +26,7 @@ using Omics.Digestion;
 using Omics.Modifications;
 using UsefulProteomicsDatabases;
 using GuiFunctions;
+using Easy.Common.Extensions;
 
 namespace GUI
 {
@@ -728,8 +729,10 @@ namespace GUI
                         if (info.Length > 17)
                         {
                             chronologerRetentionTime = Convert.ToDouble(info[17]);
+                        }
+                        if (info.Length > 18 && info[18].IsNotNullOrEmpty())
+                        {
                             pflyDetectability = Convert.ToBoolean(info[18]);
-
                         }
 
                         InSilicoPep pep = new InSilicoPep(baseSeq, fullSeq, previousAA, nextAA, unique, hydrophobicity, electrophoreticMobility,
