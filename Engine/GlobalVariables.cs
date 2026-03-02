@@ -82,7 +82,11 @@ namespace Engine
             // Load all mod files from the Mods folder
             foreach (var modFile in Directory.GetFiles(Path.Combine(DataDir, @"Mods")))
             {
-                AddMods(UsefulProteomicsDatabases.PtmListLoader.ReadModsFromFile(modFile, out var errorMods), false);
+                AddMods(ModificationLoader.ReadModsFromFile(modFile, out var filteredMods), false);
+                foreach (var (_, warning) in filteredMods)
+                {
+                    ErrorsReadingMods.Add(warning);
+                }
             }
 
             AddMods(UniprotDeseralized.OfType<Modification>(), false);
