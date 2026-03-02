@@ -1,4 +1,4 @@
-﻿using Proteomics;
+using Proteomics;
 using System.Collections.Generic;
 using System.Linq;
 using System.Windows;
@@ -40,7 +40,7 @@ namespace GUI
             if (dialog.proteaseModAdded == true)
             {
                 modName = dialog.modName;
-                UsefulProteomicsDatabases.PtmListLoader.ReadModsFromFile(System.IO.Path.Combine(GlobalVariables.DataDir, @"Mods", @"ProteaseMods.txt"), out List<(Modification,string)> filteredModificationsWithWarnings);                
+                Omics.Modifications.IO.ModificationLoader.ReadModsFromFile(System.IO.Path.Combine(GlobalVariables.DataDir, @"Mods", @"ProteaseMods.txt"), out List<(Modification,string)> filteredModificationsWithWarnings);                
             }
 
         }
@@ -141,7 +141,7 @@ namespace GUI
             }
             proteaseFileText.Add(proteaseInfo);
             File.WriteAllLines(proteaseFilePath, proteaseFileText);
-            ProteaseDictionary.Dictionary = ProteaseDictionary.LoadProteaseDictionary(proteaseFilePath, GlobalVariables.ProteaseMods);
+            ProteaseDictionary.LoadAndMergeCustomProteases(proteaseFilePath, GlobalVariables.ProteaseMods);
             proteaseAdded = true;
         }
 
