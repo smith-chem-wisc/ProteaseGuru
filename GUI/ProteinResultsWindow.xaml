@@ -125,8 +125,6 @@
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="3"/>
-                <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="3"/>
                 <ColumnDefinition Width="4*"/>
             </Grid.ColumnDefinitions>
 
@@ -168,34 +166,8 @@
             <GridSplitter Grid.Column="1" HorizontalAlignment="Center"
                           Background="{StaticResource BackgroundColor}" Width="3"/>
 
-            <!-- Column 2: Protease Selections -->
-            <Grid Grid.Column="2" Style="{StaticResource InternalGridStyle}">
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="35"/>
-                    <RowDefinition Height="*"/>
-                    <RowDefinition Height="30"/>
-                    <RowDefinition Height="1"/>
-                    <RowDefinition Height="30"/>
-                </Grid.RowDefinitions>
-                <Label Content="Protease Selections" Grid.Row="0" Style="{StaticResource SmallHeaderLabelStyle}"
-                       HorizontalContentAlignment="Center"/>
-                <ScrollViewer VerticalScrollBarVisibility="Visible" HorizontalScrollBarVisibility="Auto"
-                              Grid.Row="1" Grid.Column="1">
-                    <ListBox Name="ProteaseSelectedForUse" SelectionMode="Multiple"
-                             Loaded="proteaseCoverageMaps_loaded"
-                             ItemContainerStyle="{StaticResource ListBoxItem}"/>
-                </ScrollViewer>
-                <Button x:Name="viewSelectedProteases" Grid.Row="2" Content="View Selected Proteases"
-                        Click="SelectProteases_Click" Width="170" Style="{StaticResource ImportantButtonStyle}"/>
-                <Button x:Name="clearProteasesButton" Grid.Row="4" Content="Clear Selected Proteases"
-                        Click="ClearSelectedProteases_Click" Width="170" Style="{StaticResource ImportantButtonStyle}"/>
-            </Grid>
-
-            <GridSplitter Grid.Column="3" HorizontalAlignment="Center"
-                          Background="{StaticResource BackgroundColor}" Width="3"/>
-
-            <!-- Column 4: Results -->
-            <Grid Grid.Column="4" Name="AllResultsGrid" Style="{StaticResource InternalGridStyle}">
+            <!-- Column 2: Results -->
+            <Grid Grid.Column="2" Name="AllResultsGrid" Style="{StaticResource InternalGridStyle}">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="*"/>
                     <!-- Row 0: Protein Digestion Summary      -->

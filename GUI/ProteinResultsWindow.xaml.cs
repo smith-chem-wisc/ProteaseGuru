@@ -335,53 +335,6 @@ namespace GUI
 
         #endregion
 
-        #region Protease Selection
-
-        /// <summary>
-        /// Clears all selected proteases and redraws the coverage map without peptide overlays.
-        /// </summary>
-        private void ClearSelectedProteases_Click(object sender, RoutedEventArgs e)
-        {
-            if (_analyzer == null) return;
-            ProteaseSelectedForUse.SelectedItems.Clear();
-            SelectedProteases.Clear();
-            DrawSequenceCoverageMap(SelectedProtein, SelectedProteases);
-        }
-
-        /// <summary>
-        /// Updates the selected proteases list and redraws the coverage map.
-        /// </summary>
-        private void SelectProteases_Click(object sender, RoutedEventArgs e)
-        {
-            if (_analyzer == null) return;
-            SelectedProteases.Clear();
-            foreach (var protease in ProteaseSelectedForUse.SelectedItems)
-            {
-                SelectedProteases.Add(protease.ToString());
-            }
-
-            if (SelectedProtein == null)
-            {
-                DrawSequenceCoverageMap(ProteinsForTreeView.FirstOrDefault().Value, SelectedProteases);
-            }
-            else
-            {
-                DrawSequenceCoverageMap(SelectedProtein, SelectedProteases);
-            }
-        }
-
-        /// <summary>
-        /// Populates the protease selection list when the control loads.
-        /// </summary>
-        private void proteaseCoverageMaps_loaded(object sender, RoutedEventArgs e)
-        {
-            if (_analyzer == null) return;
-            ListBox combo = sender as ListBox;
-            combo.ItemsSource = _analyzer.Proteases;
-        }
-
-        #endregion
-
         #region Protein Selection and Summary
 
         /// <summary>
