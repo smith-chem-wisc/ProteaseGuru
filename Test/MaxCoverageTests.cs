@@ -26,14 +26,14 @@ public class MaxCoverageTests
             requireBasicResidue: true
         );
 
-        // Use exact protease names from proteases.tsv
+        // Names must exactly match the "Name" column in proteases.tsv
         _proteaseNames = new[]
         {
-            "trypsin (don't cleave before proline)",
-            "chymotrypsin (don't cleave before proline)",
+            "trypsin|P",
+            "chymotrypsin|P",
             "Asp-N",
             "Glu-C",
-            "Lys-C (don't cleave before proline)",
+            "Lys-C|P",
             "Arg-C"
         };
     }

@@ -249,17 +249,30 @@ public class SeekMaximumCoverage
     /// Overload that accepts protease names and looks them up in the standard dictionary,
     /// using default digestion parameters.
     /// </summary>
+    /// <exception cref="ArgumentException">Thrown if any protease name is not found in the dictionary.</exception>
     public Dictionary<string, HashSet<int>> CalculateCoverageByProtease(
         Protein protein,
         IEnumerable<string> proteaseNames)
     {
-        var proteaseParams = proteaseNames
-            .Where(name => ProteaseDictionary.Dictionary.ContainsKey(name))
-            .Select(name =>
-            {
-                var dp = new DigestionParams(protease: name);
-                return new ProteaseSpecificParameters(dp);
-            });
+        var namesList = proteaseNames.ToList();
+
+        var missing = namesList
+            .Where(name => !ProteaseDictionary.Dictionary.ContainsKey(name))
+            .ToList();
+
+        if (missing.Count > 0)
+        {
+            throw new ArgumentException(
+                $"The following protease name(s) were not found in the dictionary: " +
+                $"{string.Join(", ", missing.Select(n => $"'{n}'"))}. " +
+                $"Check proteases.tsv for valid names.");
+        }
+
+        var proteaseParams = namesList.Select(name =>
+        {
+            var dp = new DigestionParams(protease: name);
+            return new ProteaseSpecificParameters(dp);
+        });
 
         return CalculateCoverageByProtease(protein, proteaseParams);
     }

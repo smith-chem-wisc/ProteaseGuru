@@ -1,20 +1,19 @@
 using Chemistry;
+using Omics.Modifications;
+using Omics.Modifications.IO;
 using Proteomics.AminoAcidPolymer;
 using Proteomics.ProteolyticDigestion;
 using System.Diagnostics;
-using Omics.Modifications;
-using Omics.Modifications.IO;
 
 namespace Engine
 {
     public static class GlobalVariables
     {
         private static List<Modification> _AllModsKnown = new List<Modification>();
-        private static HashSet<string> _AllModTypesKnown = new HashSet<string>(); 
+        private static HashSet<string> _AllModTypesKnown = new HashSet<string>();
         public static List<Modification> ProteaseMods = new List<Modification>();
-        
 
-        //Characters that aren't amino acids, but are reserved for special uses (motifs, delimiters, mods, etc)
+        // Characters that aren't amino acids, but are reserved for special uses (motifs, delimiters, mods, etc)
         private static char[] _InvalidAminoAcids = new char[] { 'X', 'B', 'J', 'Z', ':', '|', ';', '[', ']', '{', '}', '(', ')', '+', '-' };
 
         // this affects output labels, etc. and can be changed to "Proteoform" for top-down searches
@@ -35,9 +34,7 @@ namespace Engine
             }
             else
             {
-                // AppVeyor appends the build number
-                // this is intentional; it's to avoid conflicting AppVeyor build numbers
-                // trim the build number off the version number for displaying/checking versions, etc
+                // AppVeyor appends the build number; trim it for display
                 var foundIndexes = new List<int>();
                 for (int i = 0; i < ProteaseGuruVersion.Length; i++)
                 {
@@ -61,22 +58,41 @@ namespace Engine
                 }
             }
 
-            ElementsLocation = Path.Combine(DataDir, @"Data", @"elements.dat");         
+            ElementsLocation = Path.Combine(DataDir, @"Data", @"elements.dat");
 
-            UnimodDeserialized = UsefulProteomicsDatabases.Loaders.LoadUnimod(Path.Combine(DataDir, @"Data", @"unimod.xml")).ToList();
-            PsiModDeserialized = UsefulProteomicsDatabases.Loaders.LoadPsiMod(Path.Combine(DataDir, @"Data", @"PSI-MOD.obo.xml"));
-            var formalChargesDictionary = UsefulProteomicsDatabases.Loaders.GetFormalChargesDictionary(PsiModDeserialized);
-            UniprotDeseralized = UsefulProteomicsDatabases.Loaders.LoadUniprot(Path.Combine(DataDir, @"Data", @"ptmlist.txt"), formalChargesDictionary).ToList();
+            // Load Unimod modifications from XML
+            UnimodDeserialized = ModificationLoader.ReadModsFromUnimod(
+                Path.Combine(DataDir, @"Data", @"unimod.xml")).ToList();
 
+            // Load PSI-MOD for formal charges lookup
+            PsiModDeserialized = ModificationLoader.LoadPsiMod(
+                Path.Combine(DataDir, @"Data", @"PSI-MOD.obo.xml"));
+            var formalChargesDictionary = ModificationLoader.GetFormalChargesDictionary(PsiModDeserialized);
+
+            // Load UniProt modifications (ptmlist.txt uses the formalCharges overload)
+            UniprotDeseralized = ModificationLoader.ReadModsFromFile(
+                Path.Combine(DataDir, @"Data", @"ptmlist.txt"),
+                formalChargesDictionary,
+                out var uniprotWarnings).ToList();
+            foreach (var (_, warning) in uniprotWarnings)
+            {
+                ErrorsReadingMods.Add(warning);
+            }
+
+            // Load all mod files from the Mods folder
             foreach (var modFile in Directory.GetFiles(Path.Combine(DataDir, @"Mods")))
             {
-                AddMods(Omics.Modifications.IO.ModificationLoader.ReadModsFromFile(modFile, out var errorMods), false);
+                AddMods(ModificationLoader.ReadModsFromFile(modFile, out var filteredMods), false);
+                foreach (var (_, warning) in filteredMods)
+                {
+                    ErrorsReadingMods.Add(warning);
+                }
             }
 
             AddMods(UniprotDeseralized.OfType<Modification>(), false);
             AddMods(UnimodDeserialized.OfType<Modification>(), false);
 
-            // populate dictionaries of known mods/proteins for deserialization
+            // Populate dictionary of known mods for deserialization
             AllModsKnownDictionary = new Dictionary<string, Modification>();
             foreach (Modification mod in AllModsKnown)
             {
@@ -87,10 +103,18 @@ namespace Engine
                 // no error thrown if multiple mods with this ID are present - just pick one
             }
 
-            ProteaseMods = Omics.Modifications.IO.ModificationLoader.ReadModsFromFile(Path.Combine(DataDir, @"Mods", @"ProteaseMods.txt"), out var errors).ToList();
-            var t = ProteaseDictionary.LoadAndMergeCustomProteases(Path.Combine(DataDir, @"ProteolyticDigestion", @"proteases.tsv"), ProteaseMods);
+            ProteaseMods = ModificationLoader.ReadModsFromFile(
+                Path.Combine(DataDir, @"Mods", @"ProteaseMods.txt"),
+                out var proteaseModWarnings).ToList();
+            foreach (var (_, warning) in proteaseModWarnings)
+            {
+                ErrorsReadingMods.Add(warning);
+            }
 
-            RefreshAminoAcidDictionary();            
+            ProteaseDictionary.Dictionary = ProteaseDictionary.LoadProteaseDictionary(
+                Path.Combine(DataDir, @"ProteolyticDigestion", @"proteases.tsv"), ProteaseMods);
+
+            RefreshAminoAcidDictionary();
         }
 
         public static List<string> ErrorsReadingMods = new List<string>();
@@ -99,13 +123,13 @@ namespace Engine
         public static string DataDir { get; }
         public static bool StopLoops { get; set; }
         public static string ElementsLocation { get; }
-        public static string ProteaseGuruVersion { get; }        
+        public static string ProteaseGuruVersion { get; }
         public static IEnumerable<Modification> UnimodDeserialized { get; }
         public static IEnumerable<Modification> UniprotDeseralized { get; }
         public static obo PsiModDeserialized { get; }
         public static IEnumerable<Modification> AllModsKnown { get { return _AllModsKnown.AsEnumerable(); } }
         public static IEnumerable<string> AllModTypesKnown { get { return _AllModTypesKnown.AsEnumerable(); } }
-        public static Dictionary<string, Modification> AllModsKnownDictionary { get; private set; }        
+        public static Dictionary<string, Modification> AllModsKnownDictionary { get; private set; }
         public static IEnumerable<char> InvalidAminoAcids { get { return _InvalidAminoAcids.AsEnumerable(); } }
 
         public static void AddMods(IEnumerable<Modification> modifications, bool modsAreFromTheTopOfProteinXml)
@@ -134,16 +158,10 @@ namespace Engine
                 }
                 else if (AllModsKnown.Any(b => b.IdWithMotif.Equals(mod.IdWithMotif) && b.ModificationType.Equals(mod.ModificationType)))
                 {
-                    // same ID, same mod type, and same mod properties; continue and don't output an error message
-                    // this could result from reading in an XML database with mods annotated at the top
-                    // that are already loaded in ProteaseGuru
                     continue;
                 }
                 else if (AllModsKnown.Any(m => m.IdWithMotif == mod.IdWithMotif))
                 {
-                    // same ID but different mod types. This can happen if the user names a mod the same as a UniProt mod
-                    // this is problematic because if a mod is annotated in the database, all we have to go on is an ID ("description" tag).
-                    // so we don't know which mod to use, causing unnecessary ambiguity
                     if (modsAreFromTheTopOfProteinXml)
                     {
                         _AllModsKnown.RemoveAll(p => p.IdWithMotif.Equals(mod.IdWithMotif) && !p.Equals(mod));
@@ -158,26 +176,23 @@ namespace Engine
                 }
                 else
                 {
-                    // no errors! add the mod
                     _AllModsKnown.Add(mod);
                     _AllModTypesKnown.Add(mod.ModificationType);
                 }
             }
-        }        
+        }
 
         public static void RefreshAminoAcidDictionary()
         {
-            //read in all the amino acids (they already exist in mzlib, but there might be synthetic amino acids that need to be included)
             string aminoAcidPath = Path.Combine(DataDir, @"CustomAminoAcids", @"CustomAminoAcids.txt");
-            if (File.Exists(aminoAcidPath)) //if it already exists
+            if (File.Exists(aminoAcidPath))
             {
                 string[] aminoAcidLines = File.ReadAllLines(aminoAcidPath);
                 List<Residue> residuesToAdd = new List<Residue>();
                 for (int i = 1; i < aminoAcidLines.Length; i++)
                 {
-
-                    string[] line = aminoAcidLines[i].Split('\t').ToArray(); //tsv Name, one letter, monoisotopic, chemical formula
-                    if (line.Length >= 4) //check something is there (not a blank line)
+                    string[] line = aminoAcidLines[i].Split('\t').ToArray();
+                    if (line.Length >= 4)
                     {
                         char letter = line[1][0];
                         if (InvalidAminoAcids.Contains(letter))
@@ -187,8 +202,6 @@ namespace Engine
                         try
                         {
                             ChemicalFormula formula = ChemicalFormula.ParseFormula(line[3]);
-
-                            //if it doesn't already exist or it does exist but has a different mass, add the entry
                             if (!(Residue.TryGetResidue(letter, out Residue residue))
                                 || !(formula.Formula.Equals(residue.ThisChemicalFormula.Formula)))
                             {
@@ -203,7 +216,7 @@ namespace Engine
                 }
                 Residue.AddNewResiduesToDictionary(residuesToAdd);
             }
-            else //create it so that it can be manipulated
+            else
             {
                 WriteAminoAcidsFile();
             }
@@ -218,7 +231,7 @@ namespace Engine
             }
             string aminoAcidPath = Path.Combine(DataDir, @"CustomAminoAcids", @"CustomAminoAcids.txt");
             List<string> linesToWrite = new List<string> { "Name\tOneLetterAbbr.\tMonoisotopicMass\tChemicalFormula" };
-            for (char letter = 'A'; letter <= 'Z'; letter++) //just the basic residues
+            for (char letter = 'A'; letter <= 'Z'; letter++)
             {
                 if (Residue.TryGetResidue(letter, out Residue residue))
                 {
@@ -228,7 +241,6 @@ namespace Engine
             File.WriteAllLines(aminoAcidPath, linesToWrite.ToArray());
         }
 
-        // Does the same thing as Process.Start() except it works on .NET Core
         public static void StartProcess(string path)
         {
             var p = new Process();
