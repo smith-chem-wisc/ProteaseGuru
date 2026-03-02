@@ -567,14 +567,15 @@ namespace GUI
             var results = await Task.Run(() => a.Run());
             Dictionary<string, Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>> peptidesByFile = results.PeptideByFile;
             Dictionary<string, Dictionary<Protein, (double, double)>> sequenceCoverageByProtease = results.SequenceCoverageByProtease;
+            Dictionary<string, Dictionary<Protein, (double, double)>> sequenceCoverageByProteaseFromDetectablePeptides = results.SequenceCoverageByProteaseFromDetectablePeptides;
             stopwatch.Stop();
 
             runProgressBar.IsIndeterminate = false;
 
             // when done with tasks
             AllResultsTab.Content = new AllResultsWindow(peptidesByFile, ParametersViewModel.Parameters); // update results display
-            ProteinCovMap.Content = new ProteinResultsWindow(peptidesByFile, ParametersViewModel.Parameters, sequenceCoverageByProtease);
-            AllHistogramsTab.Content = new HistogramWindow(peptidesByFile, ParametersViewModel.Parameters, sequenceCoverageByProtease);
+            ProteinCovMap.Content = new ProteinResultsWindow(peptidesByFile, ParametersViewModel.Parameters, sequenceCoverageByProtease, sequenceCoverageByProteaseFromDetectablePeptides);
+            AllHistogramsTab.Content = new HistogramWindow(peptidesByFile, ParametersViewModel.Parameters, sequenceCoverageByProtease, sequenceCoverageByProteaseFromDetectablePeptides);
             AllResultsTab.IsSelected = true; // switch to results tab
             RunTaskButton.IsEnabled = true; // allow user to run new task
         }
@@ -799,10 +800,21 @@ namespace GUI
             }
                        
             var seqCov = CalculateProteinSequenceCoverage(PeptidesByFile);
+            var seqCovFromDetectablePeps = CalculateProteinSequenceCoverage(
+                PeptidesByFile.Select(kvp => new KeyValuePair<string, Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>>(
+                    kvp.Key,
+                    kvp.Value.ToDictionary(
+                        proteaseKvp => proteaseKvp.Key,
+                        proteaseKvp => proteaseKvp.Value.ToDictionary(
+                            proteinKvp => proteinKvp.Key,
+                            proteinKvp => proteinKvp.Value.Where(p => p.PflyDetectability == true).ToList())
+                        )
+                    )
+                ).ToDictionary(kvp => kvp.Key, kvp => kvp.Value));
 
             AllResultsTab.Content = new AllResultsWindow(PeptidesByFile, loadedParams); // update results display
-            ProteinCovMap.Content = new ProteinResultsWindow(PeptidesByFile, loadedParams, seqCov);
-            AllHistogramsTab.Content = new HistogramWindow(PeptidesByFile, loadedParams, seqCov);
+            ProteinCovMap.Content = new ProteinResultsWindow(PeptidesByFile, loadedParams, seqCov, seqCovFromDetectablePeps);
+            AllHistogramsTab.Content = new HistogramWindow(PeptidesByFile, loadedParams, seqCov, seqCovFromDetectablePeps);
             AllResultsTab.IsSelected = true; // switch to results tab
         }
         

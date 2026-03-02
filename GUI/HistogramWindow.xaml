@@ -235,8 +235,16 @@
                         </Grid>
 
                         <DockPanel Grid.Row="3" Margin="2" Background="{StaticResource DataGridBackgroundColor}">
-                            <Button Content="Export to PDF" Width="150" Click="CreatePlotPdf_Click" HorizontalAlignment="Left" Style="{StaticResource ImportantButtonStyle}"/>
-                            <Button Content="Export Data to CSV" Width="150" Click="CreateTable_Click" HorizontalAlignment="Right" Style="{StaticResource ImportantButtonStyle}"/>
+                            <TextBlock Text="Export Options:" VerticalAlignment="Center" HorizontalAlignment="Left" Margin="0,0,10,0" FontSize="13" Foreground="{StaticResource TextColor1}"/>
+                            <Button Content="To PDF" Width="100" Click="CreatePlotPdf_Click" HorizontalAlignment="Left" Style="{StaticResource ImportantButtonStyle}"/>
+                            <Button Content="To CSV" Width="100" Click="CreateTable_Click" HorizontalAlignment="Left" Style="{StaticResource ImportantButtonStyle}"/>
+                            
+                            <Button Content="Stack Detectable Peptides" Click="StackDetectablePeptides_Click"  DockPanel.Dock="Right" VerticalAlignment="Center" HorizontalAlignment="Right" Width="200" Style="{StaticResource ImportantButtonStyle}"/>
+                            <Button Content="Show Only Detectable Peptides" Click="FilterDetectablePeptides_Click" DockPanel.Dock="Right" VerticalAlignment="Center" HorizontalAlignment="Right" Width="200" Style="{StaticResource ImportantButtonStyle}"/>
+                            <TextBlock Text="Plot Options:" VerticalAlignment="Center" DockPanel.Dock="Right" HorizontalAlignment="Right" Margin="0,0,10,0" FontSize="13" Foreground="{StaticResource TextColor1}"/>
+                            
+                            
+
                         </DockPanel>
 
                     </Grid>

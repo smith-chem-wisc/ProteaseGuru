@@ -521,25 +521,16 @@ namespace Tasks
                 {
                     string proteaseName = protease.Key;
 
-                    if (allDatabasePeptidesByProtease.ContainsKey(proteaseName))
+                    if (!allDatabasePeptidesByProtease.TryGetValue(proteaseName, out var peptideList))
                     {
-                        foreach (var proteinEntry in protease.Value)
-                        {
-                            allDatabasePeptidesByProtease[proteaseName].AddRange(proteinEntry.Value);
-                            accessionToProtein[proteinEntry.Key.Accession] = proteinEntry.Key;
-                        }
+                        peptideList = new List<InSilicoPep>();
+                        allDatabasePeptidesByProtease[proteaseName] = peptideList;
                     }
-                    else
-                    {
-                        allDatabasePeptidesByProtease.Add(
-                            proteaseName,
-                            protease.Value.SelectMany(p => p.Value).ToList()
-                        );
 
-                        foreach (var proteinEntry in protease.Value)
-                        {
-                            accessionToProtein[proteinEntry.Key.Accession] = proteinEntry.Key;
-                        }
+                    foreach (var proteinEntry in protease.Value)
+                    {
+                        peptideList.AddRange(proteinEntry.Value);
+                        accessionToProtein[proteinEntry.Key.Accession] = proteinEntry.Key;
                     }
                 }
             }
