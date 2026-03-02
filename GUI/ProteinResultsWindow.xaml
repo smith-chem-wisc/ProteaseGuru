@@ -115,7 +115,7 @@
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
-        <Label Content="Protein Search" Grid.Row="0" Style="{StaticResource HeaderLabelStyle}" />
+        <Label Content="{Binding PageTitle, RelativeSource={RelativeSource AncestorType=UserControl}}" Grid.Row="0" Style="{StaticResource HeaderLabelStyle}" />
 
         <TextBlock Grid.Row="1" Style="{StaticResource TextBlockStyle}">
             Search for a specific protein accessions to view its digestion results both numerically and as a protein sequence coverage map.

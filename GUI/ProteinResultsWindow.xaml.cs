@@ -102,6 +102,16 @@ namespace GUI
 
         private enum MaxCoverageMode { Greedy, BestPair, BestTriplet }
         private MaxCoverageMode _currentMaxCoverageMode = MaxCoverageMode.Greedy;
+
+        public static readonly DependencyProperty PageTitleProperty =
+            DependencyProperty.Register(nameof(PageTitle), typeof(string), typeof(ProteinResultsWindow),
+                new PropertyMetadata("Protein Search"));
+
+        public string PageTitle
+        {
+            get => (string)GetValue(PageTitleProperty);
+            set => SetValue(PageTitleProperty, value);
+        }
         #endregion
 
         #region Constructors
@@ -112,6 +122,30 @@ namespace GUI
         public ProteinResultsWindow()
         {
             InitializeComponent();
+        }
+
+        /// <summary>
+        /// Lightweight constructor that populates only the protein accessions list.
+        /// All other panels remain empty. Used by the Individual Protein Analyzer.
+        /// </summary>
+        public ProteinResultsWindow(IEnumerable<string> proteinAccessions)
+        {
+            InitializeComponent();
+
+            SelectedProteases = new List<string>();
+            proteinList = new ObservableCollection<string>();
+            filteredList = new ObservableCollection<string>();
+
+            foreach (var accession in proteinAccessions)
+            {
+                proteinList.Add(accession);
+                dataGridProteins.Items.Add(accession);
+            }
+            dataGridProteins.DataContext = proteinList;
+
+            this.Loaded += results_Loaded;
+            SearchModifications.SetUp();
+            SearchModifications.Timer.Tick += new EventHandler(searchBox_TextChangedHandler);
         }
 
         /// <summary>
@@ -308,6 +342,7 @@ namespace GUI
         /// </summary>
         private void ClearSelectedProteases_Click(object sender, RoutedEventArgs e)
         {
+            if (_analyzer == null) return;
             ProteaseSelectedForUse.SelectedItems.Clear();
             SelectedProteases.Clear();
             DrawSequenceCoverageMap(SelectedProtein, SelectedProteases);
@@ -318,6 +353,7 @@ namespace GUI
         /// </summary>
         private void SelectProteases_Click(object sender, RoutedEventArgs e)
         {
+            if (_analyzer == null) return;
             SelectedProteases.Clear();
             foreach (var protease in ProteaseSelectedForUse.SelectedItems)
             {
@@ -354,6 +390,16 @@ namespace GUI
         /// </summary>
         private void OnSelectionChanged()
         {
+            if (_analyzer == null)
+            {
+                if (dataGridProteins.SelectedItem != null)
+                {
+                    SearchTextBox.TextChanged -= Search_TextChanged;
+                    SearchTextBox.Text = dataGridProteins.SelectedItem.ToString();
+                    SearchTextBox.TextChanged += Search_TextChanged;
+                }
+                return;
+            }
             // Show informational message about unique peptide definition (once per session)
             if (MessageShow)
             {
@@ -1095,6 +1141,7 @@ namespace GUI
 
         private void exportCoverageMap(object sender, RoutedEventArgs e)
         {
+            if (_analyzer == null || UserParams == null) return;
             var fileDirectory = UserParams.OutputFolder + @"\ProteaseGuruDigestionResults";
             string subFolder = Path.Combine(fileDirectory, SelectedProtein.DisplayName);
             string proteinName = SelectedProtein.DisplayName;

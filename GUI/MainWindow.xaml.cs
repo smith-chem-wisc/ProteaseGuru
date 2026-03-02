@@ -574,6 +574,16 @@ namespace GUI
             AllResultsTab.Content = new AllResultsWindow(peptidesByFile, ParametersViewModel.Parameters); // update results display
             ProteinCovMap.Content = new ProteinResultsWindow(peptidesByFile, ParametersViewModel.Parameters, sequenceCoverageByProtease);
             AllHistogramsTab.Content = new HistogramWindow(peptidesByFile, ParametersViewModel.Parameters, sequenceCoverageByProtease);
+
+            var runAccessions = peptidesByFile.Values
+                .SelectMany(db => db.Values)
+                .SelectMany(d => d.Keys)
+                .Select(p => p.Accession)
+                .Distinct()
+                .OrderBy(a => a)
+                .ToList();
+            IndividualProteinAnalyzerTab.Content = new ProteinResultsWindow(runAccessions) { PageTitle = "Individual Protein Analyzer" };
+
             AllResultsTab.IsSelected = true; // switch to results tab
             RunTaskButton.IsEnabled = true; // allow user to run new task
         }
@@ -797,6 +807,16 @@ namespace GUI
             AllResultsTab.Content = new AllResultsWindow(PeptidesByFile, loadedParams); // update results display
             ProteinCovMap.Content = new ProteinResultsWindow(PeptidesByFile, loadedParams, seqCov);
             AllHistogramsTab.Content = new HistogramWindow(PeptidesByFile, loadedParams, seqCov);
+
+            var loadAccessions = PeptidesByFile.Values
+                .SelectMany(db => db.Values)
+                .SelectMany(d => d.Keys)
+                .Select(p => p.Accession)
+                .Distinct()
+                .OrderBy(a => a)
+                .ToList();
+            IndividualProteinAnalyzerTab.Content = new ProteinResultsWindow(loadAccessions) { PageTitle = "Individual Protein Analyzer" };
+
             AllResultsTab.IsSelected = true; // switch to results tab
         }
         

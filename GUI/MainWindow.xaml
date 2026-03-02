@@ -618,7 +618,7 @@
             </TabItem>
 
             <TabItem Header="Individual Protein Analyzer" Style="{StaticResource TabItemStyle}" Name="IndividualProteinAnalyzerTab">
-                <local:ProteinResultsWindow/>
+                <local:ProteinResultsWindow PageTitle="Individual Protein Analyzer"/>
             </TabItem>
 
             <TabItem Header="Help" Style="{StaticResource TabItemStyle}">
