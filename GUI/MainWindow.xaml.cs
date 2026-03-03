@@ -1,19 +1,8 @@
 using Proteomics;
-using System;
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
-using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
-using System.Windows.Shapes;
 using Engine;
 using Tasks;
 using Proteomics.ProteolyticDigestion;
@@ -567,7 +556,6 @@ namespace GUI
             var results = await Task.Run(() => a.Run());
             Dictionary<string, Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>> peptidesByFile = results.PeptideByFile;
             Dictionary<string, Dictionary<Protein, (double, double)>> sequenceCoverageByProtease = results.SequenceCoverageByProtease;
-            Dictionary<string, Dictionary<Protein, (double, double)>> sequenceCoverageByProteaseFromDetectablePeptides = results.SequenceCoverageByProteaseFromDetectablePeptides;
             stopwatch.Stop();
 
             runProgressBar.IsIndeterminate = false;
@@ -800,17 +788,6 @@ namespace GUI
             }
                        
             var seqCov = CalculateProteinSequenceCoverage(PeptidesByFile);
-            var seqCovFromDetectablePeps = CalculateProteinSequenceCoverage(
-                PeptidesByFile.Select(kvp => new KeyValuePair<string, Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>>(
-                    kvp.Key,
-                    kvp.Value.ToDictionary(
-                        proteaseKvp => proteaseKvp.Key,
-                        proteaseKvp => proteaseKvp.Value.ToDictionary(
-                            proteinKvp => proteinKvp.Key,
-                            proteinKvp => proteinKvp.Value.Where(p => p.PflyDetectability == true).ToList())
-                        )
-                    )
-                ).ToDictionary(kvp => kvp.Key, kvp => kvp.Value));
 
             AllResultsTab.Content = new AllResultsWindow(PeptidesByFile, loadedParams); // update results display
             ProteinCovMap.Content = new ProteinResultsWindow(PeptidesByFile, loadedParams, seqCov);

@@ -68,34 +68,6 @@
                 </Trigger>
             </Style.Triggers>
         </Style>
-        <!--Styling for toggle buttons similar to important buttons-->
-        <Style x:Key="ImportantToggleButtonStyle" TargetType="ToggleButton">
-            <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Width" Value="200"/>
-            <Setter Property="Background" Value="{StaticResource AccentColor}"/>
-            <Setter Property="Foreground" Value="{StaticResource TextColor1}"/>
-            <Setter Property="FontSize" Value="12"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="ToggleButton">
-                        <Border Background="{TemplateBinding Background}" BorderBrush="#131313" BorderThickness="1">
-                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                        </Border>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-            <Style.Triggers>
-                <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="Background" Value="#f58c49"/>
-                    <Setter Property="BorderBrush" Value="#131313"/>
-                    <Setter Property="Foreground" Value="#131313"/>
-                </Trigger>
-                <Trigger Property="IsChecked" Value="True">
-                    <Setter Property="Background" Value="#131313"/>
-                    <Setter Property="Foreground" Value="{StaticResource AccentColor}"/>
-                </Trigger>
-            </Style.Triggers>
-        </Style>
         <Style x:Key="TextBlockStyle" TargetType="TextBlock">
             <Setter Property="Foreground" Value="{StaticResource TextColor1}"/>
             <Setter Property="FontSize" Value="13"/>
@@ -263,16 +235,8 @@
                         </Grid>
 
                         <DockPanel Grid.Row="3" Margin="2" Background="{StaticResource DataGridBackgroundColor}">
-                            <TextBlock Text="Export Options:" VerticalAlignment="Center" HorizontalAlignment="Left" Margin="0,0,10,0" FontSize="13" Foreground="{StaticResource TextColor1}"/>
-                            <Button Content="To PDF" Width="100" Click="CreatePlotPdf_Click" HorizontalAlignment="Left" Style="{StaticResource ImportantButtonStyle}"/>
-                            <Button Content="To CSV" Width="100" Click="CreateTable_Click" HorizontalAlignment="Left" Style="{StaticResource ImportantButtonStyle}"/>
-                            
-                            <ToggleButton x:Name="StackDetectablePeptides" Content="Stack Detectable Peptides" Click="PlotOption_Click"  DockPanel.Dock="Right" VerticalAlignment="Center" HorizontalAlignment="Right" Width="200" Style="{StaticResource ImportantToggleButtonStyle}"/>
-                            <ToggleButton x:Name="ShowOnlyDetectablePeptides" Content="Show Only Detectable Peptides" Click="PlotOption_Click" DockPanel.Dock="Right" VerticalAlignment="Center" HorizontalAlignment="Right" Width="200" Style="{StaticResource ImportantToggleButtonStyle}"/>
-                            <TextBlock Text="Plot Options:" VerticalAlignment="Center" DockPanel.Dock="Right" HorizontalAlignment="Right" Margin="0,0,10,0" FontSize="13" Foreground="{StaticResource TextColor1}"/>
-                            
-                            
-
+                            <Button Content="Export to PDF" Width="150" Click="CreatePlotPdf_Click" HorizontalAlignment="Left" Style="{StaticResource ImportantButtonStyle}"/>
+                            <Button Content="Export Data to CSV" Width="150" Click="CreateTable_Click" HorizontalAlignment="Right" Style="{StaticResource ImportantButtonStyle}"/>
                         </DockPanel>
 
                     </Grid>
