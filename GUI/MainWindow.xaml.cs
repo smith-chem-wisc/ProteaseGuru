@@ -574,8 +574,8 @@ namespace GUI
 
             // when done with tasks
             AllResultsTab.Content = new AllResultsWindow(peptidesByFile, ParametersViewModel.Parameters); // update results display
-            ProteinCovMap.Content = new ProteinResultsWindow(peptidesByFile, ParametersViewModel.Parameters, sequenceCoverageByProtease, sequenceCoverageByProteaseFromDetectablePeptides);
-            AllHistogramsTab.Content = new HistogramWindow(peptidesByFile, ParametersViewModel.Parameters, sequenceCoverageByProtease, sequenceCoverageByProteaseFromDetectablePeptides);
+            ProteinCovMap.Content = new ProteinResultsWindow(peptidesByFile, ParametersViewModel.Parameters, sequenceCoverageByProtease);
+            AllHistogramsTab.Content = new HistogramWindow(peptidesByFile, ParametersViewModel.Parameters, sequenceCoverageByProtease);
             AllResultsTab.IsSelected = true; // switch to results tab
             RunTaskButton.IsEnabled = true; // allow user to run new task
         }
@@ -813,8 +813,8 @@ namespace GUI
                 ).ToDictionary(kvp => kvp.Key, kvp => kvp.Value));
 
             AllResultsTab.Content = new AllResultsWindow(PeptidesByFile, loadedParams); // update results display
-            ProteinCovMap.Content = new ProteinResultsWindow(PeptidesByFile, loadedParams, seqCov, seqCovFromDetectablePeps);
-            AllHistogramsTab.Content = new HistogramWindow(PeptidesByFile, loadedParams, seqCov, seqCovFromDetectablePeps);
+            ProteinCovMap.Content = new ProteinResultsWindow(PeptidesByFile, loadedParams, seqCov);
+            AllHistogramsTab.Content = new HistogramWindow(PeptidesByFile, loadedParams, seqCov);
             AllResultsTab.IsSelected = true; // switch to results tab
         }
         

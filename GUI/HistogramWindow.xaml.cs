@@ -9,6 +9,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Data;
 using OxyPlot;
 using Proteomics;
@@ -18,7 +19,7 @@ namespace GUI
 {
     /// <summary>
     /// Interaction logic for HistogramWindow.xaml
-    /// Users can interact witht heir data using histograms
+    /// Users can interact with their data using histograms
     /// </summary>
     public partial class HistogramWindow : UserControl
     {
@@ -29,6 +30,7 @@ namespace GUI
         Parameters UserParams;
         public Dictionary<string, Dictionary<string, string>> HistogramDataTable = new Dictionary<string, Dictionary<string, string>>();
         public string SelectedPlot;
+        public bool[] DetectabilityOption;
         private Dictionary<string, List<InSilicoPep>> PeptidesByProtease;
         private Dictionary<string, Dictionary<Protein, (double, double)>> SequenceCoverageByProtease = new Dictionary<string, Dictionary<Protein, (double, double)>>();
 
@@ -120,6 +122,8 @@ namespace GUI
             var selectedPlot = HistogramComboBox.SelectedItem;
             var objectName = selectedPlot.ToString().Split(':');
             var plotName = objectName[1];
+            var defaultDetectabilityOption = new bool[2] { false, false };
+            var detectabilityOption = DetectabilityOption != null ? DetectabilityOption : defaultDetectabilityOption;
 
             ProgressBar progressBar = new ProgressBar();
             progressBar.Orientation = Orientation.Horizontal;
@@ -129,7 +133,7 @@ namespace GUI
             HistogramLoading.Items.Add(progressBar);
 
             //make the plot       
-            PlotModelStat plot = await Task.Run(() => new PlotModelStat(plotName, DBSelected, PeptideByFile, UserParams, sequenceCoverageByProtease));
+            PlotModelStat plot = await Task.Run(() => new PlotModelStat(plotName, DBSelected, detectabilityOption, PeptideByFile, UserParams, sequenceCoverageByProtease));
             SelectedPlot = plotName;
             PeptidesByProtease = plot.PeptidesByProtease;
             SequenceCoverageByProtease = plot.SequenceCoverageByProtease_Return;
@@ -161,7 +165,7 @@ namespace GUI
             progressBar.IsIndeterminate = true;
             HistogramLoading.Items.Add(progressBar);
             //make the plot       
-            PlotModelStat plot = await Task.Run(() => new PlotModelStat(plotName, DBSelected, PeptideByFile, UserParams, sequenceCoverageByProtease));
+            PlotModelStat plot = await Task.Run(() => new PlotModelStat(plotName, DBSelected, new bool[] { false, false }, PeptideByFile, UserParams, sequenceCoverageByProtease));
             PeptidesByProtease = plot.PeptidesByProtease;
             SequenceCoverageByProtease = plot.SequenceCoverageByProtease_Return;
             SelectedPlot = plotName;
@@ -466,13 +470,29 @@ namespace GUI
             }
         }
 
-        private void StackDetectablePeptides_Click(object sender, RoutedEventArgs e)
+        private void PlotOption_Click(object sender, RoutedEventArgs e)
         {
-            throw new NotImplementedException();
-        }
-        private void ShowOnlyDetectablePeptides_Click(object sender, RoutedEventArgs e)
-        {
-            throw new NotImplementedException();
+            // ShowOnlyDetectablePeptides and StackDetectablePeptides are mutually exclusive options
+            bool[] plotOptions = new bool[2]; // ShowOnlyDetectablePeptides, StackDetectablePeptides
+            switch (e.Source)
+            {
+                case ToggleButton { Name: "ShowOnlyDetectablePeptides" }:
+                    plotOptions[0] = ShowOnlyDetectablePeptides.IsChecked ?? false;
+                    plotOptions[1] = false;
+                    break;
+                case ToggleButton { Name: "StackDetectablePeptides" }:
+                    plotOptions[0] = false;
+                    plotOptions[1] = StackDetectablePeptides.IsChecked ?? false;
+                    break;
+                default:
+                    break;
+            }
+            ShowOnlyDetectablePeptides.IsChecked = plotOptions[0];
+            StackDetectablePeptides.IsChecked = plotOptions[1];
+            DetectabilityOption = plotOptions;
+            PlotSelected(null, null);
+
+
         }
     }
 }

@@ -21,6 +21,7 @@ namespace GUI
     public class PlotModelStat : INotifyPropertyChanged, IPlotModel
     {
         private PlotModel privateModel;
+        private readonly bool[] DetectabilityOption;
         private readonly List<InSilicoPep> AllPeptides = new List<InSilicoPep>();
         public Dictionary<string, List<InSilicoPep>> PeptidesByProtease = new Dictionary<string, List<InSilicoPep>>();
         public Dictionary<string, Dictionary<Protein, (double, double)>> SequenceCoverageByProtease_Return = new Dictionary<string, Dictionary<Protein, (double, double)>>();
@@ -66,10 +67,10 @@ namespace GUI
             }
         }
 
-        public PlotModelStat(string plotName, List<string> dbSelected, Dictionary<string, Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>> peptideByFile, Parameters userParams, Dictionary<string, Dictionary<Protein, (double, double)>> sequenceCoverageByProtease)
+        public PlotModelStat(string plotName, List<string> dbSelected, bool[] detectabilityOption, Dictionary<string, Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>> peptideByFile, Parameters userParams, Dictionary<string, Dictionary<Protein, (double, double)>> sequenceCoverageByProtease)
         {
             privateModel = new PlotModel { Title = plotName, DefaultFontSize = 12 };
-
+            DetectabilityOption = detectabilityOption;
             Dictionary<string, Dictionary<Protein, List<InSilicoPep>>> databasePeptides = new Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>();
 
             if (dbSelected.Count() > 1)
@@ -102,8 +103,8 @@ namespace GUI
                     {
                         peptidesToProteins = allPeptides.GroupBy(p => p.BaseSequence).ToDictionary(group => group.Key, group => group.ToList());
                     }
-                    var unique = peptidesToProteins.Where(p => p.Value.Select(p => p.Protein).Distinct().Count() == 1 && p.Value.Select(p => p.Database).Distinct().Count() == 1).ToDictionary(group => group.Key, group => group.Value);
-                    var shared = peptidesToProteins.Where(p => p.Value.Select(p => p.Protein).Distinct().Count() > 1).ToDictionary(group => group.Key, group => group.Value);
+                    var unique = peptidesToProteins.Where(p => p.Value.DistinctBy(p => p.Protein).Count() == 1 && p.Value.DistinctBy(p => p.Database).Count() == 1).ToDictionary(group => group.Key, group => group.Value);
+                    var shared = peptidesToProteins.Where(p => p.Value.DistinctBy(p => p.Protein).Count() > 1).ToDictionary(group => group.Key, group => group.Value);
 
                     foreach (var db in dbSelected)
                     {
@@ -539,7 +540,15 @@ namespace GUI
                     binSize = 1;
                     foreach (string key in PeptidesByProtease.Keys)
                     {
-                        numbersByProtease.Add(key, PeptidesByProtease[key].Select(p => Convert.ToDouble(p.Length)));
+                        if (DetectabilityOption[0])
+                        {
+                            numbersByProtease.Add(key, PeptidesByProtease[key].Where(p => p.PflyDetectability==true).Select(p => Convert.ToDouble(p.Length)));
+                        }
+                        else
+                        {
+                            numbersByProtease.Add(key, PeptidesByProtease[key].Select(p => Convert.ToDouble(p.Length)));
+                        }
+
                         var results = numbersByProtease[key].GroupBy(p => roundToBin(p, binSize)).OrderBy(p => p.Key).Select(p => p);
                         dictsByProtease.Add(key, results.ToDictionary(p => p.Key.ToString(), v => v.Count()));
                     }
@@ -635,7 +644,7 @@ namespace GUI
             int[] totalCounts;
 
             IEnumerable<double> allNumbers = numbersByProtease.Values.SelectMany(x => x);
-
+            
             int end = roundToBin(allNumbers.Max(), binSize);
             int start = roundToBin(allNumbers.Min(), binSize);
             int numBins = end - start + 1;
