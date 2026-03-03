@@ -84,34 +84,7 @@ namespace GUI
         /// Counter for generating unique protein export folder names
         /// </summary>
         private int ProteinExportCount = 1;
-        // ── add these fields alongside the existing private fields ──────────────
 
-        /// <summary>Pre-computed per-protease residue coverage (0-based) for the selected protein.</summary>
-        private Dictionary<string, HashSet<int>> _coverageByProteaseForMaxAnalysis;
-        private SeekMaximumCoverage.SetCoverResult? _greedyResult;
-        private SeekMaximumCoverage.CombinationResult? _pairResult;
-        private SeekMaximumCoverage.CombinationResult? _tripletResult;
-        private Dictionary<string, Color> _maxCoverageProteaseColors = new();
-        private CancellationTokenSource? _computeCts;
-
-        /// <summary>
-        /// Detectability rule for the max-coverage analysis.
-        /// Null now — replace with an IDetectabilityRule implementation when the feature is added.
-        /// </summary>
-        private SeekMaximumCoverage.IDetectabilityRule? _detectabilityRule = null;
-
-        private enum MaxCoverageMode { Greedy, BestPair, BestTriplet }
-        private MaxCoverageMode _currentMaxCoverageMode = MaxCoverageMode.Greedy;
-
-        public static readonly DependencyProperty PageTitleProperty =
-            DependencyProperty.Register(nameof(PageTitle), typeof(string), typeof(ProteinResultsWindow),
-                new PropertyMetadata("Protein Search"));
-
-        public string PageTitle
-        {
-            get => (string)GetValue(PageTitleProperty);
-            set => SetValue(PageTitleProperty, value);
-        }
         #endregion
 
         #region Constructors
@@ -121,31 +94,6 @@ namespace GUI
         /// </summary>
         public ProteinResultsWindow()
         {
-            InitializeComponent();
-        }
-
-        /// <summary>
-        /// Lightweight constructor that populates only the protein accessions list.
-        /// All other panels remain empty. Used by the Individual Protein Analyzer.
-        /// </summary>
-        public ProteinResultsWindow(IEnumerable<string> proteinAccessions)
-        {
-            InitializeComponent();
-
-            SelectedProteases = new List<string>();
-            proteinList = new ObservableCollection<string>();
-            filteredList = new ObservableCollection<string>();
-
-            foreach (var accession in proteinAccessions)
-            {
-                proteinList.Add(accession);
-                dataGridProteins.Items.Add(accession);
-            }
-            dataGridProteins.DataContext = proteinList;
-
-            this.Loaded += results_Loaded;
-            SearchModifications.SetUp();
-            SearchModifications.Timer.Tick += new EventHandler(searchBox_TextChangedHandler);
         }
 
         /// <summary>
@@ -335,6 +283,50 @@ namespace GUI
 
         #endregion
 
+        #region Protease Selection
+
+        /// <summary>
+        /// Clears all selected proteases and redraws the coverage map without peptide overlays.
+        /// </summary>
+        private void ClearSelectedProteases_Click(object sender, RoutedEventArgs e)
+        {
+            ProteaseSelectedForUse.SelectedItems.Clear();
+            SelectedProteases.Clear();
+            DrawSequenceCoverageMap(SelectedProtein, SelectedProteases);
+        }
+
+        /// <summary>
+        /// Updates the selected proteases list and redraws the coverage map.
+        /// </summary>
+        private void SelectProteases_Click(object sender, RoutedEventArgs e)
+        {
+            SelectedProteases.Clear();
+            foreach (var protease in ProteaseSelectedForUse.SelectedItems)
+            {
+                SelectedProteases.Add(protease.ToString());
+            }
+
+            if (SelectedProtein == null)
+            {
+                DrawSequenceCoverageMap(ProteinsForTreeView.FirstOrDefault().Value, SelectedProteases);
+            }
+            else
+            {
+                DrawSequenceCoverageMap(SelectedProtein, SelectedProteases);
+            }
+        }
+
+        /// <summary>
+        /// Populates the protease selection list when the control loads.
+        /// </summary>
+        private void proteaseCoverageMaps_loaded(object sender, RoutedEventArgs e)
+        {
+            ListBox combo = sender as ListBox;
+            combo.ItemsSource = _analyzer.Proteases;
+        }
+
+        #endregion
+
         #region Protein Selection and Summary
 
         /// <summary>
@@ -343,16 +335,6 @@ namespace GUI
         /// </summary>
         private void OnSelectionChanged()
         {
-            if (_analyzer == null)
-            {
-                if (dataGridProteins.SelectedItem != null)
-                {
-                    SearchTextBox.TextChanged -= Search_TextChanged;
-                    SearchTextBox.Text = dataGridProteins.SelectedItem.ToString();
-                    SearchTextBox.TextChanged += Search_TextChanged;
-                }
-                return;
-            }
             // Show informational message about unique peptide definition (once per session)
             if (MessageShow)
             {
@@ -385,7 +367,6 @@ namespace GUI
 
             // Redraw the sequence coverage map
             DrawSequenceCoverageMap(SelectedProtein, SelectedProteases);
-            ComputeMaxCoverage();
         }
 
         /// <summary>
@@ -450,301 +431,7 @@ namespace GUI
         }
 
         #endregion
-        #region Max Coverage Analysis
 
-        private Dictionary<string, HashSet<int>> BuildCoverageFromAnalyzer(Protein protein)
-        {
-            var coverage = new Dictionary<string, HashSet<int>>();
-            foreach (var proteaseName in _analyzer.Proteases)
-            {
-                var coveredIndices = new HashSet<int>();
-                foreach (var peptide in _analyzer.GetPeptidesForProteinAndProtease(protein, proteaseName))
-                {
-                    // InSilicoPep is 1-based; SeekMaximumCoverage expects 0-based
-                    for (int i = peptide.StartResidue - 1; i <= peptide.EndResidue - 1; i++)
-                        coveredIndices.Add(i);
-                }
-                coverage[proteaseName] = coveredIndices;
-            }
-            return coverage;
-        }
-
-        /// <summary>
-        /// Runs all three algorithms on a background thread, showing a spinner while
-        /// computing. Cancels automatically if the user selects a different protein.
-        /// </summary>
-        private async void ComputeMaxCoverage()
-        {
-            if (SelectedProtein == null) return;
-
-            // Cancel any in-flight computation for a previous protein
-            _computeCts?.Cancel();
-            _computeCts?.Dispose();
-            _computeCts = new CancellationTokenSource();
-            var token = _computeCts.Token;
-            var capturedProtein = SelectedProtein;
-
-            SetMaxCoverageComputingState(true);
-            maxCoverageMap.Children.Clear();
-
-            var coverageDict = BuildCoverageFromAnalyzer(capturedProtein.Protein);
-
-            SeekMaximumCoverage.SetCoverResult? greedyResult = null;
-            SeekMaximumCoverage.CombinationResult? pairResult = null;
-            SeekMaximumCoverage.CombinationResult? tripletResult = null;
-
-            try
-            {
-                await Task.Run(() =>
-                {
-                    var seeker = new SeekMaximumCoverage(_detectabilityRule);
-                    greedyResult = seeker.GreedyMinimumProteaseSet(coverageDict);
-                    token.ThrowIfCancellationRequested();
-                    pairResult = seeker.BestPair(coverageDict);
-                    token.ThrowIfCancellationRequested();
-                    tripletResult = seeker.BestTriplet(coverageDict);
-                }, token);
-            }
-            catch (OperationCanceledException)
-            {
-                return; // Newer protein selected — discard stale result
-            }
-            finally
-            {
-                SetMaxCoverageComputingState(false);
-            }
-
-            // Guard: protein may have changed on the UI thread during await
-            if (token.IsCancellationRequested || SelectedProtein != capturedProtein) return;
-
-            _coverageByProteaseForMaxAnalysis = coverageDict;
-            _greedyResult = greedyResult;
-            _pairResult = pairResult;
-            _tripletResult = tripletResult;
-
-            DrawMaxCoverageMap();
-        }
-
-        private void SetMaxCoverageComputingState(bool isComputing)
-        {
-            greedyToggle.IsEnabled = !isComputing;
-            pairToggle.IsEnabled = !isComputing;
-            tripletToggle.IsEnabled = !isComputing;
-            computingLabel.Visibility = isComputing ? Visibility.Visible : Visibility.Collapsed;
-        }
-
-        private static Dictionary<string, Color> AssignOptimalProteaseColors(List<string> proteaseNames)
-        {
-            Color[] palette =
-            [
-                Color.FromRgb( 31, 119, 180),  // Blue
-                Color.FromRgb(255, 127,  14),  // Orange
-                Color.FromRgb( 44, 160,  44),  // Green
-                Color.FromRgb(214,  39,  40),  // Red
-                Color.FromRgb(148, 103, 189),  // Purple
-                Color.FromRgb(140,  86,  75),  // Brown
-                Color.FromRgb(227, 119, 194),  // Pink
-                Color.FromRgb(127, 127, 127),  // Gray
-                Color.FromRgb(188, 189,  34),  // Olive
-                Color.FromRgb( 23, 190, 207),  // Teal
-            ];
-            return proteaseNames
-                .Select((name, i) => (name, color: palette[i % palette.Length]))
-                .ToDictionary(t => t.name, t => t.color);
-        }
-
-        /// <summary>
-        /// Draws title, result label, sequence, and legend all onto maxCoverageMap
-        /// so the entire image exports as one cohesive canvas.
-        /// </summary>
-        private void DrawMaxCoverageMap()
-        {
-            if (SelectedProtein == null || _coverageByProteaseForMaxAnalysis == null) return;
-
-            List<string> optimalProteases;
-            HashSet<int> totalCovered;
-            double coverageFraction;
-
-            switch (_currentMaxCoverageMode)
-            {
-                case MaxCoverageMode.BestPair when _pairResult != null:
-                    optimalProteases = _pairResult.Proteases;
-                    totalCovered = _pairResult.CoveredResidues;
-                    coverageFraction = _pairResult.CoverageFraction;
-                    break;
-                case MaxCoverageMode.BestTriplet when _tripletResult != null:
-                    optimalProteases = _tripletResult.Proteases;
-                    totalCovered = _tripletResult.CoveredResidues;
-                    coverageFraction = _tripletResult.CoverageFraction;
-                    break;
-                default: // Greedy
-                    if (_greedyResult == null) return;
-                    optimalProteases = _greedyResult.SelectedProteases;
-                    totalCovered = _greedyResult.CoveredResidues;
-                    coverageFraction = _greedyResult.CoverageFraction;
-                    break;
-            }
-
-            _maxCoverageProteaseColors = AssignOptimalProteaseColors(optimalProteases);
-
-            // Build residue→protease assignment; first-in-optimal-order wins
-            var residueToProtease = new Dictionary<int, string>();
-            foreach (var proteaseName in optimalProteases)
-                if (_coverageByProteaseForMaxAnalysis.TryGetValue(proteaseName, out var covered))
-                    foreach (int idx in covered)
-                        residueToProtease.TryAdd(idx, proteaseName);
-
-            maxCoverageMap.Children.Clear();
-
-            const int spacing = 25;
-            const int residuesPerLine = CoverageMapDataPreparer.DefaultResiduesPerLine;
-            var splitSeq = CoverageMapDataPreparer.SplitSequenceIntoLines(
-                SelectedProtein.Protein.BaseSequence, residuesPerLine);
-
-            int proteinLength = SelectedProtein.Protein.Length;
-            int height = 10;
-            int accumIndex = 0;
-
-            // ── Title ─────────────────────────────────────────────────────────
-            SequenceCoverageMap.txtDrawing(maxCoverageMap, new Point(0, height),
-                $"Maximum Coverage Map of {SelectedProtein.Protein.Accession}:", Brushes.Black);
-            height += 25;
-
-            // ── Result label (inside canvas → exports with image) ─────────────
-            var resultLabel = new TextBlock
-            {
-                Text = $"{string.Join("  +  ", optimalProteases)}" +
-                               $"     →     {totalCovered.Count}/{proteinLength} residues" +
-                               $"  ({coverageFraction:P1} coverage)",
-                FontSize = 11,
-                FontStyle = FontStyles.Italic,
-                FontFamily = new FontFamily("Arial"),
-                Foreground = Brushes.Black,
-                TextWrapping = TextWrapping.Wrap,
-                MaxWidth = 680
-            };
-            Canvas.SetLeft(resultLabel, 0);
-            Canvas.SetTop(resultLabel, height);
-            Panel.SetZIndex(resultLabel, 2);
-            maxCoverageMap.Children.Add(resultLabel);
-            height += 22;
-
-            // ── Sequence lines ─────────────────────────────────────────────────
-            foreach (var line in splitSeq)
-            {
-                SequenceCoverageMap.txtDrawingLabel(maxCoverageMap,
-                    new Point(0, height), (accumIndex + 1).ToString(), Brushes.Black);
-
-                for (int r = 0; r < line.Length; r++)
-                {
-                    int residue0 = accumIndex + r;
-                    var pt = new Point(r * spacing + 65, height);
-                    string ch = line[r].ToString().ToUpper();
-
-                    if (totalCovered.Contains(residue0))
-                        SequenceCoverageMap.txtDrawing(maxCoverageMap, pt, ch, Brushes.Black);
-                    else
-                        SequenceCoverageMap.txtDrawingUncovered(maxCoverageMap, pt, ch, Brushes.Black);
-
-                    if (residueToProtease.TryGetValue(residue0, out var protease))
-                    {
-                        var band = new System.Windows.Shapes.Rectangle
-                        {
-                            Width = 20,
-                            Height = 5,
-                            Fill = new SolidColorBrush(_maxCoverageProteaseColors[protease]),
-                            Opacity = 0.85
-                        };
-                        Canvas.SetLeft(band, r * spacing + 65);
-                        Canvas.SetTop(band, height + 18);
-                        Panel.SetZIndex(band, 1);
-                        maxCoverageMap.Children.Add(band);
-                    }
-                }
-
-                height += 45;
-                accumIndex += line.Length;
-            }
-
-            height += 10; // gap before legend
-
-            // ── Legend (inside canvas → exports with image) ───────────────────
-            height = DrawMaxCoverageLegendOnCanvas(optimalProteases, height);
-
-            maxCoverageMap.Height = height + 20;
-        }
-
-        /// <summary>
-        /// Draws the colored protease legend directly onto the maxCoverageMap canvas.
-        /// Returns the Y coordinate after the last legend item.
-        /// </summary>
-        private int DrawMaxCoverageLegendOnCanvas(List<string> proteaseNames, int startY)
-        {
-            const int swatchSize = 12;
-            const int itemHeight = 18;
-            int y = startY;
-
-            var header = new TextBlock
-            {
-                Text = "Optimal protease set:",
-                FontWeight = FontWeights.Bold,
-                FontSize = 11,
-                FontFamily = new FontFamily("Arial"),
-                Foreground = Brushes.Black
-            };
-            Canvas.SetLeft(header, 0);
-            Canvas.SetTop(header, y);
-            Panel.SetZIndex(header, 2);
-            maxCoverageMap.Children.Add(header);
-            y += itemHeight;
-
-            foreach (var proteaseName in proteaseNames)
-            {
-                if (!_maxCoverageProteaseColors.TryGetValue(proteaseName, out var color))
-                    continue;
-
-                var swatch = new System.Windows.Shapes.Rectangle
-                {
-                    Width = swatchSize,
-                    Height = swatchSize,
-                    Fill = new SolidColorBrush(color)
-                };
-                Canvas.SetLeft(swatch, 5);
-                Canvas.SetTop(swatch, y + 2);
-                Panel.SetZIndex(swatch, 2);
-                maxCoverageMap.Children.Add(swatch);
-
-                var nameBlock = new TextBlock
-                {
-                    Text = proteaseName,
-                    FontSize = 11,
-                    FontFamily = new FontFamily("Arial"),
-                    Foreground = Brushes.Black
-                };
-                Canvas.SetLeft(nameBlock, 5 + swatchSize + 5);
-                Canvas.SetTop(nameBlock, y);
-                Panel.SetZIndex(nameBlock, 2);
-                maxCoverageMap.Children.Add(nameBlock);
-
-                y += itemHeight;
-            }
-
-            return y;
-        }
-
-        /// <summary>Event handler for the Greedy / Best Pair / Best Triplet toggle buttons.</summary>
-        private void MaxCoverageMode_Changed(object sender, RoutedEventArgs e)
-        {
-            if (greedyToggle?.IsChecked == true) _currentMaxCoverageMode = MaxCoverageMode.Greedy;
-            else if (pairToggle?.IsChecked == true) _currentMaxCoverageMode = MaxCoverageMode.BestPair;
-            else if (tripletToggle?.IsChecked == true) _currentMaxCoverageMode = MaxCoverageMode.BestTriplet;
-
-            // Only redraw if computation has already completed
-            if (_greedyResult != null)
-                DrawMaxCoverageMap();
-        }
-
-        #endregion
         #region Sequence Coverage Map Drawing
 
         /// <summary>
@@ -1045,27 +732,14 @@ namespace GUI
 
         private void proteins_SelectedCellsChanged(object sender, SelectionChangedEventArgs e) => OnSelectionChanged();
 
-        private void IndividualProteinAnalyzer_Click(object sender, RoutedEventArgs e)
-        {
-            var window = new IndividualProteinAnalyzerWindow();
-            window.Owner = Window.GetWindow(this);
-            window.Show();
-        }
-
         private void proteaseComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e) => OnSelectionChanged();
 
         private void resultsSizeChanged(object sender, SizeChangedEventArgs e) => ChangeMapScrollViewSize();
 
         private void ChangeMapScrollViewSize()
         {
-            mapViewer.Height = 0.8 * ResultsGrid.ActualHeight;
-            mapViewer.Width = 0.99 * ResultsGrid.ActualWidth;
-        }
-
-        private void maxCoverageGrid_SizeChanged(object sender, SizeChangedEventArgs e)
-        {
-            maxCoverageMapViewer.Height = 0.72 * MaxCoverageGrid.ActualHeight;
-            maxCoverageMapViewer.Width = 0.99 * MaxCoverageGrid.ActualWidth;
+            mapViewer.Height = .8 * ResultsGrid.ActualHeight;
+            mapViewer.Width = .99 * ResultsGrid.ActualWidth;
         }
 
         void results_Loaded(object sender, RoutedEventArgs e)
@@ -1094,7 +768,6 @@ namespace GUI
 
         private void exportCoverageMap(object sender, RoutedEventArgs e)
         {
-            if (_analyzer == null || UserParams == null) return;
             var fileDirectory = UserParams.OutputFolder + @"\ProteaseGuruDigestionResults";
             string subFolder = Path.Combine(fileDirectory, SelectedProtein.DisplayName);
             string proteinName = SelectedProtein.DisplayName;
