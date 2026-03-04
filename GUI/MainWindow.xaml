@@ -4,11 +4,13 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:GUI"
+        xmlns:guiFunctions="clr-namespace:GuiFunctions;assembly=GuiFunctions"
         mc:Ignorable="d"
         Drop="Window_Drop" AllowDrop="true" 
         WindowStartupLocation="CenterScreen"
         Icon="proteaseGuru.ico"
-        Title="ProteaseGuru" Height="600" Width="1300">
+        Title="Protease Guru"
+        Height="600" Width="1300">
     <Window.Resources>
         <ResourceDictionary>
 

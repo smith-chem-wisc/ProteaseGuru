@@ -155,7 +155,7 @@ KEFTPPVQAAYQKVVAGVANALAHKYH";
                 DbForDigestion database = new DbForDigestion(databasePath);
 
                 var trypsin = ProteaseDictionary.Dictionary["trypsin|P"];
-                Parameters param = new Parameters();
+                RunParameters param = new RunParameters();
                 param.TreatModifiedPeptidesAsDifferent = false;
                 param.OutputFolder = subFolder;
 
@@ -246,7 +246,7 @@ KEFTPPVQAAYQKVVAGVANALAHKYH";
                 DbForDigestion database = new DbForDigestion(databasePath);
 
                 var trypsin = ProteaseDictionary.Dictionary["trypsin|P"];
-                Parameters param = new Parameters();
+                RunParameters param = new RunParameters();
                 param.TreatModifiedPeptidesAsDifferent = false;
                 param.OutputFolder = subFolder;
 
@@ -358,7 +358,7 @@ KEFTPPVQAAYQKVVAGVANALAHKYH";
                 DbForDigestion database = new DbForDigestion(databasePath);
 
                 var trypsin = ProteaseDictionary.Dictionary["trypsin|P"];
-                Parameters param = new Parameters();
+                RunParameters param = new RunParameters();
                 param.TreatModifiedPeptidesAsDifferent = false;
                 param.OutputFolder = subFolder;
 

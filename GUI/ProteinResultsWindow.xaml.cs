@@ -78,7 +78,7 @@ namespace GUI
         /// <summary>
         /// User-specified digestion parameters
         /// </summary>
-        private readonly Parameters UserParams;
+        private readonly RunParameters UserParams;
 
         /// <summary>
         /// Counter for generating unique protein export folder names
@@ -104,7 +104,7 @@ namespace GUI
         /// <param name="sequenceCoverageByProtease">Pre-calculated sequence coverage statistics</param>
         public ProteinResultsWindow(
             Dictionary<string, Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>> peptideByFile,
-            Parameters userParams,
+            RunParameters userParams,
             Dictionary<string, Dictionary<Protein, (double, double)>> sequenceCoverageByProtease)
         {
             InitializeComponent();

@@ -1,6 +1,4 @@
 using Omics.Digestion;
-using Proteomics.AminoAcidPolymer;
-using Proteomics.ProteolyticDigestion;
 using Tasks;
 
 namespace GuiFunctions;

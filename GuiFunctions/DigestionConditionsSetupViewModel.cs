@@ -14,8 +14,8 @@ public class DigestionConditionsSetupViewModel : BaseViewModel
 
     public ObservableCollection<ProteaseSpecificParametersViewModel> ProteaseSpecificParameters { get; } = new();
 
-    private readonly Parameters _parameters;
-    public Parameters Parameters
+    private RunParameters _parameters;
+    public RunParameters Parameters
     {
         get
         {
@@ -27,9 +27,9 @@ public class DigestionConditionsSetupViewModel : BaseViewModel
         }
     }
 
-    public DigestionConditionsSetupViewModel(Parameters? parameters)
+    public DigestionConditionsSetupViewModel(RunParameters? parameters)
     {
-        _parameters = parameters ?? new Parameters();
+        _parameters = parameters ?? new RunParameters();
         OxidativeMethionine = GlobalVariables.AllModsKnown.First(p => p.IdWithMotif == "Oxidation on M");
         Carbamidomethylation = GlobalVariables.AllModsKnown.First(p => p.IdWithMotif == "Carbamidomethyl on C");
 
@@ -38,6 +38,58 @@ public class DigestionConditionsSetupViewModel : BaseViewModel
         SetDefaultProteasesCommand = new RelayCommand(SetDefaultProteases);
         ClearProteasesCommand = new RelayCommand(ClearProteases);
         ResetDigestionConditionsCommand = new RelayCommand(ResetDigestionConditions);
+
+
+        // Initialize local fields with current parameter values
+        LoadFromParameters();
+    }
+
+    /// <summary>
+    /// Loads current values from the underlying RunParameters into local fields.
+    /// Called when loading a new parameters file.
+    /// </summary>
+    public void LoadFromParameters(RunParameters? runParams = null)
+    {
+        if (runParams is not null)
+            _parameters = runParams;
+
+        _treatModifiedPeptidesAsDifferent = _parameters.TreatModifiedPeptidesAsDifferent;
+
+        // Load values from first protease if any exist
+        if (_parameters.ProteaseSpecificParameters.Any())
+        {
+            var firstProtease = _parameters.ProteaseSpecificParameters.First();
+            _maxMissedCleavages = firstProtease.DigestionParams.MaxMissedCleavages;
+            _minLength = firstProtease.DigestionParams.MinLength;
+            _maxLength = firstProtease.DigestionParams.MaxLength;
+        }
+
+        foreach (var specificParams in ProteaseSpecificParameters)
+        {
+            var matchingParams = _parameters.ProteaseSpecificParameters.FirstOrDefault(p => p.DigestionParams.DigestionAgent.Name == specificParams.DigestionAgentName);
+            if (matchingParams != null)
+            {
+                specificParams.MaxMissedCleavages = matchingParams.DigestionParams.MaxMissedCleavages;
+                specificParams.MinLength = matchingParams.DigestionParams.MinLength;
+                specificParams.MaxLength = matchingParams.DigestionParams.MaxLength;
+                specificParams.IsSelected = true;
+            }
+            else
+            {
+                specificParams.MaxMissedCleavages = _maxMissedCleavages;
+                specificParams.MinLength = _minLength;
+                specificParams.MaxLength = _maxLength;
+                specificParams.IsSelected = false;
+            }
+        }
+
+        // Refresh UI
+        OnPropertyChanged(nameof(MaxMissedCleavages));
+        OnPropertyChanged(nameof(MinLength));
+        OnPropertyChanged(nameof(MaxLength));
+        OnPropertyChanged(nameof(MinPeptideMass));
+        OnPropertyChanged(nameof(MaxPeptideMass));
+        OnPropertyChanged(nameof(TreatModifiedPeptidesAsDifferent));
     }
 
     #region Properties to Set AllSpecificParameters
@@ -202,20 +254,26 @@ public class DigestionConditionsSetupViewModel : BaseViewModel
 
     public void PopulateProteaseCollection()
     {
-        string proteaseDirectory = System.IO.Path.Combine(GlobalVariables.DataDir, @"ProteolyticDigestion");
-        string proteaseFilePath = System.IO.Path.Combine(proteaseDirectory, @"proteases.tsv");
-        Dictionary<string, Protease> dict = ProteaseDictionary.LoadProteaseDictionary(proteaseFilePath, GlobalVariables.ProteaseMods);
-
+        var dict = ProteaseDictionary.Dictionary;
         foreach (var protease in dict)
         {
             ProteaseSpecificParametersViewModel? current = ProteaseSpecificParameters.FirstOrDefault(p => p.DigestionAgentName == protease.Value.Name);
+
+            bool shouldSelect = _parameters.ProteaseSpecificParameters.Any(p => p.DigestionParams.DigestionAgent.Name == protease.Value.Name);
 
             if (current == null)
             {
                 var newDig = new DigestionParams(protease.Key, MaxMissedCleavages, MinLength, MaxLength);
                 var newParams = new ProteaseSpecificParameters(newDig, null, null);
-                var newParamsVM = new ProteaseSpecificParametersViewModel(newParams, this);
+                var newParamsVM = new ProteaseSpecificParametersViewModel(newParams, this)
+                {
+                    IsSelected = shouldSelect
+                };
                 ProteaseSpecificParameters.Add(newParamsVM);
+            }
+            else
+            {
+                current.IsSelected = shouldSelect;
             }
 
         }

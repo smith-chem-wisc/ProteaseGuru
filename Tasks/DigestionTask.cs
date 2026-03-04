@@ -44,7 +44,7 @@ namespace Tasks
         public static event EventHandler<StringEventArgs>? DigestionWarnHandler;
         public static event EventHandler<StringEventArgs>? OutLabelStatusHandler;
 
-        public Parameters DigestionParameters { get; set; }
+        public RunParameters DigestionParameters { get; set; }
         public Dictionary<string, Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>>? PeptideByFile;
         public static Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>? AllPeptidesByProtease;
         public Dictionary<string, Dictionary<Protein, (double, double)>> SequenceCoverageByProtease = new();
@@ -56,7 +56,7 @@ namespace Tasks
 
         public DigestionTask() : base(MyTask.Digestion)
         {
-            DigestionParameters = new Parameters();
+            DigestionParameters = new RunParameters();
         }
 
         #endregion
@@ -206,7 +206,7 @@ namespace Tasks
         Dictionary<Protein, List<InSilicoPep>> DeterminePeptideStatus(
             string databaseName,
             Dictionary<Protein, List<IBioPolymerWithSetMods>> databasePeptides,
-            Parameters userParams)
+            RunParameters userParams)
         {
             // PHASE 1: Determine uniqueness for all peptide sequences
             // ============================================================================
@@ -595,7 +595,7 @@ namespace Tasks
         /// </summary>
         //digest proteins for each database using the protease and settings provided
         protected Dictionary<Protein, List<IBioPolymerWithSetMods>> DigestDatabase(List<Protein> proteinsFromDatabase,
-            ProteaseSpecificParameters proteaseSpecificParameters, Parameters globalDigestionParams)
+            ProteaseSpecificParameters proteaseSpecificParameters, RunParameters globalDigestionParams)
         {
             Dictionary<Protein, List<IBioPolymerWithSetMods>> peptidesForProtein = new(proteinsFromDatabase.Count);
             foreach (var protein in proteinsFromDatabase)
@@ -629,7 +629,7 @@ namespace Tasks
         protected static void WritePeptidesToTsv(
             Dictionary<string, Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>> peptideByFile,
             string filePath,
-            Parameters userParams)
+            RunParameters userParams)
         {
             const string tab = "\t";
             string header = string.Join(tab,
@@ -735,75 +735,9 @@ namespace Tasks
                 }
             }
 
-            // Write digestion conditions
-            List<string> parameters = new List<string>();
-
-            // write shared parameters for all digestions to a text file in the output folder
-            parameters.Add("Digestion Conditions:");
-            parameters.Add("Database: " + string.Join(',', peptideByFile.Keys));
-            parameters.Add("Treat modified peptides as different peptides: " + userParams.TreatModifiedPeptidesAsDifferent);
-            parameters.Add("Min Peptide Mass: " + userParams.MinPeptideMassAllowed);
-            parameters.Add("Max Peptide Mass: " + userParams.MaxPeptideMassAllowed);
-
-            // Extract Values from each digestion parameter
-            List<string>? proteases = [];
-            List<int>? missedCleavages = [];
-            List<int>? minLength = [];
-            List<int>? maxLength = [];
-
-            foreach (var specific in userParams.ProteaseSpecificParameters)
-            {
-                proteases.Add(specific.DigestionAgentName);
-                missedCleavages.Add(specific.DigestionParams.MaxMissedCleavages);
-                minLength.Add(specific.DigestionParams.MinLength);
-                maxLength.Add(specific.DigestionParams.MaxLength);
-            }
-
-            // If all share the same value, add that to the shared section
-            if (missedCleavages.Distinct().Count() == 1)
-            {
-                parameters.Add("Missed Cleavages: " + missedCleavages.First());
-                missedCleavages = null;
-            }
-
-            if (minLength.Distinct().Count() == 1)
-            {
-                parameters.Add("Min Peptide Length: " + minLength.First());
-                minLength = null;
-            }
-
-            if (maxLength.Distinct().Count() == 1)
-            {
-                parameters.Add("Max Peptide Length: " + maxLength.First());
-                maxLength = null;
-            }
-
-            if (missedCleavages is null && minLength is null && maxLength is null)
-            {
-                parameters.Add("Proteases: " + string.Join(", ", proteases));
-            }
-            else
-            {
-                for (int i = 0; i < userParams.ProteaseSpecificParameters.Count; i++)
-                {
-                    List<string> specificParams = new List<string>();
-                    if (missedCleavages is not null)
-                    {
-                        specificParams.Add("Missed Cleavages: " + missedCleavages[i]);
-                    }
-                    if (minLength is not null)
-                    {
-                        specificParams.Add("Min Peptide Length: " + minLength[i]);
-                    }
-                    if (maxLength is not null)
-                    {
-                        specificParams.Add("Max Peptide Length: " + maxLength[i]);
-                    }
-                    parameters.Add(proteases[i] + ": " + string.Join("\n\t", specificParams));
-                }
-            }
-
-            File.WriteAllLines(filePath + @"\DigestionConditions.txt", parameters);
+            // Write digestion parameters to TOML file
+            string tomlPath = Path.Combine(filePath, "DigestionParameters.toml");
+            RunParameters.ToToml(userParams, tomlPath);
         }
 
         #endregion
