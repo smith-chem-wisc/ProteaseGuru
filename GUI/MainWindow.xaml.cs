@@ -1,19 +1,8 @@
 using Proteomics;
-using System;
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
-using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
-using System.Windows.Shapes;
 using Engine;
 using Tasks;
 using Proteomics.ProteolyticDigestion;
@@ -26,6 +15,7 @@ using Omics.Digestion;
 using Omics.Modifications;
 using UsefulProteomicsDatabases;
 using GuiFunctions;
+using Easy.Common.Extensions;
 
 namespace GUI
 {
@@ -728,8 +718,10 @@ namespace GUI
                         if (info.Length > 17)
                         {
                             chronologerRetentionTime = Convert.ToDouble(info[17]);
+                        }
+                        if (info.Length > 18 && info[18].IsNotNullOrEmpty())
+                        {
                             pflyDetectability = Convert.ToBoolean(info[18]);
-
                         }
 
                         InSilicoPep pep = new InSilicoPep(baseSeq, fullSeq, previousAA, nextAA, unique, hydrophobicity, electrophoreticMobility,

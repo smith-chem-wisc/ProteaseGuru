@@ -48,6 +48,7 @@ namespace Tasks
         public Dictionary<string, Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>>? PeptideByFile;
         public static Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>? AllPeptidesByProtease;
         public Dictionary<string, Dictionary<Protein, (double, double)>> SequenceCoverageByProtease = new();
+        public Dictionary<string, Dictionary<Protein, (double, double)>> SequenceCoverageByProteaseFromDetectablePeptides = new();
 
         #endregion
 
@@ -116,6 +117,18 @@ namespace Tasks
                 Status("Writing Peptide Output...", "peptides");
                 WritePeptidesToTsv(PeptideByFile, OutputFolder, DigestionParameters);
                 SequenceCoverageByProtease = CalculateProteinSequenceCoverage(PeptideByFile);
+                SequenceCoverageByProteaseFromDetectablePeptides = CalculateProteinSequenceCoverage(
+                    PeptideByFile.ToDictionary(
+                        db => db.Key,
+                        db => db.Value.ToDictionary(
+                            protease => protease.Key,
+                            protease => protease.Value.ToDictionary(
+                                protein => protein.Key,
+                                protein => protein.Value.Where(peptide => peptide.PflyDetectability == true).ToList()
+                            )
+                        )
+                    )
+                );
                 MyTaskResults myRunResults = new MyTaskResults(this);
                 Status("Writing Results Summary...", "summary");
 
@@ -508,25 +521,16 @@ namespace Tasks
                 {
                     string proteaseName = protease.Key;
 
-                    if (allDatabasePeptidesByProtease.ContainsKey(proteaseName))
+                    if (!allDatabasePeptidesByProtease.TryGetValue(proteaseName, out var peptideList))
                     {
-                        foreach (var proteinEntry in protease.Value)
-                        {
-                            allDatabasePeptidesByProtease[proteaseName].AddRange(proteinEntry.Value);
-                            accessionToProtein[proteinEntry.Key.Accession] = proteinEntry.Key;
-                        }
+                        peptideList = new List<InSilicoPep>();
+                        allDatabasePeptidesByProtease[proteaseName] = peptideList;
                     }
-                    else
-                    {
-                        allDatabasePeptidesByProtease.Add(
-                            proteaseName,
-                            protease.Value.SelectMany(p => p.Value).ToList()
-                        );
 
-                        foreach (var proteinEntry in protease.Value)
-                        {
-                            accessionToProtein[proteinEntry.Key.Accession] = proteinEntry.Key;
-                        }
+                    foreach (var proteinEntry in protease.Value)
+                    {
+                        peptideList.AddRange(proteinEntry.Value);
+                        accessionToProtein[proteinEntry.Key.Accession] = proteinEntry.Key;
                     }
                 }
             }
