@@ -22,6 +22,7 @@ namespace Tasks
         public List<int> ChargeStates { get; set; }
         public int CollisionEnergy { get; set; }
         public bool ExcludeIncompatiblePeptides { get; set; }
+        public bool ExcludeUndetectablePeptides { get; set; }
         public double MinimumIntensityThreshold { get; set; }
         public string OutputFormat { get; set; }
     }

@@ -91,6 +91,7 @@ namespace GUI
                 ChargeStates = GetSelectedChargeStates(),
                 CollisionEnergy = int.Parse(tbCollisionEnergy.Text),
                 ExcludeIncompatiblePeptides = cbExcludeIncompatiblePeptides.IsChecked == true,
+                ExcludeUndetectablePeptides = cbExcludeUndetectablePeptides.IsChecked == true,
                 MinimumIntensityThreshold = double.Parse(tbIntensityThreshold.Text),
                 OutputFormat = ((ComboBoxItem)cbOutputFormat.SelectedItem).Tag.ToString()
             };

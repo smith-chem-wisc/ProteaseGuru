@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:gui="clr-namespace:GUI"
         mc:Ignorable="d"
-        Title="Spectral Library Export Options" Height="750" Width="500">
+        Title="Spectral Library Export Options" Height="750" Width="500" WindowStartupLocation="CenterScreen">
     <Window.Resources>
         <SolidColorBrush x:Key="BackgroundColor" Color="#D5D5D5" />
         <SolidColorBrush x:Key="TextColor1" Color="#131313" />
@@ -165,6 +165,8 @@
                 <StackPanel Orientation="Vertical" Margin="15,5">
                     <CheckBox x:Name="cbExcludeIncompatiblePeptides" Content="Exclude Incompatible Peptides" IsChecked="True"/>
                     <TextBlock Text="If unchecked, the unsupported modifications will be removed and a prediction will be generated." FontSize="10" Margin="20,0,0,5" TextWrapping="Wrap"/>
+                    <CheckBox x:Name="cbExcludeUndetectablePeptides" Content="Exclude Undetectable Peptides" IsChecked="False"/>
+                    <TextBlock Text="If checked, peptides predicted to have low detectability will be excluded." FontSize="10" Margin="20,0,0,5" TextWrapping="Wrap"/>
                 </StackPanel>
 
                 <!-- Summary -->

@@ -1031,7 +1031,8 @@ namespace GUI
                     peptides.UnionWith(proteinPeptides);
                 }
             }
-
+            peptides = options.ExcludeUndetectablePeptides ? peptides.Where(p => p.PflyDetectability == true).ToHashSet()
+                : peptides;
             return peptides.DistinctBy(p => p.FullSequence).ToList();
         }
 
