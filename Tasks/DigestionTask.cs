@@ -746,35 +746,6 @@ namespace Tasks
 
         #endregion
 
-        #region Spectral Library Output
-        private void WriteSpectralLibrary(string outputPath, Dictionary<string, Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>> peptideByFile)
-        {
-            var fragmentModel = new Prosit2020IntensityHCD(
-                modHandlingMode: IncompatibleModHandlingMode.RemoveIncompatibleMods,
-                fragmentIonMappingMode: FragmentIonMappingMode.MapToInputFullSequence
-                );
-
-            foreach(var file in peptideByFile.Keys)
-            {
-                foreach(var protease in peptideByFile[file].Keys)
-                {
-                    var peptides = peptideByFile[file][protease].SelectMany(p => p.Value).DistinctBy(p=>p.FullSequence);
-                    var inputs = peptides.Select(p => new FragmentIntensityPredictionInput(
-                        // TODO: FINISH THIS
-                        ).ToList();
-                    var predictions = fragmentModel.Predict(inputs);
-                    // Here you would write the predictions to a spectral library format (e.g., .msp, .sptxt)
-                    // This is a placeholder for demonstration purposes
-
-                    string spectralLibraryPath = Path.Combine(outputPath, $"{file}_{protease}_SpectralLibrary.msp");
-                    // TODO: Finish writing the spectral library file using the predictions
-                }
-            }
-            }
-        }
-
-        #endregion
-
         #region Utility Methods
 
         private void Warn(string message)

@@ -276,7 +276,10 @@
 
                     </ScrollViewer>
 
-                    <Button x:Name="exportPngButton" Content="Export Protein Digestion Results" Click="exportCoverageMap" Grid.Row="3" Width="250" Style="{StaticResource ImportantButtonStyle}"/>
+                    <Button x:Name="exportPngButton" Content="Export Protein Digestion Results" Click="exportCoverageMap" Grid.Row="3" Width="250" HorizontalAlignment="Left" Margin="20,0,0,0" Style="{StaticResource ImportantButtonStyle}"/>
+                    <Button x:Name="exportSpectralLibraryButton" Content="Export Spectral Library" Click="ExportSpectralLibrary" Grid.Row="3" Width="200"  HorizontalAlignment="Right" Margin="0,0,20,0" 
+                            Style="{StaticResource ImportantButtonStyle}"
+                            ToolTip="Generate in silico spectral library from digestion results"/>
 
                 </Grid>
             </Grid>
