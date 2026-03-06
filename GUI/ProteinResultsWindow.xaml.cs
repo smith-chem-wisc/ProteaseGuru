@@ -1,7 +1,9 @@
 using System.Collections.ObjectModel;
 using System.IO;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using Omics.BioPolymer;
@@ -917,7 +919,7 @@ namespace GUI
         /// <summary>
         /// Opens the spectral library export options dialog
         /// </summary>
-        private void ExportSpectralLibrary(object sender, RoutedEventArgs e)
+        private async void ExportSpectralLibrary(object sender, RoutedEventArgs e)
         {
             // Gather available proteases and proteins from the analyzer
             var availableProteases = _analyzer.Proteases.ToList();
@@ -940,18 +942,17 @@ namespace GUI
 
             if (optionsWindow.DialogResultOk)
             {
-                ExecuteSpectralLibraryExport(optionsWindow.ExportOptions);
+                await ExecuteSpectralLibraryExportAsync(optionsWindow.ExportOptions);
             }
         }
 
         /// <summary>
         /// Executes the spectral library export based on user options
         /// </summary>
-        private void ExecuteSpectralLibraryExport(SpectralLibraryExportOptions options)
+        private async Task ExecuteSpectralLibraryExportAsync(SpectralLibraryExportOptions options)
         {
             try
             {
-                // Show save file dialog
                 var saveDialog = new Microsoft.Win32.SaveFileDialog
                 {
                     Filter = GetFileFilterForSpectralLibrary(options.OutputFormat),
@@ -960,9 +961,10 @@ namespace GUI
                 };
 
                 if (saveDialog.ShowDialog() != true)
+                {
                     return;
+                }
 
-                // Gather peptides based on selections
                 var peptidesToExport = GetPeptidesForSpectralLibraryExport(options);
 
                 if (!peptidesToExport.Any())
@@ -975,38 +977,36 @@ namespace GUI
                     return;
                 }
 
-                // Show progress window
-                var progressMessage = $"Generating spectral library for {peptidesToExport.Count} peptides...\n" +
-                                    $"This may take several minutes.";
-                
-                MessageBox.Show(progressMessage, "Export Starting", MessageBoxButton.OK, MessageBoxImage.Information);
+                MessageBox.Show(
+                    $"Generating spectral library for {peptidesToExport.Count} peptides...\nThis may take several minutes.",
+                    "Export Starting",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
 
-                // Create and execute spectral library generator
                 var generator = new SpectralLibraryGenerator(
                     peptidesToExport,
                     options,
-                    saveDialog.FileName
-                );
+                    saveDialog.FileName);
 
-                // Execute generation
-                var result = generator.GenerateLibrary();
+                Mouse.OverrideCursor = Cursors.Wait;
+                var result = await Task.Run(() => generator.GenerateLibrary());
+                Mouse.OverrideCursor = null;
 
                 MessageBox.Show(
-                    $"Successfully generated spectral library with {result.Count} spectra.\n" +
-                    $"File saved to: {saveDialog.FileName}",
+                    $"Successfully generated spectral library with {result.Count} spectra.\nFile saved to: {saveDialog.FileName}",
                     "Export Complete",
                     MessageBoxButton.OK,
-                    MessageBoxImage.Information
-                );
+                    MessageBoxImage.Information);
             }
             catch (Exception ex)
             {
+                Mouse.OverrideCursor = null;
+
                 MessageBox.Show(
                     $"Error generating spectral library: {ex.Message}\n\n{ex.StackTrace}",
                     "Export Error",
                     MessageBoxButton.OK,
-                    MessageBoxImage.Error
-                );
+                    MessageBoxImage.Error);
             }
         }
 
@@ -1015,7 +1015,7 @@ namespace GUI
         /// </summary>
         private List<InSilicoPep> GetPeptidesForSpectralLibraryExport(SpectralLibraryExportOptions options)
         {
-            var peptides = new HashSet<InSilicoPep>(); // Use HashSet to avoid duplicates
+            var peptides = new HashSet<InSilicoPep>(); 
 
             // Get Protein objects from selected protein accessions
             var selectedProteins = _analyzer.ProteinCoverageResults.Keys
@@ -1028,14 +1028,11 @@ namespace GUI
                 foreach (var proteaseName in options.SelectedProteases)
                 {
                     var proteinPeptides = _analyzer.GetPeptidesForProteinAndProtease(protein, proteaseName);
-                    foreach (var peptide in proteinPeptides)
-                    {
-                        peptides.Add(peptide);
-                    }
+                    peptides.UnionWith(proteinPeptides);
                 }
             }
 
-            return peptides.ToList();
+            return peptides.DistinctBy(p => p.FullSequence).ToList();
         }
 
         private string GetFileFilterForSpectralLibrary(string format)

@@ -61,7 +61,7 @@ namespace Tasks
                     InstrumentType: null,
                     FragmentationType: null
                     )
-                ).ToList());
+                ));
                 rts.AddRange(_peptides.Select(p => p.ChronologerRetentionTime));
             }
 
@@ -91,11 +91,12 @@ namespace Tasks
                 peptide.Fragment(MassSpectrometry.DissociationType.HCD, FragmentationTerminus.Both, theoreticalProducts); 
                 Dictionary<string, double> predictionAnnotationIntensityLookup = new();
                 Dictionary<string, Product> tpLookup = theoreticalProducts.ToDictionary(tp => tp.Annotation);
+                var maxFragmentIntensity = prediction.FragmentIntensities.Max();
 
                 for (int i = 0; i < prediction.FragmentAnnotations.Count; i++)
                 {
                     if (prediction.FragmentIntensities[i] == -1 ||
-                        prediction.FragmentIntensities[i] < _options.MinimumIntensityThreshold ||
+                        prediction.FragmentIntensities[i] < maxFragmentIntensity * _options.MinimumIntensityThreshold ||
                         prediction.FragmentAnnotations[i] == null ||
                         !prediction.FragmentAnnotations[i].Contains("+"))
                     {
@@ -135,7 +136,7 @@ namespace Tasks
 
                 predictedSpectra.Add(spectrum);
             }
-            var warningString = $"Generated {predictedSpectra.Count} spectra from predictions.\n";
+
             var unique = predictedSpectra.DistinctBy(p => p.Name).ToList();
             return unique;
         }
@@ -152,7 +153,9 @@ namespace Tasks
 
         private void WriteMSP(List<LibrarySpectrum> spectra)
         {
-
+            var spectralLibrary = new SpectralLibrary();
+            spectralLibrary.Results = spectra;
+            spectralLibrary.WriteResults(_outputPath);
         }
     }
 }

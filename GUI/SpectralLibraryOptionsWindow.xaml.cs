@@ -4,6 +4,7 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
+using MzLibUtil;
 using Tasks;
 
 namespace GUI
@@ -63,11 +64,13 @@ namespace GUI
 
         private void FragmentModel_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            // Update UI based on model capabilities if needed
-            var selectedItem = cbFragmentModel.SelectedItem as ComboBoxItem;
-            if (selectedItem?.Tag?.ToString() == "Prosit2020TMT")
+            if (cbFragmentModel.SelectedItem is ComboBoxItem selectedItem)
             {
-                // TMT-specific options could be enabled here
+                string modelTag = selectedItem?.Tag?.ToString();
+                if (!string.IsNullOrEmpty(modelTag) && modelTag != "Prosit2020HCD")
+                {
+                    throw new NotImplementedException($"Model {modelTag ?? "null"} is not implemented yet. Only Prosit2020HCD is currently supported.");
+                }
             }
         }
 

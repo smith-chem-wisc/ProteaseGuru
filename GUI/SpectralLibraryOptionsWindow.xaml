@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:gui="clr-namespace:GUI"
         mc:Ignorable="d"
-        Title="Spectral Library Export Options" Height="1200" Width="500">
+        Title="Spectral Library Export Options" Height="750" Width="500">
     <Window.Resources>
         <SolidColorBrush x:Key="BackgroundColor" Color="#D5D5D5" />
         <SolidColorBrush x:Key="TextColor1" Color="#131313" />
