@@ -5,20 +5,40 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:gui="clr-namespace:GUI"
         mc:Ignorable="d"
-        Title="Spectral Library Export Options" Height="1400" Width="500" WindowStartupLocation="CenterScreen">
+        Title="Spectral Library Export Options" Height="500" Width="500" WindowStartupLocation="CenterScreen">
     <Window.Resources>
         <SolidColorBrush x:Key="BackgroundColor" Color="#D5D5D5" />
         <SolidColorBrush x:Key="TextColor1" Color="#131313" />
         <SolidColorBrush x:Key="AccentColor" Color="#F9690E" />
+        <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
 
-        <!-- Style GroupBoxes -->
-        <Style TargetType="GroupBox">
+        <!-- Style Expander -->
+        <Style TargetType="Expander">
             <Setter Property="BorderThickness" Value="3 1 1 1"/>
-            <Setter Property="Padding" Value="10"/>
+            <Setter Property="Padding" Value="5"/>
             <Setter Property="BorderBrush" Value="DarkSlateGray"/>
             <Setter Property="Background" Value="{StaticResource BackgroundColor}"/>
             <Setter Property="UseLayoutRounding" Value="True"/>
             <Setter Property="SnapsToDevicePixels" Value="True"/>
+            <Setter Property="Margin" Value="15,5"/>
+            <Setter Property="HeaderTemplate">
+                <Setter.Value>
+                    <DataTemplate>
+                        <TextBlock Text="{Binding}" Foreground="Black" FontWeight="Bold"/>
+                    </DataTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        
+        <!-- Style GroupBox -->
+        <Style TargetType="GroupBox">
+            <Setter Property="BorderThickness" Value="3 1 1 1"/>
+            <Setter Property="Padding" Value="5"/>
+            <Setter Property="BorderBrush" Value="DarkSlateGray"/>
+            <Setter Property="Background" Value="{StaticResource BackgroundColor}"/>
+            <Setter Property="UseLayoutRounding" Value="True"/>
+            <Setter Property="SnapsToDevicePixels" Value="True"/>
+            <Setter Property="Margin" Value="15,5"/>
             <Setter Property="HeaderTemplate">
                 <Setter.Value>
                     <DataTemplate>
@@ -117,7 +137,7 @@
 
                 <!-- Protein Selection -->
                 <Label Content="Protein Selection (Multi-select)" Style="{StaticResource SectionHeaderStyle}"/>
-                <TextBlock Text="Leave empty to export all proteins." FontWeight="Bold" Foreground="DarkOrange" Margin="15,0,0,5" FontSize="10"/>
+                <TextBlock Text="No selection will export all proteins." FontWeight="Bold" Foreground="DarkOrange" Margin="15,0,0,5" FontSize="10"/>
 
                 <DockPanel Margin="15,0,15,5">
                     <Label Content="Search:" DockPanel.Dock="Left" Width="60"/>
@@ -139,24 +159,24 @@
                 </StackPanel>
 
                 <!-- Fragment Intensity Prediction Options -->
-                <GroupBox Header="Fragment Intensity Prediction Options">
-                    <StackPanel Orientation="Vertical">
-                        
+                <Expander Header="Fragment Intensity Prediction Options" IsExpanded="True">
+                    <StackPanel Orientation="Vertical" Background="{StaticResource BackgroundColor}">
+
                         <!-- Fragment Prediction Model -->
                         <StackPanel Orientation="Horizontal" Margin="15,5">
                             <Label Content="Model:" FontWeight="Bold" Margin="15,0" VerticalAlignment="Center"/>
                             <ComboBox x:Name="cbFragmentModel" Margin="0,5" Width="200"
-                              SelectionChanged="FragmentModel_SelectionChanged" VerticalAlignment="Center">
+                                      SelectionChanged="FragmentModel_SelectionChanged" VerticalAlignment="Center">
                                 <ComboBoxItem Content="Prosit 2020 Intensity HCD" IsSelected="True" IsEnabled="False" Tag="Prosit2020HCD" />
                             </ComboBox>
                         </StackPanel>
 
                         <!-- Charge States -->
                         <StackPanel Orientation="Horizontal" Margin="15,5">
-                            <Label Content="Charge States to Predict:" FontWeight="Bold"  Margin="15,0" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                            <Label Content="Charge States to Predict:" FontWeight="Bold" Margin="15,0" VerticalAlignment="Center" HorizontalAlignment="Center"/>
                             <CheckBox x:Name="cbCharge2" Content="2+" IsChecked="True" Margin="5,5" VerticalAlignment="Center"/>
                             <CheckBox x:Name="cbCharge3" Content="3+" IsChecked="True" Margin="5,5" VerticalAlignment="Center"/>
-                            <CheckBox x:Name="cbCharge4" Content="4+" IsChecked="False"  Margin="5,5" VerticalAlignment="Center"/>
+                            <CheckBox x:Name="cbCharge4" Content="4+" IsChecked="False" Margin="5,5" VerticalAlignment="Center"/>
                         </StackPanel>
 
                         <!-- Collision Energy -->
@@ -166,45 +186,79 @@
                             <Label Content="%" Margin="5,0"/>
                         </StackPanel>
                     </StackPanel>
-                </GroupBox>
+                </Expander>
 
                 <!-- Model Input Filtering Options -->
-                <Label Content="Peptide Filtering Options" Style="{StaticResource SectionHeaderStyle}"/>
-                <StackPanel Orientation="Vertical" Margin="15,5">
-                    <CheckBox x:Name="cbExcludeIncompatiblePeptides" Content="Exclude Incompatible Peptides" IsChecked="True" Margin="15,5" FontWeight="Bold"/>
-                    <TextBlock Text="If unchecked, the unsupported modifications will be removed and a prediction will be generated." FontSize="10" Margin="35,0,5,5" TextWrapping="Wrap"/>
-                    <CheckBox x:Name="cbExcludeUndetectablePeptides" Content="Exclude Undetectable Peptides" IsChecked="False" Margin="15,5" FontWeight="Bold"/>
-                    <TextBlock Text="If checked, peptides predicted to have low detectability will be excluded." FontSize="10" Margin="35,0,5,0" TextWrapping="Wrap"/>
-                </StackPanel>
+                <Expander Header="Peptide Filtering Options">
+                    <StackPanel Orientation="Vertical" Margin="15,5">
+                        <CheckBox x:Name="cbExcludeIncompatiblePeptides" Content="Exclude Incompatible Peptides" IsChecked="True" Margin="15,5" FontWeight="Bold">
+                            <CheckBox.ToolTip>
+                                <ToolTip Content="If checked, peptides with unsupported modifications will be excluded from the export. If unchecked, the unsupported modifications will be removed and a prediction will be generated." FontSize="10" Margin="35,0,5,5"/>
+                            </CheckBox.ToolTip>
+                        </CheckBox>
+                        <CheckBox x:Name="cbExcludeUndetectablePeptides" Content="Exclude Undetectable Peptides" IsChecked="False" Margin="15,5" FontWeight="Bold">
+                            <CheckBox.ToolTip>
+                                <ToolTip Content="If checked, peptides predicted to have low detectability will be excluded." FontSize="10" Margin="35,0,5,5"/>
+                            </CheckBox.ToolTip>
+                        </CheckBox>
+                    </StackPanel>
+                </Expander>
 
                 <!-- Model Output Filtering Options -->
-                <Label Content="Fragment Ion Filtering Options" Style="{StaticResource SectionHeaderStyle}"/>
-                <Label Content="M/Z Filtering" FontWeight="Bold" Margin="15,10,0,5"/>
-                <StackPanel Orientation="Horizontal" Margin="15,5">
-                    <Label Content="Minimum M/Z Threshold" FontWeight="Bold"  Margin="15,0" VerticalAlignment="Center" HorizontalAlignment="Center"/>
-                    <gui:IntegerTextBoxControl x:Name="tbMzThreshold" Width="60" Text="0" LowerBound="0" Margin="5,5"/>
-                </StackPanel>
-                <TextBlock Text="If checked, peptides predicted to have low detectability will be excluded." FontSize="10" Margin="35,0,5,5" TextWrapping="Wrap"/>
+                <Expander Header="Fragment Ion Filtering Options">
+                    <StackPanel Orientation="Vertical" Margin="15,5">
+                        <CheckBox x:Name="cbExcludeUndetectableIons" Content="Exclude Undetectable Fragment Ions" IsChecked="False" Margin="15,5" FontWeight="Bold">
+                            <CheckBox.ToolTip>
+                                <ToolTip Content="If checked, peptides predicted to have low detectability will be excluded." FontSize="10" Margin="35,0,5,5"/>
+                            </CheckBox.ToolTip>
+                        </CheckBox>
 
-                <Label Content="Intensity Filtering" FontWeight="Bold" Margin="15,10,0,5"/>
-                <StackPanel Orientation="Vertical" Margin="15,5">
-                    <CheckBox x:Name="cbEnableIntensityThresholdFiltering" Content="Filter Fragment Ion Intensities Relative to Max Intensity" FontWeight="Bold"  IsChecked="True" Margin="15,0"/>
-                    <StackPanel  Orientation="Horizontal" Margin="15,5" Visibility="{Binding ElementName=cbEnableIntensityThresholdFiltering, Path=IsChecked}">
-                        <Label Content="Minimum Intensity Threshold (%)" Margin="15,0" VerticalAlignment="Center" HorizontalAlignment="Center"/>
-                        <gui:DoubleTextBoxControl x:Name="tbIntensityThreshold" Width="60" Text="0.1" LowerBound="0" UpperBound="100" Margin="5,5"/>
-                    </StackPanel>
+                        <GroupBox Header="M/Z Filtering">
+                            <StackPanel Orientation="Vertical">
+                                <StackPanel Orientation="Horizontal" Margin="15,5">
+                                    <Label Content="Minimum M/Z Threshold:" FontWeight="Bold" Margin="15,0" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                                    <gui:IntegerTextBoxControl x:Name="tbMinMzThreshold" Width="60" Text="200" LowerBound="0" Margin="5,5">
+                                        <gui:IntegerTextBoxControl.ToolTip>
+                                            <ToolTip Content="Fragment ions with an m/z lower than this threshold will be excluded." FontSize="10" Margin="35,0,5,5"/>
+                                        </gui:IntegerTextBoxControl.ToolTip>
+                                    </gui:IntegerTextBoxControl>
+                                </StackPanel>
 
-                    <CheckBox x:Name="cbTopNIntensityFiltering" Content="Keep Only the N Most Intense Fragment Ions" FontWeight="Bold"  IsChecked="False" Margin="15,0"/>
-                    <StackPanel  Orientation="Horizontal" Margin="15,5" Visibility="{Binding ElementName=cbTopNIntensityFiltering, Path=IsChecked}">
-                        <Label Content="N:" Margin="15,0" VerticalAlignment="Center" HorizontalAlignment="Center"/>
-                        <gui:IntegerTextBoxControl x:Name="tbTopNIntense" Width="60" Text="12" LowerBound="0" UpperBound="100" Margin="5,5"/>
+                                <StackPanel Orientation="Horizontal" Margin="15,5">
+                                    <Label Content="Maximum M/Z Threshold:" FontWeight="Bold" Margin="15,0" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                                    <gui:IntegerTextBoxControl x:Name="tbMaxMzThreshold" Width="60" Text="2000" LowerBound="0" Margin="5,5">
+                                        <gui:IntegerTextBoxControl.ToolTip>
+                                            <ToolTip Content="Fragment ions with an m/z higher than this threshold will be excluded." FontSize="10" Margin="35,0,5,5"/>
+                                        </gui:IntegerTextBoxControl.ToolTip>
+                                    </gui:IntegerTextBoxControl>
+                                </StackPanel>
+                            </StackPanel>
+                        </GroupBox>
+
+                        <GroupBox Header="Intensity Filtering">
+                            <StackPanel Orientation="Vertical" Margin="15,5">
+
+                                <CheckBox x:Name="cbEnableIntensityThresholdFiltering" Content="Filter Fragment Ion Intensities Relative to Max Intensity" FontWeight="Bold" IsChecked="True" Margin="15,0" Checked="cbEnableIntensityThresholdFiltering_Checked"/>
+                                <StackPanel Orientation="Horizontal" Margin="15,5" Visibility="{Binding ElementName=cbEnableIntensityThresholdFiltering, Path=IsChecked, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                    <Label Content="Minimum Intensity Threshold (%):" Margin="15,0" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                                    <gui:DoubleTextBoxControl x:Name="tbIntensityThreshold" Width="60" Text="0.01" LowerBound="0" UpperBound="100" Margin="5,5"/>
+                                </StackPanel>
+
+                                <CheckBox x:Name="cbTopNIntensityFiltering" Content="Keep Only the N Most Intense Fragment Ions" FontWeight="Bold" IsChecked="False" Margin="15,0"/>
+                                <StackPanel Orientation="Horizontal" Margin="15,5" Visibility="{Binding ElementName=cbTopNIntensityFiltering, Path=IsChecked, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                    <Label Content="Top" Margin="15,0,0,0" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                                    <gui:IntegerTextBoxControl x:Name="tbTopNIntense" Width="30" Text="12" AllowNegative="False" Margin="0,5"/>
+                                    <Label Content="Most Intense Fragment Ions" Margin="0,5,0,5" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                                </StackPanel>
+                            </StackPanel>
+                        </GroupBox>
                     </StackPanel>
-                </StackPanel>
+                </Expander>
 
                 <!-- Output File Format -->
-                <Label Content="Spectral Library File Format" Style="{StaticResource SectionHeaderStyle}"/>
-                <StackPanel Orientation="Vertical" Margin="15,5">
-                    <ComboBox x:Name="cbOutputFormat" Margin="15,0" Width="200" HorizontalAlignment="Left">
+                <StackPanel Orientation="Horizontal" Margin="15,5">
+                    <Label Content="File Format:" Margin="15,5" VerticalAlignment="Center" Style="{StaticResource SectionHeaderStyle}"/>
+                    <ComboBox x:Name="cbOutputFormat" Margin="15,5" Width="200" VerticalAlignment="Center">
                         <ComboBoxItem Content="MSP Format (.msp)" IsSelected="True" IsEnabled="False" Tag="MSP"/>
                     </ComboBox>
                 </StackPanel>

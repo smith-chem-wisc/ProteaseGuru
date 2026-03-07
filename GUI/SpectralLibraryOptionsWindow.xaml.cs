@@ -237,5 +237,10 @@ namespace GUI
                 runProteinCount.Text = lbProteins.SelectedItems.Count.ToString();
             }
         }
+
+        private void cbEnableIntensityThresholdFiltering_Checked(object sender, RoutedEventArgs e)
+        {
+
+        }
     }
 }
