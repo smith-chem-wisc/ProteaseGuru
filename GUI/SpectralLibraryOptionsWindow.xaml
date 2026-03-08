@@ -5,12 +5,13 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:gui="clr-namespace:GUI"
         mc:Ignorable="d"
-        Title="Spectral Library Export Options" Height="500" Width="500" WindowStartupLocation="CenterScreen">
+        Title="Spectral Library Export Options" Height="710" Width="600" WindowStartupLocation="CenterScreen">
     <Window.Resources>
         <SolidColorBrush x:Key="BackgroundColor" Color="#D5D5D5" />
         <SolidColorBrush x:Key="TextColor1" Color="#131313" />
         <SolidColorBrush x:Key="AccentColor" Color="#F9690E" />
-        <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
+        <gui:BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
+        <gui:NOTConverter x:Key="NOTConverter" />
 
         <!-- Style Expander -->
         <Style TargetType="Expander">
@@ -32,7 +33,7 @@
         
         <!-- Style GroupBox -->
         <Style TargetType="GroupBox">
-            <Setter Property="BorderThickness" Value="3 1 1 1"/>
+            <Setter Property="BorderThickness" Value="4 1 1 1"/>
             <Setter Property="Padding" Value="5"/>
             <Setter Property="BorderBrush" Value="DarkSlateGray"/>
             <Setter Property="Background" Value="{StaticResource BackgroundColor}"/>
@@ -167,7 +168,7 @@
                             <Label Content="Model:" FontWeight="Bold" Margin="15,0" VerticalAlignment="Center"/>
                             <ComboBox x:Name="cbFragmentModel" Margin="0,5" Width="200"
                                       SelectionChanged="FragmentModel_SelectionChanged" VerticalAlignment="Center">
-                                <ComboBoxItem Content="Prosit 2020 Intensity HCD" IsSelected="True" IsEnabled="False" Tag="Prosit2020HCD" />
+                                <ComboBoxItem Content="Prosit 2020 Intensity HCD" IsSelected="True" IsEnabled="False" Tag="Prosit2020IntensityHCD" />
                             </ComboBox>
                         </StackPanel>
 
@@ -207,30 +208,25 @@
                 <!-- Model Output Filtering Options -->
                 <Expander Header="Fragment Ion Filtering Options">
                     <StackPanel Orientation="Vertical" Margin="15,5">
-                        <CheckBox x:Name="cbExcludeUndetectableIons" Content="Exclude Undetectable Fragment Ions" IsChecked="False" Margin="15,5" FontWeight="Bold">
-                            <CheckBox.ToolTip>
-                                <ToolTip Content="If checked, peptides predicted to have low detectability will be excluded." FontSize="10" Margin="35,0,5,5"/>
-                            </CheckBox.ToolTip>
-                        </CheckBox>
 
                         <GroupBox Header="M/Z Filtering">
                             <StackPanel Orientation="Vertical">
                                 <StackPanel Orientation="Horizontal" Margin="15,5">
                                     <Label Content="Minimum M/Z Threshold:" FontWeight="Bold" Margin="15,0" VerticalAlignment="Center" HorizontalAlignment="Center"/>
-                                    <gui:IntegerTextBoxControl x:Name="tbMinMzThreshold" Width="60" Text="200" LowerBound="0" Margin="5,5">
-                                        <gui:IntegerTextBoxControl.ToolTip>
+                                    <gui:DoubleTextBoxControl x:Name="tbMinMzThreshold" Width="60" Text="200" LowerBound="0" Margin="5,5">
+                                        <gui:DoubleTextBoxControl.ToolTip>
                                             <ToolTip Content="Fragment ions with an m/z lower than this threshold will be excluded." FontSize="10" Margin="35,0,5,5"/>
-                                        </gui:IntegerTextBoxControl.ToolTip>
-                                    </gui:IntegerTextBoxControl>
+                                        </gui:DoubleTextBoxControl.ToolTip>
+                                    </gui:DoubleTextBoxControl>
                                 </StackPanel>
 
                                 <StackPanel Orientation="Horizontal" Margin="15,5">
                                     <Label Content="Maximum M/Z Threshold:" FontWeight="Bold" Margin="15,0" VerticalAlignment="Center" HorizontalAlignment="Center"/>
-                                    <gui:IntegerTextBoxControl x:Name="tbMaxMzThreshold" Width="60" Text="2000" LowerBound="0" Margin="5,5">
-                                        <gui:IntegerTextBoxControl.ToolTip>
+                                    <gui:DoubleTextBoxControl x:Name="tbMaxMzThreshold" Width="60" Text="2000" LowerBound="0" Margin="5,5">
+                                        <gui:DoubleTextBoxControl.ToolTip>
                                             <ToolTip Content="Fragment ions with an m/z higher than this threshold will be excluded." FontSize="10" Margin="35,0,5,5"/>
-                                        </gui:IntegerTextBoxControl.ToolTip>
-                                    </gui:IntegerTextBoxControl>
+                                        </gui:DoubleTextBoxControl.ToolTip>
+                                    </gui:DoubleTextBoxControl>
                                 </StackPanel>
                             </StackPanel>
                         </GroupBox>
@@ -238,16 +234,18 @@
                         <GroupBox Header="Intensity Filtering">
                             <StackPanel Orientation="Vertical" Margin="15,5">
 
-                                <CheckBox x:Name="cbEnableIntensityThresholdFiltering" Content="Filter Fragment Ion Intensities Relative to Max Intensity" FontWeight="Bold" IsChecked="True" Margin="15,0" Checked="cbEnableIntensityThresholdFiltering_Checked"/>
+                                <CheckBox x:Name="cbEnableIntensityThresholdFiltering" Content="Filter Fragment Ion Intensities Relative to Max Intensity"
+                                          FontWeight="Bold" IsChecked="True" Margin="15,0"/>
                                 <StackPanel Orientation="Horizontal" Margin="15,5" Visibility="{Binding ElementName=cbEnableIntensityThresholdFiltering, Path=IsChecked, Converter={StaticResource BooleanToVisibilityConverter}}">
                                     <Label Content="Minimum Intensity Threshold (%):" Margin="15,0" VerticalAlignment="Center" HorizontalAlignment="Center"/>
-                                    <gui:DoubleTextBoxControl x:Name="tbIntensityThreshold" Width="60" Text="0.01" LowerBound="0" UpperBound="100" Margin="5,5"/>
+                                    <gui:DoubleTextBoxControl x:Name="tbRelIntThreshold" Width="60" Text="0.01" LowerBound="0" UpperBound="100" Margin="5,5"/>
                                 </StackPanel>
 
-                                <CheckBox x:Name="cbTopNIntensityFiltering" Content="Keep Only the N Most Intense Fragment Ions" FontWeight="Bold" IsChecked="False" Margin="15,0"/>
+                                <CheckBox x:Name="cbEnableIntensityRankFiltering" Content="Keep Only the N Most Intense Fragment Ions"
+                                          FontWeight="Bold" IsChecked="{Binding ElementName=cbEnableIntensityThresholdFiltering, Path=IsChecked, Converter={StaticResource NOTConverter}}" Margin="15,0"/>
                                 <StackPanel Orientation="Horizontal" Margin="15,5" Visibility="{Binding ElementName=cbTopNIntensityFiltering, Path=IsChecked, Converter={StaticResource BooleanToVisibilityConverter}}">
                                     <Label Content="Top" Margin="15,0,0,0" VerticalAlignment="Center" HorizontalAlignment="Center"/>
-                                    <gui:IntegerTextBoxControl x:Name="tbTopNIntense" Width="30" Text="12" AllowNegative="False" Margin="0,5"/>
+                                    <gui:IntegerTextBoxControl x:Name="tbRankThreshold" Width="30" Text="12" AllowNegative="False" Margin="0,5"/>
                                     <Label Content="Most Intense Fragment Ions" Margin="0,5,0,5" VerticalAlignment="Center" HorizontalAlignment="Center"/>
                                 </StackPanel>
                             </StackPanel>

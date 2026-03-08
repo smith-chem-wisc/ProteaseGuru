@@ -17,6 +17,8 @@ namespace GUI
         private ObservableCollection<string> _allProteases;
         private ObservableCollection<string> _allProteins;
         private ObservableCollection<string> _filteredProteins;
+        private HashSet<string> _selectedProteins = new();
+        private bool _isRefreshingProteinFilter;
 
         /// <summary>
         /// Constructor for spectral library options window
@@ -28,8 +30,8 @@ namespace GUI
         public SpectralLibraryOptionsWindow(
             List<string> availableProteases,
             List<string> availableProteins,
-            List<string> currentlySelectedProteases = null,
-            string currentlySelectedProtein = null)
+            List<string>? currentlySelectedProteases = null,
+            string? currentlySelectedProtein = null)
         {
             InitializeComponent();
 
@@ -56,6 +58,7 @@ namespace GUI
 
             if (!string.IsNullOrEmpty(currentlySelectedProtein) && _allProteins.Contains(currentlySelectedProtein))
             {
+                _selectedProteins.Add(currentlySelectedProtein);
                 lbProteins.SelectedItems.Add(currentlySelectedProtein);
             }
 
@@ -67,9 +70,9 @@ namespace GUI
             if (cbFragmentModel.SelectedItem is ComboBoxItem selectedItem)
             {
                 string modelTag = selectedItem?.Tag?.ToString();
-                if (!string.IsNullOrEmpty(modelTag) && modelTag != "Prosit2020HCD")
+                if (!string.IsNullOrEmpty(modelTag) && modelTag != "Prosit2020IntensityHCD")
                 {
-                    throw new NotImplementedException($"Model {modelTag ?? "null"} is not implemented yet. Only Prosit2020HCD is currently supported.");
+                    throw new NotImplementedException($"Model {modelTag ?? "null"} is not implemented yet. Only Prosit2020IntensityHCD is currently supported.");
                 }
             }
         }
@@ -86,24 +89,35 @@ namespace GUI
             ExportOptions = new SpectralLibraryExportOptions
             {
                 SelectedProteases = lbProteases.SelectedItems.Cast<string>().ToList(),
-                SelectedProteins = lbProteins.SelectedItems.Cast<string>().ToList(),
+                SelectedProteins = _selectedProteins.ToList(),
+
                 PredictionModel = ((ComboBoxItem)cbFragmentModel.SelectedItem).Tag.ToString(),
                 ChargeStates = GetSelectedChargeStates(),
                 CollisionEnergy = int.Parse(tbCollisionEnergy.Text),
+
                 ExcludeIncompatiblePeptides = cbExcludeIncompatiblePeptides.IsChecked == true,
                 ExcludeUndetectablePeptides = cbExcludeUndetectablePeptides.IsChecked == true,
-                MinimumIntensityThreshold = double.Parse(tbIntensityThreshold.Text),
+
+                MinimumMZThreshold = double.TryParse(tbMinMzThreshold.Text, out double minMZ) ? minMZ : 200,
+
+                MaximumMZThreshold = double.TryParse(tbMaxMzThreshold.Text, out double maxMZ) ? maxMZ : 2000,
+
+                FilterByRelativeIntensity = cbEnableIntensityThresholdFiltering.IsChecked == true,
+                RelativeIntensityThreshold = double.TryParse(tbRelIntThreshold.Text, out double intensityThreshold) ? intensityThreshold : 0,
+                FilterByIntensityRank = cbEnableIntensityRankFiltering.IsChecked == true,
+                IntensityRankThreshold = int.TryParse(tbRankThreshold.Text, out int rankThreshold) ? rankThreshold : -1, // -1 indicates keep all
+
                 OutputFormat = ((ComboBoxItem)cbOutputFormat.SelectedItem).Tag.ToString()
             };
 
             DialogResultOk = true;
-            this.Close();
+            Close();
         }
 
         private void Cancel_Click(object sender, RoutedEventArgs e)
         {
             DialogResultOk = false;
-            this.Close();
+            Close();
         }
 
         private bool ValidateInputs()
@@ -118,18 +132,10 @@ namespace GUI
 
             // Note: No validation for proteins - if none selected, all will be used
 
-            // Validate collision energy (IntegerTextBoxControl handles bounds, just check if empty)
-            if (string.IsNullOrWhiteSpace(tbCollisionEnergy.Text))
+            // Validate prediction model selected
+            if (cbFragmentModel.SelectedItem == null)
             {
-                MessageBox.Show("Please enter a valid collision energy.", "Invalid Input",
-                    MessageBoxButton.OK, MessageBoxImage.Warning);
-                return false;
-            }
-
-            // Validate intensity threshold (DoubleTextBoxControl handles bounds, just check if empty)
-            if (string.IsNullOrWhiteSpace(tbIntensityThreshold.Text))
-            {
-                MessageBox.Show("Please enter a valid minimum intensity threshold.", "Invalid Input",
+                MessageBox.Show("Please select a fragmentation model.", "Invalid Input",
                     MessageBoxButton.OK, MessageBoxImage.Warning);
                 return false;
             }
@@ -138,6 +144,48 @@ namespace GUI
             if (!GetSelectedChargeStates().Any())
             {
                 MessageBox.Show("Please select at least one charge state.", "Invalid Input",
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
+                return false;
+            }
+
+            // Validate collision energy (IntegerTextBoxControl handles bounds, just check if empty)
+            if (string.IsNullOrWhiteSpace(tbCollisionEnergy.Text))
+            {
+                MessageBox.Show("Please enter a valid collision energy.", "Invalid Input",
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
+                return false;
+            }
+
+            // Validate m/z thresholds (DoubleTextBoxControl handles bounds, just check if empty)
+            if (string.IsNullOrEmpty(tbMinMzThreshold.Text) || string.IsNullOrWhiteSpace(tbMaxMzThreshold.Text))
+            {
+                MessageBox.Show("Please enter valid m/z thresholds.", "Invalid Input",
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
+                return false;
+            }
+
+            // NOTConverter ensures only one of the two intensity filtering options can be checked, so just check if either is checked and validate corresponding input
+
+            // Validate intensity threshold if checked (DoubleTextBoxControl handles bounds, just check if empty)
+            if (cbEnableIntensityThresholdFiltering.IsChecked == true && string.IsNullOrWhiteSpace(tbRelIntThreshold.Text))
+            {
+                MessageBox.Show("Please enter a valid minimum intensity threshold.", "Invalid Input",
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
+                return false;
+            }
+
+            // Validate intensity rank threshold if checked (IntegerTextBoxControl handles bounds, just check if empty)
+            if (cbEnableIntensityRankFiltering.IsChecked == true && string.IsNullOrWhiteSpace(tbRankThreshold.Text))
+            {
+                MessageBox.Show("Please enter a valid intensity rank threshold.", "Invalid Input",
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
+                return false;
+            }
+
+            // Validate output format selected
+            if (cbOutputFormat.SelectedItem == null)
+            {
+                MessageBox.Show("Please select an output format.", "Invalid Input",
                     MessageBoxButton.OK, MessageBoxImage.Warning);
                 return false;
             }
@@ -179,46 +227,81 @@ namespace GUI
 
         private void SelectAllProteins_Click(object sender, RoutedEventArgs e)
         {
-            lbProteins.SelectAll();
-            UpdateSummary();
+            _selectedProteins.Clear();
+
+            foreach (var protein in _allProteins)
+            {
+                _selectedProteins.Add(protein);
+            }
+
+            RefreshProteinFilter();
         }
 
         private void ClearAllProteins_Click(object sender, RoutedEventArgs e)
         {
-            lbProteins.SelectedItems.Clear();
-            UpdateSummary();
+            _selectedProteins.Clear();
+            RefreshProteinFilter();
         }
 
         private void Proteins_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
+            if (_isRefreshingProteinFilter)
+            {
+                return;
+            }
+
+            foreach (string added in e.AddedItems)
+            {
+                _selectedProteins.Add(added);
+            }
+
+            foreach (string removed in e.RemovedItems)
+            {
+                _selectedProteins.Remove(removed);
+            }
+
             UpdateSummary();
         }
 
         private void ProteinSearch_TextChanged(object sender, TextChangedEventArgs e)
         {
+            RefreshProteinFilter();
+        }
+
+        private void RefreshProteinFilter()
+        {
             string searchText = tbProteinSearch.Text;
 
-            _filteredProteins.Clear();
+            _isRefreshingProteinFilter = true;
 
-            if (string.IsNullOrWhiteSpace(searchText))
+            try
             {
-                // Show all proteins
+                _filteredProteins.Clear();
+                lbProteins.SelectedItems.Clear();
+
                 foreach (var protein in _allProteins)
                 {
-                    _filteredProteins.Add(protein);
-                }
-            }
-            else
-            {
-                // Filter proteins
-                foreach (var protein in _allProteins)
-                {
-                    if (protein.Contains(searchText, StringComparison.OrdinalIgnoreCase))
+                    if (string.IsNullOrWhiteSpace(searchText) ||
+                        protein.Contains(searchText, StringComparison.OrdinalIgnoreCase))
                     {
                         _filteredProteins.Add(protein);
                     }
                 }
+
+                foreach (var protein in _filteredProteins)
+                {
+                    if (_selectedProteins.Contains(protein))
+                    {
+                        lbProteins.SelectedItems.Add(protein);
+                    }
+                }
             }
+            finally
+            {
+                _isRefreshingProteinFilter = false;
+            }
+
+            UpdateSummary();
         }
 
         #endregion
@@ -226,21 +309,16 @@ namespace GUI
         private void UpdateSummary()
         {
             runProteaseCount.Text = lbProteases.SelectedItems.Count.ToString();
-            
-            // Update protein count display - show "All" if none selected
-            if (lbProteins.SelectedItems.Count == 0)
+
+            // Show "All" if none selected
+            if (_selectedProteins.Count == 0)
             {
                 runProteinCount.Text = $"All ({_allProteins.Count})";
             }
             else
             {
-                runProteinCount.Text = lbProteins.SelectedItems.Count.ToString();
+                runProteinCount.Text = _selectedProteins.Count.ToString();
             }
-        }
-
-        private void cbEnableIntensityThresholdFiltering_Checked(object sender, RoutedEventArgs e)
-        {
-
         }
     }
 }

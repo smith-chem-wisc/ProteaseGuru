@@ -1,12 +1,10 @@
 using System.Collections.ObjectModel;
 using System.IO;
-using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
-using Omics.BioPolymer;
 using Omics.Modifications;
 using Proteomics;
 using Tasks;
@@ -926,8 +924,8 @@ namespace GUI
             var availableProteins = _analyzer.ProteinAccessions.ToList();
 
             // Get current selections to pre-populate the dialog
-            List<string> currentProteases = SelectedProteases.Any() ? SelectedProteases : null;
-            string currentProtein = SelectedProtein?.Protein.Accession;
+            List<string>? currentProteases = SelectedProteases.Any() ? SelectedProteases : null;
+            string? currentProtein = SelectedProtein?.Protein.Accession;
 
             // Show the options dialog with available data
             var optionsWindow = new SpectralLibraryOptionsWindow(
