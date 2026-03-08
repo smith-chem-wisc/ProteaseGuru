@@ -10,6 +10,7 @@
         <SolidColorBrush x:Key="BackgroundColor" Color="#D5D5D5" />
         <SolidColorBrush x:Key="TextColor1" Color="#131313" />
         <SolidColorBrush x:Key="AccentColor" Color="#F9690E" />
+        <SolidColorBrush x:Key="BorderColor" Color="DarkSlateGray"/>
         <gui:BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
         <gui:NOTConverter x:Key="NOTConverter" />
 
@@ -17,7 +18,7 @@
         <Style TargetType="Expander">
             <Setter Property="BorderThickness" Value="3 1 1 1"/>
             <Setter Property="Padding" Value="5"/>
-            <Setter Property="BorderBrush" Value="DarkSlateGray"/>
+            <Setter Property="BorderBrush" Value="{StaticResource BorderColor}"/>
             <Setter Property="Background" Value="{StaticResource BackgroundColor}"/>
             <Setter Property="UseLayoutRounding" Value="True"/>
             <Setter Property="SnapsToDevicePixels" Value="True"/>
@@ -35,7 +36,7 @@
         <Style TargetType="GroupBox">
             <Setter Property="BorderThickness" Value="4 1 1 1"/>
             <Setter Property="Padding" Value="5"/>
-            <Setter Property="BorderBrush" Value="DarkSlateGray"/>
+            <Setter Property="BorderBrush" Value="{StaticResource BorderColor}"/>
             <Setter Property="Background" Value="{StaticResource BackgroundColor}"/>
             <Setter Property="UseLayoutRounding" Value="True"/>
             <Setter Property="SnapsToDevicePixels" Value="True"/>
@@ -121,42 +122,52 @@
         <ScrollViewer VerticalScrollBarVisibility="Auto">
             <StackPanel Orientation="Vertical">
 
-                <!-- Protease Selection -->
-                <Label Content="Protease Selection (Multi-select)" Style="{StaticResource SectionHeaderStyle}"/>
-                <Border BorderBrush="#131313" BorderThickness="1" Margin="15,0,15,0">
-                    <ListBox x:Name="lbProteases" 
-                             SelectionMode="Multiple"
-                             ItemContainerStyle="{StaticResource ListBoxItem}"
-                             Height="120"
-                             SelectionChanged="Proteases_SelectionChanged">
-                    </ListBox>
-                </Border>
-                <StackPanel Orientation="Horizontal" Margin="15,5">
-                    <Button Content="Select All" Click="SelectAllProteases_Click" Style="{StaticResource SmallButtonStyle}" Margin="0,0,5,0"/>
-                    <Button Content="Clear All" Click="ClearAllProteases_Click" Style="{StaticResource SmallButtonStyle}"/>
-                </StackPanel>
+                <!-- Selection Boxes -->
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                    
+                    <!-- Protease Selection -->
+                    <StackPanel Orientation="Vertical" Width="250">
+                        <Label Content="Protease Selection (Multi-select)" Style="{StaticResource SectionHeaderStyle}"/>
+                        <Border BorderBrush="{StaticResource BorderColor}" BorderThickness="1" Margin="15,0,15,0">
+                            <ListBox x:Name="lbProteases" 
+                                     SelectionMode="Multiple"
+                                     ItemContainerStyle="{StaticResource ListBoxItem}"
+                                     Height="350"
+                                     SelectionChanged="Proteases_SelectionChanged"
+                                     BorderBrush="{StaticResource BorderColor}">
+                            </ListBox>
+                        </Border>
+                        <StackPanel Orientation="Horizontal" Margin="15,5">
+                            <Button Content="Select All" Click="SelectAllProteases_Click" Style="{StaticResource SmallButtonStyle}" Margin="0,0,5,0"/>
+                            <Button Content="Clear All" Click="ClearAllProteases_Click" Style="{StaticResource SmallButtonStyle}"/>
+                        </StackPanel>
+                    </StackPanel>
 
-                <!-- Protein Selection -->
-                <Label Content="Protein Selection (Multi-select)" Style="{StaticResource SectionHeaderStyle}"/>
-                <TextBlock Text="No selection will export all proteins." FontWeight="Bold" Foreground="DarkOrange" Margin="15,0,0,5" FontSize="10"/>
+                    <!-- Protein Selection -->
+                    <StackPanel Orientation="Vertical" Width="250">
+                        <Label Content="Protein Selection (Multi-select)" Style="{StaticResource SectionHeaderStyle}"/>
 
-                <DockPanel Margin="15,0,15,5">
-                    <Label Content="Search:" DockPanel.Dock="Left" Width="60"/>
-                    <TextBox x:Name="tbProteinSearch" 
-                             DockPanel.Dock="Right" 
-                             TextChanged="ProteinSearch_TextChanged"/>
-                </DockPanel>
-                <Border BorderBrush="#131313" BorderThickness="1" Margin="15,0,15,0">
-                    <ListBox x:Name="lbProteins" 
-                             SelectionMode="Multiple"
-                             ItemContainerStyle="{StaticResource ListBoxItem}"
-                             Height="150"
-                             SelectionChanged="Proteins_SelectionChanged">
-                    </ListBox>
-                </Border>
-                <StackPanel Orientation="Horizontal" Margin="15,5">
-                    <Button Content="Select All" Click="SelectAllProteins_Click" Style="{StaticResource SmallButtonStyle}" Margin="0,0,5,0"/>
-                    <Button Content="Clear All" Click="ClearAllProteins_Click" Style="{StaticResource SmallButtonStyle}"/>
+                        <DockPanel Margin="15,0,15,5">
+                            <Label Content="Search:" DockPanel.Dock="Left" Width="60"/>
+                            <TextBox x:Name="tbProteinSearch" 
+                                 DockPanel.Dock="Right" 
+                                 TextChanged="ProteinSearch_TextChanged"
+                                 BorderBrush="{StaticResource BorderColor}"/>
+                        </DockPanel>
+                        <Border BorderBrush="{StaticResource BorderColor}" BorderThickness="1" Margin="15,0,15,0">
+                            <ListBox x:Name="lbProteins" 
+                                 SelectionMode="Multiple"
+                                 ItemContainerStyle="{StaticResource ListBoxItem}"
+                                 Height="319"
+                                 SelectionChanged="Proteins_SelectionChanged"
+                                 BorderBrush="{StaticResource BorderColor}">
+                            </ListBox>
+                        </Border>
+                        <StackPanel Orientation="Horizontal" Margin="15,5">
+                            <Button Content="Select All" Click="SelectAllProteins_Click" Style="{StaticResource SmallButtonStyle}" Margin="0,0,5,0"/>
+                            <Button Content="Clear All" Click="ClearAllProteins_Click" Style="{StaticResource SmallButtonStyle}"/>
+                        </StackPanel>
+                    </StackPanel>
                 </StackPanel>
 
                 <!-- Fragment Intensity Prediction Options -->

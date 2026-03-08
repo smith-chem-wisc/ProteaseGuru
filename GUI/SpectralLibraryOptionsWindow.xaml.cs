@@ -1,10 +1,6 @@
-using System;
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
-using MzLibUtil;
 using Tasks;
 
 namespace GUI
@@ -126,17 +122,23 @@ namespace GUI
             if (lbProteases.SelectedItems.Count == 0)
             {
                 MessageBox.Show("Please select at least one protease.", "No Protease Selected",
-                    MessageBoxButton.OK, MessageBoxImage.Warning);
+                    MessageBoxButton.OK, MessageBoxImage.Error);
                 return false;
             }
 
-            // Note: No validation for proteins - if none selected, all will be used
+            // Validate proteins selected
+            if (_selectedProteins.Count == 0)
+            {
+                var result = MessageBox.Show("Please select at least one protein." , "No Protein Selected",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+                return false;
+            }
 
             // Validate prediction model selected
             if (cbFragmentModel.SelectedItem == null)
             {
                 MessageBox.Show("Please select a fragmentation model.", "Invalid Input",
-                    MessageBoxButton.OK, MessageBoxImage.Warning);
+                    MessageBoxButton.OK, MessageBoxImage.Error);
                 return false;
             }
 
@@ -144,7 +146,7 @@ namespace GUI
             if (!GetSelectedChargeStates().Any())
             {
                 MessageBox.Show("Please select at least one charge state.", "Invalid Input",
-                    MessageBoxButton.OK, MessageBoxImage.Warning);
+                    MessageBoxButton.OK, MessageBoxImage.Error);
                 return false;
             }
 
@@ -152,7 +154,7 @@ namespace GUI
             if (string.IsNullOrWhiteSpace(tbCollisionEnergy.Text))
             {
                 MessageBox.Show("Please enter a valid collision energy.", "Invalid Input",
-                    MessageBoxButton.OK, MessageBoxImage.Warning);
+                    MessageBoxButton.OK, MessageBoxImage.Error);
                 return false;
             }
 
@@ -160,7 +162,7 @@ namespace GUI
             if (string.IsNullOrEmpty(tbMinMzThreshold.Text) || string.IsNullOrWhiteSpace(tbMaxMzThreshold.Text))
             {
                 MessageBox.Show("Please enter valid m/z thresholds.", "Invalid Input",
-                    MessageBoxButton.OK, MessageBoxImage.Warning);
+                    MessageBoxButton.OK, MessageBoxImage.Error);
                 return false;
             }
 
@@ -170,7 +172,7 @@ namespace GUI
             if (cbEnableIntensityThresholdFiltering.IsChecked == true && string.IsNullOrWhiteSpace(tbRelIntThreshold.Text))
             {
                 MessageBox.Show("Please enter a valid minimum intensity threshold.", "Invalid Input",
-                    MessageBoxButton.OK, MessageBoxImage.Warning);
+                    MessageBoxButton.OK, MessageBoxImage.Error);
                 return false;
             }
 
@@ -178,7 +180,7 @@ namespace GUI
             if (cbEnableIntensityRankFiltering.IsChecked == true && string.IsNullOrWhiteSpace(tbRankThreshold.Text))
             {
                 MessageBox.Show("Please enter a valid intensity rank threshold.", "Invalid Input",
-                    MessageBoxButton.OK, MessageBoxImage.Warning);
+                    MessageBoxButton.OK, MessageBoxImage.Error);
                 return false;
             }
 
@@ -186,7 +188,7 @@ namespace GUI
             if (cbOutputFormat.SelectedItem == null)
             {
                 MessageBox.Show("Please select an output format.", "Invalid Input",
-                    MessageBoxButton.OK, MessageBoxImage.Warning);
+                    MessageBoxButton.OK, MessageBoxImage.Error);
                 return false;
             }
 
@@ -311,7 +313,7 @@ namespace GUI
             runProteaseCount.Text = lbProteases.SelectedItems.Count.ToString();
 
             // Show "All" if none selected
-            if (_selectedProteins.Count == 0)
+            if (_selectedProteins.Count == _allProteins.Count)
             {
                 runProteinCount.Text = $"All ({_allProteins.Count})";
             }

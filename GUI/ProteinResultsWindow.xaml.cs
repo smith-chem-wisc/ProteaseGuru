@@ -948,6 +948,7 @@ namespace GUI
         /// </summary>
         private async Task ExecuteSpectralLibraryExportAsync(SpectralLibraryExportOptions options)
         {
+            NotificationService.Instance.AddNotification("Starting spectral library export...", NotificationType.Information);
             try
             {
                 var saveDialog = new Microsoft.Win32.SaveFileDialog
@@ -966,19 +967,11 @@ namespace GUI
 
                 if (!peptidesToExport.Any())
                 {
-                    MessageBox.Show(
-                        "No peptides found for the selected proteases and proteins.",
-                        "No Data",
-                        MessageBoxButton.OK,
-                        MessageBoxImage.Information);
+                    NotificationService.Instance.AddNotification("No peptides found for the selected proteases and proteins. Export cancelled.", NotificationType.Error);
                     return;
                 }
 
-                MessageBox.Show(
-                    $"Generating spectral library for {peptidesToExport.Count} peptides...\nThis may take several minutes.",
-                    "Export Starting",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Information);
+                NotificationService.Instance.AddNotification($"Generating spectral library for {peptidesToExport.Count} peptides. This may take several minutes...", NotificationType.Information);
 
                 var generator = new SpectralLibraryGenerator(
                     peptidesToExport,
@@ -989,21 +982,12 @@ namespace GUI
                 var result = await Task.Run(() => generator.GenerateLibrary());
                 Mouse.OverrideCursor = null;
 
-                MessageBox.Show(
-                    $"Successfully generated spectral library with {result.Count} spectra.\nFile saved to: {saveDialog.FileName}",
-                    "Export Complete",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Information);
+                NotificationService.Instance.AddNotification($"Spectral library generated with {result.Count} spectra. File saved to: {saveDialog.FileName}", NotificationType.Success);
             }
             catch (Exception ex)
             {
                 Mouse.OverrideCursor = null;
-
-                MessageBox.Show(
-                    $"Error generating spectral library: {ex.Message}\n\n{ex.StackTrace}",
-                    "Export Error",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Error);
+                NotificationService.Instance.AddNotification($"Error generating spectral library: {ex.Message}\n\n{ex.StackTrace}", NotificationType.Error);
             }
         }
 
