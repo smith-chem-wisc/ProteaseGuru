@@ -66,7 +66,7 @@ namespace GUI
                 {
                     if (System.IO.Path.GetExtension(filepath) != ".tsv")
                     {
-                        MessageBox.Show("Error: Only ProteaseGuru results files in .tsv format should be loaded here. Please remove '"+ filepath +"' before proceeding with analysis");
+                        NotificationService.Instance.AddNotification($"Error: Only ProteaseGuru results files in .tsv format should be loaded here. Please remove '{filepath}' before proceeding with analysis", NotificationType.Error);
                         return;
                     }
                     else
@@ -97,7 +97,7 @@ namespace GUI
                 {
                     if (System.IO.Path.GetExtension(filepath) != ".toml")
                     {
-                        MessageBox.Show("Error: Only ProteaseGuru digestion parameters in .toml format should be loaded here. Please remove '" + filepath + "' before proceeding with analysis");
+                        NotificationService.Instance.AddNotification($"Error: Only ProteaseGuru digestion parameters in .toml format should be loaded here. Please remove '{filepath}' before proceeding with analysis", NotificationType.Error);
                         return;
                     }
                     else
@@ -144,7 +144,7 @@ namespace GUI
                             }
                             catch (Exception ee)
                             {
-                                MessageBox.Show(ee.ToString());
+                                NotificationService.Instance.AddNotification($"Cannot parse modification info from: {draggedFilePath}. Error: {ee.Message}", NotificationType.Error);
                                 GuiWarnHandler(null, new StringEventArgs("Cannot parse modification info from: " + draggedFilePath, null));
                                 ProteinDbObservableCollection.Remove(uu);
                             }
@@ -189,7 +189,7 @@ namespace GUI
                             }
                             catch (Exception ee)
                             {
-                                MessageBox.Show(ee.ToString());
+                                NotificationService.Instance.AddNotification($"Cannot parse modification info from: {draggedFilePath}. Error: {ee.Message}", NotificationType.Error);
                                 GuiWarnHandler(null, new StringEventArgs("Cannot parse modification info from: " + draggedFilePath, null));
                                 ReloadProteinDbObservableCollection.Remove(uu);
                             }
@@ -219,7 +219,7 @@ namespace GUI
                     }
                     catch (Exception ex)
                     {
-                        MessageBox.Show($"Error loading parameters.toml with message: {ex.Message}");
+                        NotificationService.Instance.AddNotification($"Error loading parameters.toml with message: {ex.Message}", NotificationType.Error);
                     }
 
                     break;
@@ -277,6 +277,10 @@ namespace GUI
             if (!Dispatcher.CheckAccess())
             {
                 Dispatcher.BeginInvoke(new Action(() => GuiWarnHandler(sender, e)));
+            }
+            else
+            {
+                NotificationService.Instance.AddNotification(e.S, NotificationType.Warning);
             }
         }
 
@@ -493,14 +497,12 @@ namespace GUI
                     {
                         foreach (string file in Directory.EnumerateFiles(draggedFilePath, "*.*", SearchOption.AllDirectories))
                         {
-                            AddAFile(file);
-                            ReloadAFile(file);
+                            ProcessDroppedFile(file);
                         }
                     }
                     else
                     {                        
-                        AddAFile(draggedFilePath);
-                        ReloadAFile(draggedFilePath);
+                        ProcessDroppedFile(draggedFilePath);
                     }                    
                     dataGridProteinDatabases.CommitEdit(DataGridEditingUnit.Row, true);                    
                     dataGridProteinDatabases.Items.Refresh();
@@ -515,6 +517,34 @@ namespace GUI
                     dataGridParameters.Items.Refresh();
                 }
             }            
+        }
+
+        // Process a dropped file and route it to the appropriate handler
+        private void ProcessDroppedFile(string filePath)
+        {
+            var filename = System.IO.Path.GetFileName(filePath);
+            var theExtension = System.IO.Path.GetExtension(filename).ToLowerInvariant();
+            bool compressed = theExtension.EndsWith("gz");
+            theExtension = compressed ? System.IO.Path.GetExtension(System.IO.Path.GetFileNameWithoutExtension(filename)).ToLowerInvariant() : theExtension;
+
+            switch (theExtension)
+            {
+                case ".xml":
+                case ".fasta":
+                case ".fa":
+                    // Protein databases go to both collections
+                    AddAFile(filePath);
+                    ReloadAFile(filePath);
+                    break;
+                case ".tsv":
+                case ".toml":
+                    // Results and parameters only go to reload collection
+                    ReloadAFile(filePath);
+                    break;
+                default:
+                    GuiWarnHandler(null, new StringEventArgs("Unrecognized file type: " + theExtension, null));
+                    break;
+            }
         }
         
 
@@ -976,6 +1006,11 @@ namespace GUI
         private void MenuItem_ProteomicsNewsBlog_Click(object sender, RoutedEventArgs e)
         {
             GlobalVariables.StartProcess(@"https://proteomicsnews.blogspot.com/");
+        }
+
+        private void ClearNotifications_Click(object sender, RoutedEventArgs e)
+        {
+            NotificationService.Instance.ClearNotifications();
         }
 
         //private void MenuItem_YouTube_Click(object sender, RoutedEventArgs e)

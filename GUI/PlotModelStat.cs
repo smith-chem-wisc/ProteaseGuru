@@ -74,7 +74,7 @@ namespace GUI
 
             if (dbSelected.Count() > 1)
             {
-                MessageBox.Show("Note: More than one protein database has been selected. Unique peptides are defined as being unique to a single protein in all selected databases.");
+                NotificationService.Instance.AddNotification("Note: More than one protein database has been selected. Unique peptides are defined as being unique to a single protein in all selected databases.", NotificationType.Information);
 
                 List<InSilicoPep> allPeptides = new List<InSilicoPep>();
 
@@ -264,7 +264,7 @@ namespace GUI
             }
             else
             {
-                MessageBox.Show("Note: One protein database has been selected. Unique peptides are defined as being unique to a single protein in this database.");
+                NotificationService.Instance.AddNotification("Note: One protein database has been selected. Unique peptides are defined as being unique to a single protein in this database.", NotificationType.Information);
                 databasePeptides = peptideByFile[dbSelected.FirstOrDefault()];
                 SequenceCoverageByProtease_Return = CalculateProteinSequenceCoverage(databasePeptides);
             }

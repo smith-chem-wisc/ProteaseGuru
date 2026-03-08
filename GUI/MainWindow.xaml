@@ -268,16 +268,27 @@
                 <Setter Property="Margin" Value="0,0,2,0" />
                 <Setter Property="Padding" Value="0" />
             </Style>
+            
+            <!--Notification Styles-->
+            <Style x:Key="NotificationItemStyle" TargetType="Border">
+                <Setter Property="Background" Value="White"/>
+                <Setter Property="BorderBrush" Value="{StaticResource BorderColor}"/>
+                <Setter Property="BorderThickness" Value="1"/>
+                <Setter Property="Margin" Value="5,2,5,2"/>
+                <Setter Property="Padding" Value="8,5,8,5"/>
+                <Setter Property="CornerRadius" Value="3"/>
+            </Style>
         </ResourceDictionary>
     </Window.Resources>
-    <Grid>
-        <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="0*"/>
-            <ColumnDefinition Width="0*"/>
-            <ColumnDefinition Width="0*"/>
-            <ColumnDefinition/>
-        </Grid.ColumnDefinitions>
-        <TabControl Grid.ColumnSpan="4" TabStripPlacement="Left" BorderThickness="0" BorderBrush="{StaticResource BorderColor}">
+    <Grid Background="{StaticResource SideBarMainColor}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+        
+        <!--Tab Control with all pages-->
+        <TabControl Grid.Row="0" Grid.RowSpan="2" TabStripPlacement="Left"
+                    BorderThickness="0">
             <TabControl.Resources>
                 <Style TargetType="Grid">
                     <!--This defines the *default* style for *all grids in the entire tab control*-->
@@ -285,8 +296,9 @@
                     <Setter Property="Background" Value="{StaticResource SideBarMainColor}" />
                 </Style>
             </TabControl.Resources>
+
             <TabItem Header="About" Style="{StaticResource TabItemStyle}">
-                <Grid  Background="{StaticResource DataGridBackgroundColor}">
+                <Grid  Background="{StaticResource DataGridBackgroundColor}" Margin="-2 -5 0 16">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="50"/>
                         <RowDefinition Height="25"/>
@@ -299,12 +311,12 @@
 
                     <!--Text content-->
                     <TextBlock Grid.Row="2" Grid.RowSpan="2" Style="{StaticResource TextBlockStyle}"> 
-                       
+                   
                         ProteaseGuru is a in silico digestion program facilitating the comparison of proteolytic digests. It accepts protein databases (.xml or .fasta) as input and allows
                         <LineBreak />
                          users to set digestion conditions and proteases for digestion. ProteaseGuru is designed to help users determine which protease or combination of proteases would yield the best experimental results.
-                        
-                        
+                    
+                    
                         <LineBreak />
                         <LineBreak />
                         <LineBreak />
@@ -318,8 +330,8 @@
                         <LineBreak />                        
                         <LineBreak />
                         ● Experiments where the sample is composed of more than one species with sequence homology (e.g. xenografts).
-                        
-                        
+                    
+                    
                         <LineBreak/>
                         <LineBreak />
                         <LineBreak />
@@ -346,7 +358,7 @@
             </TabItem>
 
             <TabItem Header="Databases" Style="{StaticResource TabItemStyle}">
-                <Grid Style="{StaticResource PageGridStyle}">
+                <Grid Style="{StaticResource PageGridStyle}" Margin="-2 -5 0 16">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="50"/>
                         <RowDefinition Height="50"/>
@@ -359,14 +371,14 @@
 
                     <!--Detail text-->
                     <TextBlock Grid.Row="1" Style="{StaticResource TextBlockStyle}">
-                        Add 
-                        
-                        <Hyperlink NavigateUri="https://www.uniprot.org/" RequestNavigate="Hyperlink_RequestNavigate">
-                            protein database(s)
-                        </Hyperlink> 
-                        
-                        in .xml or .fasta format. Databases in .xml format can contain post-translational modification (PTM) locations,
-                        whereas .fasta format only contains amino acid sequences.
+                    Add 
+                    
+                    <Hyperlink NavigateUri="https://www.uniprot.org/" RequestNavigate="Hyperlink_RequestNavigate">
+                        protein database(s)
+                    </Hyperlink> 
+                    
+                    in .xml or .fasta format. Databases in .xml format can contain post-translational modification (PTM) locations,
+                    whereas .fasta format only contains amino acid sequences.
                     </TextBlock>
 
                     <DataGrid Grid.Row="2" x:Name="dataGridProteinDatabases"  Style="{StaticResource x:DataGridStyle}" ColumnHeaderStyle="{StaticResource DataGridColumnHeaderStyle}" ItemsSource="{Binding}">
@@ -401,7 +413,7 @@
             </TabItem>
 
             <TabItem Header="Run" Style="{StaticResource TabItemStyle}" Selector.Selected="OnRunTabSelection">
-                <Grid Style="{StaticResource PageGridStyle}">
+                <Grid Style="{StaticResource PageGridStyle}"  Margin="-2 -5 0 16">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="50"/>
                         <RowDefinition Height=" 50"/>
@@ -449,26 +461,26 @@
                         </TreeView>
                     </Grid>
 
-                        <Grid Grid.Row="3" Background="{StaticResource DataGridBackgroundColor}" >
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="20"/>
-                                <RowDefinition Height="5"/>
-                                <RowDefinition Height="40"/>
-                                <RowDefinition Height="35"/>
-                            </Grid.RowDefinitions>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width=".75*"/>
-                                <ColumnDefinition Width=".25*"/>
-                            </Grid.ColumnDefinitions>
+                    <Grid Grid.Row="3" Background="{StaticResource DataGridBackgroundColor}" >
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="20"/>
+                            <RowDefinition Height="5"/>
+                            <RowDefinition Height="40"/>
+                            <RowDefinition Height="35"/>
+                        </Grid.RowDefinitions>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width=".75*"/>
+                            <ColumnDefinition Width=".25*"/>
+                        </Grid.ColumnDefinitions>
 
-                            <DockPanel Margin="5" Grid.Row="2" LastChildFill="True" Grid.ColumnSpan="2">
-                                <Button x:Name="OpenOutputFolderButton" Content="Open" Width="40" DockPanel.Dock="Right" Click="OpenOutputFolder_Click" Style="{StaticResource ImportantButtonStyle}"></Button>
-                                <Label Content="Output Folder:"/>
-                                <TextBox x:Name="OutputFolderTextBox"/>
-                            </DockPanel>
-                            <Button x:Name="RunTaskButton" Content="Run!" Click="RunTaskButton_Click" FontSize="24" Grid.Row="3" Grid.ColumnSpan="2" Width="400" Style="{StaticResource ImportantButtonStyle}"/>
-                            
-                        </Grid>
+                        <DockPanel Margin="5" Grid.Row="2" LastChildFill="True" Grid.ColumnSpan="2">
+                            <Button x:Name="OpenOutputFolderButton" Content="Open" Width="40" DockPanel.Dock="Right" Click="OpenOutputFolder_Click" Style="{StaticResource ImportantButtonStyle}"></Button>
+                            <Label Content="Output Folder:"/>
+                            <TextBox x:Name="OutputFolderTextBox"/>
+                        </DockPanel>
+                        <Button x:Name="RunTaskButton" Content="Run!" Click="RunTaskButton_Click" FontSize="24" Grid.Row="3" Grid.ColumnSpan="2" Width="400" Style="{StaticResource ImportantButtonStyle}"/>
+
+                    </Grid>
                     <Grid Grid.Row="5" Background="{StaticResource BackgroundColor}">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition></ColumnDefinition>
@@ -480,127 +492,149 @@
                             </StatusBarItem>
                         </StatusBar>
                         <DockPanel Margin="5" Grid.Column="1">
-                            <Label Content="Run Status:" Style="{StaticResource ProgressTextStyle}"/>
-                            <TextBox x:Name="ProgressTextBox"  Background="{StaticResource BackgroundColor}" BorderThickness="0"/>
+                            <Label Content="Run Status:" Style="{StaticResource ProgressTextStyle}" VerticalContentAlignment="Center" />
+                            <TextBox x:Name="ProgressTextBox"  Background="{StaticResource BackgroundColor}" VerticalContentAlignment="Center" BorderThickness="0"/>
                         </DockPanel>
-                        
+
                     </Grid>
-                   
-                   
+
+
                 </Grid>
             </TabItem>
-            <TabItem Header="Load Previous Results" Style="{StaticResource TabItemStyle}" Name="LoadTab">
-                <Grid Style="{StaticResource PageGridStyle}">
+
+            <TabItem Header="Load Previous Results" Style="{StaticResource TabItemStyle}" Name="LoadTab" >
+                <Grid Style="{StaticResource PageGridStyle}" Margin="-2 -5 -2 16">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="50"/>
                         <RowDefinition Height="25"/>
-                        <RowDefinition Height="37"/>
-                        <RowDefinition Height="90"/>
-                        <RowDefinition Height="25"/>
-                        <RowDefinition Height="40"/>
-                        <RowDefinition Height="63"/>
-                        <RowDefinition Height="25"/>
-                        <RowDefinition Height="40"/>
-                        <RowDefinition Height="90"/>
-                        <RowDefinition Height="25"/>
-                        <RowDefinition Height=" 2"/>
+                        <RowDefinition Height="*"/>
                         <RowDefinition Height="50"/>
-                        <RowDefinition Height=" 2"/>
                     </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="5"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
 
                     <!--Header label-->
-                    <Label Content="Load Protease Guru Results" Grid.Row="0" Style="{StaticResource HeaderLabelStyle}" />
+                    <Label Grid.Column="0" Content="Load Protease Guru Results" Grid.Row="0" Grid.ColumnSpan="3" Style="{StaticResource HeaderLabelStyle}" />
 
                     <!--Detail text-->
-                    <TextBlock Grid.Row="1" Style="{StaticResource TextBlockStyle}">
+                    <TextBlock Grid.Column="0" Grid.Row="1" Grid.ColumnSpan="3" Style="{StaticResource TextBlockStyle}">
                         Load in previous ProteaseGuru result files to go straight to data visualization.
                     </TextBlock>
 
-                    <!--Header label-->
-                    <Label Content="Databases" Grid.Row="2" Style="{StaticResource SubHeaderLabelStyle}" />
+                    <!-- Left Column: Parameters and Results -->
+                    <Grid Grid.Row="2" Grid.Column="0" Background="{StaticResource BackgroundColor}">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="10"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
 
-                    <DataGrid Grid.Row="3" x:Name="dataGridReloadDb"  Style="{StaticResource x:DataGridStyle}" ColumnHeaderStyle="{StaticResource DataGridColumnHeaderStyle}" ItemsSource="{Binding}" VerticalScrollBarVisibility="Visible">
+                        <!--Digestion Parameters Section-->
+                        <Label Content="Digestion Parameters File" Grid.Row="0" Style="{StaticResource SubHeaderLabelStyle}" />
 
-                        <DataGrid.RowStyle>
-                            <Style TargetType="{x:Type DataGridRow}" BasedOn="{StaticResource DatabaseDataGridItemStyle}" />
-                        </DataGrid.RowStyle>
-                        <DataGrid.CellStyle>
-                            <Style TargetType="{x:Type DataGridCell}" BasedOn="{StaticResource DataGridCellStyle}" />
-                        </DataGrid.CellStyle>
-                        <DataGrid.Columns>
-                            <DataGridTextColumn Header="File" Binding="{Binding FileName, Mode=OneWay}" Width="450" />
-                            <DataGridTextColumn Header="File Path" Binding="{Binding FilePath, Mode=OneWay}" Width="450" />
+                        <DataGrid Grid.Row="1" x:Name="dataGridParameters" Style="{StaticResource x:DataGridStyle}" 
+                                  ColumnHeaderStyle="{StaticResource DataGridColumnHeaderStyle}" ItemsSource="{Binding}" 
+                                  ScrollViewer.VerticalScrollBarVisibility="Visible">
+                            <DataGrid.RowStyle>
+                                <Style TargetType="{x:Type DataGridRow}" BasedOn="{StaticResource DatabaseDataGridItemStyle}" />
+                            </DataGrid.RowStyle>
+                            <DataGrid.CellStyle>
+                                <Style TargetType="{x:Type DataGridCell}" BasedOn="{StaticResource DataGridCellStyle}" />
+                            </DataGrid.CellStyle>
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="File" Binding="{Binding FileName, Mode=OneWay}" Width="*" />
+                            </DataGrid.Columns>
+                        </DataGrid>
 
-                        </DataGrid.Columns>
-                    </DataGrid>
+                        <Grid Grid.Row="2" Style="{StaticResource InternalGridStyle}" VerticalAlignment="Center">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="2"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Button Grid.Column="0" x:Name="AddParameters" Width="150" Height="25" Content="Add" 
+                                    Click="AddParameters_Click" Style="{StaticResource ImportantButtonStyle}" HorizontalAlignment="Right"/>
+                            <Button Grid.Column="2" x:Name="ClearParameters" Width="150" Height="25" Content="Clear" 
+                                    Click="ClearParameters_Click" Style="{StaticResource ImportantButtonStyle}" HorizontalAlignment="Left"/>
+                        </Grid>
 
+                        <!--Result Files Section-->
+                        <Label Content="Result Files" Grid.Row="4" Style="{StaticResource SubHeaderLabelStyle}" />
 
-                    <Grid Grid.Row="4" Style="{StaticResource InternalGridStyle}" VerticalAlignment="Center">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="28*"/>
-                            <ColumnDefinition Width="145*"/>
-                            <ColumnDefinition Width="2"/>
-                            <ColumnDefinition Width="173*"/>
-                        </Grid.ColumnDefinitions>
-                        <Button Grid.Column="1" x:Name="AddDb" Width ="200" Height="25" Content="Add" Click="ReloadProteinDatabase_Click" Style="{StaticResource ImportantButtonStyle}" HorizontalAlignment="Left" Margin="234,0,0,0"/>
-                        <Button Grid.Column="2" x:Name="ClearDb" Width="200" Height="25" Content="Clear" Click="ClearReloadedXML_Click" Style="{StaticResource ImportantButtonStyle}" HorizontalAlignment="Left" Grid.ColumnSpan="2" Margin="2,0,0,0"/>
+                        <DataGrid Grid.Row="5" x:Name="dataGridResults" Style="{StaticResource x:DataGridStyle}" 
+                                  ColumnHeaderStyle="{StaticResource DataGridColumnHeaderStyle}" ItemsSource="{Binding}" 
+                                  ScrollViewer.VerticalScrollBarVisibility="Visible">
+                            <DataGrid.RowStyle>
+                                <Style TargetType="{x:Type DataGridRow}" BasedOn="{StaticResource DatabaseDataGridItemStyle}" />
+                            </DataGrid.RowStyle>
+                            <DataGrid.CellStyle>
+                                <Style TargetType="{x:Type DataGridCell}" BasedOn="{StaticResource DataGridCellStyle}" />
+                            </DataGrid.CellStyle>
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="File" Binding="{Binding FileName, Mode=OneWay}" Width="*" />
+                            </DataGrid.Columns>
+                        </DataGrid>
+
+                        <Grid Grid.Row="6" Style="{StaticResource InternalGridStyle}" VerticalAlignment="Center">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="2"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Button Grid.Column="0" x:Name="AddResults" Width="150" Height="25" Content="Add" 
+                                    Click="AddResults_Click" Style="{StaticResource ImportantButtonStyle}" HorizontalAlignment="Right"/>
+                            <Button Grid.Column="2" x:Name="ClearResults" Width="150" Height="25" Content="Clear" 
+                                    Click="ClearResults_Click" Style="{StaticResource ImportantButtonStyle}" HorizontalAlignment="Left"/>
+                        </Grid>
                     </Grid>
 
-                    <!--Header label-->
-                    <Label Content="Digestion Parameters File" Grid.Row="5" Style="{StaticResource SubHeaderLabelStyle}" />
+                    <!-- Right Column: Databases -->
+                    <Grid Grid.Row="2" Grid.Column="2"  Background="{StaticResource BackgroundColor}">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
 
-                    <DataGrid Grid.Row="6" x:Name="dataGridParameters"  Style="{StaticResource x:DataGridStyle}" ColumnHeaderStyle="{StaticResource DataGridColumnHeaderStyle}" ItemsSource="{Binding}" ScrollViewer.VerticalScrollBarVisibility="Visible">
+                        <Label Content="Databases" Grid.Row="0" Style="{StaticResource SubHeaderLabelStyle}" />
 
-                        <DataGrid.RowStyle>
-                            <Style TargetType="{x:Type DataGridRow}" BasedOn="{StaticResource DatabaseDataGridItemStyle}" />
-                        </DataGrid.RowStyle>
-                        <DataGrid.CellStyle>
-                            <Style TargetType="{x:Type DataGridCell}" BasedOn="{StaticResource DataGridCellStyle}" />
-                        </DataGrid.CellStyle>
-                        <DataGrid.Columns>
-                            <DataGridTextColumn Header="File" Binding="{Binding FileName, Mode=OneWay}" Width="450" />
-                            <DataGridTextColumn Header="File Path" Binding="{Binding FilePath, Mode=OneWay}" Width="450" />
+                        <DataGrid Grid.Row="1" x:Name="dataGridReloadDb" Style="{StaticResource x:DataGridStyle}" 
+                                  ColumnHeaderStyle="{StaticResource DataGridColumnHeaderStyle}" ItemsSource="{Binding}" 
+                                  VerticalScrollBarVisibility="Visible">
+                            <DataGrid.RowStyle>
+                                <Style TargetType="{x:Type DataGridRow}" BasedOn="{StaticResource DatabaseDataGridItemStyle}" />
+                            </DataGrid.RowStyle>
+                            <DataGrid.CellStyle>
+                                <Style TargetType="{x:Type DataGridCell}" BasedOn="{StaticResource DataGridCellStyle}" />
+                            </DataGrid.CellStyle>
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="File" Binding="{Binding FileName, Mode=OneWay}" Width="*" />
+                            </DataGrid.Columns>
+                        </DataGrid>
 
-                        </DataGrid.Columns>
-                    </DataGrid>
-                    <Grid Grid.Row="7" Style="{StaticResource InternalGridStyle}" VerticalAlignment="Center">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="28*"/>
-                            <ColumnDefinition Width="145*"/>
-                            <ColumnDefinition Width="2"/>
-                            <ColumnDefinition Width="173*"/>
-                        </Grid.ColumnDefinitions>
-                        <Button Grid.Column="1" x:Name="AddParameters" Width ="200" Height="25" Content="Add" Click="AddParameters_Click" Style="{StaticResource ImportantButtonStyle}" HorizontalAlignment="Left" Margin="234,0,0,0"/>
-                        <Button Grid.Column="2" x:Name="ClearParameters" Width="200" Height="25" Content="Clear" Click="ClearParameters_Click" Style="{StaticResource ImportantButtonStyle}" HorizontalAlignment="Left" Grid.ColumnSpan="2" Margin="2,0,0,0"/>
+                        <Grid Grid.Row="2" Style="{StaticResource InternalGridStyle}" VerticalAlignment="Center">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="2"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Button Grid.Column="0" x:Name="AddDb" Width="150" Height="25" Content="Add" 
+                                    Click="ReloadProteinDatabase_Click" Style="{StaticResource ImportantButtonStyle}" HorizontalAlignment="Right"/>
+                            <Button Grid.Column="2" x:Name="ClearDb" Width="150" Height="25" Content="Clear" 
+                                    Click="ClearReloadedXML_Click" Style="{StaticResource ImportantButtonStyle}" HorizontalAlignment="Left"/>
+                        </Grid>
                     </Grid>
 
-                    <!--Header label-->
-                    <Label Content="Result Files" Grid.Row="8" Style="{StaticResource SubHeaderLabelStyle}" />
-
-                    <DataGrid Grid.Row="9" x:Name="dataGridResults"  Style="{StaticResource x:DataGridStyle}" ColumnHeaderStyle="{StaticResource DataGridColumnHeaderStyle}" ItemsSource="{Binding}" ScrollViewer.VerticalScrollBarVisibility="Visible">
-
-                        <DataGrid.RowStyle>
-                            <Style TargetType="{x:Type DataGridRow}" BasedOn="{StaticResource DatabaseDataGridItemStyle}" />
-                        </DataGrid.RowStyle>
-                        <DataGrid.CellStyle>
-                            <Style TargetType="{x:Type DataGridCell}" BasedOn="{StaticResource DataGridCellStyle}" />
-                        </DataGrid.CellStyle>
-                        <DataGrid.Columns>
-                            <DataGridTextColumn Header="File" Binding="{Binding FileName, Mode=OneWay}" Width="450" />
-                            <DataGridTextColumn Header="File Path" Binding="{Binding FilePath, Mode=OneWay}" Width="450" />
-
-                        </DataGrid.Columns>
-                    </DataGrid>
-                    <Grid Grid.Row="10" Style="{StaticResource InternalGridStyle}" VerticalAlignment="Center">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="2"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <Button Grid.Column="0" x:Name="AddResults" Width ="200" Height="25" Content="Add" Click="AddResults_Click" Style="{StaticResource ImportantButtonStyle}" HorizontalAlignment="Right"/>
-                        <Button Grid.Column="2" x:Name="ClearResults" Width="200" Height="25" Content="Clear" Click="ClearResults_Click" Style="{StaticResource ImportantButtonStyle}" HorizontalAlignment="Left"/>
-                    </Grid>
-                    <Button Grid.Row="12" x:Name="LoadResults" Width="402" Height="40" Content="Load Results" Click="LoadResults_Click" Style="{StaticResource ImportantButtonStyle}"/>
+                    <!-- Load Results Button at Bottom -->
+                    <Button Grid.Row="3" Grid.ColumnSpan="3" x:Name="LoadResults" Width="402" Height="40" 
+                            Content="Load Results" Click="LoadResults_Click" Style="{StaticResource ImportantButtonStyle}"/>
                 </Grid>
             </TabItem>
             <TabItem  IsHitTestVisible="False" Style="{StaticResource TabItemStyle}">
@@ -608,11 +642,11 @@
             </TabItem>
 
             <TabItem Header="Results Summary" Style="{StaticResource TabItemStyle}" Name="AllResultsTab">
-                <local:AllResultsWindow/>
+                <local:AllResultsWindow />
             </TabItem>
 
             <TabItem Header="Histograms" Style="{StaticResource TabItemStyle}" Name="AllHistogramsTab">
-                <local:HistogramWindow/>
+                <local:HistogramWindow />
             </TabItem>
 
             <TabItem Header="Protein Search" Style="{StaticResource TabItemStyle}" Name="ProteinCovMap">
@@ -637,19 +671,19 @@
                             wiki
                         </Hyperlink>  
                         to find answers to commonly-asked questions.
-                        
+                    
                         <LineBreak/>
                         <LineBreak/>
-                        
+                    
                         If you encounter problems or you have a suggestion, please visit  
                         <Hyperlink NavigateUri="https://github.com/smith-chem-wisc/ProteaseGuru/issues/new" RequestNavigate="Hyperlink_RequestNavigate">
                             our issues page
                         </Hyperlink> 
                         on GitHub and submit a new issue. 
-                        
+                    
                         <LineBreak/>
                         <LineBreak/>
-                        
+                    
                         If you would prefer to keep your correspondence private, you may email us at 
                         <Hyperlink NavigateUri="null" RequestNavigate="MenuItem_EmailHelp_Click">
                            smith_software@chem.wisc.edu
@@ -675,8 +709,8 @@
 
                         <TextBlock Grid.Row="0" Grid.Column="1" Style="{StaticResource TextBlockStyle}" Margin="0">
                             You may also want to:
-                        </TextBlock>                        
-                        
+                        </TextBlock>
+
                         <Button Grid.Row="1" Grid.Column="1" HorizontalContentAlignment="Left" BorderThickness="0" Click="MenuItem_Twitter_Click">
                             <StackPanel Orientation="Horizontal">
                                 <Image Source="Icons/Twitter_Logo_Blue.bmp" Width="20" Height="20" Margin="0,0,5,0"/>
@@ -717,5 +751,85 @@
             </TabItem>
         </TabControl>
 
+        <!--Notifications - separate grid with column definitions to skip tab sidebar-->
+        <Grid Grid.Row="1" Margin="1,-10,0,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="165" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <StackPanel Grid.Column="1" Background="{StaticResource DataGridBackgroundColor}" Margin="1,0,0,0">
+                <Expander x:Name="NotificationExpander" 
+                          Background="{StaticResource DataGridBackgroundColor}" 
+                          FlowDirection="RightToLeft"
+                          IsExpanded="{Binding IsExpanded, Mode=TwoWay, Source={x:Static local:NotificationService.Instance}}">
+                    <Expander.Header>
+                        <StackPanel>
+                            <TextBlock>Notifications</TextBlock>
+                        </StackPanel>
+                    </Expander.Header>
+
+                    <Grid FlowDirection="LeftToRight" Background="{StaticResource DataGridBackgroundColor}">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+
+                        <!-- Clear Button -->
+                        <Button Grid.Row="0" 
+                                Content="Clear All" 
+                                HorizontalAlignment="Right" 
+                                Margin="5"
+                                Width="80"
+                                Height="25"
+                                Click="ClearNotifications_Click"
+                                Style="{StaticResource ImportantButtonStyle}"/>
+
+                        <!-- Notifications List -->
+                        <ScrollViewer Grid.Row="1"
+                                      Background="{StaticResource DataGridBackgroundColor}"
+                                      VerticalScrollBarVisibility="Auto" 
+                                      MaxHeight="150"
+                                      Margin="5,0,5,5">
+                            <ItemsControl ItemsSource="{Binding Notifications, Source={x:Static local:NotificationService.Instance}}"
+                                          Background="{StaticResource DataGridBackgroundColor}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Style="{StaticResource NotificationItemStyle}">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
+
+                                                <TextBlock Grid.Column="0" 
+                                                           Text="{Binding TypeIcon}" 
+                                                           FontSize="14" 
+                                                           Margin="0,0,10,0"
+                                                           VerticalAlignment="Center"/>
+
+                                                <TextBlock Grid.Column="1" 
+                                                           Text="{Binding Message}" 
+                                                           TextWrapping="Wrap"
+                                                           Foreground="{StaticResource TextColor1}"
+                                                           VerticalAlignment="Center"/>
+
+                                                <TextBlock Grid.Column="2" 
+                                                           Text="{Binding FormattedTimestamp}" 
+                                                           Foreground="Gray"
+                                                           FontSize="10"
+                                                           Margin="10,0,0,0"
+                                                           VerticalAlignment="Center"/>
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
+                    </Grid>
+                </Expander>
+            </StackPanel>
+        </Grid>
     </Grid>
 </Window>

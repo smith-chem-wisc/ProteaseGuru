@@ -86,7 +86,9 @@
             <Setter Property="Margin" Value="5,2,0,0"/>
         </Style>
     </UserControl.Resources>
-    <Grid Style="{StaticResource PageGridStyle}">
+
+
+    <Grid Style="{StaticResource PageGridStyle}" Margin="-2 -2 -2 0" Background="{StaticResource BackgroundColor}">
         <Grid.RowDefinitions>
             <RowDefinition Height="50"/>
             <RowDefinition Height="30"/>
@@ -101,7 +103,7 @@
             Search for a specific protein accessions to view its digestion results both numerically and as a protein sequence coverage map.
         </TextBlock>
 
-        <Grid Grid.Row ="2" Style="{StaticResource InternalGridStyle}">
+        <Grid Grid.Row ="2" Style="{StaticResource InternalGridStyle}" Margin="5 0 0 26">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="3"/>
