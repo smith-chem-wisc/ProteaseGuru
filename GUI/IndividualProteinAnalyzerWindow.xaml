@@ -12,6 +12,7 @@ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         <SolidColorBrush x:Key="TextColor1" Color="#131313" />
         <SolidColorBrush x:Key="AccentColor" Color="#F9690E" />
         <SolidColorBrush x:Key="DataGridBackgroundColor" Color="#D5D5D5" />
+        <SolidColorBrush x:Key="BorderColor" Color="#444449" />
 
         <!--Styling for the grid that defines each page-->
         <Style x:Key="PageGridStyle" TargetType="Grid">
@@ -110,7 +111,7 @@ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="3"/>
-                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="1.4*"/>
                 <ColumnDefinition Width="3"/>
                 <ColumnDefinition Width="4*"/>
             </Grid.ColumnDefinitions>
@@ -150,19 +151,23 @@ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                           Background="{StaticResource BackgroundColor}"
                           Width="3"/>
 
-            <Grid Grid.Column="2" Style="{StaticResource InternalGridStyle}">
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="35"></RowDefinition>
-                    <RowDefinition Height = "*"></RowDefinition>
-                    <RowDefinition Height = "30"></RowDefinition>
-                    <RowDefinition Height="1"></RowDefinition>
-                    <RowDefinition Height="30"></RowDefinition>
-                </Grid.RowDefinitions>
-                <!--Header label-->
-                <Label Content="Protease Options" Grid.Row="0" Style="{StaticResource SmallHeaderLabelStyle}"  HorizontalContentAlignment="Center"/>
-
-
-            </Grid>
+            <!-- Column 2: Protease Options -->
+            <DockPanel Grid.Column="2" Background="{StaticResource BackgroundColor}" LastChildFill="True">
+                <Label DockPanel.Dock="Top"
+                       Content="Protease Options"
+                       Style="{StaticResource SmallHeaderLabelStyle}"
+                       HorizontalContentAlignment="Center"/>
+                <ScrollViewer VerticalScrollBarVisibility="Auto"
+                              HorizontalScrollBarVisibility="Disabled">
+                    <ItemsControl x:Name="ProteaseOptionsItemsControl">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <gui:ProteaseSpecificDigestionControl/>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+            </DockPanel>
 
             <GridSplitter Grid.Column="3"
                           HorizontalAlignment="Center"
@@ -170,64 +175,32 @@ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                           Width="3"/>
 
             <Grid Grid.Column="4" Name="AllResultsGrid" Style="{StaticResource InternalGridStyle}">
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="*"/>
-                    <RowDefinition Height="5"/>
-                    <RowDefinition Height="*"/>
-                </Grid.RowDefinitions>
 
-                <!-- Row 0: Protein Sequence Coverage Map -->
-                <Grid Grid.Row="0" Name="ResultsGrid" SizeChanged="resultsSizeChanged"
+                <!-- Maximum Coverage Analysis fills the entire right column -->
+                <Grid Name="MaxCoverageGrid" SizeChanged="maxCoverageGrid_SizeChanged"
                       Style="{StaticResource InternalGridStyle}">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="35"/>
-                        <RowDefinition Height="*"/>
-                        <RowDefinition Height="5"/>
+                        <!-- Section header -->
                         <RowDefinition Height="30"/>
-                    </Grid.RowDefinitions>
-                    <Label Content="Protein Sequence Coverage Map" Grid.Row="0" Style="{StaticResource SmallHeaderLabelStyle}"/>
-                    <ScrollViewer Grid.Row="1" Name="mapViewer" HorizontalAlignment="Center" VerticalAlignment="Center"
-                                  CanContentScroll="True" VerticalScrollBarVisibility="Visible" Width="775">
-                        <Grid Name="mapGrid" Background="White">
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="2*"/>
-                                <RowDefinition Height="*"/>
-                            </Grid.RowDefinitions>
-                            <Canvas x:Name="map" Grid.Row="0" Width="700" Background="White"/>
-                            <Canvas x:Name="legend" Grid.Row="1" Width="700" Height="300" Background="White"
-                                    VerticalAlignment="Top" HorizontalAlignment="Left">
-                                <Grid Name="legendGrid" Background="White" VerticalAlignment="Top" HorizontalAlignment="Left"/>
-                            </Canvas>
-                        </Grid>
-                    </ScrollViewer>
-                    <Button x:Name="exportPngButton" Content="Export Protein Digestion Results"
-                            Click="exportCoverageMap" Grid.Row="3" Width="250"
-                            Style="{StaticResource ImportantButtonStyle}"/>
-                </Grid>
-
-                <GridSplitter Grid.Row="1" Height="5" HorizontalAlignment="Stretch"
-                              Background="{StaticResource BackgroundColor}" ResizeDirection="Rows"/>
-
-                <!-- Row 2: Maximum Coverage Analysis -->
-                <Grid Grid.Row="2" Name="MaxCoverageGrid" SizeChanged="maxCoverageGrid_SizeChanged"
-                      Style="{StaticResource InternalGridStyle}">
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="35"/>
-                        <!-- Header                          -->
-                        <RowDefinition Height="30"/>
-                        <!-- Toggle buttons + spinner        -->
+                        <!-- Radio buttons -->
                         <RowDefinition Height="*"/>
-                        <!-- Canvas: title+label+seq+legend  -->
+                        <!-- Map + legend -->
                     </Grid.RowDefinitions>
 
                     <Label Content="Maximum Coverage Analysis" Grid.Row="0"
                            Style="{StaticResource SmallHeaderLabelStyle}"/>
 
+                    <!-- Mode radio buttons -->
                     <StackPanel Grid.Row="1" Orientation="Horizontal"
                                 VerticalAlignment="Center" Margin="5,0,0,0">
                         <RadioButton x:Name="greedyToggle" Content="Greedy (Min Set)"
                                      GroupName="MaxCovMode" Width="120"
                                      IsChecked="True" Checked="MaxCoverageMode_Changed"
+                                     Style="{StaticResource ModeToggleStyle}"/>
+                        <RadioButton x:Name="singleToggle" Content="Best Single"
+                                     GroupName="MaxCovMode"
+                                     Checked="MaxCoverageMode_Changed"
                                      Style="{StaticResource ModeToggleStyle}"/>
                         <RadioButton x:Name="pairToggle" Content="Best Pair"
                                      GroupName="MaxCovMode"
@@ -244,12 +217,43 @@ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                                    Foreground="#888888" Visibility="Collapsed"/>
                     </StackPanel>
 
+                    <!-- Scrollable map + legend -->
                     <ScrollViewer Grid.Row="2" Name="maxCoverageMapViewer"
                                   HorizontalAlignment="Center" VerticalAlignment="Top"
                                   CanContentScroll="True"
                                   VerticalScrollBarVisibility="Visible" Width="775">
                         <Grid Name="maxCoverageMapGrid" Background="White">
-                            <Canvas x:Name="maxCoverageMap" Width="700" Background="White"/>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            <Canvas x:Name="maxCoverageMap" Grid.Row="0" Width="700" Background="White"/>
+                            <Canvas x:Name="maxCoverageLegend" Grid.Row="1" Width="700" Background="White"
+                                    VerticalAlignment="Top" HorizontalAlignment="Left">
+                                <Grid Name="maxCoverageLegendGrid" Background="White"
+                                      VerticalAlignment="Top" HorizontalAlignment="Left"/>
+                            </Canvas>
+                            <!-- Coverage key: explains Bold / Underline text styles -->
+                            <Border Grid.Row="2" BorderBrush="#CCCCCC" BorderThickness="1"
+                                    Background="#F8F8F8" Margin="5,6,5,6" Padding="8,5,8,5"
+                                    HorizontalAlignment="Left">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="Key: " FontSize="12" FontWeight="Bold"
+                                               VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                    <TextBlock Text="A" FontSize="14" FontWeight="Bold"
+                                               FontFamily="Arial" VerticalAlignment="Center"
+                                               Foreground="Black"/>
+                                    <TextBlock Text=" Covered  " FontSize="12"
+                                               VerticalAlignment="Center" Margin="2,0,10,0"/>
+                                    <TextBlock FontSize="14" FontFamily="Arial"
+                                               VerticalAlignment="Center" Foreground="Black">
+                                        <Run Text="A" TextDecorations="Underline"/>
+                                    </TextBlock>
+                                    <TextBlock Text=" Not Covered" FontSize="12"
+                                               VerticalAlignment="Center" Margin="2,0,0,0"/>
+                                </StackPanel>
+                            </Border>
                         </Grid>
                     </ScrollViewer>
                 </Grid>

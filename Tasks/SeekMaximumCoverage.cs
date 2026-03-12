@@ -369,6 +369,14 @@ public class SeekMaximumCoverage
         (int Start, int End)? region = null)
         => BestCombination(coverageDict, 3, region);
 
+    /// <summary>
+    /// Finds the single protease that alone produces the highest sequence coverage.
+    /// </summary>
+    public CombinationResult BestSingle(
+        Dictionary<string, HashSet<int>> coverageDict,
+        (int Start, int End)? region = null)
+        => BestCombination(coverageDict, 1, region);
+
     /// <summary>Finds the best combination of N proteases that maximizes coverage.</summary>
     public CombinationResult BestCombination(
         Dictionary<string, HashSet<int>> coverageDict,
