@@ -613,6 +613,183 @@ namespace GUI
             mapViewer.Width = .99 * ResultsGrid.ActualWidth;
         }
 
+        private void maxCoverageGrid_SizeChanged(object sender, SizeChangedEventArgs e)
+        {
+            maxCoverageMapViewer.Height = .8 * MaxCoverageGrid.ActualHeight;
+            maxCoverageMapViewer.Width = .99 * MaxCoverageGrid.ActualWidth;
+        }
+
+        private void MaxCoverageMode_Changed(object sender, RoutedEventArgs e)
+        {
+            if (SelectedProtein == null) return;
+
+            if (greedyToggle.IsChecked == true)
+            {
+                // TODO: render greedy (minimum set cover) result
+            }
+            else if (pairToggle.IsChecked == true)
+            {
+                // TODO: render best-pair result
+            }
+            else if (tripletToggle.IsChecked == true)
+            {
+                // TODO: render best-triplet result
+            }
+        }
+
+        private void saveMapToPDF(Grid myGrid)
+        {
+            PrintDialog pd = new PrintDialog();
+            pd.PrintQueue = new System.Printing.PrintQueue(new System.Printing.PrintServer(), "Microsoft Print to PDF");
+            pd.PrintTicket.PageOrientation = System.Printing.PageOrientation.Landscape;
+            pd.PrintTicket.PageScalingFactor = 100;
+            pd.PrintVisual(myGrid, "coverage map");
+        }
+
+        private void exportCoverageMap(object sender, RoutedEventArgs e)
+        {
+            if (SelectedProtein == null)
+            {
+                MessageBox.Show("Please select a protein before exporting.");
+                return;
+            }
+
+            var fileDirectory = UserParams.OutputFolder + @"\ProteaseGuruDigestionResults";
+            string subFolder = Path.Combine(fileDirectory, SelectedProtein.DisplayName);
+            string proteinName = SelectedProtein.DisplayName;
+
+            if (subFolder.IndexOfAny(Path.GetInvalidPathChars()) != -1)
+            {
+                proteinName = "Protein" + ProteinExportCount++;
+                MessageBox.Show($"Warning: Protein accession contains invalid characters. Using '{proteinName}' instead.");
+                subFolder = Path.Combine(fileDirectory, proteinName);
+            }
+
+            saveMapToPDF(mapGrid);
+            Directory.CreateDirectory(subFolder);
+
+            // Render and save PNG
+            var fileName = $"SequenceCoverageMap_{proteinName}.png";
+            Rect bounds = VisualTreeHelper.GetDescendantBounds(mapGrid);
+            var rtb = new RenderTargetBitmap((int)bounds.Width, (int)bounds.Height, 96d, 96d, PixelFormats.Default);
+            var dv = new DrawingVisual();
+            using (DrawingContext dc = dv.RenderOpen())
+            {
+                dc.DrawRectangle(new VisualBrush(mapGrid), null, new Rect(new Point(), bounds.Size));
+            }
+            rtb.Render(dv);
+
+            var pngEncoder = new PngBitmapEncoder();
+            pngEncoder.Frames.Add(BitmapFrame.Create(rtb));
+            using var ms = new MemoryStream();
+            pngEncoder.Save(ms);
+            var filePath = Path.Combine(subFolder, fileName);
+            File.WriteAllBytes(filePath, ms.ToArray());
+
+            // Save results summary
+            var resultsFile = $"{proteinName}_DigestionResults.txt";
+            var results = new List<string>
+            {
+                $"Digestion Results for {proteinName}",
+                "",
+                "Protease\tUnique Peptides\tShared Peptides\tTotal Peptides\tTotal Coverage\tUnique Coverage"
+            };
+
+            // Get peptide data from analyzer
+            var allPeptides = _analyzer.GetAllPeptidesForProtein(SelectedProtein.Protein);
+            var uniquePeptides = allPeptides.Where(p => _analyzer.IsMultiDatabase ? p.UniqueAllDbs : p.Unique).ToList();
+
+            // Save metadata
+            SaveMetadata(subFolder, proteinName, SelectedProtein.Protein, allPeptides);
+
+            // Save peptide TSV files
+            string header = BuildPeptideHeader();
+            WritePeptidesToTsv(allPeptides, subFolder, proteinName, header, "ProteaseGuruPeptides");
+            if (uniquePeptides.Count > 0)
+            {
+                WritePeptidesToTsv(uniquePeptides, subFolder, proteinName, header, "ProteaseGuruUniquePeptides");
+            }
+
+            File.WriteAllLines(Path.Combine(subFolder, resultsFile), results);
+
+            if (MessageBox.Show($"Files created at {subFolder}! Copy paths to clipboard?", "", MessageBoxButton.YesNo) == MessageBoxResult.Yes)
+            {
+                var clipboardText = $"Coverage Map: {filePath}\r\nResults: {Path.Combine(subFolder, resultsFile)}";
+                Clipboard.SetText(clipboardText);
+            }
+        }
+
+        private void SaveMetadata(string subFolder, string proteinName, Protein protein, List<InSilicoPep> allPeptides)
+        {
+            const string tab = "\t";
+            var metaData = new List<string>
+            {
+                $"MetaData for {protein.Accession} Sequence Coverage Map",
+                "Protein Sequence",
+                protein.BaseSequence,
+                "Sequence Variations",
+                "Start Residue\tEnd Residue\tOriginal Sequence\tVariant Sequence"
+            };
+
+            foreach (var variant in protein.AppliedSequenceVariations)
+            {
+                metaData.Add($"{variant.OneBasedBeginPosition}{tab}{variant.OneBasedEndPosition}{tab}{variant.OriginalSequence}{tab}{variant.VariantSequence}");
+            }
+
+            metaData.Add("Post-Translational Modifications");
+            metaData.Add("Residue\tModifications");
+            foreach (var mod in protein.OneBasedPossibleLocalizedModifications)
+            {
+                metaData.Add($"{mod.Key}{tab}{string.Join(",", mod.Value.Select(m => m.IdWithMotif))}");
+            }
+
+            metaData.Add("All Peptides");
+            metaData.Add("Start Residue\tEnd Residue\tProtease\tUnique");
+            foreach (var peptide in allPeptides.Select(p => $"{p.StartResidue}{tab}{p.EndResidue}{tab}{p.Protease}{tab}{p.UniqueAllDbs}").Distinct())
+            {
+                metaData.Add(peptide);
+            }
+
+            File.WriteAllLines(Path.Combine(subFolder, $"{proteinName}_MapMetaData.txt"), metaData);
+        }
+
+        private static string BuildPeptideHeader()
+        {
+            return string.Join("\t",
+                "Database", "Protease", "Base Sequence", "Full Sequence", "Previous Amino Acid",
+                "Next Amino Acid", "Start Residue", "End Residue", "Length", "Molecular Weight",
+                "Protein Accession", "Protein Name", "Unique Peptide (in this database)",
+                "Unique Peptide (in all databases)", "Peptide sequence exclusive to this Database",
+                "Hydrophobicity", "Electrophoretic Mobility");
+        }
+
+        private void WritePeptidesToTsv(List<InSilicoPep> peptides, string subFolder, string proteinName, string header, string filePrefix)
+        {
+            const int maxPerFile = 1000000;
+            int fileCount = 1;
+            int peptideIndex = 0;
+
+            while (peptideIndex < peptides.Count)
+            {
+                var filePath = Path.Combine(subFolder, $"{filePrefix}_{proteinName}_{fileCount}.tsv");
+                using var output = new StreamWriter(filePath);
+                output.WriteLine(header);
+
+                var written = new HashSet<string>();
+                int inFile = 0;
+                while (inFile < maxPerFile && peptideIndex < peptides.Count)
+                {
+                    var line = peptides[peptideIndex++].ToString();
+                    if (written.Add(line))
+                    {
+                        output.WriteLine(line);
+                    }
+                    inFile++;
+                }
+                fileCount++;
+            }
+        }
+
         void results_Loaded(object sender, RoutedEventArgs e)
         {
             Window window = Window.GetWindow(this);
