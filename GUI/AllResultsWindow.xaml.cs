@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Windows.Controls;
@@ -14,7 +14,7 @@ namespace GUI
     {
         private readonly ObservableCollection<ProteaseSummaryForTreeView> SummaryForTreeViewObservableCollection;           
         private readonly Dictionary<string, Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>> PeptideByFile;        
-        Parameters UserParams;
+        RunParameters UserParams;
         public Dictionary<string, Dictionary<string, string>> HistogramDataTable = new Dictionary<string, Dictionary<string, string>>();
 
         public AllResultsWindow()
@@ -22,7 +22,7 @@ namespace GUI
         }
 
         //Sets up the All ResultsWindow
-        public AllResultsWindow(Dictionary<string, Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>> peptideByFile, Parameters userParams) // change constructor to receive analysis information
+        public AllResultsWindow(Dictionary<string, Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>> peptideByFile, RunParameters userParams) // change constructor to receive analysis information
         {
             InitializeComponent();
             PeptideByFile = peptideByFile;

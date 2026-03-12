@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
@@ -26,7 +26,7 @@ namespace GUI
         ICollectionView proteinDBView;
         private readonly Dictionary<string, Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>> PeptideByFile;
         List<string> DBSelected;
-        Parameters UserParams;
+        RunParameters UserParams;
         public Dictionary<string, Dictionary<string, string>> HistogramDataTable = new Dictionary<string, Dictionary<string, string>>();
         public string SelectedPlot;
         private Dictionary<string, List<InSilicoPep>> PeptidesByProtease;
@@ -36,7 +36,7 @@ namespace GUI
         {
         }
 
-        public HistogramWindow(Dictionary<string, Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>> peptideByFile, Parameters userParams, Dictionary<string, Dictionary<Protein, (double, double)>> sequenceCoverageByProtease) // change constructor to receive analysis information
+        public HistogramWindow(Dictionary<string, Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>> peptideByFile, RunParameters userParams, Dictionary<string, Dictionary<Protein, (double, double)>> sequenceCoverageByProtease) // change constructor to receive analysis information
         {
             InitializeComponent();
             PeptideByFile = peptideByFile;
@@ -221,12 +221,10 @@ namespace GUI
             var fileDirectory = UserParams.OutputFolder;
             var fileName = String.Concat(plotName[1],"_HistogramDataTable", ".csv");
             File.WriteAllText(Path.Combine(fileDirectory, fileName), dataTable);            
-            string message = "Data table Created at " + Path.Combine(fileDirectory, fileName) + "! Would you like to copy the file path?";
-            var messageBox = MessageBox.Show(message, "", MessageBoxButton.YesNo);
-            if (messageBox == MessageBoxResult.Yes)
-            {
-                Clipboard.SetText(Path.Combine(fileDirectory, fileName));
-            }
+            
+            NotificationService.Instance.AddNotification($"Data table created at {Path.Combine(fileDirectory, fileName)}!", NotificationType.Success);
+            Clipboard.SetText(Path.Combine(fileDirectory, fileName));
+            NotificationService.Instance.AddNotification("File path copied to clipboard.", NotificationType.Information);
 
             Dictionary<string, IEnumerable<double>> numbersByProtease = new Dictionary<string, IEnumerable<double>>();    // key is protease name, value is data from that protease
             Dictionary<string, Dictionary<string, int>> dictsByProtease = new Dictionary<string, Dictionary<string, int>>();   // key is protease name, value is dictionary of bins and their counts
@@ -434,7 +432,7 @@ namespace GUI
 
             if (selectedItem == null)
             {
-                MessageBox.Show("Select a plot type to export!");
+                NotificationService.Instance.AddNotification("Select a plot type to export!", NotificationType.Warning);
                 return;
             }
 
@@ -458,12 +456,10 @@ namespace GUI
     
             plotViewStat.Width = tmpW;
             plotViewStat.Height = tmpH;
-            string message = "PDF Created at " + Path.Combine(fileDirectory, fileName) + "! Would you like to copy the file path?";
-            var messageBox = MessageBox.Show(message, "", MessageBoxButton.YesNo);
-            if (messageBox == MessageBoxResult.Yes)
-            {
-                Clipboard.SetText(Path.Combine(fileDirectory, fileName));
-            }            
+            
+            NotificationService.Instance.AddNotification($"PDF created at {Path.Combine(fileDirectory, fileName)}!", NotificationType.Success);
+            Clipboard.SetText(Path.Combine(fileDirectory, fileName));
+            NotificationService.Instance.AddNotification("File path copied to clipboard.", NotificationType.Information);
         }
        
     }

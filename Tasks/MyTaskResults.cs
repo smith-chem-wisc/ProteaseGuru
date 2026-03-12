@@ -1,4 +1,4 @@
-﻿using Proteomics;
+using Proteomics;
 using Proteomics.ProteolyticDigestion;
 using System;
 using System.Collections.Generic;
@@ -18,7 +18,7 @@ namespace Tasks
         private readonly StringBuilder PsmPeptideProteinSummaryText = new StringBuilder();
         public readonly Dictionary<string, Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>> PeptideByFile;
         public readonly Dictionary<string, Dictionary<Protein, (double, double)>> SequenceCoverageByProtease;
-        Parameters parameters;
+        RunParameters parameters;
 
         internal MyTaskResults(ProteaseGuruTask s)
         {

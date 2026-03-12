@@ -25,7 +25,7 @@ internal class ChronologerTests
             string databasePath = Path.Combine(TestContext.CurrentContext.TestDirectory, "Databases", "TestDatabase_1.fasta");
             DbForDigestion database = new DbForDigestion(databasePath);
 
-            Parameters param = new Parameters();
+            RunParameters param = new RunParameters();
             param.TreatModifiedPeptidesAsDifferent = false;
             param.OutputFolder = subFolder;
 
@@ -238,7 +238,7 @@ MSFVNGNEIFTAARKQGHYAVGAFNTNNLEWTRKPEPTIDESAMPLERKNTPVLIQVSMGAAKYLVKTLVEEEMRK";
             DbForDigestion database = new DbForDigestion(fastaPath);
 
             // Set up parameters with trypsin and default settings
-            Parameters param = new Parameters();
+            RunParameters param = new RunParameters();
             param.TreatModifiedPeptidesAsDifferent = false;
             param.OutputFolder = subFolder;
 
@@ -352,7 +352,7 @@ MSFVNGNEIFTAARKQGHYAVGAFNTNNLEWTRKPEPTIDESAMPLERKNTPVLIQVSMGAAKYLVKTLVEEEMRK";
             string databasePath = Path.Combine(TestContext.CurrentContext.TestDirectory, "Databases", "TestDatabase_1.fasta");
             DbForDigestion database = new DbForDigestion(databasePath);
 
-            Parameters param = new Parameters();
+            RunParameters param = new RunParameters();
             param.TreatModifiedPeptidesAsDifferent = false;
             param.OutputFolder = subFolder;
 

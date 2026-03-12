@@ -103,16 +103,8 @@ namespace Engine
                 // no error thrown if multiple mods with this ID are present - just pick one
             }
 
-            ProteaseMods = ModificationLoader.ReadModsFromFile(
-                Path.Combine(DataDir, @"Mods", @"ProteaseMods.txt"),
-                out var proteaseModWarnings).ToList();
-            foreach (var (_, warning) in proteaseModWarnings)
-            {
-                ErrorsReadingMods.Add(warning);
-            }
-
-            ProteaseDictionary.Dictionary = ProteaseDictionary.LoadProteaseDictionary(
-                Path.Combine(DataDir, @"ProteolyticDigestion", @"proteases.tsv"), ProteaseMods);
+            ProteaseMods = ModificationLoader.ReadModsFromFile(Path.Combine(DataDir, @"Mods", @"ProteaseMods.txt"), out var errors).ToList();
+            ProteaseDictionary.LoadAndMergeCustomProteases(Path.Combine(DataDir, @"ProteolyticDigestion", @"proteases.tsv"), ProteaseMods);
 
             RefreshAminoAcidDictionary();
         }

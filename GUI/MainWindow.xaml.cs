@@ -1,25 +1,14 @@
 using Proteomics;
-using System;
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
-using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
-using System.Windows.Shapes;
 using Engine;
 using Tasks;
 using Proteomics.ProteolyticDigestion;
 using System.IO;
 using System.Globalization;
-using static Tasks.ProteaseGuruTask;
 using MzLibUtil;
 using System.Diagnostics;
 using Omics.Digestion;
@@ -40,16 +29,14 @@ namespace GUI
         private readonly ObservableCollection<ParametersForDataGrid> ParametersObservableCollection = new ObservableCollection<ParametersForDataGrid>();
         private readonly ObservableCollection<RunSummaryForTreeView> SummaryForTreeViewObservableCollection;
 
-        private readonly DigestionConditionsSetupViewModel ParametersViewModel;
+        private DigestionConditionsSetupViewModel ParametersViewModel;
 
         //set up the main window that users interact with
         public MainWindow()
         {
             InitializeComponent();
-            Title = "ProteaseGuru: Version " + GlobalVariables.ProteaseGuruVersion;
 
-            // TODO: Set up default parameters to check for
-            ParametersViewModel = new(new Parameters());
+            ParametersViewModel = new(new());
             digestionConditionsControl.DataContext = ParametersViewModel;
           
             dataGridProteinDatabases.DataContext = ProteinDbObservableCollection;
@@ -78,7 +65,7 @@ namespace GUI
                 {
                     if (System.IO.Path.GetExtension(filepath) != ".tsv")
                     {
-                        MessageBox.Show("Error: Only ProteaseGuru results files in .tsv format should be loaded here. Please remove '"+ filepath +"' before proceeding with analysis");
+                        NotificationService.Instance.AddNotification($"Error: Only ProteaseGuru results files in .tsv format should be loaded here. Please remove '{filepath}' before proceeding with analysis", NotificationType.Error);
                         return;
                     }
                     else
@@ -98,7 +85,7 @@ namespace GUI
         {
             Microsoft.Win32.OpenFileDialog openPicker = new Microsoft.Win32.OpenFileDialog()
             {
-                Filter = "Results Files|*.txt",
+                Filter = "Results Files|*.toml",
                 FilterIndex = 1,
                 RestoreDirectory = true,
                 Multiselect = true
@@ -107,9 +94,9 @@ namespace GUI
             {
                 foreach (var filepath in openPicker.FileNames.OrderBy(p => p))
                 {
-                    if (System.IO.Path.GetExtension(filepath) != ".txt")
+                    if (System.IO.Path.GetExtension(filepath) != ".toml")
                     {
-                        MessageBox.Show("Error: Only ProteaseGuru digestion parameters in .txt format should be loaded here. Please remove '" + filepath + "' before proceeding with analysis");
+                        NotificationService.Instance.AddNotification($"Error: Only ProteaseGuru digestion parameters in .toml format should be loaded here. Please remove '{filepath}' before proceeding with analysis", NotificationType.Error);
                         return;
                     }
                     else
@@ -156,7 +143,7 @@ namespace GUI
                             }
                             catch (Exception ee)
                             {
-                                MessageBox.Show(ee.ToString());
+                                NotificationService.Instance.AddNotification($"Cannot parse modification info from: {draggedFilePath}. Error: {ee.Message}", NotificationType.Error);
                                 GuiWarnHandler(null, new StringEventArgs("Cannot parse modification info from: " + draggedFilePath, null));
                                 ProteinDbObservableCollection.Remove(uu);
                             }
@@ -201,7 +188,7 @@ namespace GUI
                             }
                             catch (Exception ee)
                             {
-                                MessageBox.Show(ee.ToString());
+                                NotificationService.Instance.AddNotification($"Cannot parse modification info from: {draggedFilePath}. Error: {ee.Message}", NotificationType.Error);
                                 GuiWarnHandler(null, new StringEventArgs("Cannot parse modification info from: " + draggedFilePath, null));
                                 ReloadProteinDbObservableCollection.Remove(uu);
                             }
@@ -215,12 +202,25 @@ namespace GUI
                         ResultsObservableCollection.Add(file);
                     }
                     break;
-                case ".txt":
-                    ParametersForDataGrid parameters = new ParametersForDataGrid(draggedFilePath);
-                    if (!ParametersFileExists(ParametersObservableCollection, parameters))
+                case ".toml":
+                    try
                     {
-                        ParametersObservableCollection.Add(parameters);
+                        var loadedParams = RunParameters.FromToml(draggedFilePath);
+
+                        // Reload the ViewModel's UI values from the updated parameters
+                        ParametersViewModel.LoadFromParameters(loadedParams);
+
+                        ParametersForDataGrid parameters = new ParametersForDataGrid(draggedFilePath);
+                        if (!ParametersFileExists(ParametersObservableCollection, parameters))
+                        {
+                            ParametersObservableCollection.Add(parameters);
+                        }
                     }
+                    catch (Exception ex)
+                    {
+                        NotificationService.Instance.AddNotification($"Error loading parameters.toml with message: {ex.Message}", NotificationType.Error);
+                    }
+
                     break;
                 default:
                     GuiWarnHandler(null, new StringEventArgs("Unrecognized file type: " + theExtension, null));
@@ -276,6 +276,10 @@ namespace GUI
             if (!Dispatcher.CheckAccess())
             {
                 Dispatcher.BeginInvoke(new Action(() => GuiWarnHandler(sender, e)));
+            }
+            else
+            {
+                NotificationService.Instance.AddNotification(e.S, NotificationType.Warning);
             }
         }
 
@@ -492,14 +496,12 @@ namespace GUI
                     {
                         foreach (string file in Directory.EnumerateFiles(draggedFilePath, "*.*", SearchOption.AllDirectories))
                         {
-                            AddAFile(file);
-                            ReloadAFile(file);
+                            ProcessDroppedFile(file);
                         }
                     }
                     else
                     {                        
-                        AddAFile(draggedFilePath);
-                        ReloadAFile(draggedFilePath);
+                        ProcessDroppedFile(draggedFilePath);
                     }                    
                     dataGridProteinDatabases.CommitEdit(DataGridEditingUnit.Row, true);                    
                     dataGridProteinDatabases.Items.Refresh();
@@ -516,6 +518,34 @@ namespace GUI
             }            
         }
 
+        // Process a dropped file and route it to the appropriate handler
+        private void ProcessDroppedFile(string filePath)
+        {
+            var filename = System.IO.Path.GetFileName(filePath);
+            var theExtension = System.IO.Path.GetExtension(filename).ToLowerInvariant();
+            bool compressed = theExtension.EndsWith("gz");
+            theExtension = compressed ? System.IO.Path.GetExtension(System.IO.Path.GetFileNameWithoutExtension(filename)).ToLowerInvariant() : theExtension;
+
+            switch (theExtension)
+            {
+                case ".xml":
+                case ".fasta":
+                case ".fa":
+                    // Protein databases go to both collections
+                    AddAFile(filePath);
+                    ReloadAFile(filePath);
+                    break;
+                case ".tsv":
+                case ".toml":
+                    // Results and parameters only go to reload collection
+                    ReloadAFile(filePath);
+                    break;
+                default:
+                    GuiWarnHandler(null, new StringEventArgs("Unrecognized file type: " + theExtension, null));
+                    break;
+            }
+        }
+        
 
         //run in silico digestion and trigger result windows after complete
         private async void RunTaskButton_Click(object sender, RoutedEventArgs e)
@@ -584,96 +614,28 @@ namespace GUI
             Dictionary<string, Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>> PeptidesByFileSetUp = new Dictionary<string, Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>>();
             Dictionary<string, Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>> PeptidesByFile = new Dictionary<string, Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>>();
 
-            Parameters loadedParams = new Parameters();
+            RunParameters loadedParams = new RunParameters();
 
-            string proteaseDirectory = System.IO.Path.Combine(GlobalVariables.DataDir, @"ProteolyticDigestion");
-            string proteaseFilePath = System.IO.Path.Combine(proteaseDirectory, @"proteases.tsv");
-            var myLines = File.ReadAllLines(proteaseFilePath);
-            myLines = myLines.Skip(1).ToArray();
-            Dictionary<string, Protease> dict = new Dictionary<string, Protease>();
-            foreach (string line in myLines)
+            // Load parameters from TOML files
+            foreach (var parameterFile in ParametersObservableCollection)
             {
-                if (line.Trim() != string.Empty) // skip empty lines
+                try
                 {
-                    string[] fields = line.Split('\t');
-                    List<DigestionMotif> motifList = DigestionMotif.ParseDigestionMotifsFromString(fields[1]);
-
-                    string name = fields[0];
-                    var cleavageSpecificity = ((CleavageSpecificity)Enum.Parse(typeof(CleavageSpecificity), fields[4], true));
-                    string psiMsAccessionNumber = fields[5];
-                    string psiMsName = fields[6];
-                    var protease = new Protease(name, cleavageSpecificity, psiMsAccessionNumber, psiMsName, motifList);
-                    dict.Add(protease.Name, protease);
+                    loadedParams = RunParameters.FromToml(parameterFile.FilePath);
+                    break; // Use the first valid parameter file
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Error loading parameters from {parameterFile.FileName}: {ex.Message}");
+                    return;
                 }
             }
 
-            foreach (var parameterFile in ParametersObservableCollection)
+            // If no parameters were loaded, show error and return
+            if (!loadedParams.ProteaseSpecificParameters.Any())
             {
-                var fileData = File.ReadAllLines(parameterFile.FilePath);
-                List<string> proteaseNames = new List<string>();
-                int missedCleavages = 0;
-                int minPeptideLength = 0;
-                int maxPeptideLength = 0;
-                bool treatModPeps = false;
-                int minPeptideMass = -1;
-                int maxPeptideMass = -1;
-
-                foreach (var parameter in fileData)
-                {
-                    var info = parameter.Split(": ");
-                    switch (info[0])
-                    {
-                        case "Digestion Conditions:":
-                            break;
-                        case "Proteases":
-                            proteaseNames = info[1].Split(",").Select(p => p.Trim()).ToList();
-                            break;
-                        case "Missed Cleavages":
-                            missedCleavages = Convert.ToInt32(info[1]);
-                            break;
-                        case "Min Peptide Length":
-                            minPeptideLength = Convert.ToInt32(info[1]);
-                            break;
-                        case "Max Peptide Length":
-                            maxPeptideLength = Convert.ToInt32(info[1]);
-                            break;
-                        case "Treat modified peptides as different peptides":
-                            if (info[1] == "True")
-                            {
-                                treatModPeps = true;
-                            }
-                            break;
-                        case "Min Peptide Mass":
-                            minPeptideMass = Convert.ToInt32(info[1]);
-                            break;
-                        case "Max Peptide Mass":
-                            maxPeptideMass = Convert.ToInt32(info[1]);
-                            break;
-                        default:
-                            // Could be protease-specific parameters or unknown
-                            break;
-                    }
-                }
-
-                // Create ProteaseSpecificParameters for each protease
-                foreach (var proteaseName in proteaseNames)
-                {
-                    if (dict.ContainsKey(proteaseName))
-                    {
-                        DigestionParams digestionParams = new DigestionParams(
-                            protease: proteaseName,
-                            maxMissedCleavages: missedCleavages,
-                            minPeptideLength: minPeptideLength,
-                            maxPeptideLength: maxPeptideLength);
-
-                        loadedParams.ProteaseSpecificParameters.Add(
-                            new ProteaseSpecificParameters(digestionParams));
-                    }
-                }
-
-                loadedParams.TreatModifiedPeptidesAsDifferent = treatModPeps;
-                loadedParams.MinPeptideMassAllowed = minPeptideMass;
-                loadedParams.MaxPeptideMassAllowed = maxPeptideMass;
+                MessageBox.Show("Error: No valid parameters could be loaded from the provided files.");
+                return;
             }
 
             List<InSilicoPep> allpeptides = new List<InSilicoPep>();
@@ -1038,6 +1000,11 @@ namespace GUI
         private void MenuItem_ProteomicsNewsBlog_Click(object sender, RoutedEventArgs e)
         {
             GlobalVariables.StartProcess(@"https://proteomicsnews.blogspot.com/");
+        }
+
+        private void ClearNotifications_Click(object sender, RoutedEventArgs e)
+        {
+            NotificationService.Instance.ClearNotifications();
         }
 
         //private void MenuItem_YouTube_Click(object sender, RoutedEventArgs e)

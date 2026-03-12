@@ -154,7 +154,7 @@ namespace Test
                 string databasePath = Path.Combine(TestContext.CurrentContext.TestDirectory, "Databases", "TestDatabase_1.fasta");
                 DbForDigestion database = new DbForDigestion(databasePath);
 
-                Parameters param = new Parameters();
+                RunParameters param = new RunParameters();
                 param.TreatModifiedPeptidesAsDifferent = false;
                 param.OutputFolder = subFolder;
 
@@ -229,10 +229,12 @@ namespace Test
                 string databasePath3 = Path.Combine(TestContext.CurrentContext.TestDirectory, "Databases", "TestDatabase_3.fasta");
                 DbForDigestion database3 = new DbForDigestion(databasePath3);
 
-                Parameters param = new Parameters();
+                RunParameters param = new RunParameters();
                 param.TreatModifiedPeptidesAsDifferent = false;
                 param.OutputFolder = subFolder;
 
+                var t = ProteaseDictionary.Dictionary;
+                var name = ProteaseDictionary.NormalizeProteaseName("trypsin (cleave before proline)");
                 DigestionParams trypsin = new DigestionParams(
                     protease: "trypsin|P",
                     maxMissedCleavages: 0,
@@ -274,7 +276,7 @@ namespace Test
 
                 var protDic = ProteaseDictionary.LoadProteaseDictionary(Path.Combine(GlobalVariables.DataDir, @"ProteolyticDigestion", @"proteases.tsv"), GlobalVariables.ProteaseMods);
 
-                Parameters param = new Parameters();
+                RunParameters param = new RunParameters();
                 param.TreatModifiedPeptidesAsDifferent = false;
                 param.OutputFolder = subFolder;
 
@@ -324,7 +326,7 @@ namespace Test
                 string databasePath3 = Path.Combine(TestContext.CurrentContext.TestDirectory, "Databases", "TestDatabase_3.fasta");
                 DbForDigestion database3 = new DbForDigestion(databasePath3);
 
-                Parameters param = new Parameters();
+                RunParameters param = new RunParameters();
                 param.TreatModifiedPeptidesAsDifferent = false;
                 param.OutputFolder = subFolder;
 

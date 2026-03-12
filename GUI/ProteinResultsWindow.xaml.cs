@@ -78,7 +78,7 @@ namespace GUI
         /// <summary>
         /// User-specified digestion parameters
         /// </summary>
-        private readonly Parameters UserParams;
+        private readonly RunParameters UserParams;
 
         /// <summary>
         /// Counter for generating unique protein export folder names
@@ -104,7 +104,7 @@ namespace GUI
         /// <param name="sequenceCoverageByProtease">Pre-calculated sequence coverage statistics</param>
         public ProteinResultsWindow(
             Dictionary<string, Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>> peptideByFile,
-            Parameters userParams,
+            RunParameters userParams,
             Dictionary<string, Dictionary<Protein, (double, double)>> sequenceCoverageByProtease)
         {
             InitializeComponent();
@@ -341,7 +341,7 @@ namespace GUI
                 string message = _analyzer.IsMultiDatabase
                     ? "Note: More than one protein database was analyzed. Unique peptides are defined as being unique to a single protein in all analyzed databases."
                     : "Note: One protein database was analyzed. Unique peptides are defined as being unique to a single protein in the analyzed database.";
-                MessageBox.Show(message);
+                NotificationService.Instance.AddNotification(message, NotificationType.Information);
                 MessageShow = false;
             }
 
@@ -775,7 +775,7 @@ namespace GUI
             if (subFolder.IndexOfAny(Path.GetInvalidPathChars()) != -1)
             {
                 proteinName = "Protein" + ProteinExportCount++;
-                MessageBox.Show($"Warning: Protein accession contains invalid characters. Using '{proteinName}' instead.");
+                NotificationService.Instance.AddNotification($"Warning: Protein accession contains invalid characters. Using '{proteinName}' instead.", NotificationType.Warning);
                 subFolder = Path.Combine(fileDirectory, proteinName);
             }
 
@@ -831,12 +831,11 @@ namespace GUI
                 WritePeptidesToTsv(uniquePeptides, subFolder, proteinName, header, "ProteaseGuruUniquePeptides");
             }
 
-            // Offer to copy paths
-            if (MessageBox.Show($"Files created at {subFolder}! Copy paths to clipboard?", "", MessageBoxButton.YesNo) == MessageBoxResult.Yes)
-            {
-                var clipboardText = $"Coverage Map: {filePath}\r\nResults: {Path.Combine(subFolder, resultsFile)}";
-                Clipboard.SetText(clipboardText);
-            }
+            // Offer to copy paths - use notification instead of interactive dialog
+            NotificationService.Instance.AddNotification($"Files created at {subFolder}!", NotificationType.Success);
+            var clipboardText = $"Coverage Map: {filePath}\r\nResults: {Path.Combine(subFolder, resultsFile)}";
+            Clipboard.SetText(clipboardText);
+            NotificationService.Instance.AddNotification("File paths copied to clipboard.", NotificationType.Information);
         }
 
         private void SaveMetadata(string subFolder, string proteinName, Protein protein, List<InSilicoPep> allPeptides)

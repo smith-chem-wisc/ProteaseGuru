@@ -82,7 +82,7 @@
             <Setter Property="Margin" Value="10,5,0,0"/>
         </Style>
     </UserControl.Resources>
-    <Grid Style="{StaticResource PageGridStyle}">
+    <Grid Style="{StaticResource PageGridStyle}" Margin="-2 -2 -5 16" Background="{StaticResource BackgroundColor}">
         <Grid.RowDefinitions>
             <RowDefinition Height="50"/>
             <RowDefinition Height="30"/>
@@ -97,10 +97,10 @@
 
         </TextBlock>
 
-        <GroupBox Grid.Row="2" Grid.Column="2" Name="gbResults" ScrollViewer.VerticalScrollBarVisibility="Hidden" Background="{StaticResource DataGridBackgroundColor}">
+        <GroupBox Grid.Row="2" Grid.Column="2" Name="gbResults" ScrollViewer.VerticalScrollBarVisibility="Hidden" Background="{StaticResource BackgroundColor}">
 
             <DockPanel>
-                <Grid Background="{StaticResource DataGridBackgroundColor}">
+                <Grid Background="{StaticResource BackgroundColor}">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="1.5*"/>
                         <ColumnDefinition Width="Auto"/>
@@ -108,7 +108,7 @@
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
 
-                    <Grid Grid.Column="0" Background="{StaticResource DataGridBackgroundColor}">
+                    <Grid Grid.Column="0" Background="{StaticResource DataGridBackgroundColor}" Margin="5">
                         <Grid.Resources>
                             <Style TargetType="DataGridCell">
                                 <Style.Triggers>
@@ -138,7 +138,7 @@
                         <Button Grid.Row="2" Content="Use Selected Databases" Width="150" Click="ProteinDBSelected_Click" HorizontalAlignment="Center" Style="{StaticResource ImportantButtonStyle}"></Button>
                     </Grid>
                     <GridSplitter Grid.Column="1" HorizontalAlignment="Center" VerticalAlignment="Stretch" Background="Silver" Width="3"/>
-                    <Grid Grid.Column="2" Background="{StaticResource DataGridBackgroundColor}">
+                    <Grid Grid.Column="2" Background="{StaticResource DataGridBackgroundColor}" Margin="0 0 5 0">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="35"/>
                             <RowDefinition Height="10"/>
@@ -229,7 +229,7 @@
                             </StackPanel>
                                 
                         </Grid>
-                        <Grid Grid.Row=" 2" Style="{StaticResource PageGridStyle}" Height="440" Width="850"> 
+                        <Grid Grid.Row=" 2" Style="{StaticResource PageGridStyle}" Height="440" Width="850" Margin="0 -5 5 5"> 
                             
                             <oxy:PlotView  x:Name="plotViewStat" Model="{Binding Model}" FontSize="16" FontStretch="Expanded" BorderBrush="LightGray" Height="400" Width="850" HorizontalAlignment="Center" VerticalAlignment="Top" ></oxy:PlotView>
                         </Grid>

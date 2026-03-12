@@ -66,7 +66,7 @@ namespace GUI
             }
         }
 
-        public PlotModelStat(string plotName, List<string> dbSelected, Dictionary<string, Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>> peptideByFile, Parameters userParams, Dictionary<string, Dictionary<Protein, (double, double)>> sequenceCoverageByProtease)
+        public PlotModelStat(string plotName, List<string> dbSelected, Dictionary<string, Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>> peptideByFile, RunParameters userParams, Dictionary<string, Dictionary<Protein, (double, double)>> sequenceCoverageByProtease)
         {
             privateModel = new PlotModel { Title = plotName, DefaultFontSize = 12 };
 
@@ -74,7 +74,7 @@ namespace GUI
 
             if (dbSelected.Count() > 1)
             {
-                MessageBox.Show("Note: More than one protein database has been selected. Unique peptides are defined as being unique to a single protein in all selected databases.");
+                NotificationService.Instance.AddNotification("Note: More than one protein database has been selected. Unique peptides are defined as being unique to a single protein in all selected databases.", NotificationType.Information);
 
                 List<InSilicoPep> allPeptides = new List<InSilicoPep>();
 
@@ -264,7 +264,7 @@ namespace GUI
             }
             else
             {
-                MessageBox.Show("Note: One protein database has been selected. Unique peptides are defined as being unique to a single protein in this database.");
+                NotificationService.Instance.AddNotification("Note: One protein database has been selected. Unique peptides are defined as being unique to a single protein in this database.", NotificationType.Information);
                 databasePeptides = peptideByFile[dbSelected.FirstOrDefault()];
                 SequenceCoverageByProtease_Return = CalculateProteinSequenceCoverage(databasePeptides);
             }
