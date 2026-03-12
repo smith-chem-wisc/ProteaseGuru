@@ -654,7 +654,6 @@
             </TabItem>
 
             <TabItem Header="Individual Protein Analyzer" Style="{StaticResource TabItemStyle}" Name="IndividualProteinAnalyzerTab">
-                <local:IndividualProteinAnalyzerWindow/>
             </TabItem>
 
             <TabItem Header="Help" Style="{StaticResource TabItemStyle}">

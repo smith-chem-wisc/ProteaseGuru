@@ -606,6 +606,7 @@ namespace GUI
             AllHistogramsTab.Content = new HistogramWindow(peptidesByFile, ParametersViewModel.Parameters, sequenceCoverageByProtease);
             AllResultsTab.IsSelected = true; // switch to results tab
             RunTaskButton.IsEnabled = true; // allow user to run new task
+            IndividualProteinAnalyzerTab.Content = new IndividualProteinAnalyzerWindow(peptidesByFile, ParametersViewModel.Parameters, sequenceCoverageByProtease);
         }
 
         //logic for loading in results from previous runs and opening up the results windows
@@ -760,6 +761,7 @@ namespace GUI
             ProteinCovMap.Content = new ProteinResultsWindow(PeptidesByFile, loadedParams, seqCov);
             AllHistogramsTab.Content = new HistogramWindow(PeptidesByFile, loadedParams, seqCov);
             AllResultsTab.IsSelected = true; // switch to results tab
+            IndividualProteinAnalyzerTab.Content = new IndividualProteinAnalyzerWindow(PeptidesByFile, loadedParams, seqCov);
         }
         
 
