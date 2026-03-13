@@ -48,14 +48,14 @@ namespace GUI
         //Save all the user provided information in the user proteases file for future use
         private void SaveCustomProtease_Click(object sender, RoutedEventArgs e)
         {
-            // Custom proteases are stored in a user-writable file in DataDir.
-            // The embedded proteases.tsv inside mzLib is read-only; we never touch it.
+            // Custom proteases are stored in a separate user-writable file.
+            // mzLib's embedded proteases.tsv is the master list and is never modified.
             string proteaseDirectory = System.IO.Path.Combine(GlobalVariables.DataDir, @"ProteolyticDigestion");
             if (!Directory.Exists(proteaseDirectory))
                 Directory.CreateDirectory(proteaseDirectory);
             string proteaseFilePath = System.IO.Path.Combine(proteaseDirectory, @"user_proteases.tsv");
 
-            // Seed the file with the header row if it doesn't exist yet
+            // Seed header row on first use
             if (!File.Exists(proteaseFilePath))
                 File.WriteAllText(proteaseFilePath,
                     "Name\tSequences Inducing Cleavage\tSequences Preventing Cleavage\t" +
@@ -153,6 +153,7 @@ namespace GUI
             proteaseFileText.Add(proteaseInfo);
             File.WriteAllLines(proteaseFilePath, proteaseFileText);
             ProteaseDictionary.LoadAndMergeCustomProteases(proteaseFilePath, GlobalVariables.ProteaseMods);
+            GlobalVariables.UserAddedProteaseNames.Add(name);
             proteaseAdded = true;
         }
 

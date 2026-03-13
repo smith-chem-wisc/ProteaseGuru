@@ -24,8 +24,4 @@
         <None Update="Mods\tmt.txt" CopyToOutputDirectory="Always" />
     </ItemGroup>
 
-    <ItemGroup>
-      <Folder Include="ProteolyticDigestion\" />
-    </ItemGroup>
-
 </Project>
