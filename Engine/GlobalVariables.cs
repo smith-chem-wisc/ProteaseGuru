@@ -104,7 +104,13 @@ namespace Engine
             }
 
             ProteaseMods = ModificationLoader.ReadModsFromFile(Path.Combine(DataDir, @"Mods", @"ProteaseMods.txt"), out var errors).ToList();
-            ProteaseDictionary.LoadAndMergeCustomProteases(Path.Combine(DataDir, @"ProteolyticDigestion", @"proteases.tsv"), ProteaseMods);
+
+            // Merge any user-defined custom proteases saved by CustomProteaseWindow.
+            // The mzLib embedded proteases.tsv is loaded automatically by ProteaseDictionary;
+            // this only loads the user's additions on top of those defaults.
+            var userProteaseFile = Path.Combine(DataDir, @"ProteolyticDigestion", @"user_proteases.tsv");
+            if (File.Exists(userProteaseFile))
+                ProteaseDictionary.LoadAndMergeCustomProteases(userProteaseFile, ProteaseMods);
 
             RefreshAminoAcidDictionary();
         }

@@ -22,7 +22,7 @@ namespace GUI
         public CustomProteaseWindow()
         {
             InitializeComponent();
-            PopulateListBoxes();            
+            PopulateListBoxes();
         }
         //Fill in list boxes with options
         private void PopulateListBoxes()
@@ -40,18 +40,29 @@ namespace GUI
             if (dialog.proteaseModAdded == true)
             {
                 modName = dialog.modName;
-                Omics.Modifications.IO.ModificationLoader.ReadModsFromFile(System.IO.Path.Combine(GlobalVariables.DataDir, @"Mods", @"ProteaseMods.txt"), out List<(Modification,string)> filteredModificationsWithWarnings);                
+                Omics.Modifications.IO.ModificationLoader.ReadModsFromFile(System.IO.Path.Combine(GlobalVariables.DataDir, @"Mods", @"ProteaseMods.txt"), out List<(Modification, string)> filteredModificationsWithWarnings);
             }
 
         }
 
-        //Save all the user provided information in the proteases file for future use
+        //Save all the user provided information in the user proteases file for future use
         private void SaveCustomProtease_Click(object sender, RoutedEventArgs e)
         {
+            // Custom proteases are stored in a user-writable file in DataDir.
+            // The embedded proteases.tsv inside mzLib is read-only; we never touch it.
             string proteaseDirectory = System.IO.Path.Combine(GlobalVariables.DataDir, @"ProteolyticDigestion");
-            string proteaseFilePath = System.IO.Path.Combine(proteaseDirectory, @"proteases.tsv");
-            List<string> proteaseFileText = new List<string>();
-            proteaseFileText = File.ReadAllLines(proteaseFilePath).ToList();
+            if (!Directory.Exists(proteaseDirectory))
+                Directory.CreateDirectory(proteaseDirectory);
+            string proteaseFilePath = System.IO.Path.Combine(proteaseDirectory, @"user_proteases.tsv");
+
+            // Seed the file with the header row if it doesn't exist yet
+            if (!File.Exists(proteaseFilePath))
+                File.WriteAllText(proteaseFilePath,
+                    "Name\tSequences Inducing Cleavage\tSequences Preventing Cleavage\t" +
+                    "Cleavage Terminus\tCleavage Specificity\tPSI-MS Accession Number\t" +
+                    "PSI-MS Name\tSite Regular Expression\tCleavage Mass Shifts\tNotes\n");
+
+            List<string> proteaseFileText = File.ReadAllLines(proteaseFilePath).ToList();
 
             //all of the protease properties that the user provided
             string name = proteaseNameTextBox.Text;
@@ -60,10 +71,10 @@ namespace GUI
             var cleavageTerminus = (string)cleavageTerminusListBox.SelectedItem;
             var cleavageSpecificity = (string)cleavageSpecificityListBox.SelectedItem;
             string psiAccession = psiAccessionNumber.Text;
-            string psiNames = psiName.Text;            
-            
+            string psiNames = psiName.Text;
+
             //formatting these properties for writing to the protease file, so they can be read in each time ProteaseGuru is used
-            string proteaseInfo = name + "\t" ;
+            string proteaseInfo = name + "\t";
 
             var singleCleavageSites = new List<string>();
             var singlePreventionSites = new List<string>();
@@ -71,13 +82,13 @@ namespace GUI
             if (allCleavageResidues != "")
             {
                 //it is possible that someone will put two commas in a row, which would result in whitespace which is not acceptable
-                singleCleavageSites = allCleavageResidues.Split(',').Where(s=>!s.IsNullOrEmptyOrWhiteSpace()).ToList();
+                singleCleavageSites = allCleavageResidues.Split(',').Where(s => !s.IsNullOrEmptyOrWhiteSpace()).ToList();
             }
 
             if (allResiduesStoppingCleavage != "")
             {
                 //it is possible that someone will put two commas in a row, which would result in whitespace which is not acceptable
-                singlePreventionSites = allResiduesStoppingCleavage.Split(',').Where(s=>!s.ToString().IsNullOrEmptyOrWhiteSpace()).ToList();
+                singlePreventionSites = allResiduesStoppingCleavage.Split(',').Where(s => !s.ToString().IsNullOrEmptyOrWhiteSpace()).ToList();
             }
 
             if (cleavageTerminus == "C")
@@ -104,7 +115,7 @@ namespace GUI
                     {
                         cleavageMotif += "|";
                     }
-                                        
+
                 }
                 proteaseInfo += cleavageMotif;
             }
@@ -115,7 +126,7 @@ namespace GUI
                 var count = 1;
                 foreach (var residue in singleCleavageSites)
                 {
-                    cleavageMotif += "|"+ residue;
+                    cleavageMotif += "|" + residue;
                     if (singlePreventionSites.Count() != 0)
                     {
                         foreach (var prevent in singlePreventionSites)

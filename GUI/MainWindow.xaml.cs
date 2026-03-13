@@ -597,26 +597,9 @@ namespace GUI
 
             RunParameters loadedParams = new RunParameters();
 
-            string proteaseDirectory = System.IO.Path.Combine(GlobalVariables.DataDir, @"ProteolyticDigestion");
-            string proteaseFilePath = System.IO.Path.Combine(proteaseDirectory, @"proteases.tsv");
-            var myLines = File.ReadAllLines(proteaseFilePath);
-            myLines = myLines.Skip(1).ToArray();
-            Dictionary<string, Protease> dict = new Dictionary<string, Protease>();
-            foreach (string line in myLines)
-            {
-                if (line.Trim() != string.Empty) // skip empty lines
-                {
-                    string[] fields = line.Split('\t');
-                    List<DigestionMotif> motifList = DigestionMotif.ParseDigestionMotifsFromString(fields[1]);
-
-                    string name = fields[0];
-                    var cleavageSpecificity = ((CleavageSpecificity)Enum.Parse(typeof(CleavageSpecificity), fields[4], true));
-                    string psiMsAccessionNumber = fields[5];
-                    string psiMsName = fields[6];
-                    var protease = new Protease(name, cleavageSpecificity, psiMsAccessionNumber, psiMsName, motifList);
-                    dict.Add(protease.Name, protease);
-                }
-            }
+            // Proteases are loaded from mzLib's embedded resource via ProteaseDictionary.Dictionary —
+            // no local proteases.tsv file is needed.
+            Dictionary<string, Protease> dict = ProteaseDictionary.Dictionary;
 
             foreach (var parameterFile in ParametersObservableCollection)
             {
