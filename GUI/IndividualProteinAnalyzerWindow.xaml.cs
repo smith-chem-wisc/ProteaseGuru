@@ -28,6 +28,12 @@ namespace GUI
         private DigestionConditionsSetupViewModel _allProteaseVm;
         private readonly SeekMaximumCoverage _seeker = new SeekMaximumCoverage();
 
+        // Track the FASTA path so the library is written alongside it
+        private string? _fastaPath;
+
+        // Cancellation for in-progress exports
+        private CancellationTokenSource? _exportCts;
+
         #endregion
 
         #region Constructors
@@ -38,9 +44,11 @@ namespace GUI
         /// Lightweight constructor — proteins come straight from the database,
         /// no prior Run required. All digestion is on-demand.
         /// </summary>
-        public IndividualProteinAnalyzerWindow(List<Protein> proteins)
+        public IndividualProteinAnalyzerWindow(List<Protein> proteins, string? fastaPath = null)
         {
             InitializeComponent();
+
+            _fastaPath = fastaPath;
 
             var emptyPeptideByFile = new Dictionary<string, Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>>();
             var emptySeqCov = new Dictionary<string, Dictionary<Protein, (double, double)>>();
@@ -76,10 +84,12 @@ namespace GUI
         public IndividualProteinAnalyzerWindow(
             Dictionary<string, Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>> peptideByFile,
             RunParameters userParams,
-            Dictionary<string, Dictionary<Protein, (double, double)>> sequenceCoverageByProtease)
+            Dictionary<string, Dictionary<Protein, (double, double)>> sequenceCoverageByProtease,
+            string? fastaPath = null)
         {
             InitializeComponent();
 
+            _fastaPath = fastaPath;
             _analyzer = new ProteinCoverageAnalyzer(peptideByFile, sequenceCoverageByProtease);
             UserParams = userParams;
             SelectedProteases = new List<string>();
@@ -336,6 +346,86 @@ namespace GUI
         {
             maxCoverageMapViewer.Height = 0.85 * MaxCoverageGrid.ActualHeight;
             maxCoverageMapViewer.Width = 0.99 * MaxCoverageGrid.ActualWidth;
+        }
+
+        private async void ExportSpectrumLibrary_Click(object sender, RoutedEventArgs e)
+        {
+            if (SelectedProtein == null)
+            {
+                ExportStatusLabel.Text = "Select a protein first.";
+                return;
+            }
+
+            var checkedProteases = _allProteaseVm.ProteaseSpecificParameters
+                .Where(vm => vm.IsSelected)
+                .ToList();
+
+            if (checkedProteases.Count == 0)
+            {
+                ExportStatusLabel.Text = "Select at least one protease first.";
+                return;
+            }
+
+            // ── Read NCE from ComboBox ───────────────────────────────────────
+            if (NceComboBox.SelectedItem is not ComboBoxItem nceItem ||
+                !int.TryParse(nceItem.Content?.ToString(), out int nce))
+            {
+                ExportStatusLabel.Text = "Select a collision energy value.";
+                return;
+            }
+
+            // ── Read charge states ───────────────────────────────────────────
+            var chargeStates = new List<int>();
+            if (chk1.IsChecked == true) chargeStates.Add(1);
+            if (chk2.IsChecked == true) chargeStates.Add(2);
+            if (chk3.IsChecked == true) chargeStates.Add(3);
+            if (chk4.IsChecked == true) chargeStates.Add(4);
+            if (chk5.IsChecked == true) chargeStates.Add(5);
+            if (chk6.IsChecked == true) chargeStates.Add(6);
+            if (chk7.IsChecked == true) chargeStates.Add(7);
+
+            if (chargeStates.Count == 0)
+            {
+                ExportStatusLabel.Text = "Select at least one charge state.";
+                return;
+            }
+
+            // ── Disable button during export ─────────────────────────────────
+            ExportSpectrumLibraryButton.IsEnabled = false;
+            _exportCts?.Cancel();
+            _exportCts = new CancellationTokenSource();
+            var ct = _exportCts.Token;
+
+            var progress = new Progress<string>(msg =>
+                Dispatcher.Invoke(() => ExportStatusLabel.Text = msg));
+
+            try
+            {
+                var proteaseParams = checkedProteases.Select(vm => vm.ProteaseSpecificParams).ToList();
+
+                string outputPath = await SpectrumLibraryExporter.ExportAsync(
+                    protein: SelectedProtein.Protein,
+                    proteaseParams: proteaseParams,
+                    chargeStates: chargeStates,
+                    nce: nce,
+                    fastaPath: _fastaPath,
+                    progress: progress,
+                    cancellationToken: ct);
+
+                ExportStatusLabel.Text = $"✓ Library saved: {System.IO.Path.GetFileName(outputPath)}";
+            }
+            catch (OperationCanceledException)
+            {
+                ExportStatusLabel.Text = "Export cancelled.";
+            }
+            catch (Exception ex)
+            {
+                ExportStatusLabel.Text = $"Export failed: {ex.Message}";
+            }
+            finally
+            {
+                ExportSpectrumLibraryButton.IsEnabled = true;
+            }
         }
 
         void results_Loaded(object sender, RoutedEventArgs e)

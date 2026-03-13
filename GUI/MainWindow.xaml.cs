@@ -582,7 +582,9 @@ namespace GUI
             AllResultsTab.Content = new AllResultsWindow(peptidesByFile, ParametersViewModel.Parameters); // update results display
             ProteinCovMap.Content = new ProteinResultsWindow(peptidesByFile, ParametersViewModel.Parameters, sequenceCoverageByProtease);
             AllHistogramsTab.Content = new HistogramWindow(peptidesByFile, ParametersViewModel.Parameters, sequenceCoverageByProtease);
-            IndividualProteinAnalyzerTab.Content = new IndividualProteinAnalyzerWindow(peptidesByFile, ParametersViewModel.Parameters, sequenceCoverageByProtease);
+            IndividualProteinAnalyzerTab.Content = new IndividualProteinAnalyzerWindow(
+                peptidesByFile, ParametersViewModel.Parameters, sequenceCoverageByProtease,
+                fastaPath: ProteinDbObservableCollection.Any() ? ProteinDbObservableCollection.First().FilePath : null);
             AllResultsTab.IsSelected = true; // switch to results tab
             RunTaskButton.IsEnabled = true; // allow user to run new task
         }
@@ -953,7 +955,9 @@ namespace GUI
                 }
             }
 
-            IndividualProteinAnalyzerTab.Content = new IndividualProteinAnalyzerWindow(allProteins);
+            IndividualProteinAnalyzerTab.Content = new IndividualProteinAnalyzerWindow(
+                allProteins,
+                fastaPath: ProteinDbObservableCollection.First().FilePath);
         }
 
         protected List<Protein> LoadProteins(DbForDigestion database)

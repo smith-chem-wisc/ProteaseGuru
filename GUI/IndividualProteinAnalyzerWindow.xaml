@@ -175,9 +175,79 @@ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                           Width="3"/>
 
             <Grid Grid.Column="4" Name="AllResultsGrid" Style="{StaticResource InternalGridStyle}">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <!-- Export Spectrum Library panel -->
+                    <RowDefinition Height="3"/>
+                    <!-- separator -->
+                    <RowDefinition Height="*"/>
+                    <!-- Max Coverage section -->
+                </Grid.RowDefinitions>
 
-                <!-- Maximum Coverage Analysis fills the entire right column -->
-                <Grid Name="MaxCoverageGrid" SizeChanged="maxCoverageGrid_SizeChanged"
+                <!-- ═══════════════════════════════════════════════════
+                     Export Spectrum Library panel
+                     ═══════════════════════════════════════════════════ -->
+                <Border Grid.Row="0" BorderBrush="{StaticResource BorderColor}" BorderThickness="0,0,0,1"
+                        Background="{StaticResource BackgroundColor}" Padding="5,4,5,6">
+                    <StackPanel Orientation="Vertical">
+
+                        <!-- Row 0: header + button -->
+                        <DockPanel LastChildFill="False">
+                            <Label DockPanel.Dock="Left" Content="Export Spectrum Library"
+                                   Style="{StaticResource SmallHeaderLabelStyle}" Margin="0,0,0,0"/>
+                            <Button x:Name="ExportSpectrumLibraryButton"
+                                    DockPanel.Dock="Right"
+                                    Content="Export Spectrum Library"
+                                    Style="{StaticResource ImportantButtonStyle}"
+                                    Width="180" Height="24"
+                                    Click="ExportSpectrumLibrary_Click"/>
+                        </DockPanel>
+
+                        <!-- Row 1: NCE + Charge states -->
+                        <StackPanel Orientation="Horizontal" Margin="5,2,0,0">
+
+                            <!-- NCE drop-down: Prosit 2020 HCD calibrated values only -->
+                            <Label Content="NCE:" VerticalAlignment="Center" FontSize="12" Padding="0,0,4,0"/>
+                            <ComboBox x:Name="NceComboBox"
+                                      Width="52" Height="22"
+                                      FontSize="12"
+                                      VerticalContentAlignment="Center"
+                                      ToolTip="Normalised Collision Energy — Prosit 2020 HCD calibrated values only."
+                                      Margin="0,0,18,0"
+                                      SelectedIndex="3">
+                                <ComboBoxItem Content="20"/>
+                                <ComboBoxItem Content="23"/>
+                                <ComboBoxItem Content="25"/>
+                                <ComboBoxItem Content="28"/>
+                                <ComboBoxItem Content="30"/>
+                                <ComboBoxItem Content="35"/>
+                            </ComboBox>
+
+                            <!-- Charge state multi-select -->
+                            <Label Content="Charge states:" VerticalAlignment="Center" FontSize="12" Padding="0,0,6,0"/>
+                            <CheckBox x:Name="chk1" Content="1" VerticalAlignment="Center" Margin="0,0,6,0" FontSize="12"/>
+                            <CheckBox x:Name="chk2" Content="2" VerticalAlignment="Center" Margin="0,0,6,0" FontSize="12" IsChecked="True"/>
+                            <CheckBox x:Name="chk3" Content="3" VerticalAlignment="Center" Margin="0,0,6,0" FontSize="12" IsChecked="True"/>
+                            <CheckBox x:Name="chk4" Content="4" VerticalAlignment="Center" Margin="0,0,6,0" FontSize="12"/>
+                            <CheckBox x:Name="chk5" Content="5" VerticalAlignment="Center" Margin="0,0,6,0" FontSize="12"/>
+                            <CheckBox x:Name="chk6" Content="6" VerticalAlignment="Center" Margin="0,0,6,0" FontSize="12"/>
+                            <CheckBox x:Name="chk7" Content="7" VerticalAlignment="Center" Margin="0,0,6,0" FontSize="12"
+                                      ToolTip="Charge 7 is not supported by Prosit_2020_intensity_HCD and will be ignored."/>
+                        </StackPanel>
+
+                        <!-- Row 2: status label -->
+                        <TextBlock x:Name="ExportStatusLabel"
+                                   Text="" FontSize="11" FontStyle="Italic"
+                                   Foreground="#555555" Margin="5,3,0,0"
+                                   TextWrapping="NoWrap"/>
+                    </StackPanel>
+                </Border>
+
+                <GridSplitter Grid.Row="1" Height="3" HorizontalAlignment="Stretch"
+                              Background="{StaticResource BackgroundColor}" ResizeDirection="Rows"/>
+
+                <!-- Maximum Coverage Analysis fills the rest -->
+                <Grid Grid.Row="2" Name="MaxCoverageGrid" SizeChanged="maxCoverageGrid_SizeChanged"
                       Style="{StaticResource InternalGridStyle}">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="35"/>
