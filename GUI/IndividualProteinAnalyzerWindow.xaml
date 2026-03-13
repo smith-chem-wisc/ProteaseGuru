@@ -159,13 +159,13 @@ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                        HorizontalContentAlignment="Center"/>
                 <ScrollViewer VerticalScrollBarVisibility="Auto"
                               HorizontalScrollBarVisibility="Disabled">
-                    <ItemsControl x:Name="ProteaseOptionsItemsControl">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate>
-                                <gui:ProteaseSpecificDigestionControl/>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
+                        <ItemsControl x:Name="ProteaseOptionsItemsControl">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                <gui:ProteaseSpecificDigestionControl DisplayMode="{x:Static gui:ProteaseDisplayMode.Compact}"/>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
                 </ScrollViewer>
             </DockPanel>
 
