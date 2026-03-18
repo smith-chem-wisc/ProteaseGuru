@@ -14,12 +14,10 @@ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         <SolidColorBrush x:Key="DataGridBackgroundColor" Color="#D5D5D5" />
         <SolidColorBrush x:Key="BorderColor" Color="#444449" />
 
-        <!--Styling for the grid that defines each page-->
         <Style x:Key="PageGridStyle" TargetType="Grid">
             <Setter Property="Background" Value="{StaticResource BackgroundColor}"/>
             <Setter Property="Margin" Value="-3,-2,-2,-2"/>
         </Style>
-        <!--Styling for the "important" buttons like add task, add DB, etc.-->
         <Style x:Key="ImportantButtonStyle" TargetType="Button">
             <Setter Property="BorderThickness" Value="0"/>
             <Setter Property="Width" Value="200"/>
@@ -43,7 +41,6 @@ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                 </Trigger>
             </Style.Triggers>
         </Style>
-        <!--Styling for the big text header at the top of each page-->
         <Style x:Key="HeaderLabelStyle" TargetType="Label">
             <Setter Property="HorizontalAlignment" Value="Left"/>
             <Setter Property="FontSize" Value="26"/>
@@ -51,7 +48,6 @@ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
             <Setter Property="Foreground" Value="{StaticResource TextColor1}"/>
             <Setter Property="Margin" Value="10,5,0,0"/>
         </Style>
-        <!--Styling for the "main" text in the About + Help pages-->
         <Style x:Key="TextBlockStyle" TargetType="TextBlock">
             <Setter Property="Foreground" Value="{StaticResource TextColor1}"/>
             <Setter Property="FontSize" Value="13"/>
@@ -72,7 +68,7 @@ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsSelected" Value="True">
-                                <Setter TargetName="Border" Property="Background" Value="#fdd8c1"></Setter>
+                                <Setter TargetName="Border" Property="Background" Value="#fdd8c1"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -92,6 +88,7 @@ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
             <Setter Property="FontSize" Value="12"/>
         </Style>
     </UserControl.Resources>
+
     <Grid Style="{StaticResource PageGridStyle}">
         <Grid.RowDefinitions>
             <RowDefinition Height="50"/>
@@ -99,15 +96,13 @@ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
-        <!--Header label-->
         <Label Content="Individual Protein Analyzer" Grid.Row="0" Style="{StaticResource HeaderLabelStyle}" />
 
-        <!--Detail text-->
         <TextBlock Grid.Row="1" Style="{StaticResource TextBlockStyle}">
-            Search for a specific protein accessions to view its digestion results both numerically and as a protein sequence coverage map.
+            Search for a specific protein accession to view its digestion results and sequence coverage map.
         </TextBlock>
 
-        <Grid Grid.Row ="2" Style="{StaticResource InternalGridStyle}">
+        <Grid Grid.Row="2" Style="{StaticResource InternalGridStyle}">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="3"/>
@@ -116,64 +111,49 @@ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                 <ColumnDefinition Width="4*"/>
             </Grid.ColumnDefinitions>
 
+            <!-- ── Column 0: Protein list ── -->
             <Grid Grid.Column="0" Style="{StaticResource InternalGridStyle}">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="35"/>
-                    <RowDefinition Height="2*"/>
-                    <RowDefinition Height="3"/>
+                    <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"></ColumnDefinition>
-                </Grid.ColumnDefinitions>
 
                 <DockPanel Grid.Row="0" Background="{StaticResource DataGridBackgroundColor}">
                     <Label Height="30" DockPanel.Dock="Left">Search</Label>
-                    <TextBox Name="SearchTextBox" TextChanged="Search_TextChanged" DockPanel.Dock="Right"></TextBox>
+                    <TextBox Name="SearchTextBox" TextChanged="Search_TextChanged" DockPanel.Dock="Right"/>
                 </DockPanel>
-                <Label Content="Protein Accessions" Grid.Row="1" Style="{StaticResource SmallHeaderLabelStyle}" />
 
-                <Grid Grid.Row="2" Style="{StaticResource InternalGridStyle}">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                    </Grid.ColumnDefinitions>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height=".9*"/>
-                    </Grid.RowDefinitions>
+                <Label Content="Protein Accessions" Grid.Row="1" Style="{StaticResource SmallHeaderLabelStyle}"/>
 
-                    <ListBox Name ="dataGridProteins" SelectionMode="Single" ItemContainerStyle="{StaticResource ListBoxItem}" SelectionChanged="proteins_SelectedCellsChanged"></ListBox>
-
-                </Grid>
+                <ListBox Grid.Row="2" Name="dataGridProteins" SelectionMode="Single"
+                         ItemContainerStyle="{StaticResource ListBoxItem}"
+                         SelectionChanged="proteins_SelectedCellsChanged"/>
             </Grid>
 
-            <GridSplitter Grid.Column="1"
-                          HorizontalAlignment="Center"
-                          Background="{StaticResource BackgroundColor}"
-                          Width="3"/>
+            <GridSplitter Grid.Column="1" HorizontalAlignment="Center"
+                          Background="{StaticResource BackgroundColor}" Width="3"/>
 
-            <!-- Column 2: Protease Options -->
+            <!-- ── Column 2: Protease Options ── -->
             <DockPanel Grid.Column="2" Background="{StaticResource BackgroundColor}" LastChildFill="True">
-                <Label DockPanel.Dock="Top"
-                       Content="Protease Options"
+                <Label DockPanel.Dock="Top" Content="Protease Options"
                        Style="{StaticResource SmallHeaderLabelStyle}"
                        HorizontalContentAlignment="Center"/>
-                <ScrollViewer VerticalScrollBarVisibility="Auto"
-                              HorizontalScrollBarVisibility="Disabled">
-                        <ItemsControl x:Name="ProteaseOptionsItemsControl">
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate>
+                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                    <ItemsControl x:Name="ProteaseOptionsItemsControl">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
                                 <gui:ProteaseSpecificDigestionControl DisplayMode="{x:Static gui:ProteaseDisplayMode.Compact}"/>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
                 </ScrollViewer>
             </DockPanel>
 
-            <GridSplitter Grid.Column="3"
-                          HorizontalAlignment="Center"
-                          Background="{StaticResource BackgroundColor}"
-                          Width="3"/>
+            <GridSplitter Grid.Column="3" HorizontalAlignment="Center"
+                          Background="{StaticResource BackgroundColor}" Width="3"/>
 
+            <!-- ── Column 4: Export panel + Coverage map ── -->
             <Grid Grid.Column="4" Name="AllResultsGrid" Style="{StaticResource InternalGridStyle}">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
@@ -184,14 +164,11 @@ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     <!-- Max Coverage section -->
                 </Grid.RowDefinitions>
 
-                <!-- ═══════════════════════════════════════════════════
-                     Export Spectrum Library panel
-                     ═══════════════════════════════════════════════════ -->
+                <!-- Export Spectrum Library panel -->
                 <Border Grid.Row="0" BorderBrush="{StaticResource BorderColor}" BorderThickness="0,0,0,1"
                         Background="{StaticResource BackgroundColor}" Padding="5,4,5,6">
                     <StackPanel Orientation="Vertical">
 
-                        <!-- Row 0: header + button -->
                         <DockPanel LastChildFill="False">
                             <Label DockPanel.Dock="Left" Content="Export Spectrum Library"
                                    Style="{StaticResource SmallHeaderLabelStyle}" Margin="0,0,0,0"/>
@@ -203,18 +180,13 @@ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                                     Click="ExportSpectrumLibrary_Click"/>
                         </DockPanel>
 
-                        <!-- Row 1: NCE + Charge states -->
                         <StackPanel Orientation="Horizontal" Margin="5,2,0,0">
-
-                            <!-- NCE drop-down: Prosit 2020 HCD calibrated values only -->
                             <Label Content="NCE:" VerticalAlignment="Center" FontSize="12" Padding="0,0,4,0"/>
                             <ComboBox x:Name="NceComboBox"
-                                      Width="52" Height="22"
-                                      FontSize="12"
+                                      Width="52" Height="22" FontSize="12"
                                       VerticalContentAlignment="Center"
                                       ToolTip="Normalised Collision Energy — Prosit 2020 HCD calibrated values only."
-                                      Margin="0,0,18,0"
-                                      SelectedIndex="3">
+                                      Margin="0,0,18,0" SelectedIndex="3">
                                 <ComboBoxItem Content="20"/>
                                 <ComboBoxItem Content="23"/>
                                 <ComboBoxItem Content="25"/>
@@ -223,7 +195,6 @@ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                                 <ComboBoxItem Content="35"/>
                             </ComboBox>
 
-                            <!-- Charge state multi-select -->
                             <Label Content="Charge states:" VerticalAlignment="Center" FontSize="12" Padding="0,0,6,0"/>
                             <CheckBox x:Name="chk1" Content="1" VerticalAlignment="Center" Margin="0,0,6,0" FontSize="12"/>
                             <CheckBox x:Name="chk2" Content="2" VerticalAlignment="Center" Margin="0,0,6,0" FontSize="12" IsChecked="True"/>
@@ -235,18 +206,16 @@ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                                       ToolTip="Charge 7 is not supported by Prosit_2020_intensity_HCD and will be ignored."/>
                         </StackPanel>
 
-                        <!-- Row 2: status label -->
                         <TextBlock x:Name="ExportStatusLabel"
                                    Text="" FontSize="11" FontStyle="Italic"
-                                   Foreground="#555555" Margin="5,3,0,0"
-                                   TextWrapping="NoWrap"/>
+                                   Foreground="#555555" Margin="5,3,0,0" TextWrapping="NoWrap"/>
                     </StackPanel>
                 </Border>
 
                 <GridSplitter Grid.Row="1" Height="3" HorizontalAlignment="Stretch"
                               Background="{StaticResource BackgroundColor}" ResizeDirection="Rows"/>
 
-                <!-- Maximum Coverage Analysis fills the rest -->
+                <!-- Maximum Coverage Analysis -->
                 <Grid Grid.Row="2" Name="MaxCoverageGrid" SizeChanged="maxCoverageGrid_SizeChanged"
                       Style="{StaticResource InternalGridStyle}">
                     <Grid.RowDefinitions>
@@ -261,7 +230,6 @@ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     <Label Content="Maximum Coverage Analysis" Grid.Row="0"
                            Style="{StaticResource SmallHeaderLabelStyle}"/>
 
-                    <!-- Mode radio buttons -->
                     <StackPanel Grid.Row="1" Orientation="Horizontal"
                                 VerticalAlignment="Center" Margin="5,0,0,0">
                         <RadioButton x:Name="greedyToggle" Content="Greedy (Min Set)"
@@ -287,14 +255,13 @@ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                                    Foreground="#888888" Visibility="Collapsed"/>
                     </StackPanel>
 
-                    <!-- Scrollable map + legend -->
+                    <!-- Scrollable map + legend (no Key border — bars convey coverage) -->
                     <ScrollViewer Grid.Row="2" Name="maxCoverageMapViewer"
                                   HorizontalAlignment="Center" VerticalAlignment="Top"
                                   CanContentScroll="True"
                                   VerticalScrollBarVisibility="Visible" Width="775">
                         <Grid Name="maxCoverageMapGrid" Background="White">
                             <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="Auto"/>
                             </Grid.RowDefinitions>
@@ -304,26 +271,6 @@ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                                 <Grid Name="maxCoverageLegendGrid" Background="White"
                                       VerticalAlignment="Top" HorizontalAlignment="Left"/>
                             </Canvas>
-                            <!-- Coverage key: explains Bold / Underline text styles -->
-                            <Border Grid.Row="2" BorderBrush="#CCCCCC" BorderThickness="1"
-                                    Background="#F8F8F8" Margin="5,6,5,6" Padding="8,5,8,5"
-                                    HorizontalAlignment="Left">
-                                <StackPanel Orientation="Horizontal">
-                                    <TextBlock Text="Key: " FontSize="12" FontWeight="Bold"
-                                               VerticalAlignment="Center" Margin="0,0,6,0"/>
-                                    <TextBlock Text="A" FontSize="14" FontWeight="Bold"
-                                               FontFamily="Arial" VerticalAlignment="Center"
-                                               Foreground="Black"/>
-                                    <TextBlock Text=" Covered  " FontSize="12"
-                                               VerticalAlignment="Center" Margin="2,0,10,0"/>
-                                    <TextBlock FontSize="14" FontFamily="Arial"
-                                               VerticalAlignment="Center" Foreground="Black">
-                                        <Run Text="A" TextDecorations="Underline"/>
-                                    </TextBlock>
-                                    <TextBlock Text=" Not Covered" FontSize="12"
-                                               VerticalAlignment="Center" Margin="2,0,0,0"/>
-                                </StackPanel>
-                            </Border>
                         </Grid>
                     </ScrollViewer>
                 </Grid>
@@ -333,4 +280,3 @@ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         </Grid>
     </Grid>
 </UserControl>
-

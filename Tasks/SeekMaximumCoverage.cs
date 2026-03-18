@@ -277,6 +277,49 @@ public class SeekMaximumCoverage
         return CalculateCoverageByProtease(protein, proteaseParams);
     }
 
+    /// <summary>
+    /// Returns the 1-based (Start, End) intervals of every peptide that passes the
+    /// detectability rule, using exactly the same digest and filter logic as
+    /// <see cref="CalculateCoverageByProtease(Protein, IEnumerable{ProteaseSpecificParameters})"/>.
+    /// Use this to draw coverage-map bars that are guaranteed to match the coverage numbers.
+    /// </summary>
+    /// <returns>
+    /// Dictionary mapping protease name → deduplicated, start-sorted list of
+    /// (OneBasedStart, OneBasedEnd) intervals.
+    /// </returns>
+    public Dictionary<string, List<(int Start, int End)>> GetDetectablePeptideIntervals(
+        Protein protein,
+        IEnumerable<ProteaseSpecificParameters> proteaseParams)
+    {
+        var result = new Dictionary<string, List<(int Start, int End)>>();
+
+        foreach (var proteaseParam in proteaseParams)
+        {
+            var intervals = new List<(int, int)>();
+
+            var peptides = protein.Digest(
+                proteaseParam.DigestionParams,
+                proteaseParam.FixedMods,
+                proteaseParam.VariableMods);
+
+            foreach (PeptideWithSetModifications peptide in peptides)
+            {
+                if (_detectabilityRule != null && !_detectabilityRule.IsDetectable(peptide))
+                    continue;
+
+                intervals.Add((peptide.OneBasedStartResidue, peptide.OneBasedEndResidue));
+            }
+
+            // Deduplicate (same span from different mod combos) and sort
+            result[proteaseParam.DigestionAgentName] = intervals
+                .Distinct()
+                .OrderBy(t => t.Item1)
+                .ToList();
+        }
+
+        return result;
+    }
+
     #endregion
 
     #region STEP 2: Greedy Set Cover
@@ -357,6 +400,12 @@ public class SeekMaximumCoverage
 
     #region STEP 3: Brute-Force Combinations
 
+    /// <summary>Finds the single protease that alone produces the highest sequence coverage.</summary>
+    public CombinationResult BestSingle(
+        Dictionary<string, HashSet<int>> coverageDict,
+        (int Start, int End)? region = null)
+        => BestCombination(coverageDict, 1, region);
+
     /// <summary>Finds the best pair of proteases that maximizes coverage.</summary>
     public CombinationResult BestPair(
         Dictionary<string, HashSet<int>> coverageDict,
@@ -368,14 +417,6 @@ public class SeekMaximumCoverage
         Dictionary<string, HashSet<int>> coverageDict,
         (int Start, int End)? region = null)
         => BestCombination(coverageDict, 3, region);
-
-    /// <summary>
-    /// Finds the single protease that alone produces the highest sequence coverage.
-    /// </summary>
-    public CombinationResult BestSingle(
-        Dictionary<string, HashSet<int>> coverageDict,
-        (int Start, int End)? region = null)
-        => BestCombination(coverageDict, 1, region);
 
     /// <summary>Finds the best combination of N proteases that maximizes coverage.</summary>
     public CombinationResult BestCombination(
