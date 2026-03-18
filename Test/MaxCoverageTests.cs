@@ -1,5 +1,6 @@
 using NUnit.Framework;
 using Proteomics;
+using Proteomics.ProteolyticDigestion;
 using Tasks;
 
 namespace Test;
@@ -13,21 +14,19 @@ public class MaxCoverageTests
 
     private Protein _testProtein = null!;
     private SeekMaximumCoverage _analyzer = null!;
-    private string[] _proteaseNames = null!;
+    private List<ProteaseSpecificParameters> _proteaseParams = null!;
 
     [SetUp]
     public void SetUp()
     {
         _testProtein = new Protein(SampleSequence, "HBB_HUMAN", name: "Hemoglobin subunit beta");
 
-        _analyzer = SeekMaximumCoverage.WithDefaultRules(
-            minLength: 6,
-            maxLength: 30,
-            requireBasicResidue: true
-        );
+        // No detectability rules needed — length/MC bounds are set directly on DigestionParams,
+        // which is exactly how the rest of the codebase (DigestionTask, etc.) configures digestion.
+        _analyzer = new SeekMaximumCoverage();
 
         // Names must exactly match the "Name" column in proteases.tsv
-        _proteaseNames = new[]
+        var proteaseNames = new[]
         {
             "trypsin|P",
             "chymotrypsin|P",
@@ -36,26 +35,35 @@ public class MaxCoverageTests
             "Lys-C|P",
             "Arg-C"
         };
+
+        // Build ProteaseSpecificParameters with explicit bounds, consistent with how
+        // DigestionConditionsSetupViewModel and DigestionTask construct them.
+        _proteaseParams = proteaseNames.Select(name =>
+            new ProteaseSpecificParameters(
+                new DigestionParams(
+                    protease: name,
+                    maxMissedCleavages: 2,
+                    minPeptideLength: 7,
+                    maxPeptideLength: 50)))
+            .ToList();
     }
 
     [Test]
     public void TestCalculateCoverageByProtease()
     {
-        // Act
-        var coverage = _analyzer.CalculateCoverageByProtease(_testProtein, _proteaseNames);
+        var coverage = _analyzer.CalculateCoverageByProtease(_testProtein, _proteaseParams);
 
-        // Assert
         Assert.That(coverage, Is.Not.Null);
-        Assert.That(coverage.Count, Is.EqualTo(_proteaseNames.Length));
+        Assert.That(coverage.Count, Is.EqualTo(_proteaseParams.Count));
 
-        // Each protease should have some coverage
-        foreach (var proteaseName in _proteaseNames)
+        foreach (var psp in _proteaseParams)
         {
-            Assert.That(coverage.ContainsKey(proteaseName), Is.True, $"Missing coverage for {proteaseName}");
-            Assert.That(coverage[proteaseName].Count, Is.GreaterThan(0), $"No coverage for {proteaseName}");
+            Assert.That(coverage.ContainsKey(psp.DigestionAgentName), Is.True,
+                $"Missing coverage for {psp.DigestionAgentName}");
+            Assert.That(coverage[psp.DigestionAgentName].Count, Is.GreaterThan(0),
+                $"No coverage for {psp.DigestionAgentName}");
         }
 
-        // Print individual coverage for debugging
         TestContext.WriteLine("Individual Protease Coverage:");
         TestContext.WriteLine(new string('-', 50));
         foreach (var kvp in coverage.OrderByDescending(c => c.Value.Count))
@@ -68,19 +76,14 @@ public class MaxCoverageTests
     [Test]
     public void TestGreedyMinimumProteaseSet()
     {
-        // Arrange
-        var coverage = _analyzer.CalculateCoverageByProtease(_testProtein, _proteaseNames);
-
-        // Act
+        var coverage = _analyzer.CalculateCoverageByProtease(_testProtein, _proteaseParams);
         var result = _analyzer.GreedyMinimumProteaseSet(coverage);
 
-        // Assert
         Assert.That(result, Is.Not.Null);
         Assert.That(result.SelectedProteases, Is.Not.Empty);
         Assert.That(result.CoveredResidues.Count, Is.GreaterThan(0));
         Assert.That(result.CoverageFraction, Is.GreaterThan(0));
 
-        // Print results
         TestContext.WriteLine("Greedy Minimum Protease Set:");
         TestContext.WriteLine(new string('-', 50));
         TestContext.WriteLine($"  Selected: {string.Join(", ", result.SelectedProteases)}");
@@ -90,18 +93,13 @@ public class MaxCoverageTests
     [Test]
     public void TestBestPair()
     {
-        // Arrange
-        var coverage = _analyzer.CalculateCoverageByProtease(_testProtein, _proteaseNames);
-
-        // Act
+        var coverage = _analyzer.CalculateCoverageByProtease(_testProtein, _proteaseParams);
         var result = _analyzer.BestPair(coverage);
 
-        // Assert
         Assert.That(result, Is.Not.Null);
         Assert.That(result.Proteases.Count, Is.EqualTo(2));
         Assert.That(result.CoverageCount, Is.GreaterThan(0));
 
-        // Print results
         TestContext.WriteLine("Best Pair:");
         TestContext.WriteLine(new string('-', 50));
         TestContext.WriteLine($"  Proteases: {string.Join(" + ", result.Proteases)}");
@@ -111,18 +109,13 @@ public class MaxCoverageTests
     [Test]
     public void TestBestTriplet()
     {
-        // Arrange
-        var coverage = _analyzer.CalculateCoverageByProtease(_testProtein, _proteaseNames);
-
-        // Act
+        var coverage = _analyzer.CalculateCoverageByProtease(_testProtein, _proteaseParams);
         var result = _analyzer.BestTriplet(coverage);
 
-        // Assert
         Assert.That(result, Is.Not.Null);
         Assert.That(result.Proteases.Count, Is.EqualTo(3));
         Assert.That(result.CoverageCount, Is.GreaterThanOrEqualTo(_analyzer.BestPair(coverage).CoverageCount));
 
-        // Print results
         TestContext.WriteLine("Best Triplet:");
         TestContext.WriteLine(new string('-', 50));
         TestContext.WriteLine($"  Proteases: {string.Join(" + ", result.Proteases)}");
@@ -132,19 +125,14 @@ public class MaxCoverageTests
     [Test]
     public void TestRegionRestrictedCoverage()
     {
-        // Arrange
-        var coverage = _analyzer.CalculateCoverageByProtease(_testProtein, _proteaseNames);
+        var coverage = _analyzer.CalculateCoverageByProtease(_testProtein, _proteaseParams);
         var region = (Start: 50, End: 100);
-
-        // Act
         var result = _analyzer.GreedyMinimumProteaseSet(coverage, region);
 
-        // Assert
         Assert.That(result, Is.Not.Null);
         Assert.That(result.TotalResidues, Is.EqualTo(51)); // 100 - 50 + 1
         Assert.That(result.CoveredResidues.All(i => i >= region.Start && i <= region.End), Is.True);
 
-        // Print results
         TestContext.WriteLine($"Coverage for Region {region.Start}-{region.End}:");
         TestContext.WriteLine(new string('-', 50));
         TestContext.WriteLine($"  Selected: {string.Join(", ", result.SelectedProteases)}");
@@ -154,58 +142,52 @@ public class MaxCoverageTests
     [Test]
     public void TestCoverageFraction()
     {
-        // Arrange
-        var coverageSet = new HashSet<int> { 0, 1, 2, 3, 4 }; // 5 residues covered
-        int regionSize = 10;
-
-        // Act
-        double fraction = SeekMaximumCoverage.CoverageFraction(coverageSet, regionSize);
-
-        // Assert
+        var coverageSet = new HashSet<int> { 0, 1, 2, 3, 4 };
+        double fraction = SeekMaximumCoverage.CoverageFraction(coverageSet, 10);
         Assert.That(fraction, Is.EqualTo(0.5));
     }
 
     [Test]
     public void TestCoverageFractionEdgeCases()
     {
-        // Empty coverage
         Assert.That(SeekMaximumCoverage.CoverageFraction(new HashSet<int>(), 100), Is.EqualTo(0.0));
-
-        // Zero region size
         Assert.That(SeekMaximumCoverage.CoverageFraction(new HashSet<int> { 1, 2, 3 }, 0), Is.EqualTo(0.0));
 
-        // Full coverage
         var fullCoverage = new HashSet<int>(Enumerable.Range(0, 10));
         Assert.That(SeekMaximumCoverage.CoverageFraction(fullCoverage, 10), Is.EqualTo(1.0));
     }
 
     [Test]
-    public void TestDetectabilityRules()
+    public void TestMassBoundsFilter()
     {
-        // Test LengthRule
-        var lengthRule = new SeekMaximumCoverage.LengthRule(5, 20);
-        Assert.That(lengthRule.Description, Does.Contain("5").And.Contain("20"));
+        // Verify that RunParameters mass bounds are respected.
+        // A very tight mass window should reduce coverage relative to no filter.
+        var runParamsWithFilter = new RunParameters
+        {
+            MinPeptideMassAllowed = 1000,
+            MaxPeptideMassAllowed = 2000
+        };
+        var analyzerWithFilter = new SeekMaximumCoverage(runParamsWithFilter);
 
-        // Test BasicResidueRule
-        var basicRule = new SeekMaximumCoverage.BasicResidueRule();
-        Assert.That(basicRule.Description, Does.Contain("K").And.Contain("R"));
+        var unfilteredCoverage = _analyzer.CalculateCoverageByProtease(_testProtein, _proteaseParams);
+        var filteredCoverage = analyzerWithFilter.CalculateCoverageByProtease(_testProtein, _proteaseParams);
 
-        // Test CompositeRule
-        var compositeRule = new SeekMaximumCoverage.CompositeRule(lengthRule, basicRule);
-        Assert.That(compositeRule.Description, Does.Contain("AND"));
+        foreach (var psp in _proteaseParams)
+        {
+            Assert.That(
+                filteredCoverage[psp.DigestionAgentName].Count,
+                Is.LessThanOrEqualTo(unfilteredCoverage[psp.DigestionAgentName].Count),
+                $"Filtered coverage should be <= unfiltered for {psp.DigestionAgentName}");
+        }
     }
 
     [Test]
     public void TestTripletBetterThanOrEqualToPair()
     {
-        // Arrange
-        var coverage = _analyzer.CalculateCoverageByProtease(_testProtein, _proteaseNames);
-
-        // Act
+        var coverage = _analyzer.CalculateCoverageByProtease(_testProtein, _proteaseParams);
         var pairResult = _analyzer.BestPair(coverage);
         var tripletResult = _analyzer.BestTriplet(coverage);
 
-        // Assert - triplet should always be >= pair coverage
         Assert.That(tripletResult.CoverageCount, Is.GreaterThanOrEqualTo(pairResult.CoverageCount),
             "Triplet should achieve at least as much coverage as best pair");
     }
@@ -213,14 +195,10 @@ public class MaxCoverageTests
     [Test]
     public void TestGreedyVsBruteForce()
     {
-        // Arrange
-        var coverage = _analyzer.CalculateCoverageByProtease(_testProtein, _proteaseNames);
-
-        // Act
+        var coverage = _analyzer.CalculateCoverageByProtease(_testProtein, _proteaseParams);
         var greedyResult = _analyzer.GreedyMinimumProteaseSet(coverage);
         var bestTriplet = _analyzer.BestTriplet(coverage);
 
-        // Print comparison
         TestContext.WriteLine("Greedy vs Brute-Force Comparison:");
         TestContext.WriteLine(new string('-', 50));
         TestContext.WriteLine($"  Greedy ({greedyResult.SelectedProteases.Count} proteases): {greedyResult.CoverageFraction:P1}");

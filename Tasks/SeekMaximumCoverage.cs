@@ -1,4 +1,3 @@
-using Omics.Modifications;
 using Proteomics;
 using Proteomics.ProteolyticDigestion;
 
@@ -8,126 +7,14 @@ namespace Tasks;
 /// Analyzes protease combinations to find optimal coverage for a protein sequence.
 /// Implements greedy and brute-force algorithms for finding minimal protease sets
 /// that achieve maximum detectable peptide coverage.
+///
+/// Peptide filtering is handled entirely by the per-protease <see cref="ProteaseSpecificParameters"/>
+/// (which encodes missed cleavages, length bounds, and modifications via <see cref="DigestionParams"/>)
+/// and by the global <see cref="RunParameters"/> (which encodes peptide mass bounds).
+/// No separate detectability-rule infrastructure is needed.
 /// </summary>
 public class SeekMaximumCoverage
 {
-    #region Detectability Rules
-
-    /// <summary>
-    /// Interface for peptide detectability rules. Implement this interface to add
-    /// custom detectability criteria.
-    /// </summary>
-    public interface IDetectabilityRule
-    {
-        /// <summary>
-        /// Determines if a peptide passes this detectability rule.
-        /// </summary>
-        bool IsDetectable(PeptideWithSetModifications peptide);
-
-        /// <summary>
-        /// Human-readable description of this rule for logging/debugging.
-        /// </summary>
-        string Description { get; }
-    }
-
-    /// <summary>
-    /// Rule: Peptide length must be within specified bounds.
-    /// </summary>
-    public class LengthRule : IDetectabilityRule
-    {
-        public int MinLength { get; }
-        public int MaxLength { get; }
-
-        public LengthRule(int minLength, int maxLength)
-        {
-            MinLength = minLength;
-            MaxLength = maxLength;
-        }
-
-        public bool IsDetectable(PeptideWithSetModifications peptide)
-            => peptide.Length > MinLength && peptide.Length < MaxLength;
-
-        public string Description => $"Length must be > {MinLength} and < {MaxLength}";
-    }
-
-    /// <summary>
-    /// Rule: Peptide must contain at least one basic amino acid (K or R).
-    /// </summary>
-    public class BasicResidueRule : IDetectabilityRule
-    {
-        private static readonly HashSet<char> BasicResidues = new() { 'K', 'R' };
-
-        public bool IsDetectable(PeptideWithSetModifications peptide)
-            => peptide.BaseSequence.Any(aa => BasicResidues.Contains(aa));
-
-        public string Description => "Must contain at least one basic residue (K or R)";
-    }
-
-    /// <summary>
-    /// Rule: Peptide must not contain specified amino acids.
-    /// </summary>
-    public class ExcludeResiduesRule : IDetectabilityRule
-    {
-        private readonly HashSet<char> _excludedResidues;
-
-        public ExcludeResiduesRule(IEnumerable<char> excludedResidues)
-        {
-            _excludedResidues = new HashSet<char>(excludedResidues);
-        }
-
-        public bool IsDetectable(PeptideWithSetModifications peptide)
-            => !peptide.BaseSequence.Any(aa => _excludedResidues.Contains(aa));
-
-        public string Description => $"Must not contain: {string.Join(", ", _excludedResidues)}";
-    }
-
-    /// <summary>
-    /// Rule: Peptide mass must be within specified bounds.
-    /// </summary>
-    public class MassRule : IDetectabilityRule
-    {
-        public double MinMass { get; }
-        public double MaxMass { get; }
-
-        public MassRule(double minMass, double maxMass)
-        {
-            MinMass = minMass;
-            MaxMass = maxMass;
-        }
-
-        public bool IsDetectable(PeptideWithSetModifications peptide)
-            => peptide.MonoisotopicMass >= MinMass && peptide.MonoisotopicMass <= MaxMass;
-
-        public string Description => $"Mass must be >= {MinMass} and <= {MaxMass} Da";
-    }
-
-    /// <summary>
-    /// Composite rule that requires ALL sub-rules to pass.
-    /// </summary>
-    public class CompositeRule : IDetectabilityRule
-    {
-        private readonly List<IDetectabilityRule> _rules;
-
-        public CompositeRule(IEnumerable<IDetectabilityRule> rules)
-        {
-            _rules = rules.ToList();
-        }
-
-        public CompositeRule(params IDetectabilityRule[] rules)
-        {
-            _rules = rules.ToList();
-        }
-
-        public void AddRule(IDetectabilityRule rule) => _rules.Add(rule);
-
-        public bool IsDetectable(PeptideWithSetModifications peptide)
-            => _rules.All(rule => rule.IsDetectable(peptide));
-
-        public string Description => string.Join(" AND ", _rules.Select(r => $"({r.Description})"));
-    }
-
-    #endregion
-
     #region Result Types
 
     /// <summary>
@@ -154,45 +41,56 @@ public class SeekMaximumCoverage
 
     #region Fields
 
-    private readonly IDetectabilityRule? _detectabilityRule;
+    /// <summary>
+    /// Optional global run parameters. When provided, peptide mass bounds
+    /// (<see cref="RunParameters.MinPeptideMassAllowed"/> and
+    /// <see cref="RunParameters.MaxPeptideMassAllowed"/>) are applied as an
+    /// additional filter after digestion. A value of -1 means the bound is unset.
+    /// Length and missed-cleavage bounds are already enforced by each protease's
+    /// own <see cref="ProteaseSpecificParameters.DigestionParams"/>.
+    /// </summary>
+    private readonly RunParameters? _runParameters;
 
     #endregion
 
     #region Constructor
 
     /// <summary>
-    /// Creates a new SeekMaximumCoverage analyzer with an optional detectability rule.
-    /// Digestion parameters (missed cleavages, peptide length bounds) are supplied
-    /// per-protease via <see cref="ProteaseSpecificParameters"/> rather than duplicated here.
+    /// Creates a new SeekMaximumCoverage analyzer.
     /// </summary>
-    /// <param name="detectabilityRule">Optional rule to filter peptides. If null, all peptides are used.</param>
-    public SeekMaximumCoverage(IDetectabilityRule? detectabilityRule = null)
+    /// <param name="runParameters">
+    /// Optional global parameters. When supplied, peptide mass bounds are applied
+    /// as an additional post-digestion filter. Pass <c>null</c> (default) to apply
+    /// no mass filter.
+    /// </param>
+    public SeekMaximumCoverage(RunParameters? runParameters = null)
     {
-        _detectabilityRule = detectabilityRule;
+        _runParameters = runParameters;
     }
 
+    #endregion
+
+    #region Private Helpers
+
     /// <summary>
-    /// Creates a new SeekMaximumCoverage analyzer with common detectability rules.
+    /// Returns true if the peptide passes the global mass bounds defined in
+    /// <see cref="RunParameters"/>. Always returns true when no parameters are set
+    /// or when the relevant bound is -1 (unset).
     /// </summary>
-    /// <param name="minLength">Minimum peptide length (exclusive)</param>
-    /// <param name="maxLength">Maximum peptide length (exclusive)</param>
-    /// <param name="requireBasicResidue">Require at least one K or R</param>
-    public static SeekMaximumCoverage WithDefaultRules(
-        int minLength = 6,
-        int maxLength = 30,
-        bool requireBasicResidue = true)
+    private bool PassesMassFilter(PeptideWithSetModifications peptide)
     {
-        var rules = new List<IDetectabilityRule>
-        {
-            new LengthRule(minLength, maxLength)
-        };
+        if (_runParameters == null)
+            return true;
 
-        if (requireBasicResidue)
-        {
-            rules.Add(new BasicResidueRule());
-        }
+        if (_runParameters.MinPeptideMassAllowed != -1
+            && peptide.MonoisotopicMass < _runParameters.MinPeptideMassAllowed)
+            return false;
 
-        return new SeekMaximumCoverage(new CompositeRule(rules));
+        if (_runParameters.MaxPeptideMassAllowed != -1
+            && peptide.MonoisotopicMass > _runParameters.MaxPeptideMassAllowed)
+            return false;
+
+        return true;
     }
 
     #endregion
@@ -200,15 +98,18 @@ public class SeekMaximumCoverage
     #region STEP 1: Coverage Calculation
 
     /// <summary>
-    /// Digests a protein using each protease's own <see cref="ProteaseSpecificParameters"/>,
-    /// filters peptides by the detectability rule, and maps valid peptides to 0-based residue indices.
+    /// Digests a protein using each protease's own <see cref="ProteaseSpecificParameters"/>
+    /// and maps qualifying peptides to 0-based residue indices.
+    ///
+    /// Length, missed-cleavage, and modification filters are applied by <see cref="DigestionParams"/>
+    /// during digestion. An optional peptide mass filter is applied from <see cref="RunParameters"/>.
     /// </summary>
-    /// <param name="protein">The protein to digest</param>
+    /// <param name="protein">The protein to digest.</param>
     /// <param name="proteaseParams">
     /// Per-protease digestion settings. Missed cleavages, peptide length bounds, and
     /// modifications are read from each entry's <see cref="ProteaseSpecificParameters.DigestionParams"/>.
     /// </param>
-    /// <returns>Dictionary mapping protease name to set of covered residue indices (0-based)</returns>
+    /// <returns>Dictionary mapping protease name to set of covered residue indices (0-based).</returns>
     public Dictionary<string, HashSet<int>> CalculateCoverageByProtease(
         Protein protein,
         IEnumerable<ProteaseSpecificParameters> proteaseParams)
@@ -226,17 +127,12 @@ public class SeekMaximumCoverage
 
             foreach (PeptideWithSetModifications peptide in peptides)
             {
-                if (_detectabilityRule != null && !_detectabilityRule.IsDetectable(peptide))
+                if (!PassesMassFilter(peptide))
                     continue;
 
-                // OneBasedStartResidueInProtein is 1-based, convert to 0-based
-                int startIndex = peptide.OneBasedStartResidue - 1;
-                int endIndex = peptide.OneBasedEndResidue - 1;
-
-                for (int i = startIndex; i <= endIndex; i++)
-                {
+                // OneBasedStartResidue is 1-based; convert to 0-based
+                for (int i = peptide.OneBasedStartResidue - 1; i <= peptide.OneBasedEndResidue - 1; i++)
                     coveredIndices.Add(i);
-                }
             }
 
             coverage[proteaseParam.DigestionAgentName] = coveredIndices;
@@ -246,40 +142,8 @@ public class SeekMaximumCoverage
     }
 
     /// <summary>
-    /// Overload that accepts protease names and looks them up in the standard dictionary,
-    /// using default digestion parameters.
-    /// </summary>
-    /// <exception cref="ArgumentException">Thrown if any protease name is not found in the dictionary.</exception>
-    public Dictionary<string, HashSet<int>> CalculateCoverageByProtease(
-        Protein protein,
-        IEnumerable<string> proteaseNames)
-    {
-        var namesList = proteaseNames.ToList();
-
-        var missing = namesList
-            .Where(name => !ProteaseDictionary.Dictionary.ContainsKey(name))
-            .ToList();
-
-        if (missing.Count > 0)
-        {
-            throw new ArgumentException(
-                $"The following protease name(s) were not found in the dictionary: " +
-                $"{string.Join(", ", missing.Select(n => $"'{n}'"))}. " +
-                $"Check proteases.tsv for valid names.");
-        }
-
-        var proteaseParams = namesList.Select(name =>
-        {
-            var dp = new DigestionParams(protease: name);
-            return new ProteaseSpecificParameters(dp);
-        });
-
-        return CalculateCoverageByProtease(protein, proteaseParams);
-    }
-
-    /// <summary>
     /// Returns the 1-based (Start, End) intervals of every peptide that passes the
-    /// detectability rule, using exactly the same digest and filter logic as
+    /// mass filter, using exactly the same digest and filter logic as
     /// <see cref="CalculateCoverageByProtease(Protein, IEnumerable{ProteaseSpecificParameters})"/>.
     /// Use this to draw coverage-map bars that are guaranteed to match the coverage numbers.
     /// </summary>
@@ -304,7 +168,7 @@ public class SeekMaximumCoverage
 
             foreach (PeptideWithSetModifications peptide in peptides)
             {
-                if (_detectabilityRule != null && !_detectabilityRule.IsDetectable(peptide))
+                if (!PassesMassFilter(peptide))
                     continue;
 
                 intervals.Add((peptide.OneBasedStartResidue, peptide.OneBasedEndResidue));
