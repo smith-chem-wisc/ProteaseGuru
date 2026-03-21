@@ -632,6 +632,28 @@ namespace GUI
         {
             Window window = Window.GetWindow(this);
             window.Closing += window_Closing;
+
+            // Auto-select trypsin as the default protease on first load.
+            // Temporarily detach PropertyChanged callbacks so that checking trypsin
+            // doesn't fire RefreshMaxCoverage before the first protein is selected
+            // (SelectedProtein is still null at this point and RefreshMaxCoverage
+            // would return immediately anyway, but suppressing it keeps things clean).
+            foreach (var vm in _allProteaseVm.ProteaseSpecificParameters)
+                vm.PropertyChanged -= OnProteaseParameterChanged;
+
+            var trypsin = _allProteaseVm.ProteaseSpecificParameters
+                .FirstOrDefault(vm => vm.DigestionAgentName == "trypsin");
+            if (trypsin != null)
+                trypsin.IsSelected = true;
+
+            foreach (var vm in _allProteaseVm.ProteaseSpecificParameters)
+                vm.PropertyChanged += OnProteaseParameterChanged;
+
+            // Auto-select the first protein. This fires proteins_SelectedCellsChanged
+            // → OnSelectionChanged → RefreshMaxCoverage, which now has both a protein
+            // and a protease ready and will draw immediately.
+            if (dataGridProteins.Items.Count > 0)
+                dataGridProteins.SelectedIndex = 0;
         }
 
         void window_Closing(object sender, global::System.ComponentModel.CancelEventArgs e)
