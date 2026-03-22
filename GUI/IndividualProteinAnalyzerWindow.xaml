@@ -104,31 +104,41 @@ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
 
         <Grid Grid.Row="2" Style="{StaticResource InternalGridStyle}">
             <Grid.ColumnDefinitions>
+                <!-- Protein list: fixed width, just enough for a UniProt accession -->
+                <ColumnDefinition Width="100"/>
+                <ColumnDefinition Width="3"/>
+                <!-- Protease options: wide enough to show MC/Min/Max fully -->
+                <ColumnDefinition Width="210"/>
+                <ColumnDefinition Width="3"/>
+                <!-- Coverage map: takes all remaining space -->
                 <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="3"/>
-                <ColumnDefinition Width="1.4*"/>
-                <ColumnDefinition Width="3"/>
-                <ColumnDefinition Width="4*"/>
             </Grid.ColumnDefinitions>
 
             <!-- ── Column 0: Protein list ── -->
             <Grid Grid.Column="0" Style="{StaticResource InternalGridStyle}">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="35"/>
+                    <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
 
                 <DockPanel Grid.Row="0" Background="{StaticResource DataGridBackgroundColor}">
-                    <Label Height="30" DockPanel.Dock="Left">Search</Label>
+                    <Label Height="26" Padding="3,2,3,2" DockPanel.Dock="Left" FontSize="12">Search</Label>
                     <TextBox Name="SearchTextBox" TextChanged="Search_TextChanged" DockPanel.Dock="Right"/>
                 </DockPanel>
 
-                <Label Content="Protein Accessions" Grid.Row="1" Style="{StaticResource SmallHeaderLabelStyle}"/>
+                <!-- Two-line header: "Protein" on line 1, "Accessions" on line 2 -->
+                <TextBlock Grid.Row="1"
+                           Text="Protein&#x0a;Accessions"
+                           FontSize="13" FontWeight="Bold"
+                           Foreground="{StaticResource TextColor1}"
+                           Margin="5,3,0,2"
+                           LineHeight="16"/>
 
                 <ListBox Grid.Row="2" Name="dataGridProteins" SelectionMode="Single"
                          ItemContainerStyle="{StaticResource ListBoxItem}"
-                         SelectionChanged="proteins_SelectedCellsChanged"/>
+                         SelectionChanged="proteins_SelectedCellsChanged"
+                         FontSize="12"/>
             </Grid>
 
             <GridSplitter Grid.Column="1" HorizontalAlignment="Center"
@@ -166,7 +176,7 @@ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
 
                 <!-- Export Spectrum Library panel -->
                 <Border Grid.Row="0" BorderBrush="{StaticResource BorderColor}" BorderThickness="0,0,0,1"
-                        Background="{StaticResource BackgroundColor}" Padding="5,4,5,6">
+                        Background="{StaticResource BackgroundColor}" Padding="4,3,4,4">
                     <StackPanel Orientation="Vertical">
 
                         <DockPanel LastChildFill="False">
@@ -176,17 +186,17 @@ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                                     DockPanel.Dock="Right"
                                     Content="Export Spectrum Library"
                                     Style="{StaticResource ImportantButtonStyle}"
-                                    Width="180" Height="24"
+                                    Width="170" Height="22"
                                     Click="ExportSpectrumLibrary_Click"/>
                         </DockPanel>
 
-                        <StackPanel Orientation="Horizontal" Margin="5,2,0,0">
-                            <Label Content="NCE:" VerticalAlignment="Center" FontSize="12" Padding="0,0,4,0"/>
+                        <StackPanel Orientation="Horizontal" Margin="4,2,0,0">
+                            <Label Content="NCE:" VerticalAlignment="Center" FontSize="12" Padding="0,0,3,0"/>
                             <ComboBox x:Name="NceComboBox"
-                                      Width="52" Height="22" FontSize="12"
+                                      Width="48" Height="21" FontSize="12"
                                       VerticalContentAlignment="Center"
                                       ToolTip="Normalised Collision Energy — Prosit 2020 HCD calibrated values only."
-                                      Margin="0,0,18,0" SelectedIndex="3">
+                                      Margin="0,0,10,0" SelectedIndex="3">
                                 <ComboBoxItem Content="20"/>
                                 <ComboBoxItem Content="23"/>
                                 <ComboBoxItem Content="25"/>
@@ -195,20 +205,20 @@ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                                 <ComboBoxItem Content="35"/>
                             </ComboBox>
 
-                            <Label Content="Charge states:" VerticalAlignment="Center" FontSize="12" Padding="0,0,6,0"/>
-                            <CheckBox x:Name="chk1" Content="1" VerticalAlignment="Center" Margin="0,0,6,0" FontSize="12"/>
-                            <CheckBox x:Name="chk2" Content="2" VerticalAlignment="Center" Margin="0,0,6,0" FontSize="12" IsChecked="True"/>
-                            <CheckBox x:Name="chk3" Content="3" VerticalAlignment="Center" Margin="0,0,6,0" FontSize="12" IsChecked="True"/>
-                            <CheckBox x:Name="chk4" Content="4" VerticalAlignment="Center" Margin="0,0,6,0" FontSize="12"/>
-                            <CheckBox x:Name="chk5" Content="5" VerticalAlignment="Center" Margin="0,0,6,0" FontSize="12"/>
-                            <CheckBox x:Name="chk6" Content="6" VerticalAlignment="Center" Margin="0,0,6,0" FontSize="12"/>
-                            <CheckBox x:Name="chk7" Content="7" VerticalAlignment="Center" Margin="0,0,6,0" FontSize="12"
+                            <Label Content="Charge states:" VerticalAlignment="Center" FontSize="12" Padding="0,0,4,0"/>
+                            <CheckBox x:Name="chk1" Content="1" VerticalAlignment="Center" Margin="0,0,5,0" FontSize="12"/>
+                            <CheckBox x:Name="chk2" Content="2" VerticalAlignment="Center" Margin="0,0,5,0" FontSize="12" IsChecked="True"/>
+                            <CheckBox x:Name="chk3" Content="3" VerticalAlignment="Center" Margin="0,0,5,0" FontSize="12" IsChecked="True"/>
+                            <CheckBox x:Name="chk4" Content="4" VerticalAlignment="Center" Margin="0,0,5,0" FontSize="12"/>
+                            <CheckBox x:Name="chk5" Content="5" VerticalAlignment="Center" Margin="0,0,5,0" FontSize="12"/>
+                            <CheckBox x:Name="chk6" Content="6" VerticalAlignment="Center" Margin="0,0,5,0" FontSize="12"/>
+                            <CheckBox x:Name="chk7" Content="7" VerticalAlignment="Center" Margin="0,0,5,0" FontSize="12"
                                       ToolTip="Charge 7 is not supported by Prosit_2020_intensity_HCD and will be ignored."/>
                         </StackPanel>
 
                         <TextBlock x:Name="ExportStatusLabel"
                                    Text="" FontSize="11" FontStyle="Italic"
-                                   Foreground="#555555" Margin="5,3,0,0" TextWrapping="NoWrap"/>
+                                   Foreground="#555555" Margin="4,2,0,0" TextWrapping="NoWrap"/>
                     </StackPanel>
                 </Border>
 
@@ -219,21 +229,21 @@ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                 <Grid Grid.Row="2" Name="MaxCoverageGrid" SizeChanged="maxCoverageGrid_SizeChanged"
                       Style="{StaticResource InternalGridStyle}">
                     <Grid.RowDefinitions>
-                        <RowDefinition Height="35"/>
-                        <!-- Section header -->
                         <RowDefinition Height="30"/>
+                        <!-- Section header -->
+                        <RowDefinition Height="28"/>
                         <!-- Radio buttons -->
                         <RowDefinition Height="*"/>
                         <!-- Map + legend -->
                     </Grid.RowDefinitions>
 
                     <Label Content="Maximum Coverage Analysis" Grid.Row="0"
-                           Style="{StaticResource SmallHeaderLabelStyle}"/>
+                           Style="{StaticResource SmallHeaderLabelStyle}" Padding="5,2,0,0"/>
 
                     <StackPanel Grid.Row="1" Orientation="Horizontal"
-                                VerticalAlignment="Center" Margin="5,0,0,0">
+                                VerticalAlignment="Center" Margin="4,0,0,0">
                         <RadioButton x:Name="greedyToggle" Content="Greedy (Min Set)"
-                                     GroupName="MaxCovMode" Width="120"
+                                     GroupName="MaxCovMode" Width="115"
                                      IsChecked="True" Checked="MaxCoverageMode_Changed"
                                      Style="{StaticResource ModeToggleStyle}"/>
                         <RadioButton x:Name="singleToggle" Content="Best Single"
@@ -249,24 +259,26 @@ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                                      Checked="MaxCoverageMode_Changed"
                                      Style="{StaticResource ModeToggleStyle}"/>
                         <TextBlock x:Name="computingLabel"
-                                   Text="  ⟳  Computing optimal coverage…"
+                                   Text="  ⟳  Computing…"
                                    FontStyle="Italic" FontSize="11"
-                                   VerticalAlignment="Center" Margin="8,0,0,0"
+                                   VerticalAlignment="Center" Margin="6,0,0,0"
                                    Foreground="#888888" Visibility="Collapsed"/>
                     </StackPanel>
 
-                    <!-- Scrollable map + legend (no Key border — bars convey coverage) -->
+                    <!-- Scrollable map + legend — no fixed width; fills the column -->
                     <ScrollViewer Grid.Row="2" Name="maxCoverageMapViewer"
-                                  HorizontalAlignment="Center" VerticalAlignment="Top"
+                                  HorizontalAlignment="Stretch" VerticalAlignment="Top"
                                   CanContentScroll="True"
-                                  VerticalScrollBarVisibility="Visible" Width="775">
+                                  HorizontalScrollBarVisibility="Auto"
+                                  VerticalScrollBarVisibility="Visible">
                         <Grid Name="maxCoverageMapGrid" Background="White">
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="Auto"/>
                             </Grid.RowDefinitions>
-                            <Canvas x:Name="maxCoverageMap" Grid.Row="0" Width="700" Background="White"/>
-                            <Canvas x:Name="maxCoverageLegend" Grid.Row="1" Width="700" Background="White"
+                            <!-- Canvas widths are set dynamically in code-behind via maxCoverageGrid_SizeChanged -->
+                            <Canvas x:Name="maxCoverageMap" Grid.Row="0" Background="White"/>
+                            <Canvas x:Name="maxCoverageLegend" Grid.Row="1" Background="White"
                                     VerticalAlignment="Top" HorizontalAlignment="Left">
                                 <Grid Name="maxCoverageLegendGrid" Background="White"
                                       VerticalAlignment="Top" HorizontalAlignment="Left"/>

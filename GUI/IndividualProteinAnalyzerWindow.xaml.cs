@@ -45,7 +45,7 @@ namespace GUI
         private Dictionary<string, Color> ProteaseByColor => _stableProteaseColors;
 
         // ── Bar geometry constants ────────────────────────────────────────────
-        private const int ResidueSpacing = 25;  // px between residue X-positions (matches SequenceCoverageMap.spacing)
+        private const int ResidueSpacing = 22;  // px between residue X-positions
         private const int SeqTextHeight = 20;  // px for the amino-acid text row
         private const int BarHeight = 6;   // px thickness of each coloured peptide bar
         private const int BarRowGap = 4;   // px gap between stacked bars
@@ -351,7 +351,7 @@ namespace GUI
         {
             const int residuesPerLine = CoverageMapDataPreparer.DefaultResiduesPerLine;
 
-            maxCoverageMap.Width = 0.90 * MaxCoverageGrid.ActualWidth;
+            // Canvas width is managed by maxCoverageGrid_SizeChanged; don't override it here.
             maxCoverageMap.Children.Clear();
 
             var splitSeq = CoverageMapDataPreparer.SplitSequenceIntoLines(
@@ -547,8 +547,17 @@ namespace GUI
 
         private void maxCoverageGrid_SizeChanged(object sender, SizeChangedEventArgs e)
         {
+            double availableWidth = MaxCoverageGrid.ActualWidth;
             maxCoverageMapViewer.Height = 0.85 * MaxCoverageGrid.ActualHeight;
-            maxCoverageMapViewer.Width = 0.99 * MaxCoverageGrid.ActualWidth;
+            maxCoverageMapViewer.Width = availableWidth;
+
+            // Cap canvas width to the sequence content width so there is no large
+            // right margin. 25 residues × ResidueSpacing px + 65 px left margin + 20 px right padding.
+            const double sequenceContentWidth = 25 * ResidueSpacing + 65 + 20;
+            double canvasWidth = Math.Min(availableWidth - 18, sequenceContentWidth);
+            canvasWidth = Math.Max(canvasWidth, 200);
+            maxCoverageMap.Width = canvasWidth;
+            maxCoverageLegend.Width = canvasWidth;
         }
 
         private async void ExportSpectrumLibrary_Click(object sender, RoutedEventArgs e)
@@ -642,7 +651,7 @@ namespace GUI
                 vm.PropertyChanged -= OnProteaseParameterChanged;
 
             var trypsin = _allProteaseVm.ProteaseSpecificParameters
-                .FirstOrDefault(vm => vm.DigestionAgentName == "trypsin");
+                .FirstOrDefault(vm => vm.DigestionAgentName == "trypsin|P");
             if (trypsin != null)
                 trypsin.IsSelected = true;
 
