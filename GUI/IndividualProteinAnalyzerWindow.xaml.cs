@@ -10,6 +10,7 @@ using Proteomics;
 using Proteomics.ProteolyticDigestion;
 using Tasks;
 using Tasks.CoverageMapConfiguration;
+using TorchSharp.Modules;
 
 namespace GUI
 {
@@ -28,29 +29,20 @@ namespace GUI
         private DigestionConditionsSetupViewModel _allProteaseVm;
         private readonly SeekMaximumCoverage _seeker = new SeekMaximumCoverage();
 
-        // Track the FASTA path so the library is written alongside it
         private string? _fastaPath;
-
-        // Cancellation for in-progress exports
         private CancellationTokenSource? _exportCts;
 
-        // ── Stable color map ──────────────────────────────────────────────────
-        // Assigned once from the full ProteaseDictionary at construction time so
-        // that a protease always gets the same color regardless of which proteases
-        // are currently checked.  Never reassigned after construction.
         private readonly Dictionary<string, Color> _stableProteaseColors;
         private readonly Dictionary<string, SolidColorBrush> _stableProteaseBrushes;
 
-        // Legacy property kept so existing calls to SequenceCoverageMap.drawLegend compile
         private Dictionary<string, Color> ProteaseByColor => _stableProteaseColors;
 
-        // ── Bar geometry constants ────────────────────────────────────────────
-        private const int ResidueSpacing = 22;  // px between residue X-positions
-        private const int SeqTextHeight = 20;  // px for the amino-acid text row
-        private const int BarHeight = 6;   // px thickness of each coloured peptide bar
-        private const int BarRowGap = 4;   // px gap between stacked bars
-        private const int BarTopMargin = 6;   // px gap between amino-acid text and first bar
-        private const int BottomLineGap = 14;  // px below the last bar before next sequence line
+        private const int ResidueSpacing = 22;
+        private const int SeqTextHeight = 20;
+        private const int BarHeight = 6;
+        private const int BarRowGap = 4;
+        private const int BarTopMargin = 6;
+        private const int BottomLineGap = 14;
 
         #endregion
 
@@ -58,10 +50,6 @@ namespace GUI
 
         public IndividualProteinAnalyzerWindow() { }
 
-        /// <summary>
-        /// Lightweight constructor — proteins come straight from the database,
-        /// no prior Run required. All digestion is on-demand.
-        /// </summary>
         public IndividualProteinAnalyzerWindow(List<Protein> proteins, string? fastaPath = null)
         {
             InitializeComponent();
@@ -96,9 +84,6 @@ namespace GUI
             SearchModifications.Timer.Tick += new EventHandler(searchBox_TextChangedHandler);
         }
 
-        /// <summary>
-        /// Full constructor used when results come from a completed Run.
-        /// </summary>
         public IndividualProteinAnalyzerWindow(
             Dictionary<string, Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>> peptideByFile,
             RunParameters userParams,
@@ -132,12 +117,6 @@ namespace GUI
 
         #region Stable Color Assignment
 
-        /// <summary>
-        /// Assigns a color to every protease in ProteaseDictionary, in stable dictionary
-        /// order, once at construction time.  The same protease name will always map to
-        /// the same color for the lifetime of this window, regardless of which subset is
-        /// currently checked.
-        /// </summary>
         private static (Dictionary<string, Color> colors, Dictionary<string, SolidColorBrush> brushes)
             BuildStableColorMaps()
         {
@@ -151,8 +130,7 @@ namespace GUI
             {
                 var wpfColor = Color.FromRgb(kvp.Value.R, kvp.Value.G, kvp.Value.B);
                 var brush = new SolidColorBrush(wpfColor);
-                brush.Freeze(); // safe for sharing across UI elements
-
+                brush.Freeze();
                 colors[kvp.Key] = wpfColor;
                 brushes[kvp.Key] = brush;
             }
@@ -164,17 +142,11 @@ namespace GUI
         {
             if (_stableProteaseBrushes.TryGetValue(proteaseName, out var brush))
                 return brush;
-
-            // Fallback for any custom/unknown protease
             var fb = new SolidColorBrush(Colors.DimGray);
             fb.Freeze();
             return fb;
         }
 
-        /// <summary>
-        /// Returns the stable palette index for a protease — used only to sort
-        /// swim-lanes into a consistent order, not for colour lookup.
-        /// </summary>
         private static int GetStableColorIndex(string proteaseName)
         {
             int i = 0;
@@ -282,7 +254,6 @@ namespace GUI
         {
             if (SelectedProtein == null) return;
 
-            // All currently checked proteases (may be more than the "winners")
             var checkedProteases = _allProteaseVm.ProteaseSpecificParameters
                 .Where(vm => vm.IsSelected)
                 .ToList();
@@ -296,7 +267,6 @@ namespace GUI
             var proteaseParams = checkedProteases.Select(vm => vm.ProteaseSpecificParams).ToList();
             var coverageDict = _seeker.CalculateCoverageByProtease(SelectedProtein.Protein, proteaseParams);
 
-            // Determine the winning protease set according to the selected mode
             SeekMaximumCoverage.CombinationResult result;
             if (greedyToggle.IsChecked == true)
             {
@@ -309,17 +279,27 @@ namespace GUI
                 result = _seeker.BestSingle(coverageDict);
             else if (pairToggle.IsChecked == true)
                 result = _seeker.BestPair(coverageDict);
+            else if (tripletToggle.IsChecked == true)
+                result = _seeker.BestTriplet(coverageDict);
+            else if (allToggle.IsChecked == true)
+            {
+                // All: show every checked protease — union of all covered residues
+                var allCovered = new HashSet<int>();
+                foreach (var kvp in coverageDict)
+                    allCovered.UnionWith(kvp.Value);
+                result = new SeekMaximumCoverage.CombinationResult(
+                    checkedProteases.Select(vm => vm.DigestionAgentName).ToList(),
+                    allCovered, allCovered.Count,
+                    SeekMaximumCoverage.CoverageFraction(allCovered, SelectedProtein.Protein.Length));
+            }
             else
                 result = _seeker.BestTriplet(coverageDict);
 
-            // Peptide intervals for the WINNING proteases only — so the bars
-            // change when the user toggles between Greedy / Best Single / Pair / Triplet.
             var winningParams = proteaseParams
                 .Where(p => result.Proteases.Contains(p.DigestionAgentName))
                 .ToList();
             var pepsByProtease = BuildPeptidesByProtease(SelectedProtein.Protein, winningParams);
 
-            // Lane order: winning proteases sorted by stable palette index
             var orderedChecked = result.Proteases
                 .OrderBy(GetStableColorIndex)
                 .ToList();
@@ -327,11 +307,6 @@ namespace GUI
             DrawMaxCoverageMap(SelectedProtein.Protein, result, pepsByProtease, orderedChecked);
         }
 
-        /// <summary>
-        /// Returns the peptide intervals that are identical to what
-        /// <see cref="SeekMaximumCoverage.CalculateCoverageByProtease"/> used, so that
-        /// the bars on the coverage map exactly match the coverage percentage shown.
-        /// </summary>
         private Dictionary<string, List<(int Start, int End)>> BuildPeptidesByProtease(
             Protein protein,
             IEnumerable<ProteaseSpecificParameters> allParams)
@@ -351,13 +326,11 @@ namespace GUI
         {
             const int residuesPerLine = CoverageMapDataPreparer.DefaultResiduesPerLine;
 
-            // Canvas width is managed by maxCoverageGrid_SizeChanged; don't override it here.
             maxCoverageMap.Children.Clear();
 
             var splitSeq = CoverageMapDataPreparer.SplitSequenceIntoLines(
                 protein.BaseSequence, residuesPerLine);
 
-            // ── Header ───────────────────────────────────────────────────────
             int height = 10;
 
             string proteinName = protein.FullName ?? protein.Accession;
@@ -376,26 +349,21 @@ namespace GUI
                 $"Best coverage: {proteaseStr}  ({pct})", Brushes.Black);
             height += 30;
 
-            // ── Line stride = text + bars for every checked protease + gap ───
             int proteaseCount = orderedCheckedProteases.Count;
             int barZoneHeight = proteaseCount > 0
                 ? BarTopMargin + proteaseCount * (BarHeight + BarRowGap)
                 : 0;
             int lineStride = SeqTextHeight + barZoneHeight + BottomLineGap;
 
-            // ── Sequence lines ────────────────────────────────────────────────
             for (int lineIndex = 0; lineIndex < splitSeq.Count; lineIndex++)
             {
                 var line = splitSeq[lineIndex];
-                int lineStartRes = lineIndex * residuesPerLine + 1; // 1-based
+                int lineStartRes = lineIndex * residuesPerLine + 1;
                 int lineEndRes = lineStartRes + line.Length - 1;
 
-                // Line-number label
                 SequenceCoverageMap.txtDrawingLabel(
                     maxCoverageMap, new Point(0, height), lineStartRes.ToString(), Brushes.Black);
 
-                // Amino-acid characters — all rendered identically; the coloured
-                // peptide bars below convey coverage, so bold/underline is not needed.
                 for (int r = 0; r < line.Length; r++)
                 {
                     string ch = line[r].ToString().ToUpper();
@@ -403,7 +371,6 @@ namespace GUI
                     SequenceCoverageMap.txtDrawing(maxCoverageMap, pt, ch, Brushes.Black);
                 }
 
-                // ── Peptide bars ─────────────────────────────────────────────
                 int barBaseY = height + SeqTextHeight + BarTopMargin;
 
                 for (int pi = 0; pi < orderedCheckedProteases.Count; pi++)
@@ -417,19 +384,14 @@ namespace GUI
 
                     foreach (var (pepStart, pepEnd) in intervals)
                     {
-                        // Skip peptides that don't overlap this display line at all
                         if (pepEnd < lineStartRes || pepStart > lineEndRes)
                             continue;
 
-                        // Clamp to what is visible on this line
                         int visStart = Math.Max(pepStart, lineStartRes);
                         int visEnd = Math.Min(pepEnd, lineEndRes);
-
-                        // 0-based column indices within this line
                         int colStart = visStart - lineStartRes;
                         int colEnd = visEnd - lineStartRes;
 
-                        // Pixel X: left edge of colStart cell → right edge of colEnd cell
                         double x1 = colStart * ResidueSpacing + 65;
                         double x2 = colEnd * ResidueSpacing + 65 + (ResidueSpacing - 4);
 
@@ -446,7 +408,6 @@ namespace GUI
                         Panel.SetZIndex(bar, 1);
                         maxCoverageMap.Children.Add(bar);
 
-                        // Vertical end-caps only where the peptide actually starts/ends on this line
                         if (pepStart >= lineStartRes)
                             DrawEndCap(x1, laneY, brush);
                         if (pepEnd <= lineEndRes)
@@ -459,7 +420,6 @@ namespace GUI
 
             maxCoverageMap.Height = height + 20;
 
-            // ── Legend ───────────────────────────────────────────────────────
             DrawMaxCoverageLegend(orderedCheckedProteases);
         }
 
@@ -478,10 +438,6 @@ namespace GUI
             maxCoverageMap.Children.Add(cap);
         }
 
-        /// <summary>
-        /// Draws the legend — one coloured swatch per winning protease.
-        /// The list already contains only winners, so no distinction is needed.
-        /// </summary>
         private void DrawMaxCoverageLegend(List<string> proteases)
         {
             maxCoverageLegend.Children.Clear();
@@ -551,8 +507,6 @@ namespace GUI
             maxCoverageMapViewer.Height = 0.85 * MaxCoverageGrid.ActualHeight;
             maxCoverageMapViewer.Width = availableWidth;
 
-            // Cap canvas width to the sequence content width so there is no large
-            // right margin. 25 residues × ResidueSpacing px + 65 px left margin + 20 px right padding.
             const double sequenceContentWidth = 25 * ResidueSpacing + 65 + 20;
             double canvasWidth = Math.Min(availableWidth - 18, sequenceContentWidth);
             canvasWidth = Math.Max(canvasWidth, 200);
@@ -642,11 +596,6 @@ namespace GUI
             Window window = Window.GetWindow(this);
             window.Closing += window_Closing;
 
-            // Auto-select trypsin as the default protease on first load.
-            // Temporarily detach PropertyChanged callbacks so that checking trypsin
-            // doesn't fire RefreshMaxCoverage before the first protein is selected
-            // (SelectedProtein is still null at this point and RefreshMaxCoverage
-            // would return immediately anyway, but suppressing it keeps things clean).
             foreach (var vm in _allProteaseVm.ProteaseSpecificParameters)
                 vm.PropertyChanged -= OnProteaseParameterChanged;
 
@@ -658,9 +607,6 @@ namespace GUI
             foreach (var vm in _allProteaseVm.ProteaseSpecificParameters)
                 vm.PropertyChanged += OnProteaseParameterChanged;
 
-            // Auto-select the first protein. This fires proteins_SelectedCellsChanged
-            // → OnSelectionChanged → RefreshMaxCoverage, which now has both a protein
-            // and a protease ready and will draw immediately.
             if (dataGridProteins.Items.Count > 0)
                 dataGridProteins.SelectedIndex = 0;
         }

@@ -104,17 +104,14 @@ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
 
         <Grid Grid.Row="2" Style="{StaticResource InternalGridStyle}">
             <Grid.ColumnDefinitions>
-                <!-- Protein list: fixed width, just enough for a UniProt accession -->
                 <ColumnDefinition Width="100"/>
                 <ColumnDefinition Width="3"/>
-                <!-- Protease options: wide enough to show MC/Min/Max fully -->
                 <ColumnDefinition Width="210"/>
                 <ColumnDefinition Width="3"/>
-                <!-- Coverage map: takes all remaining space -->
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
 
-            <!-- ── Column 0: Protein list ── -->
+            <!-- Column 0: Protein list -->
             <Grid Grid.Column="0" Style="{StaticResource InternalGridStyle}">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
@@ -127,7 +124,6 @@ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     <TextBox Name="SearchTextBox" TextChanged="Search_TextChanged" DockPanel.Dock="Right"/>
                 </DockPanel>
 
-                <!-- Two-line header: "Protein" on line 1, "Accessions" on line 2 -->
                 <TextBlock Grid.Row="1"
                            Text="Protein&#x0a;Accessions"
                            FontSize="13" FontWeight="Bold"
@@ -144,7 +140,7 @@ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
             <GridSplitter Grid.Column="1" HorizontalAlignment="Center"
                           Background="{StaticResource BackgroundColor}" Width="3"/>
 
-            <!-- ── Column 2: Protease Options ── -->
+            <!-- Column 2: Protease Options -->
             <DockPanel Grid.Column="2" Background="{StaticResource BackgroundColor}" LastChildFill="True">
                 <Label DockPanel.Dock="Top" Content="Protease Options"
                        Style="{StaticResource SmallHeaderLabelStyle}"
@@ -163,15 +159,12 @@ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
             <GridSplitter Grid.Column="3" HorizontalAlignment="Center"
                           Background="{StaticResource BackgroundColor}" Width="3"/>
 
-            <!-- ── Column 4: Export panel + Coverage map ── -->
+            <!-- Column 4: Export panel + Coverage map -->
             <Grid Grid.Column="4" Name="AllResultsGrid" Style="{StaticResource InternalGridStyle}">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
-                    <!-- Export Spectrum Library panel -->
                     <RowDefinition Height="3"/>
-                    <!-- separator -->
                     <RowDefinition Height="*"/>
-                    <!-- Max Coverage section -->
                 </Grid.RowDefinitions>
 
                 <!-- Export Spectrum Library panel -->
@@ -230,11 +223,8 @@ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                       Style="{StaticResource InternalGridStyle}">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="30"/>
-                        <!-- Section header -->
                         <RowDefinition Height="28"/>
-                        <!-- Radio buttons -->
                         <RowDefinition Height="*"/>
-                        <!-- Map + legend -->
                     </Grid.RowDefinitions>
 
                     <Label Content="Maximum Coverage Analysis" Grid.Row="0"
@@ -258,6 +248,10 @@ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                                      GroupName="MaxCovMode"
                                      Checked="MaxCoverageMode_Changed"
                                      Style="{StaticResource ModeToggleStyle}"/>
+                        <RadioButton x:Name="allToggle" Content="All"
+                                     GroupName="MaxCovMode"
+                                     Checked="MaxCoverageMode_Changed"
+                                     Style="{StaticResource ModeToggleStyle}"/>
                         <TextBlock x:Name="computingLabel"
                                    Text="  ⟳  Computing…"
                                    FontStyle="Italic" FontSize="11"
@@ -265,7 +259,6 @@ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                                    Foreground="#888888" Visibility="Collapsed"/>
                     </StackPanel>
 
-                    <!-- Scrollable map + legend — no fixed width; fills the column -->
                     <ScrollViewer Grid.Row="2" Name="maxCoverageMapViewer"
                                   HorizontalAlignment="Stretch" VerticalAlignment="Top"
                                   CanContentScroll="True"
@@ -276,7 +269,6 @@ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="Auto"/>
                             </Grid.RowDefinitions>
-                            <!-- Canvas widths are set dynamically in code-behind via maxCoverageGrid_SizeChanged -->
                             <Canvas x:Name="maxCoverageMap" Grid.Row="0" Background="White"/>
                             <Canvas x:Name="maxCoverageLegend" Grid.Row="1" Background="White"
                                     VerticalAlignment="Top" HorizontalAlignment="Left">
