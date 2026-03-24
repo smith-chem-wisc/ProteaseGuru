@@ -617,17 +617,17 @@ namespace GUI
                 if (isCoveredByUnique)
                 {
                     // Covered by unique peptides: Bold
-                    SequenceCoverageMap.txtDrawing(map, new Point(r * spacing + 65, height), character, brush);
+                    SequenceCoverageMap.txtDrawing(map, new Point(r * spacing + 45, height), character, brush);
                 }
                 else if (isCoveredBySharedOnly)
                 {
                     // Covered by shared peptides only: Normal weight, translucent (no underline)
-                    SequenceCoverageMap.txtDrawingShared(map, new Point(r * spacing + 65, height), character, brush);
+                    SequenceCoverageMap.txtDrawingShared(map, new Point(r * spacing + 45, height), character, brush);
                 }
                 else
                 {
                     // Not covered: Normal weight with underline
-                    SequenceCoverageMap.txtDrawingUncovered(map, new Point(r * spacing + 65, height), character, brush);
+                    SequenceCoverageMap.txtDrawingUncovered(map, new Point(r * spacing + 45, height), character, brush);
                 }
             }
         }
@@ -645,14 +645,14 @@ namespace GUI
                     var colors = mod.Value
                         .Select(m => GetPtmBrush(Convert.ToDouble(m.MonoisotopicMass)))
                         .ToList();
-                    SequenceCoverageMap.stackedCircledTxtDraw(map, new Point(mod.Key * spacing + 38, height), colors);
+                    SequenceCoverageMap.stackedCircledTxtDraw(map, new Point(mod.Key * spacing + 28, height), colors);
                 }
                 else
                 {
                     // Single mod - draw one circle
                     var mass = Convert.ToDouble(mod.Value.First().MonoisotopicMass);
                     var brush = GetPtmBrush(mass);
-                    SequenceCoverageMap.circledTxtDraw(map, new Point(mod.Key * spacing + 38, height), brush);
+                    SequenceCoverageMap.circledTxtDraw(map, new Point(mod.Key * spacing + 28, height), brush);
                 }
             }
         }

@@ -198,6 +198,8 @@
                                   HeadersVisibility="Column"
                                   GridLinesVisibility="All"
                                   AlternatingRowBackground="#F5F5F5"
+                                  HorizontalScrollBarVisibility="Disabled"
+                                  HorizontalAlignment="Stretch"
                                   Margin="5">
                             <DataGrid.Columns>
                                 <DataGridTextColumn Header="Protease" 
@@ -242,7 +244,7 @@
                                 </DataGridTextColumn>
                                 <DataGridTextColumn Header="Unique Coverage" 
                                                     Binding="{Binding UniqueCoverage}" 
-                                                    Width="Auto">
+                                                    Width="*">
                                     <DataGridTextColumn.ElementStyle>
                                         <Style TargetType="TextBlock">
                                             <Setter Property="HorizontalAlignment" Value="Center"/>

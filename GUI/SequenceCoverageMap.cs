@@ -57,13 +57,13 @@ namespace GUI
             // highlight peptide
             if (unique)
             {
-                peptideLineDrawing(map, new Point(start * spacing + 65, height + increment),
-                    new Point(end * spacing + 65, height + increment), clr, false, startPep, endPep);
+                peptideLineDrawing(map, new Point(start * spacing + 45, height + increment),
+                    new Point(end * spacing + 45, height + increment), clr, false, startPep, endPep);
             }
             else
             {
-                peptideLineDrawing(map, new Point(start * spacing + 65, height + increment),
-                    new Point(end * spacing + 65, height + increment), clr, true, startPep, endPep);
+                peptideLineDrawing(map, new Point(start * spacing + 45, height + increment),
+                    new Point(end * spacing + 45, height + increment), clr, true, startPep, endPep);
             }
 
             return i;
