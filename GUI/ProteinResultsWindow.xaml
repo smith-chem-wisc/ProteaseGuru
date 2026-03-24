@@ -105,9 +105,9 @@
 
         <Grid Grid.Row ="2" Style="{StaticResource InternalGridStyle}" Margin="5 0 0 26">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="0.6*"/>
                 <ColumnDefinition Width="3"/>
-                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="0.7*"/>
                 <ColumnDefinition Width="3"/>
                 <ColumnDefinition Width="4*"/>
             </Grid.ColumnDefinitions>
@@ -127,7 +127,7 @@
                     <Label Height="30" DockPanel.Dock="Left">Search</Label>
                     <TextBox Name="SearchTextBox" TextChanged="Search_TextChanged" DockPanel.Dock="Right"></TextBox>
                 </DockPanel>
-                <Label Content="Protein Accessions" Grid.Row="1" Style="{StaticResource SmallHeaderLabelStyle}" />
+                <Label Content="Accessions" Grid.Row="1" Style="{StaticResource SmallHeaderLabelStyle}" />
 
                 <Grid Grid.Row="2" Style="{StaticResource InternalGridStyle}">
                     <Grid.ColumnDefinitions>
@@ -149,20 +149,17 @@
 
             <Grid Grid.Column="2" Style="{StaticResource InternalGridStyle}">
                 <Grid.RowDefinitions>
-                    <RowDefinition Height="35"></RowDefinition>
-                    <RowDefinition Height = "*"></RowDefinition>
-                    <RowDefinition Height = "30"></RowDefinition>
-                    <RowDefinition Height="1"></RowDefinition>
-                    <RowDefinition Height="30"></RowDefinition>
+                    <RowDefinition Height="35"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="26"/>
+                    <RowDefinition Height="26"/>
                 </Grid.RowDefinitions>
-                <!--Header label-->
-                <Label Content="Protease Selections" Grid.Row="0" Style="{StaticResource SmallHeaderLabelStyle}"  HorizontalContentAlignment="Center"/>
-                <ScrollViewer VerticalScrollBarVisibility="Visible" HorizontalScrollBarVisibility="Auto" Grid.Row="1" Grid.Column="1">
-                    <ListBox Name ="ProteaseSelectedForUse" SelectionMode="Multiple" Loaded="proteaseCoverageMaps_loaded" ItemContainerStyle="{StaticResource ListBoxItem}">
-                    </ListBox>
+                <Label Content="Proteases" Grid.Row="0" Style="{StaticResource SmallHeaderLabelStyle}" HorizontalContentAlignment="Center"/>
+                <ScrollViewer VerticalScrollBarVisibility="Visible" HorizontalScrollBarVisibility="Auto" Grid.Row="1">
+                    <ListBox Name="ProteaseSelectedForUse" SelectionMode="Multiple" Loaded="proteaseCoverageMaps_loaded" ItemContainerStyle="{StaticResource ListBoxItem}"/>
                 </ScrollViewer>
-                <Button x:Name="viewSelectedProteases" Grid.Row ="2" Content="View Selected Proteases" Click="SelectProteases_Click" Width ="170" Style="{StaticResource ImportantButtonStyle}" />
-                <Button x:Name="clearProteasesButton" Grid.Row="4" Content="Clear Selected Proteases" Click="ClearSelectedProteases_Click" Width="170" Style="{StaticResource ImportantButtonStyle}" />
+                <Button x:Name="viewSelectedProteases" Grid.Row="2" Content="View Selected" Click="SelectProteases_Click" Width="110" Height="22" HorizontalAlignment="Left" Margin="5,0,0,0" Style="{StaticResource ImportantButtonStyle}"/>
+                <Button x:Name="clearProteasesButton" Grid.Row="3" Content="Clear Selected" Click="ClearSelectedProteases_Click" Width="110" Height="22" HorizontalAlignment="Left" Margin="5,0,0,0" Style="{StaticResource ImportantButtonStyle}"/>
             </Grid>
 
             <GridSplitter Grid.Column="3" 
@@ -172,8 +169,8 @@
 
             <Grid Grid.Column="4" Name="AllResultsGrid" Style="{StaticResource InternalGridStyle}">
                 <Grid.RowDefinitions>
-                    <RowDefinition Height="*"></RowDefinition>
-                    <RowDefinition Height="2*"></RowDefinition>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
                 <Grid Grid.Row="0" Name="SummaryGrid" Style="{StaticResource InternalGridStyle}">
                     <Grid.RowDefinitions>
@@ -199,13 +196,15 @@
                                   GridLinesVisibility="All"
                                   AlternatingRowBackground="#F5F5F5"
                                   HorizontalScrollBarVisibility="Disabled"
+                                  VerticalScrollBarVisibility="Auto"
+                                  MaxHeight="160"
                                   HorizontalAlignment="Stretch"
                                   Margin="5">
                             <DataGrid.Columns>
                                 <DataGridTextColumn Header="Protease" 
                                                     Binding="{Binding Protease}" 
                                                     Width="Auto" 
-                                                    MinWidth="150"/>
+                                                    MinWidth="100"/>
                                 <DataGridTextColumn Header="Unique Peptides" 
                                                     Binding="{Binding UniquePeptides}" 
                                                     Width="Auto">
@@ -257,27 +256,27 @@
                 </Grid>
                 <Grid Grid.Row="1" Name="ResultsGrid" SizeChanged="resultsSizeChanged" Style="{StaticResource InternalGridStyle}">
                     <Grid.RowDefinitions>
-                        <RowDefinition Height = "35"></RowDefinition>
-                        <RowDefinition Height = "*"></RowDefinition>
-                        <RowDefinition Height="5"></RowDefinition>
-                        <RowDefinition Height = "30"></RowDefinition>
+                        <RowDefinition Height="35"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="5"/>
+                        <RowDefinition Height="30"/>
                     </Grid.RowDefinitions>
 
                     <!--Header label-->
                     <Label Content="Protein Sequence Coverage Map" Grid.Row="0" Style="{StaticResource SmallHeaderLabelStyle}" />
-                    <ScrollViewer Grid.Row="1" Name="mapViewer" HorizontalAlignment="Center" VerticalAlignment="Center" 
-                                  CanContentScroll="True" VerticalScrollBarVisibility="Visible" Width="775">
+
+                    <ScrollViewer Grid.Row="1" Name="mapViewer" HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
+                                  CanContentScroll="False" VerticalScrollBarVisibility="Visible" HorizontalScrollBarVisibility="Auto">
                         <Grid Name="mapGrid" Background="White">
                             <Grid.RowDefinitions>
-                                <RowDefinition Height=" 2*" ></RowDefinition>
-                                <RowDefinition Height=" *"></RowDefinition>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
                             </Grid.RowDefinitions>
-                            <Canvas x:Name="map" Grid.Row="0" Width="700" Background="White"></Canvas>
-                            <Canvas x:Name="legend" Grid.Row ="1" Width ="700" Height="300" Background="White" VerticalAlignment="Top" HorizontalAlignment="Left">
+                            <Canvas x:Name="map" Grid.Row="0" Background="White"/>
+                            <Canvas x:Name="legend" Grid.Row="1" Background="White" VerticalAlignment="Top" HorizontalAlignment="Left">
                                 <Grid Name="legendGrid" Background="White" VerticalAlignment="Top" HorizontalAlignment="Left"/>
                             </Canvas>
                         </Grid>
-
                     </ScrollViewer>
 
                     <Button x:Name="exportPngButton" Content="Export Protein Digestion Results" Click="exportCoverageMap" Grid.Row="3" Width="250" Style="{StaticResource ImportantButtonStyle}"/>
