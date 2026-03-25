@@ -262,8 +262,21 @@
                         <RowDefinition Height="30"/>
                     </Grid.RowDefinitions>
 
-                    <!--Header label-->
-                    <Label Content="Protein Sequence Coverage Map" Grid.Row="0" Style="{StaticResource SmallHeaderLabelStyle}" />
+                    <!--Header label with view toggle button-->
+                    <Grid Grid.Row="0" Style="{StaticResource InternalGridStyle}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Label Content="Protein Sequence Coverage Map" Grid.Column="0" Style="{StaticResource SmallHeaderLabelStyle}" />
+                        <Button x:Name="coverageViewToggleButton" Grid.Column="1"
+                                Content="Peptide View"
+                                Click="CoverageViewToggle_Click"
+                                Width="130" Height="24"
+                                HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,10,0"
+                                Style="{StaticResource ImportantButtonStyle}"
+                                FontSize="11" FontWeight="SemiBold"/>
+                    </Grid>
 
                     <ScrollViewer Grid.Row="1" Name="mapViewer" HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
                                   CanContentScroll="False" VerticalScrollBarVisibility="Visible" HorizontalScrollBarVisibility="Auto">

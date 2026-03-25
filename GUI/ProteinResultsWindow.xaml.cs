@@ -67,6 +67,13 @@ namespace GUI
         private const int BarTopMargin = 6;   // px gap between amino-acid text and first bar row
         private const int BottomLineGap = 12;  // px below the last bar before the next sequence line
 
+        // ── Display mode toggle ──────────────────────────────────────────────
+        private CoverageMapDisplayMode _displayMode = CoverageMapDisplayMode.PeptidePerBar;
+
+        // ── Peptide-per-bar mode fields ───────────────────────────────────────
+        private Dictionary<InSilicoPep, (int, int)> partialPeptideMatches = new();
+        private Dictionary<string, Color> ProteaseByColor;
+
         #endregion
 
         #region Constructors
@@ -102,6 +109,10 @@ namespace GUI
             // Build stable color map from the full ProteaseDictionary — same palette
             // as IndividualProteinAnalyzerWindow so colors are identical across both views.
             (_stableProteaseColors, _stableProteaseBrushes) = BuildStableColorMaps();
+
+            // Build protease color map for peptide-per-bar mode
+            var rgbColorMap = CoverageMapConfiguration.CreateProteaseColorMap(_analyzer.Proteases);
+            ProteaseByColor = rgbColorMap.ToDictionary(kvp => kvp.Key, kvp => ToWpfColor(kvp.Value));
 
             this.Loaded += results_Loaded;
             SearchModifications.SetUp();
@@ -392,14 +403,15 @@ namespace GUI
 
         #region Sequence Coverage Map Drawing
 
-        /// <summary>
-        /// Main method for drawing the protein sequence coverage map.
-        /// Each selected protease gets its own swim-lane of coloured bars beneath
-        /// each sequence line — identical visual style to IndividualProteinAnalyzerWindow.
-        /// Unique peptides are fully opaque; shared peptides are semi-transparent.
-        /// Row height is dynamically adjusted to accommodate all protease lanes.
-        /// </summary>
         private void DrawSequenceCoverageMap(ProteinForTreeView protein, List<string> proteases)
+        {
+            if (_displayMode == CoverageMapDisplayMode.ProteaseLane)
+                DrawProteaseLaneCoverageMap(protein, proteases);
+            else
+                DrawPeptidePerBarCoverageMap(protein, proteases);
+        }
+
+        private void DrawProteaseLaneCoverageMap(ProteinForTreeView protein, List<string> proteases)
         {
             const int residuesPerLine = CoverageMapDataPreparer.DefaultResiduesPerLine;
 
@@ -515,7 +527,7 @@ namespace GUI
             map.Height = height + 20;
 
             // ── Legend ───────────────────────────────────────────────────────
-            DrawCoverageMapLegend(proteases);
+            DrawProteaseLaneLegend(proteases);
         }
 
         /// <summary>Draws a vertical end-cap line at the start or end of a peptide bar.</summary>
@@ -539,7 +551,7 @@ namespace GUI
         /// Draws the legend: one coloured swatch per selected protease plus
         /// a unique/shared opacity example row — matching IndividualProteinAnalyzerWindow style.
         /// </summary>
-        private void DrawCoverageMapLegend(List<string> proteases)
+        private void DrawProteaseLaneLegend(List<string> proteases)
         {
             legendGrid.Children.Clear();
             legend.Children.Clear();
@@ -644,7 +656,200 @@ namespace GUI
 
         #endregion
 
+        #region Peptide-Per-Bar Coverage Map Drawing
+
+        private void DrawPeptidePerBarCoverageMap(ProteinForTreeView protein, List<string> proteases)
+        {
+            const int residuesPerLine = CoverageMapDataPreparer.DefaultResiduesPerLine;
+
+            map.Width = 0.90 * ResultsGrid.ActualWidth;
+
+            string seqCoverage = protein.Protein.BaseSequence;
+            var splitSeq = CoverageMapDataPreparer.SplitSequenceIntoLines(seqCoverage, residuesPerLine);
+
+            map.Children.Clear();
+            legendGrid.Children.Clear();
+            partialPeptideMatches.Clear();
+
+            // Collect peptides to draw
+            var peptidesToDraw = new List<InSilicoPep>();
+            foreach (var protease in proteases)
+                peptidesToDraw.AddRange(_analyzer.GetPeptidesForProteinAndProtease(protein.Protein, protease));
+            peptidesToDraw = peptidesToDraw.Distinct().ToList();
+
+            var allPeptidesForProtein = _analyzer.GetAllPeptidesForProtein(protein.Protein);
+            var (uniqueCovered, sharedOnlyCovered) = CalculateCoveredResiduesByType(allPeptidesForProtein);
+
+            int height = 10;
+            var indices = new Dictionary<int, List<int>>();
+            int accumIndex = 0;
+
+            SequenceCoverageMap.txtDrawing(map, new Point(0, height),
+                $"Sequence Coverage Map of {protein.Protein.Accession}:", Brushes.Black);
+            height += 30;
+
+            for (int lineIndex = 0; lineIndex < splitSeq.Count; lineIndex++)
+            {
+                var line = splitSeq[lineIndex];
+                indices.Clear();
+                var lineLabel = (lineIndex * residuesPerLine) + 1;
+
+                SequenceCoverageMap.txtDrawingLabel(map, new Point(0, height), lineLabel.ToString(), Brushes.Black);
+
+                int lineStartResidue = lineIndex * residuesPerLine + 1;
+                DrawSequenceCharacters(line, lineIndex, height, residuesPerLine, uniqueCovered, sharedOnlyCovered, lineStartResidue);
+
+                ProcessPartialPeptides(line, accumIndex, height, indices);
+                DrawPeptideHighlights(line, accumIndex, height, indices, peptidesToDraw);
+
+                int addedSpace = indices.Count > 7 ? (indices.Count - 7) * 10 : 0;
+                height += 100 + addedSpace;
+                accumIndex += line.Length;
+            }
+
+            map.Height = height + 20;
+            partialPeptideMatches.Clear();
+
+            SequenceCoverageMap.drawLegend(legend, ProteaseByColor, proteases, legendGrid, false);
+        }
+
+        private (HashSet<int> uniqueCovered, HashSet<int> sharedOnlyCovered) CalculateCoveredResiduesByType(List<InSilicoPep> peptides)
+        {
+            var uniqueCovered = new HashSet<int>();
+            var sharedCovered = new HashSet<int>();
+
+            foreach (var peptide in peptides)
+            {
+                bool isUnique = _analyzer.IsMultiDatabase ? peptide.UniqueAllDbs : peptide.Unique;
+                for (int i = peptide.StartResidue; i <= peptide.EndResidue; i++)
+                {
+                    if (isUnique) uniqueCovered.Add(i);
+                    else sharedCovered.Add(i);
+                }
+            }
+
+            var sharedOnlyCovered = new HashSet<int>(sharedCovered.Except(uniqueCovered));
+            return (uniqueCovered, sharedOnlyCovered);
+        }
+
+        private void DrawSequenceCharacters(string line, int lineIndex,
+            int height, int spacing, HashSet<int> uniqueCovered, HashSet<int> sharedOnlyCovered, int lineStartResidue)
+        {
+            for (int r = 0; r < line.Length; r++)
+            {
+                int residuePosition = lineStartResidue + r;
+                bool isCoveredByUnique = uniqueCovered.Contains(residuePosition);
+                bool isCoveredBySharedOnly = sharedOnlyCovered.Contains(residuePosition);
+
+                string character = line[r].ToString().ToUpper();
+
+                if (isCoveredByUnique)
+                    SequenceCoverageMap.txtDrawing(map, new Point(r * spacing + 65, height), character, Brushes.Black);
+                else if (isCoveredBySharedOnly)
+                    SequenceCoverageMap.txtDrawingShared(map, new Point(r * spacing + 65, height), character, Brushes.Black);
+                else
+                    SequenceCoverageMap.txtDrawingUncovered(map, new Point(r * spacing + 65, height), character, Brushes.Black);
+            }
+        }
+
+        private void ProcessPartialPeptides(string line, int accumIndex, int height, Dictionary<int, List<int>> indices)
+        {
+            if (partialPeptideMatches.Count == 0) return;
+
+            var temp = new Dictionary<InSilicoPep, (int, int)>(partialPeptideMatches);
+            partialPeptideMatches.Clear();
+
+            foreach (var peptide in temp)
+            {
+                var remaining = peptide.Value.Item1;
+                var highlightIndex = peptide.Value.Item2;
+
+                int start = 0;
+                int end = Math.Min(remaining, line.Length - 1);
+                var partialIndex = CoverageMapDataPreparer.CheckPartialMatch(peptide.Key, line.Length, accumIndex);
+                bool isUnique = _analyzer.IsMultiDatabase ? peptide.Key.UniqueAllDbs : peptide.Key.Unique;
+
+                if (partialIndex >= 0)
+                {
+                    SequenceCoverageMap.Highlight(start, end, map, indices, height,
+                        ProteaseByColor[peptide.Key.Protease], isUnique, false, false, highlightIndex);
+                    partialPeptideMatches.Add(peptide.Key, (partialIndex, highlightIndex));
+                }
+                else
+                {
+                    SequenceCoverageMap.Highlight(start, end, map, indices, height,
+                        ProteaseByColor[peptide.Key.Protease], isUnique, false, true, highlightIndex);
+                }
+            }
+        }
+
+        private void DrawPeptideHighlights(string line, int accumIndex, int height,
+            Dictionary<int, List<int>> indices, List<InSilicoPep> peptidesToDraw)
+        {
+            var peptidesOnThisLine = peptidesToDraw
+                .Where(p => p.StartResidue - accumIndex - 1 < line.Length)
+                .OrderBy(p => p.StartResidue)
+                .ToList();
+
+            foreach (var peptide in peptidesOnThisLine)
+            {
+                var partialIndex = CoverageMapDataPreparer.CheckPartialMatch(peptide, line.Length, accumIndex);
+                int start = peptide.StartResidue - accumIndex - 1;
+                int end = Math.Min(peptide.EndResidue - accumIndex - 1, line.Length - 1);
+                bool isUnique = _analyzer.IsMultiDatabase ? peptide.UniqueAllDbs : peptide.Unique;
+
+                if (partialIndex >= 0)
+                {
+                    var highlightIndex = SequenceCoverageMap.Highlight(start, end, map, indices, height,
+                        ProteaseByColor[peptide.Protease], isUnique, true, false);
+                    if (!partialPeptideMatches.ContainsKey(peptide))
+                        partialPeptideMatches.Add(peptide, (partialIndex, highlightIndex));
+                }
+                else
+                {
+                    SequenceCoverageMap.Highlight(start, end, map, indices, height,
+                        ProteaseByColor[peptide.Protease], isUnique, true, true);
+                }
+                peptidesToDraw.Remove(peptide);
+            }
+        }
+
+        #endregion
+
         #region Event Handlers
+
+        private void CoverageViewToggle_Click(object sender, RoutedEventArgs e)
+        {
+            _displayMode = _displayMode == CoverageMapDisplayMode.PeptidePerBar
+                ? CoverageMapDisplayMode.ProteaseLane
+                : CoverageMapDisplayMode.PeptidePerBar;
+
+            UpdateToggleButtonStyle();
+
+            if (SelectedProtein != null)
+            {
+                var proteasesToDraw = SelectedProteases.Count > 0 ? SelectedProteases : _analyzer.Proteases;
+                DrawSequenceCoverageMap(SelectedProtein, proteasesToDraw);
+            }
+        }
+
+        private void UpdateToggleButtonStyle()
+        {
+            if (coverageViewToggleButton == null) return;
+
+            if (_displayMode == CoverageMapDisplayMode.ProteaseLane)
+            {
+                coverageViewToggleButton.Content = "Lane View";
+                coverageViewToggleButton.Background = new SolidColorBrush(Color.FromRgb(0, 120, 215));
+                coverageViewToggleButton.Foreground = Brushes.White;
+            }
+            else
+            {
+                coverageViewToggleButton.Content = "Peptide View";
+                coverageViewToggleButton.Background = new SolidColorBrush(Color.FromRgb(0xF9, 0x69, 0x0E));
+                coverageViewToggleButton.Foreground = new SolidColorBrush(Color.FromRgb(0x13, 0x13, 0x13));
+            }
+        }
 
         private void proteins_SelectedCellsChanged(object sender, SelectionChangedEventArgs e) => OnSelectionChanged();
 
@@ -658,7 +863,7 @@ namespace GUI
             mapViewer.Width = ResultsGrid.ActualWidth;
         }
 
-        void results_Loaded(object sender, RoutedEventArgs e)
+        private void results_Loaded(object sender, RoutedEventArgs e)
         {
             Window window = Window.GetWindow(this);
             window.Closing += window_Closing;
@@ -669,6 +874,8 @@ namespace GUI
                 dataGridProteins.SelectedIndex = 0;
                 dataGridProteins.ScrollIntoView(dataGridProteins.Items[0]);
             }
+
+            UpdateToggleButtonStyle();
         }
 
         void window_Closing(object sender, global::System.ComponentModel.CancelEventArgs e)

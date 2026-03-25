@@ -14,6 +14,11 @@ using TorchSharp.Modules;
 
 namespace GUI
 {
+    public enum CoverageMapDisplayMode
+    {
+        ProteaseLane,
+        PeptidePerBar
+    }
     public partial class IndividualProteinAnalyzerWindow : UserControl
     {
         #region Private Fields
@@ -43,6 +48,11 @@ namespace GUI
         private const int BarRowGap = 4;
         private const int BarTopMargin = 6;
         private const int BottomLineGap = 14;
+
+        // ── Display mode toggle ──────────────────────────────────────────────
+        private CoverageMapDisplayMode _displayMode = CoverageMapDisplayMode.ProteaseLane;
+        private CoverageMapDisplayMode _lastCoverageMode = CoverageMapDisplayMode.ProteaseLane;
+        private Dictionary<string, List<(int Start, int End)>>? _lastCoverageResult;
 
         #endregion
 
@@ -304,6 +314,8 @@ namespace GUI
                 .OrderBy(GetStableColorIndex)
                 .ToList();
 
+            _lastCoverageResult = pepsByProtease;
+
             DrawMaxCoverageMap(SelectedProtein.Protein, result, pepsByProtease, orderedChecked);
         }
 
@@ -319,6 +331,18 @@ namespace GUI
         #region Max Coverage Map Drawing
 
         private void DrawMaxCoverageMap(
+            Protein protein,
+            SeekMaximumCoverage.CombinationResult result,
+            Dictionary<string, List<(int Start, int End)>> pepsByProtease,
+            List<string> orderedCheckedProteases)
+        {
+            if (_displayMode == CoverageMapDisplayMode.ProteaseLane)
+                DrawLaneViewCoverageMap(protein, result, pepsByProtease, orderedCheckedProteases);
+            else
+                DrawPeptideViewCoverageMap(protein, result, pepsByProtease, orderedCheckedProteases);
+        }
+
+        private void DrawLaneViewCoverageMap(
             Protein protein,
             SeekMaximumCoverage.CombinationResult result,
             Dictionary<string, List<(int Start, int End)>> pepsByProtease,
@@ -420,7 +444,7 @@ namespace GUI
 
             maxCoverageMap.Height = height + 20;
 
-            DrawMaxCoverageLegend(orderedCheckedProteases);
+            DrawLaneViewLegend(orderedCheckedProteases);
         }
 
         private void DrawEndCap(double x, double laneY, SolidColorBrush brush)
@@ -438,7 +462,7 @@ namespace GUI
             maxCoverageMap.Children.Add(cap);
         }
 
-        private void DrawMaxCoverageLegend(List<string> proteases)
+        private void DrawLaneViewLegend(List<string> proteases)
         {
             maxCoverageLegend.Children.Clear();
             maxCoverageLegendGrid.Children.Clear();
@@ -489,6 +513,103 @@ namespace GUI
 
             int rows = (int)Math.Ceiling(proteases.Count / (double)cols);
             maxCoverageLegend.Height = startY + rows * entryH + 8;
+        }
+
+        #endregion
+
+        #region Peptide-View Coverage Map Drawing
+
+        private void DrawPeptideViewCoverageMap(
+            Protein protein,
+            SeekMaximumCoverage.CombinationResult result,
+            Dictionary<string, List<(int Start, int End)>> pepsByProtease,
+            List<string> orderedCheckedProteases)
+        {
+            const int residuesPerLine = CoverageMapDataPreparer.DefaultResiduesPerLine;
+
+            maxCoverageMap.Children.Clear();
+            maxCoverageLegendGrid.Children.Clear();
+            maxCoverageLegend.Children.Clear();
+
+            var splitSeq = CoverageMapDataPreparer.SplitSequenceIntoLines(protein.BaseSequence, residuesPerLine);
+
+            int height = 10;
+
+            string proteinName = protein.FullName ?? protein.Accession;
+            SequenceCoverageMap.txtDrawing(maxCoverageMap, new Point(0, height),
+                protein.Accession, Brushes.Black);
+            height += 20;
+            SequenceCoverageMap.txtDrawing(maxCoverageMap, new Point(0, height),
+                proteinName, Brushes.Black);
+            height += 30;
+
+            string pct = SeekMaximumCoverage.CoveragePercentage(result.CoveredResidues, protein.Length);
+            string proteaseStr = result.Proteases.Count > 0
+                ? string.Join(" + ", result.Proteases)
+                : "none";
+            SequenceCoverageMap.txtDrawing(maxCoverageMap, new Point(0, height),
+                $"Best coverage: {proteaseStr}  ({pct})", Brushes.Black);
+            height += 30;
+
+            // Calculate coverage types for character styling
+            var allCovered = new HashSet<int>();
+            foreach (var kvp in pepsByProtease)
+                foreach (var (start, end) in kvp.Value)
+                    for (int i = start; i <= end; i++)
+                        allCovered.Add(i);
+
+            // Build a combined peptide list for bar drawing
+            var allIntervals = new List<(int Start, int End, string Protease)>();
+            foreach (var kvp in pepsByProtease)
+                foreach (var (start, end) in kvp.Value)
+                    allIntervals.Add((start, end, kvp.Key));
+
+            // For peptide-per-bar mode, use underline-only for uncovered (no partial tracking needed here)
+            int accumIndex = 0;
+            for (int lineIndex = 0; lineIndex < splitSeq.Count; lineIndex++)
+            {
+                var line = splitSeq[lineIndex];
+                int lineStartRes = lineIndex * residuesPerLine + 1;
+
+                SequenceCoverageMap.txtDrawingLabel(maxCoverageMap, new Point(0, height), lineStartRes.ToString(), Brushes.Black);
+
+                // Draw characters - covered=bold, uncovered=underlined
+                for (int r = 0; r < line.Length; r++)
+                {
+                    int residuePos = lineStartRes + r;
+                    string ch = line[r].ToString().ToUpper();
+
+                    if (allCovered.Contains(residuePos))
+                        SequenceCoverageMap.txtDrawing(maxCoverageMap, new Point(r * ResidueSpacing + 65, height), ch, Brushes.Black);
+                    else
+                        SequenceCoverageMap.txtDrawingUncovered(maxCoverageMap, new Point(r * ResidueSpacing + 65, height), ch, Brushes.Black);
+                }
+
+                // Draw peptide bars using Highlight method
+                var indices = new Dictionary<int, List<int>>();
+                var intervalsOnLine = allIntervals
+                    .Where(i => i.Start <= lineStartRes + line.Length - 1 && i.End >= lineStartRes)
+                    .OrderBy(i => i.Start)
+                    .ToList();
+
+                foreach (var (pepStart, pepEnd, proteaseName) in intervalsOnLine)
+                {
+                    int start = Math.Max(pepStart, lineStartRes) - lineStartRes;
+                    int end = Math.Min(pepEnd, lineStartRes + line.Length - 1) - lineStartRes;
+                    var color = _stableProteaseColors.TryGetValue(proteaseName, out var c) ? c : Colors.DimGray;
+
+                    SequenceCoverageMap.Highlight(start, end, maxCoverageMap, indices, height, color, true, true, true);
+                }
+
+                int addedSpace = indices.Count > 7 ? (indices.Count - 7) * 10 : 0;
+                height += 100 + addedSpace;
+                accumIndex += line.Length;
+            }
+
+            maxCoverageMap.Height = height + 20;
+
+            // Peptide-view legend
+            SequenceCoverageMap.drawLegend(maxCoverageLegend, _stableProteaseColors, orderedCheckedProteases, maxCoverageLegendGrid, false);
         }
 
         #endregion
@@ -591,6 +712,35 @@ namespace GUI
             }
         }
 
+        private void CoverageViewToggle_Click(object sender, RoutedEventArgs e)
+        {
+            _displayMode = _displayMode == CoverageMapDisplayMode.PeptidePerBar
+                ? CoverageMapDisplayMode.ProteaseLane
+                : CoverageMapDisplayMode.PeptidePerBar;
+
+            _lastCoverageMode = _displayMode;
+            UpdateToggleButtonStyle();
+            RefreshMaxCoverage();
+        }
+
+        private void UpdateToggleButtonStyle()
+        {
+            if (coverageViewToggleButton == null) return;
+
+            if (_displayMode == CoverageMapDisplayMode.ProteaseLane)
+            {
+                coverageViewToggleButton.Content = "Lane View";
+                coverageViewToggleButton.Background = new SolidColorBrush(Color.FromRgb(0, 120, 215));
+                coverageViewToggleButton.Foreground = Brushes.White;
+            }
+            else
+            {
+                coverageViewToggleButton.Content = "Peptide View";
+                coverageViewToggleButton.Background = new SolidColorBrush(Color.FromRgb(0xF9, 0x69, 0x0E));
+                coverageViewToggleButton.Foreground = new SolidColorBrush(Color.FromRgb(0x13, 0x13, 0x13));
+            }
+        }
+
         void results_Loaded(object sender, RoutedEventArgs e)
         {
             Window window = Window.GetWindow(this);
@@ -609,6 +759,8 @@ namespace GUI
 
             if (dataGridProteins.Items.Count > 0)
                 dataGridProteins.SelectedIndex = 0;
+
+            UpdateToggleButtonStyle();
         }
 
         void window_Closing(object sender, global::System.ComponentModel.CancelEventArgs e)
