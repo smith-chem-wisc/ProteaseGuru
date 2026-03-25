@@ -52,26 +52,13 @@ namespace GUI
         private int ProteinExportCount = 1;
 
         // ── Stable color map ──────────────────────────────────────────────────
-        // Assigned once at construction from the full ProteaseDictionary so that
-        // a protease always maps to the same color regardless of which subset is
-        // currently selected — identical palette to IndividualProteinAnalyzerWindow.
         private readonly Dictionary<string, Color> _stableProteaseColors;
         private readonly Dictionary<string, SolidColorBrush> _stableProteaseBrushes;
-
-        // ── Bar geometry constants ────────────────────────────────────────────
-        private const int ResidueSpacing = 25;  // px between residue X-positions
-        private const int SeqLeftOffset = 45;  // px left margin before first residue
-        private const int SeqTextHeight = 20;  // px for the amino-acid text row
-        private const int BarHeight = 6;   // px thickness of each coloured peptide bar
-        private const int BarRowGap = 3;   // px gap between stacked protease bars
-        private const int BarTopMargin = 6;   // px gap between amino-acid text and first bar row
-        private const int BottomLineGap = 12;  // px below the last bar before the next sequence line
 
         // ── Display mode toggle ──────────────────────────────────────────────
         private CoverageMapDisplayMode _displayMode = CoverageMapDisplayMode.PeptidePerBar;
 
         // ── Peptide-per-bar mode fields ───────────────────────────────────────
-        private Dictionary<InSilicoPep, (int, int)> partialPeptideMatches = new();
         private Dictionary<string, Color> ProteaseByColor;
 
         #endregion
@@ -106,9 +93,8 @@ namespace GUI
             SetUpProteinsForTreeView();
             PopulateProteinList();
 
-            // Build stable color map from the full ProteaseDictionary — same palette
-            // as IndividualProteinAnalyzerWindow so colors are identical across both views.
-            (_stableProteaseColors, _stableProteaseBrushes) = BuildStableColorMaps();
+            // Build stable color map from the full ProteaseDictionary
+            (_stableProteaseColors, _stableProteaseBrushes) = SequenceCoverageMap.BuildStableColorMaps();
 
             // Build protease color map for peptide-per-bar mode
             var rgbColorMap = CoverageMapConfiguration.CreateProteaseColorMap(_analyzer.Proteases);
@@ -146,50 +132,6 @@ namespace GUI
                 dataGridProteins.Items.Add(accession);
             }
             dataGridProteins.DataContext = proteinList;
-        }
-
-        #endregion
-
-        #region Stable Color Map
-
-        /// <summary>
-        /// Assigns a color to every protease in ProteaseDictionary in stable order,
-        /// once at construction time. Identical logic to IndividualProteinAnalyzerWindow.
-        /// </summary>
-        private static (Dictionary<string, Color> colors, Dictionary<string, SolidColorBrush> brushes)
-            BuildStableColorMaps()
-        {
-            var allNames = ProteaseDictionary.Dictionary.Keys.ToList();
-            var rgbMap = CoverageMapConfiguration.CreateProteaseColorMap(allNames);
-
-            var colors = new Dictionary<string, Color>();
-            var brushes = new Dictionary<string, SolidColorBrush>();
-
-            foreach (var kvp in rgbMap)
-            {
-                var wpfColor = Color.FromRgb(kvp.Value.R, kvp.Value.G, kvp.Value.B);
-                var brush = new SolidColorBrush(wpfColor);
-                brush.Freeze();
-                colors[kvp.Key] = wpfColor;
-                brushes[kvp.Key] = brush;
-            }
-            return (colors, brushes);
-        }
-
-        /// <summary>Returns the stable-palette brush for a protease, with a grey fallback.</summary>
-        private SolidColorBrush GetProteaseBrush(string proteaseName)
-        {
-            if (_stableProteaseBrushes.TryGetValue(proteaseName, out var brush))
-                return brush;
-            var fb = new SolidColorBrush(Colors.DimGray);
-            fb.Freeze();
-            return fb;
-        }
-
-        /// <summary>Returns the stable-palette Color for a protease, with a grey fallback.</summary>
-        private Color GetProteaseColor(string proteaseName)
-        {
-            return _stableProteaseColors.TryGetValue(proteaseName, out var c) ? c : Colors.DimGray;
         }
 
         #endregion
@@ -413,264 +355,34 @@ namespace GUI
 
         private void DrawProteaseLaneCoverageMap(ProteinForTreeView protein, List<string> proteases)
         {
-            const int residuesPerLine = CoverageMapDataPreparer.DefaultResiduesPerLine;
-
-            // Cap canvas width to actual sequence content so there is no large right margin.
-            // 25 residues × ResidueSpacing + SeqLeftOffset left margin + 20px right padding.
-            const double sequenceContentWidth = 25 * ResidueSpacing + SeqLeftOffset + 20;
-            double availableWidth = ResultsGrid.ActualWidth > 0 ? ResultsGrid.ActualWidth - 20 : sequenceContentWidth;
-            map.Width = Math.Min(availableWidth, sequenceContentWidth);
-            map.Children.Clear();
-            legendGrid.Children.Clear();
-
-            string seq = protein.Protein.BaseSequence;
-            var splitSeq = CoverageMapDataPreparer.SplitSequenceIntoLines(seq, residuesPerLine);
-
-            // ── Title ────────────────────────────────────────────────────────
-            int height = 10;
-            SequenceCoverageMap.txtDrawing(map, new Point(0, height),
-                $"Sequence Coverage Map of {protein.Protein.Accession}:", Brushes.Black);
-            height += 30;
-
-            // ── Per-protease peptide intervals ───────────────────────────────
-            // Group peptides by protease; each protease gets its own ordered lane.
-            var pepsByProtease = new Dictionary<string, List<InSilicoPep>>();
+            // Collect interval data from analyzer
+            var intervalsByProtease = new Dictionary<string, List<(int Start, int End)>>();
             foreach (var proteaseName in proteases)
             {
                 var peps = _analyzer.GetPeptidesForProteinAndProtease(protein.Protein, proteaseName)
                     .Distinct()
                     .OrderBy(p => p.StartResidue)
+                    .Select(p => (Start: p.StartResidue, End: p.EndResidue))
                     .ToList();
-                pepsByProtease[proteaseName] = peps;
+                intervalsByProtease[proteaseName] = peps;
             }
 
-            // ── Dynamic line stride ──────────────────────────────────────────
-            int laneCount = proteases.Count;
-            int barZoneH = laneCount > 0
-                ? BarTopMargin + laneCount * (BarHeight + BarRowGap)
-                : 0;
-            int lineStride = SeqTextHeight + barZoneH + BottomLineGap;
+            const double sequenceContentWidth = 25 * 25 + 45 + 20;
+            double availableWidth = ResultsGrid.ActualWidth > 0 ? ResultsGrid.ActualWidth - 20 : sequenceContentWidth;
 
-            // ── Sequence lines ───────────────────────────────────────────────
-            for (int lineIndex = 0; lineIndex < splitSeq.Count; lineIndex++)
-            {
-                var line = splitSeq[lineIndex];
-                int lineStartRes = lineIndex * residuesPerLine + 1; // 1-based
-                int lineEndRes = lineStartRes + line.Length - 1;
-
-                // Line-number label
-                SequenceCoverageMap.txtDrawingLabel(
-                    map, new Point(0, height), lineStartRes.ToString(), Brushes.Black);
-
-                // Amino-acid characters — all uniform; coverage is shown by bars
-                for (int r = 0; r < line.Length; r++)
-                {
-                    string ch = line[r].ToString().ToUpper();
-                    SequenceCoverageMap.txtDrawing(
-                        map, new Point(r * ResidueSpacing + SeqLeftOffset, height), ch, Brushes.Black);
-                }
-
-                // ── Peptide bars ─────────────────────────────────────────────
-                int barBaseY = height + SeqTextHeight + BarTopMargin;
-
-                for (int pi = 0; pi < proteases.Count; pi++)
-                {
-                    string proteaseName = proteases[pi];
-                    var brush = GetProteaseBrush(proteaseName);
-                    int laneY = barBaseY + pi * (BarHeight + BarRowGap);
-
-                    if (!pepsByProtease.TryGetValue(proteaseName, out var peps)) continue;
-
-                    foreach (var pep in peps)
-                    {
-                        if (pep.EndResidue < lineStartRes || pep.StartResidue > lineEndRes) continue;
-
-                        int visStart = Math.Max(pep.StartResidue, lineStartRes);
-                        int visEnd = Math.Min(pep.EndResidue, lineEndRes);
-                        int colStart = visStart - lineStartRes;
-                        int colEnd = visEnd - lineStartRes;
-
-                        double x1 = colStart * ResidueSpacing + SeqLeftOffset;
-                        double x2 = colEnd * ResidueSpacing + SeqLeftOffset + (ResidueSpacing - 4);
-
-                        bool isUnique = _analyzer.IsMultiDatabase ? pep.UniqueAllDbs : pep.Unique;
-
-                        // Unique: full opacity; shared: visibly translucent but easy to see
-                        var barBrush = isUnique
-                            ? brush
-                            : new SolidColorBrush(brush.Color) { Opacity = 0.35 };
-
-                        var bar = new System.Windows.Shapes.Rectangle
-                        {
-                            Fill = barBrush,
-                            Width = Math.Max(x2 - x1, 2),
-                            Height = BarHeight,
-                            RadiusX = 2,
-                            RadiusY = 2
-                        };
-                        Canvas.SetLeft(bar, x1);
-                        Canvas.SetTop(bar, laneY);
-                        Panel.SetZIndex(bar, 1);
-                        map.Children.Add(bar);
-
-                        // End-caps where peptide actually starts/ends on this line
-                        if (pep.StartResidue >= lineStartRes)
-                            DrawBarEndCap(x1, laneY, brush, isUnique);
-                        if (pep.EndResidue <= lineEndRes)
-                            DrawBarEndCap(x2, laneY, brush, isUnique);
-                    }
-                }
-
-                height += lineStride;
-            }
-
-            map.Height = height + 20;
-
-            // ── Legend ───────────────────────────────────────────────────────
-            DrawProteaseLaneLegend(proteases);
+            SequenceCoverageMap.DrawLaneViewMap(
+                map, legend, legendGrid,
+                protein.Protein.Accession,
+                protein.Protein.FullName,
+                protein.Protein.BaseSequence,
+                proteases,
+                intervalsByProtease,
+                name => SequenceCoverageMap.GetProteaseBrush(_stableProteaseBrushes, name),
+                Math.Min(availableWidth, sequenceContentWidth));
         }
-
-        /// <summary>Draws a vertical end-cap line at the start or end of a peptide bar.</summary>
-        private void DrawBarEndCap(double x, double laneY, SolidColorBrush brush, bool isUnique)
-        {
-            var cap = new System.Windows.Shapes.Line
-            {
-                X1 = x,
-                Y1 = laneY - 1,
-                X2 = x,
-                Y2 = laneY + BarHeight + 1,
-                Stroke = brush,
-                StrokeThickness = 2,
-                Opacity = isUnique ? 1.0 : 0.35
-            };
-            Panel.SetZIndex(cap, 2);
-            map.Children.Add(cap);
-        }
-
-        /// <summary>
-        /// Draws the legend: one coloured swatch per selected protease plus
-        /// a unique/shared opacity example row — matching IndividualProteinAnalyzerWindow style.
-        /// </summary>
-        private void DrawProteaseLaneLegend(List<string> proteases)
-        {
-            legendGrid.Children.Clear();
-            legend.Children.Clear();
-
-            if (proteases.Count == 0) return;
-
-            const double swatchW = 28;
-            const double swatchH = 12;
-            const double entryH = 20;
-            const double startX = SeqLeftOffset;
-            const double startY = 4;
-            const double colWidth = 190;
-            const int cols = 3;
-
-            // ── Protease colour swatches ─────────────────────────────────────
-            for (int i = 0; i < proteases.Count; i++)
-            {
-                string name = proteases[i];
-                var brush = GetProteaseBrush(name);
-                int col = i % cols;
-                int row = i / cols;
-
-                double entryX = startX + col * colWidth;
-                double entryY = startY + row * entryH;
-
-                var swatch = new System.Windows.Shapes.Rectangle
-                {
-                    Fill = brush,
-                    Width = swatchW,
-                    Height = swatchH,
-                    RadiusX = 2,
-                    RadiusY = 2
-                };
-                Canvas.SetLeft(swatch, entryX);
-                Canvas.SetTop(swatch, entryY + (entryH - swatchH) / 2.0);
-                legend.Children.Add(swatch);
-
-                var tb = new TextBlock
-                {
-                    Text = name,
-                    FontSize = 11,
-                    FontWeight = FontWeights.SemiBold,
-                    Foreground = Brushes.Black
-                };
-                Canvas.SetLeft(tb, entryX + swatchW + 4);
-                Canvas.SetTop(tb, entryY + 3);
-                legend.Children.Add(tb);
-            }
-
-            // ── Unique vs shared opacity key ─────────────────────────────────
-            int proteaseRows = (int)Math.Ceiling(proteases.Count / (double)cols);
-            double keyY = startY + proteaseRows * entryH + 6;
-
-            // Solid swatch = unique
-            var solidSwatch = new System.Windows.Shapes.Rectangle
-            {
-                Fill = Brushes.Gray,
-                Width = swatchW,
-                Height = swatchH,
-                RadiusX = 2,
-                RadiusY = 2
-            };
-            Canvas.SetLeft(solidSwatch, startX);
-            Canvas.SetTop(solidSwatch, keyY + (entryH - swatchH) / 2.0);
-            legend.Children.Add(solidSwatch);
-
-            var uniqueLabel = new TextBlock
-            {
-                Text = "Unique peptide",
-                FontSize = 11,
-                Foreground = Brushes.Black
-            };
-            Canvas.SetLeft(uniqueLabel, startX + swatchW + 4);
-            Canvas.SetTop(uniqueLabel, keyY + 3);
-            legend.Children.Add(uniqueLabel);
-
-            // Translucent swatch = shared
-            var sharedSwatch = new System.Windows.Shapes.Rectangle
-            {
-                Fill = new SolidColorBrush(Colors.Gray) { Opacity = 0.35 },
-                Width = swatchW,
-                Height = swatchH,
-                RadiusX = 2,
-                RadiusY = 2
-            };
-            Canvas.SetLeft(sharedSwatch, startX + colWidth);
-            Canvas.SetTop(sharedSwatch, keyY + (entryH - swatchH) / 2.0);
-            legend.Children.Add(sharedSwatch);
-
-            var sharedLabel = new TextBlock
-            {
-                Text = "Shared peptide (translucent)",
-                FontSize = 11,
-                Foreground = Brushes.Black
-            };
-            Canvas.SetLeft(sharedLabel, startX + colWidth + swatchW + 4);
-            Canvas.SetTop(sharedLabel, keyY + 3);
-            legend.Children.Add(sharedLabel);
-
-            legend.Height = keyY + entryH + 8;
-        }
-
-        #endregion
-
-        #region Peptide-Per-Bar Coverage Map Drawing
 
         private void DrawPeptidePerBarCoverageMap(ProteinForTreeView protein, List<string> proteases)
         {
-            const int residuesPerLine = CoverageMapDataPreparer.DefaultResiduesPerLine;
-
-            map.Width = 0.90 * ResultsGrid.ActualWidth;
-
-            string seqCoverage = protein.Protein.BaseSequence;
-            var splitSeq = CoverageMapDataPreparer.SplitSequenceIntoLines(seqCoverage, residuesPerLine);
-
-            map.Children.Clear();
-            legendGrid.Children.Clear();
-            partialPeptideMatches.Clear();
-
             // Collect peptides to draw
             var peptidesToDraw = new List<InSilicoPep>();
             foreach (var protease in proteases)
@@ -678,140 +390,22 @@ namespace GUI
             peptidesToDraw = peptidesToDraw.Distinct().ToList();
 
             var allPeptidesForProtein = _analyzer.GetAllPeptidesForProtein(protein.Protein);
-            var (uniqueCovered, sharedOnlyCovered) = CalculateCoveredResiduesByType(allPeptidesForProtein);
+            var (uniqueCovered, sharedOnlyCovered) = SequenceCoverageMap.CalculateCoveredResiduesByType(
+                allPeptidesForProtein, _analyzer.IsMultiDatabase);
 
-            int height = 10;
-            var indices = new Dictionary<int, List<int>>();
-            int accumIndex = 0;
+            double canvasWidth = 0.90 * ResultsGrid.ActualWidth;
 
-            SequenceCoverageMap.txtDrawing(map, new Point(0, height),
-                $"Sequence Coverage Map of {protein.Protein.Accession}:", Brushes.Black);
-            height += 30;
-
-            for (int lineIndex = 0; lineIndex < splitSeq.Count; lineIndex++)
-            {
-                var line = splitSeq[lineIndex];
-                indices.Clear();
-                var lineLabel = (lineIndex * residuesPerLine) + 1;
-
-                SequenceCoverageMap.txtDrawingLabel(map, new Point(0, height), lineLabel.ToString(), Brushes.Black);
-
-                int lineStartResidue = lineIndex * residuesPerLine + 1;
-                DrawSequenceCharacters(line, lineIndex, height, residuesPerLine, uniqueCovered, sharedOnlyCovered, lineStartResidue);
-
-                ProcessPartialPeptides(line, accumIndex, height, indices);
-                DrawPeptideHighlights(line, accumIndex, height, indices, peptidesToDraw);
-
-                int addedSpace = indices.Count > 7 ? (indices.Count - 7) * 10 : 0;
-                height += 100 + addedSpace;
-                accumIndex += line.Length;
-            }
-
-            map.Height = height + 20;
-            partialPeptideMatches.Clear();
-
-            SequenceCoverageMap.drawLegend(legend, ProteaseByColor, proteases, legendGrid, false);
-        }
-
-        private (HashSet<int> uniqueCovered, HashSet<int> sharedOnlyCovered) CalculateCoveredResiduesByType(List<InSilicoPep> peptides)
-        {
-            var uniqueCovered = new HashSet<int>();
-            var sharedCovered = new HashSet<int>();
-
-            foreach (var peptide in peptides)
-            {
-                bool isUnique = _analyzer.IsMultiDatabase ? peptide.UniqueAllDbs : peptide.Unique;
-                for (int i = peptide.StartResidue; i <= peptide.EndResidue; i++)
-                {
-                    if (isUnique) uniqueCovered.Add(i);
-                    else sharedCovered.Add(i);
-                }
-            }
-
-            var sharedOnlyCovered = new HashSet<int>(sharedCovered.Except(uniqueCovered));
-            return (uniqueCovered, sharedOnlyCovered);
-        }
-
-        private void DrawSequenceCharacters(string line, int lineIndex,
-            int height, int spacing, HashSet<int> uniqueCovered, HashSet<int> sharedOnlyCovered, int lineStartResidue)
-        {
-            for (int r = 0; r < line.Length; r++)
-            {
-                int residuePosition = lineStartResidue + r;
-                bool isCoveredByUnique = uniqueCovered.Contains(residuePosition);
-                bool isCoveredBySharedOnly = sharedOnlyCovered.Contains(residuePosition);
-
-                string character = line[r].ToString().ToUpper();
-
-                if (isCoveredByUnique)
-                    SequenceCoverageMap.txtDrawing(map, new Point(r * spacing + 65, height), character, Brushes.Black);
-                else if (isCoveredBySharedOnly)
-                    SequenceCoverageMap.txtDrawingShared(map, new Point(r * spacing + 65, height), character, Brushes.Black);
-                else
-                    SequenceCoverageMap.txtDrawingUncovered(map, new Point(r * spacing + 65, height), character, Brushes.Black);
-            }
-        }
-
-        private void ProcessPartialPeptides(string line, int accumIndex, int height, Dictionary<int, List<int>> indices)
-        {
-            if (partialPeptideMatches.Count == 0) return;
-
-            var temp = new Dictionary<InSilicoPep, (int, int)>(partialPeptideMatches);
-            partialPeptideMatches.Clear();
-
-            foreach (var peptide in temp)
-            {
-                var remaining = peptide.Value.Item1;
-                var highlightIndex = peptide.Value.Item2;
-
-                int start = 0;
-                int end = Math.Min(remaining, line.Length - 1);
-                var partialIndex = CoverageMapDataPreparer.CheckPartialMatch(peptide.Key, line.Length, accumIndex);
-                bool isUnique = _analyzer.IsMultiDatabase ? peptide.Key.UniqueAllDbs : peptide.Key.Unique;
-
-                if (partialIndex >= 0)
-                {
-                    SequenceCoverageMap.Highlight(start, end, map, indices, height,
-                        ProteaseByColor[peptide.Key.Protease], isUnique, false, false, highlightIndex);
-                    partialPeptideMatches.Add(peptide.Key, (partialIndex, highlightIndex));
-                }
-                else
-                {
-                    SequenceCoverageMap.Highlight(start, end, map, indices, height,
-                        ProteaseByColor[peptide.Key.Protease], isUnique, false, true, highlightIndex);
-                }
-            }
-        }
-
-        private void DrawPeptideHighlights(string line, int accumIndex, int height,
-            Dictionary<int, List<int>> indices, List<InSilicoPep> peptidesToDraw)
-        {
-            var peptidesOnThisLine = peptidesToDraw
-                .Where(p => p.StartResidue - accumIndex - 1 < line.Length)
-                .OrderBy(p => p.StartResidue)
-                .ToList();
-
-            foreach (var peptide in peptidesOnThisLine)
-            {
-                var partialIndex = CoverageMapDataPreparer.CheckPartialMatch(peptide, line.Length, accumIndex);
-                int start = peptide.StartResidue - accumIndex - 1;
-                int end = Math.Min(peptide.EndResidue - accumIndex - 1, line.Length - 1);
-                bool isUnique = _analyzer.IsMultiDatabase ? peptide.UniqueAllDbs : peptide.Unique;
-
-                if (partialIndex >= 0)
-                {
-                    var highlightIndex = SequenceCoverageMap.Highlight(start, end, map, indices, height,
-                        ProteaseByColor[peptide.Protease], isUnique, true, false);
-                    if (!partialPeptideMatches.ContainsKey(peptide))
-                        partialPeptideMatches.Add(peptide, (partialIndex, highlightIndex));
-                }
-                else
-                {
-                    SequenceCoverageMap.Highlight(start, end, map, indices, height,
-                        ProteaseByColor[peptide.Protease], isUnique, true, true);
-                }
-                peptidesToDraw.Remove(peptide);
-            }
+            SequenceCoverageMap.DrawPeptidePerBarMap(
+                map, legend, legendGrid,
+                protein.Protein.Accession,
+                protein.Protein.BaseSequence,
+                proteases,
+                ProteaseByColor,
+                peptidesToDraw,
+                uniqueCovered,
+                sharedOnlyCovered,
+                _analyzer.IsMultiDatabase,
+                canvasWidth);
         }
 
         #endregion

@@ -3,22 +3,14 @@ using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
-using System.Windows.Shapes;
 using GuiFunctions;
-using Omics.Modifications;
 using Proteomics;
 using Proteomics.ProteolyticDigestion;
 using Tasks;
 using Tasks.CoverageMapConfiguration;
-using TorchSharp.Modules;
 
 namespace GUI
 {
-    public enum CoverageMapDisplayMode
-    {
-        ProteaseLane,
-        PeptidePerBar
-    }
     public partial class IndividualProteinAnalyzerWindow : UserControl
     {
         #region Private Fields
@@ -40,19 +32,9 @@ namespace GUI
         private readonly Dictionary<string, Color> _stableProteaseColors;
         private readonly Dictionary<string, SolidColorBrush> _stableProteaseBrushes;
 
-        private Dictionary<string, Color> ProteaseByColor => _stableProteaseColors;
-
-        private const int ResidueSpacing = 22;
-        private const int SeqTextHeight = 20;
-        private const int BarHeight = 6;
-        private const int BarRowGap = 4;
-        private const int BarTopMargin = 6;
-        private const int BottomLineGap = 14;
-
         // ── Display mode toggle ──────────────────────────────────────────────
         private CoverageMapDisplayMode _displayMode = CoverageMapDisplayMode.ProteaseLane;
         private CoverageMapDisplayMode _lastCoverageMode = CoverageMapDisplayMode.ProteaseLane;
-        private Dictionary<string, List<(int Start, int End)>>? _lastCoverageResult;
 
         #endregion
 
@@ -76,7 +58,7 @@ namespace GUI
             ProteinsForTreeView = new Dictionary<Protein, ProteinForTreeView>();
             ModsByColor = new Dictionary<string, SolidColorBrush>();
 
-            (_stableProteaseColors, _stableProteaseBrushes) = BuildStableColorMaps();
+            (_stableProteaseColors, _stableProteaseBrushes) = SequenceCoverageMap.BuildStableColorMaps();
 
             foreach (var protein in proteins)
             {
@@ -112,7 +94,7 @@ namespace GUI
             ProteinsForTreeView = new Dictionary<Protein, ProteinForTreeView>();
             ModsByColor = new Dictionary<string, SolidColorBrush>();
 
-            (_stableProteaseColors, _stableProteaseBrushes) = BuildStableColorMaps();
+            (_stableProteaseColors, _stableProteaseBrushes) = SequenceCoverageMap.BuildStableColorMaps();
 
             SetUpProteinsForTreeView();
             PopulateProteinList();
@@ -125,37 +107,7 @@ namespace GUI
 
         #endregion
 
-        #region Stable Color Assignment
-
-        private static (Dictionary<string, Color> colors, Dictionary<string, SolidColorBrush> brushes)
-            BuildStableColorMaps()
-        {
-            var allNames = ProteaseDictionary.Dictionary.Keys.ToList();
-            var rgbMap = CoverageMapConfiguration.CreateProteaseColorMap(allNames);
-
-            var colors = new Dictionary<string, Color>();
-            var brushes = new Dictionary<string, SolidColorBrush>();
-
-            foreach (var kvp in rgbMap)
-            {
-                var wpfColor = Color.FromRgb(kvp.Value.R, kvp.Value.G, kvp.Value.B);
-                var brush = new SolidColorBrush(wpfColor);
-                brush.Freeze();
-                colors[kvp.Key] = wpfColor;
-                brushes[kvp.Key] = brush;
-            }
-
-            return (colors, brushes);
-        }
-
-        private SolidColorBrush GetProteaseBrush(string proteaseName)
-        {
-            if (_stableProteaseBrushes.TryGetValue(proteaseName, out var brush))
-                return brush;
-            var fb = new SolidColorBrush(Colors.DimGray);
-            fb.Freeze();
-            return fb;
-        }
+        #region Stable Color Ordering
 
         private static int GetStableColorIndex(string proteaseName)
         {
@@ -314,8 +266,6 @@ namespace GUI
                 .OrderBy(GetStableColorIndex)
                 .ToList();
 
-            _lastCoverageResult = pepsByProtease;
-
             DrawMaxCoverageMap(SelectedProtein.Protein, result, pepsByProtease, orderedChecked);
         }
 
@@ -348,176 +298,21 @@ namespace GUI
             Dictionary<string, List<(int Start, int End)>> pepsByProtease,
             List<string> orderedCheckedProteases)
         {
-            const int residuesPerLine = CoverageMapDataPreparer.DefaultResiduesPerLine;
+            const double sequenceContentWidth = 25 * 22 + 65 + 20;
+            double availableWidth = MaxCoverageGrid.ActualWidth - 18;
 
-            maxCoverageMap.Children.Clear();
-
-            var splitSeq = CoverageMapDataPreparer.SplitSequenceIntoLines(
-                protein.BaseSequence, residuesPerLine);
-
-            int height = 10;
-
-            string proteinName = protein.FullName ?? protein.Accession;
-            SequenceCoverageMap.txtDrawing(maxCoverageMap, new Point(0, height),
-                protein.Accession, Brushes.Black);
-            height += 20;
-            SequenceCoverageMap.txtDrawing(maxCoverageMap, new Point(0, height),
-                proteinName, Brushes.Black);
-            height += 30;
-
-            string pct = SeekMaximumCoverage.CoveragePercentage(result.CoveredResidues, protein.Length);
-            string proteaseStr = result.Proteases.Count > 0
-                ? string.Join(" + ", result.Proteases)
-                : "none";
-            SequenceCoverageMap.txtDrawing(maxCoverageMap, new Point(0, height),
-                $"Best coverage: {proteaseStr}  ({pct})", Brushes.Black);
-            height += 30;
-
-            int proteaseCount = orderedCheckedProteases.Count;
-            int barZoneHeight = proteaseCount > 0
-                ? BarTopMargin + proteaseCount * (BarHeight + BarRowGap)
-                : 0;
-            int lineStride = SeqTextHeight + barZoneHeight + BottomLineGap;
-
-            for (int lineIndex = 0; lineIndex < splitSeq.Count; lineIndex++)
-            {
-                var line = splitSeq[lineIndex];
-                int lineStartRes = lineIndex * residuesPerLine + 1;
-                int lineEndRes = lineStartRes + line.Length - 1;
-
-                SequenceCoverageMap.txtDrawingLabel(
-                    maxCoverageMap, new Point(0, height), lineStartRes.ToString(), Brushes.Black);
-
-                for (int r = 0; r < line.Length; r++)
-                {
-                    string ch = line[r].ToString().ToUpper();
-                    var pt = new Point(r * ResidueSpacing + 65, height);
-                    SequenceCoverageMap.txtDrawing(maxCoverageMap, pt, ch, Brushes.Black);
-                }
-
-                int barBaseY = height + SeqTextHeight + BarTopMargin;
-
-                for (int pi = 0; pi < orderedCheckedProteases.Count; pi++)
-                {
-                    string proteaseName = orderedCheckedProteases[pi];
-                    var brush = GetProteaseBrush(proteaseName);
-                    int laneY = barBaseY + pi * (BarHeight + BarRowGap);
-
-                    if (!pepsByProtease.TryGetValue(proteaseName, out var intervals))
-                        continue;
-
-                    foreach (var (pepStart, pepEnd) in intervals)
-                    {
-                        if (pepEnd < lineStartRes || pepStart > lineEndRes)
-                            continue;
-
-                        int visStart = Math.Max(pepStart, lineStartRes);
-                        int visEnd = Math.Min(pepEnd, lineEndRes);
-                        int colStart = visStart - lineStartRes;
-                        int colEnd = visEnd - lineStartRes;
-
-                        double x1 = colStart * ResidueSpacing + 65;
-                        double x2 = colEnd * ResidueSpacing + 65 + (ResidueSpacing - 4);
-
-                        var bar = new Rectangle
-                        {
-                            Fill = brush,
-                            Width = Math.Max(x2 - x1, 2),
-                            Height = BarHeight,
-                            RadiusX = 2,
-                            RadiusY = 2
-                        };
-                        Canvas.SetLeft(bar, x1);
-                        Canvas.SetTop(bar, laneY);
-                        Panel.SetZIndex(bar, 1);
-                        maxCoverageMap.Children.Add(bar);
-
-                        if (pepStart >= lineStartRes)
-                            DrawEndCap(x1, laneY, brush);
-                        if (pepEnd <= lineEndRes)
-                            DrawEndCap(x2, laneY, brush);
-                    }
-                }
-
-                height += lineStride;
-            }
-
-            maxCoverageMap.Height = height + 20;
-
-            DrawLaneViewLegend(orderedCheckedProteases);
+            SequenceCoverageMap.DrawLaneViewMap(
+                maxCoverageMap, maxCoverageLegend, maxCoverageLegendGrid,
+                protein.Accession,
+                protein.FullName,
+                protein.BaseSequence,
+                orderedCheckedProteases,
+                pepsByProtease,
+                name => SequenceCoverageMap.GetProteaseBrush(_stableProteaseBrushes, name),
+                Math.Min(availableWidth, sequenceContentWidth),
+                residueSpacing: 22,
+                seqLeftOffset: 65);
         }
-
-        private void DrawEndCap(double x, double laneY, SolidColorBrush brush)
-        {
-            var cap = new Line
-            {
-                X1 = x,
-                Y1 = laneY - 1,
-                X2 = x,
-                Y2 = laneY + BarHeight + 1,
-                Stroke = brush,
-                StrokeThickness = 2
-            };
-            Panel.SetZIndex(cap, 2);
-            maxCoverageMap.Children.Add(cap);
-        }
-
-        private void DrawLaneViewLegend(List<string> proteases)
-        {
-            maxCoverageLegend.Children.Clear();
-            maxCoverageLegendGrid.Children.Clear();
-
-            if (proteases.Count == 0) return;
-
-            const double swatchW = 28;
-            const double swatchH = 12;
-            const double entryH = 20;
-            const double startX = 4;
-            const double startY = 4;
-            const double colWidth = 190;
-            const int cols = 3;
-
-            for (int i = 0; i < proteases.Count; i++)
-            {
-                string name = proteases[i];
-                var brush = GetProteaseBrush(name);
-                int col = i % cols;
-                int row = i / cols;
-
-                double entryX = startX + col * colWidth;
-                double entryY = startY + row * entryH;
-
-                var swatch = new Rectangle
-                {
-                    Fill = brush,
-                    Width = swatchW,
-                    Height = swatchH,
-                    RadiusX = 2,
-                    RadiusY = 2
-                };
-                Canvas.SetLeft(swatch, entryX);
-                Canvas.SetTop(swatch, entryY + (entryH - swatchH) / 2.0);
-                maxCoverageLegend.Children.Add(swatch);
-
-                var tb = new TextBlock
-                {
-                    Text = name,
-                    FontSize = 11,
-                    FontWeight = FontWeights.SemiBold,
-                    Foreground = Brushes.Black
-                };
-                Canvas.SetLeft(tb, entryX + swatchW + 4);
-                Canvas.SetTop(tb, entryY + 3);
-                maxCoverageLegend.Children.Add(tb);
-            }
-
-            int rows = (int)Math.Ceiling(proteases.Count / (double)cols);
-            maxCoverageLegend.Height = startY + rows * entryH + 8;
-        }
-
-        #endregion
-
-        #region Peptide-View Coverage Map Drawing
 
         private void DrawPeptideViewCoverageMap(
             Protein protein,
@@ -525,13 +320,27 @@ namespace GUI
             Dictionary<string, List<(int Start, int End)>> pepsByProtease,
             List<string> orderedCheckedProteases)
         {
-            const int residuesPerLine = CoverageMapDataPreparer.DefaultResiduesPerLine;
+            // Calculate covered residues for character styling
+            var allCovered = new HashSet<int>();
+            foreach (var kvp in pepsByProtease)
+                foreach (var (start, end) in kvp.Value)
+                    for (int i = start; i <= end; i++)
+                        allCovered.Add(i);
+
+            // Build combined interval list with protease names
+            var allIntervals = new List<(int Start, int End, string Protease)>();
+            foreach (var kvp in pepsByProtease)
+                foreach (var (start, end) in kvp.Value)
+                    allIntervals.Add((start, end, kvp.Key));
+
+            double canvasWidth = Math.Max(MaxCoverageGrid.ActualWidth - 18, 200);
 
             maxCoverageMap.Children.Clear();
             maxCoverageLegendGrid.Children.Clear();
             maxCoverageLegend.Children.Clear();
 
-            var splitSeq = CoverageMapDataPreparer.SplitSequenceIntoLines(protein.BaseSequence, residuesPerLine);
+            var splitSeq = CoverageMapDataPreparer.SplitSequenceIntoLines(
+                protein.BaseSequence, CoverageMapDataPreparer.DefaultResiduesPerLine);
 
             int height = 10;
 
@@ -551,41 +360,27 @@ namespace GUI
                 $"Best coverage: {proteaseStr}  ({pct})", Brushes.Black);
             height += 30;
 
-            // Calculate coverage types for character styling
-            var allCovered = new HashSet<int>();
-            foreach (var kvp in pepsByProtease)
-                foreach (var (start, end) in kvp.Value)
-                    for (int i = start; i <= end; i++)
-                        allCovered.Add(i);
+            maxCoverageMap.Width = canvasWidth;
 
-            // Build a combined peptide list for bar drawing
-            var allIntervals = new List<(int Start, int End, string Protease)>();
-            foreach (var kvp in pepsByProtease)
-                foreach (var (start, end) in kvp.Value)
-                    allIntervals.Add((start, end, kvp.Key));
-
-            // For peptide-per-bar mode, use underline-only for uncovered (no partial tracking needed here)
-            int accumIndex = 0;
             for (int lineIndex = 0; lineIndex < splitSeq.Count; lineIndex++)
             {
                 var line = splitSeq[lineIndex];
-                int lineStartRes = lineIndex * residuesPerLine + 1;
+                int lineStartRes = lineIndex * CoverageMapDataPreparer.DefaultResiduesPerLine + 1;
 
-                SequenceCoverageMap.txtDrawingLabel(maxCoverageMap, new Point(0, height), lineStartRes.ToString(), Brushes.Black);
+                SequenceCoverageMap.txtDrawingLabel(maxCoverageMap, new Point(0, height),
+                    lineStartRes.ToString(), Brushes.Black);
 
-                // Draw characters - covered=bold, uncovered=underlined
                 for (int r = 0; r < line.Length; r++)
                 {
                     int residuePos = lineStartRes + r;
                     string ch = line[r].ToString().ToUpper();
 
                     if (allCovered.Contains(residuePos))
-                        SequenceCoverageMap.txtDrawing(maxCoverageMap, new Point(r * ResidueSpacing + 65, height), ch, Brushes.Black);
+                        SequenceCoverageMap.txtDrawing(maxCoverageMap, new Point(r * 22 + 65, height), ch, Brushes.Black);
                     else
-                        SequenceCoverageMap.txtDrawingUncovered(maxCoverageMap, new Point(r * ResidueSpacing + 65, height), ch, Brushes.Black);
+                        SequenceCoverageMap.txtDrawingUncovered(maxCoverageMap, new Point(r * 22 + 65, height), ch, Brushes.Black);
                 }
 
-                // Draw peptide bars using Highlight method
                 var indices = new Dictionary<int, List<int>>();
                 var intervalsOnLine = allIntervals
                     .Where(i => i.Start <= lineStartRes + line.Length - 1 && i.End >= lineStartRes)
@@ -603,12 +398,10 @@ namespace GUI
 
                 int addedSpace = indices.Count > 7 ? (indices.Count - 7) * 10 : 0;
                 height += 100 + addedSpace;
-                accumIndex += line.Length;
             }
 
             maxCoverageMap.Height = height + 20;
 
-            // Peptide-view legend
             SequenceCoverageMap.drawLegend(maxCoverageLegend, _stableProteaseColors, orderedCheckedProteases, maxCoverageLegendGrid, false);
         }
 
@@ -628,7 +421,7 @@ namespace GUI
             maxCoverageMapViewer.Height = 0.85 * MaxCoverageGrid.ActualHeight;
             maxCoverageMapViewer.Width = availableWidth;
 
-            const double sequenceContentWidth = 25 * ResidueSpacing + 65 + 20;
+            const double sequenceContentWidth = 25 * 22 + 65 + 20;
             double canvasWidth = Math.Min(availableWidth - 18, sequenceContentWidth);
             canvasWidth = Math.Max(canvasWidth, 200);
             maxCoverageMap.Width = canvasWidth;
