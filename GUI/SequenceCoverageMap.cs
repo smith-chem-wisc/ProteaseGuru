@@ -699,6 +699,7 @@ namespace GUI
             Dictionary<string, List<(int Start, int End)>> intervalsByProtease,
             Func<string, SolidColorBrush> getProteaseBrush,
             double canvasWidth,
+            string? coverageHeader = null,
             int residueSpacing = 25,
             int seqLeftOffset = 45)
         {
@@ -717,9 +718,20 @@ namespace GUI
                 baseSequence, CoverageMapDataPreparer.DefaultResiduesPerLine);
 
             int height = 10;
-            txtDrawing(mapCanvas, new Point(0, height),
-                $"Sequence Coverage Map of {accession}:", Brushes.Black);
-            height += 30;
+            txtDrawing(mapCanvas, new Point(0, height), accession, Brushes.Black);
+            height += 20;
+
+            if (!string.IsNullOrWhiteSpace(fullName))
+            {
+                txtDrawing(mapCanvas, new Point(0, height), fullName, Brushes.Black);
+                height += 30;
+            }
+
+            if (!string.IsNullOrWhiteSpace(coverageHeader))
+            {
+                txtDrawing(mapCanvas, new Point(0, height), coverageHeader, Brushes.Black);
+                height += 30;
+            }
 
             int laneCount = orderedProteases.Count;
             int barZoneH = laneCount > 0
@@ -947,6 +959,22 @@ namespace GUI
             }
         }
 
+        private readonly struct PeptideDrawEntry
+        {
+            public PeptideDrawEntry(int startResidue, int endResidue, string protease, bool isUnique)
+            {
+                StartResidue = startResidue;
+                EndResidue = endResidue;
+                Protease = protease;
+                IsUnique = isUnique;
+            }
+
+            public int StartResidue { get; }
+            public int EndResidue { get; }
+            public string Protease { get; }
+            public bool IsUnique { get; }
+        }
+
         public static void DrawPeptidePerBarMap(
             Canvas mapCanvas,
             Canvas legendCanvas,
@@ -960,8 +988,92 @@ namespace GUI
             HashSet<int> sharedOnlyCovered,
             bool isMultiDatabase,
             double canvasWidth,
+            string? fullName = null,
+            string? coverageHeader = null,
             int residueSpacing = 25,
             int seqLeftOffset = 45)
+        {
+            var entries = peptides
+                .Select(p => new PeptideDrawEntry(
+                    p.StartResidue,
+                    p.EndResidue,
+                    p.Protease,
+                    isMultiDatabase ? p.UniqueAllDbs : p.Unique))
+                .ToList();
+
+            DrawPeptidePerBarCore(
+                mapCanvas,
+                legendCanvas,
+                legendGrid,
+                accession,
+                baseSequence,
+                proteases,
+                proteaseByColor,
+                entries,
+                uniqueCovered,
+                sharedOnlyCovered,
+                canvasWidth,
+                fullName,
+                coverageHeader,
+                residueSpacing,
+                seqLeftOffset);
+        }
+
+        public static void DrawPeptidePerBarIntervalMap(
+            Canvas mapCanvas,
+            Canvas legendCanvas,
+            Grid legendGrid,
+            string accession,
+            string baseSequence,
+            List<string> proteases,
+            Dictionary<string, Color> proteaseByColor,
+            List<(int Start, int End, string Protease)> intervals,
+            HashSet<int> uniqueCovered,
+            HashSet<int> sharedOnlyCovered,
+            double canvasWidth,
+            string? fullName = null,
+            string? coverageHeader = null,
+            int residueSpacing = 25,
+            int seqLeftOffset = 45)
+        {
+            var entries = intervals
+                .Select(i => new PeptideDrawEntry(i.Start, i.End, i.Protease, true))
+                .ToList();
+
+            DrawPeptidePerBarCore(
+                mapCanvas,
+                legendCanvas,
+                legendGrid,
+                accession,
+                baseSequence,
+                proteases,
+                proteaseByColor,
+                entries,
+                uniqueCovered,
+                sharedOnlyCovered,
+                canvasWidth,
+                fullName,
+                coverageHeader,
+                residueSpacing,
+                seqLeftOffset);
+        }
+
+        private static void DrawPeptidePerBarCore(
+            Canvas mapCanvas,
+            Canvas legendCanvas,
+            Grid legendGrid,
+            string accession,
+            string baseSequence,
+            List<string> proteases,
+            Dictionary<string, Color> proteaseByColor,
+            List<PeptideDrawEntry> entries,
+            HashSet<int> uniqueCovered,
+            HashSet<int> sharedOnlyCovered,
+            double canvasWidth,
+            string? fullName,
+            string? coverageHeader,
+            int residueSpacing,
+            int seqLeftOffset)
         {
             mapCanvas.Children.Clear();
             if (legendCanvas.Children.Count == 0 || !legendCanvas.Children.Contains(legendGrid))
@@ -984,11 +1096,31 @@ namespace GUI
             int height = 10;
             var indices = new Dictionary<int, List<int>>();
             int accumIndex = 0;
-            var partialPeptideMatches = new Dictionary<InSilicoPep, (int, int)>();
+            var partialPeptideMatches = new Dictionary<PeptideDrawEntry, (int, int)>();
 
-            txtDrawing(mapCanvas, new Point(0, height),
-                $"Sequence Coverage Map of {accession}:", Brushes.Black);
-            height += 30;
+            if (!string.IsNullOrWhiteSpace(fullName) || !string.IsNullOrWhiteSpace(coverageHeader))
+            {
+                txtDrawing(mapCanvas, new Point(0, height), accession, Brushes.Black);
+                height += 20;
+
+                if (!string.IsNullOrWhiteSpace(fullName))
+                {
+                    txtDrawing(mapCanvas, new Point(0, height), fullName, Brushes.Black);
+                    height += 30;
+                }
+
+                if (!string.IsNullOrWhiteSpace(coverageHeader))
+                {
+                    txtDrawing(mapCanvas, new Point(0, height), coverageHeader, Brushes.Black);
+                    height += 30;
+                }
+            }
+            else
+            {
+                txtDrawing(mapCanvas, new Point(0, height),
+                    $"Sequence Coverage Map of {accession}:", Brushes.Black);
+                height += 30;
+            }
 
             for (int lineIndex = 0; lineIndex < splitSeq.Count; lineIndex++)
             {
@@ -1004,7 +1136,7 @@ namespace GUI
                 // Process partial peptides
                 if (partialPeptideMatches.Count > 0)
                 {
-                    var temp = new Dictionary<InSilicoPep, (int, int)>(partialPeptideMatches);
+                    var temp = new Dictionary<PeptideDrawEntry, (int, int)>(partialPeptideMatches);
                     partialPeptideMatches.Clear();
 
                     foreach (var peptide in temp)
@@ -1014,8 +1146,8 @@ namespace GUI
 
                         int start = 0;
                         int end = Math.Min(remaining, line.Length - 1);
-                        var partialIndex = CoverageMapDataPreparer.CheckPartialMatch(peptide.Key, line.Length, accumIndex);
-                        bool isUnique = isMultiDatabase ? peptide.Key.UniqueAllDbs : peptide.Key.Unique;
+                        var partialIndex = CoverageMapDataPreparer.CheckPartialMatch(peptide.Key.EndResidue, line.Length, accumIndex);
+                        bool isUnique = peptide.Key.IsUnique;
 
                         if (partialIndex >= 0)
                         {
@@ -1034,17 +1166,17 @@ namespace GUI
                 }
 
                 // Draw peptide highlights for this line
-                var peptidesOnThisLine = peptides
+                var peptidesOnThisLine = entries
                     .Where(p => p.StartResidue - accumIndex - 1 < line.Length)
                     .OrderBy(p => p.StartResidue)
                     .ToList();
 
                 foreach (var peptide in peptidesOnThisLine)
                 {
-                    var partialIndex = CoverageMapDataPreparer.CheckPartialMatch(peptide, line.Length, accumIndex);
+                    var partialIndex = CoverageMapDataPreparer.CheckPartialMatch(peptide.EndResidue, line.Length, accumIndex);
                     int start = peptide.StartResidue - accumIndex - 1;
                     int end = Math.Min(peptide.EndResidue - accumIndex - 1, line.Length - 1);
-                    bool isUnique = isMultiDatabase ? peptide.UniqueAllDbs : peptide.Unique;
+                    bool isUnique = peptide.IsUnique;
 
                     if (partialIndex >= 0)
                     {
@@ -1060,7 +1192,7 @@ namespace GUI
                             proteaseByColor[peptide.Protease], isUnique, true, true, -1,
                             residueSpacing, seqLeftOffset);
                     }
-                    peptides.Remove(peptide);
+                    entries.Remove(peptide);
                 }
 
                 int addedSpace = indices.Count > 7 ? (indices.Count - 7) * 10 : 0;

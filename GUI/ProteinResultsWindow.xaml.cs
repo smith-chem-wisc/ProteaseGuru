@@ -373,7 +373,7 @@ namespace GUI
             SequenceCoverageMap.DrawLaneViewMap(
                 map, legend, legendGrid,
                 protein.Protein.Accession,
-                protein.Protein.FullName,
+                null,
                 protein.Protein.BaseSequence,
                 proteases,
                 intervalsByProtease,
