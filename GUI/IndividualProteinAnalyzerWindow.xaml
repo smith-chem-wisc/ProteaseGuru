@@ -285,9 +285,9 @@ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                             </Grid.RowDefinitions>
                             <Canvas x:Name="maxCoverageMap" Grid.Row="0" Background="White"/>
                             <Canvas x:Name="maxCoverageLegend" Grid.Row="1" Background="White"
-                                    VerticalAlignment="Top" HorizontalAlignment="Left">
+                                    VerticalAlignment="Top" HorizontalAlignment="Stretch">
                                 <Grid Name="maxCoverageLegendGrid" Background="White"
-                                      VerticalAlignment="Top" HorizontalAlignment="Left"/>
+                                      VerticalAlignment="Top" HorizontalAlignment="Center"/>
                             </Canvas>
                         </Grid>
                     </ScrollViewer>

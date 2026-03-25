@@ -333,7 +333,9 @@ namespace GUI
                 foreach (var (start, end) in kvp.Value)
                     allIntervals.Add((start, end, kvp.Key));
 
-            double canvasWidth = Math.Max(MaxCoverageGrid.ActualWidth - 18, 200);
+            const double sequenceContentWidth = 25 * 22 + 65 + 20;
+            double availableWidth = MaxCoverageGrid.ActualWidth > 0 ? MaxCoverageGrid.ActualWidth - 18 : sequenceContentWidth;
+            double canvasWidth = Math.Max(Math.Min(availableWidth, sequenceContentWidth), 200);
 
             maxCoverageMap.Children.Clear();
             maxCoverageLegendGrid.Children.Clear();
@@ -523,14 +525,10 @@ namespace GUI
             if (_displayMode == CoverageMapDisplayMode.ProteaseLane)
             {
                 coverageViewToggleButton.Content = "Lane View";
-                coverageViewToggleButton.Background = new SolidColorBrush(Color.FromRgb(0, 120, 215));
-                coverageViewToggleButton.Foreground = Brushes.White;
             }
             else
             {
                 coverageViewToggleButton.Content = "Peptide View";
-                coverageViewToggleButton.Background = new SolidColorBrush(Color.FromRgb(0xF9, 0x69, 0x0E));
-                coverageViewToggleButton.Foreground = new SolidColorBrush(Color.FromRgb(0x13, 0x13, 0x13));
             }
         }
 

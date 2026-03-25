@@ -20,8 +20,6 @@ namespace GUI
 
     static class SequenceCoverageMap
     {
-        private const int spacing = 25;
-
         // ── Bar geometry constants ────────────────────────────────────────────
         public const int SeqTextHeight = 20;
         public const int BarHeight = 6;
@@ -30,7 +28,8 @@ namespace GUI
         public const int BottomLineGap = 12;
 
         public static int Highlight(int start, int end, Canvas map, Dictionary<int, List<int>> indices,
-            int height, Color clr, bool unique, bool startPep, bool endPep, int partial = -1)
+            int height, Color clr, bool unique, bool startPep, bool endPep, int partial = -1,
+            int residueSpacing = 25, int seqLeftOffset = 45)
         {
             int increment = 0;
             int i;
@@ -74,13 +73,13 @@ namespace GUI
             // highlight peptide
             if (unique)
             {
-                peptideLineDrawing(map, new Point(start * spacing + 45, height + increment),
-                    new Point(end * spacing + 45, height + increment), clr, false, startPep, endPep);
+                peptideLineDrawing(map, new Point(start * residueSpacing + seqLeftOffset, height + increment),
+                    new Point(end * residueSpacing + seqLeftOffset, height + increment), clr, false, startPep, endPep);
             }
             else
             {
-                peptideLineDrawing(map, new Point(start * spacing + 45, height + increment),
-                    new Point(end * spacing + 45, height + increment), clr, true, startPep, endPep);
+                peptideLineDrawing(map, new Point(start * residueSpacing + seqLeftOffset, height + increment),
+                    new Point(end * residueSpacing + seqLeftOffset, height + increment), clr, true, startPep, endPep);
             }
 
             return i;
@@ -705,8 +704,14 @@ namespace GUI
         {
             mapCanvas.Children.Clear();
             legendCanvas.Children.Clear();
+            legendCanvas.Children.Add(legendGrid);
             legendGrid.Children.Clear();
+            legendGrid.RowDefinitions.Clear();
+            legendGrid.ColumnDefinitions.Clear();
             mapCanvas.Width = canvasWidth;
+            mapCanvas.HorizontalAlignment = HorizontalAlignment.Center;
+            legendCanvas.Width = canvasWidth;
+            legendCanvas.HorizontalAlignment = HorizontalAlignment.Center;
 
             var splitSeq = CoverageMapDataPreparer.SplitSequenceIntoLines(
                 baseSequence, CoverageMapDataPreparer.DefaultResiduesPerLine);
@@ -793,17 +798,22 @@ namespace GUI
             int seqLeftOffset = 45)
         {
             legendCanvas.Children.Clear();
+            legendCanvas.Children.Add(legendGrid);
             legendGrid.Children.Clear();
+            legendGrid.RowDefinitions.Clear();
+            legendGrid.ColumnDefinitions.Clear();
 
             if (proteases.Count == 0) return;
 
             const double swatchW = 28;
             const double swatchH = 12;
             const double entryH = 20;
-            double startX = seqLeftOffset;
             const double startY = 4;
             const double colWidth = 190;
             const int cols = 3;
+            int usedCols = Math.Min(cols, proteases.Count);
+            double contentWidth = usedCols * colWidth;
+            double startX = Math.Max((legendCanvas.Width - contentWidth) / 2.0, 0);
 
             for (int i = 0; i < proteases.Count; i++)
             {
@@ -918,7 +928,7 @@ namespace GUI
 
         private static void DrawSequenceCharacters(Canvas mapCanvas, string line,
             int height, int spacing, HashSet<int> uniqueCovered, HashSet<int> sharedOnlyCovered,
-            int lineStartResidue)
+            int lineStartResidue, int seqLeftOffset)
         {
             for (int r = 0; r < line.Length; r++)
             {
@@ -929,11 +939,11 @@ namespace GUI
                 string character = line[r].ToString().ToUpper();
 
                 if (isCoveredByUnique)
-                    txtDrawing(mapCanvas, new Point(r * spacing + 65, height), character, Brushes.Black);
+                    txtDrawing(mapCanvas, new Point(r * spacing + seqLeftOffset, height), character, Brushes.Black);
                 else if (isCoveredBySharedOnly)
-                    txtDrawingShared(mapCanvas, new Point(r * spacing + 65, height), character, Brushes.Black);
+                    txtDrawingShared(mapCanvas, new Point(r * spacing + seqLeftOffset, height), character, Brushes.Black);
                 else
-                    txtDrawingUncovered(mapCanvas, new Point(r * spacing + 65, height), character, Brushes.Black);
+                    txtDrawingUncovered(mapCanvas, new Point(r * spacing + seqLeftOffset, height), character, Brushes.Black);
             }
         }
 
@@ -954,9 +964,19 @@ namespace GUI
             int seqLeftOffset = 45)
         {
             mapCanvas.Children.Clear();
-            legendCanvas.Children.Clear();
+            if (legendCanvas.Children.Count == 0 || !legendCanvas.Children.Contains(legendGrid))
+            {
+                legendCanvas.Children.Clear();
+                legendCanvas.Children.Add(legendGrid);
+            }
             legendGrid.Children.Clear();
+            legendGrid.RowDefinitions.Clear();
+            legendGrid.ColumnDefinitions.Clear();
             mapCanvas.Width = canvasWidth;
+            mapCanvas.HorizontalAlignment = HorizontalAlignment.Center;
+            legendCanvas.Width = canvasWidth;
+            legendCanvas.HorizontalAlignment = HorizontalAlignment.Center;
+            legendGrid.HorizontalAlignment = HorizontalAlignment.Center;
 
             var splitSeq = CoverageMapDataPreparer.SplitSequenceIntoLines(
                 baseSequence, CoverageMapDataPreparer.DefaultResiduesPerLine);
@@ -979,7 +999,7 @@ namespace GUI
                 txtDrawingLabel(mapCanvas, new Point(0, height), lineLabel.ToString(), Brushes.Black);
 
                 int lineStartResidue = lineIndex * CoverageMapDataPreparer.DefaultResiduesPerLine + 1;
-                DrawSequenceCharacters(mapCanvas, line, height, residueSpacing, uniqueCovered, sharedOnlyCovered, lineStartResidue);
+                DrawSequenceCharacters(mapCanvas, line, height, residueSpacing, uniqueCovered, sharedOnlyCovered, lineStartResidue, seqLeftOffset);
 
                 // Process partial peptides
                 if (partialPeptideMatches.Count > 0)
@@ -1000,13 +1020,15 @@ namespace GUI
                         if (partialIndex >= 0)
                         {
                             Highlight(start, end, mapCanvas, indices, height,
-                                proteaseByColor[peptide.Key.Protease], isUnique, false, false, highlightIndex);
+                                proteaseByColor[peptide.Key.Protease], isUnique, false, false, highlightIndex,
+                                residueSpacing, seqLeftOffset);
                             partialPeptideMatches.Add(peptide.Key, (partialIndex, highlightIndex));
                         }
                         else
                         {
                             Highlight(start, end, mapCanvas, indices, height,
-                                proteaseByColor[peptide.Key.Protease], isUnique, false, true, highlightIndex);
+                                proteaseByColor[peptide.Key.Protease], isUnique, false, true, highlightIndex,
+                                residueSpacing, seqLeftOffset);
                         }
                     }
                 }
@@ -1027,14 +1049,16 @@ namespace GUI
                     if (partialIndex >= 0)
                     {
                         var highlightIndex = Highlight(start, end, mapCanvas, indices, height,
-                            proteaseByColor[peptide.Protease], isUnique, true, false);
+                            proteaseByColor[peptide.Protease], isUnique, true, false, -1,
+                            residueSpacing, seqLeftOffset);
                         if (!partialPeptideMatches.ContainsKey(peptide))
                             partialPeptideMatches.Add(peptide, (partialIndex, highlightIndex));
                     }
                     else
                     {
                         Highlight(start, end, mapCanvas, indices, height,
-                            proteaseByColor[peptide.Protease], isUnique, true, true);
+                            proteaseByColor[peptide.Protease], isUnique, true, true, -1,
+                            residueSpacing, seqLeftOffset);
                     }
                     peptides.Remove(peptide);
                 }
@@ -1047,6 +1071,17 @@ namespace GUI
             mapCanvas.Height = height + 20;
 
             drawLegend(legendCanvas, proteaseByColor, proteases, legendGrid, false);
+
+            legendGrid.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+            var desired = legendGrid.DesiredSize;
+            legendCanvas.Height = desired.Height;
+            if (legendCanvas.Width <= 0)
+            {
+                legendCanvas.Width = desired.Width;
+            }
+
+            Canvas.SetTop(legendGrid, 0);
+            Canvas.SetLeft(legendGrid, Math.Max((legendCanvas.Width - desired.Width) / 2.0, 0));
         }
     }
 

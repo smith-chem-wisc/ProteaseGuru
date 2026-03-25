@@ -393,7 +393,9 @@ namespace GUI
             var (uniqueCovered, sharedOnlyCovered) = SequenceCoverageMap.CalculateCoveredResiduesByType(
                 allPeptidesForProtein, _analyzer.IsMultiDatabase);
 
-            double canvasWidth = 0.90 * ResultsGrid.ActualWidth;
+            const double sequenceContentWidth = 25 * 25 + 45 + 20;
+            double availableWidth = ResultsGrid.ActualWidth > 0 ? ResultsGrid.ActualWidth - 20 : sequenceContentWidth;
+            double canvasWidth = Math.Min(availableWidth, sequenceContentWidth);
 
             SequenceCoverageMap.DrawPeptidePerBarMap(
                 map, legend, legendGrid,
@@ -434,14 +436,10 @@ namespace GUI
             if (_displayMode == CoverageMapDisplayMode.ProteaseLane)
             {
                 coverageViewToggleButton.Content = "Lane View";
-                coverageViewToggleButton.Background = new SolidColorBrush(Color.FromRgb(0, 120, 215));
-                coverageViewToggleButton.Foreground = Brushes.White;
             }
             else
             {
                 coverageViewToggleButton.Content = "Peptide View";
-                coverageViewToggleButton.Background = new SolidColorBrush(Color.FromRgb(0xF9, 0x69, 0x0E));
-                coverageViewToggleButton.Foreground = new SolidColorBrush(Color.FromRgb(0x13, 0x13, 0x13));
             }
         }
 
