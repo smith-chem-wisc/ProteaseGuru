@@ -1,28 +1,27 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <OutputType>Library</OutputType>
-    <TargetFramework>net8.0</TargetFramework>
-  </PropertyGroup>
+    <PropertyGroup>
+        <OutputType>Library</OutputType>
+        <TargetFramework>net8.0</TargetFramework>
+    </PropertyGroup>
 
-  <ItemGroup>
-    <PackageReference Include="mzLib" Version="1.0.574" />
-    <PackageReference Include="TopDownProteomics" Version="0.0.298" />
-  </ItemGroup>
+    <ItemGroup>
+        <PackageReference Include="mzLib" Version="1.0.574" />
+        <PackageReference Include="TopDownProteomics" Version="0.0.298" />
+    </ItemGroup>
 
-  <ItemGroup>
-    <None Update="Data\elements.dat" CopyToOutputDirectory="Always" />
-    <None Update="Data\PSI-MOD.obo.xml" CopyToOutputDirectory="Always" />
-    <None Update="Data\ptmlist.txt" CopyToOutputDirectory="Always" />
-    <None Update="Data\unimod.xml" CopyToOutputDirectory="Always" />
-    <None Update="Mods\aListOfmods.txt" CopyToOutputDirectory="Always" />
-    <None Update="Mods\glyco.txt" CopyToOutputDirectory="Always" />
-    <None Update="Mods\ProteaseMods.txt" CopyToOutputDirectory="Always" />
-    <None Update="Mods\Mods.txt" CopyToOutputDirectory="Always" />
-    <None Update="Mods\substitutions.txt" CopyToOutputDirectory="Always" />
-    <None Update="Mods\surfactants.txt" CopyToOutputDirectory="Always" />
-    <None Update="Mods\tmt.txt" CopyToOutputDirectory="Always" />
-    <None Update="ProteolyticDigestion\proteases.tsv" CopyToOutputDirectory="Always" />
-  </ItemGroup>
+    <ItemGroup>
+        <None Update="Data\elements.dat" CopyToOutputDirectory="Always" />
+        <None Update="Data\PSI-MOD.obo.xml" CopyToOutputDirectory="Always" />
+        <None Update="Data\ptmlist.txt" CopyToOutputDirectory="Always" />
+        <None Update="Data\unimod.xml" CopyToOutputDirectory="Always" />
+        <None Update="Mods\aListOfmods.txt" CopyToOutputDirectory="Always" />
+        <None Update="Mods\glyco.txt" CopyToOutputDirectory="Always" />
+        <None Update="Mods\ProteaseMods.txt" CopyToOutputDirectory="Always" />
+        <None Update="Mods\Mods.txt" CopyToOutputDirectory="Always" />
+        <None Update="Mods\substitutions.txt" CopyToOutputDirectory="Always" />
+        <None Update="Mods\surfactants.txt" CopyToOutputDirectory="Always" />
+        <None Update="Mods\tmt.txt" CopyToOutputDirectory="Always" />
+    </ItemGroup>
 
 </Project>
