@@ -4,8 +4,6 @@ using Omics.Modifications.IO;
 using Proteomics.AminoAcidPolymer;
 using Proteomics.ProteolyticDigestion;
 using System.Diagnostics;
-using Omics.Modifications;
-using Omics.Modifications.IO;
 
 namespace Engine
 {
@@ -14,6 +12,7 @@ namespace Engine
         private static List<Modification> _AllModsKnown = new List<Modification>();
         private static HashSet<string> _AllModTypesKnown = new HashSet<string>();
         public static List<Modification> ProteaseMods = new List<Modification>();
+        public static HashSet<string> UserAddedProteaseNames = new HashSet<string>(StringComparer.Ordinal);
 
         // Characters that aren't amino acids, but are reserved for special uses (motifs, delimiters, mods, etc)
         private static char[] _InvalidAminoAcids = new char[] { 'X', 'B', 'J', 'Z', ':', '|', ';', '[', ']', '{', '}', '(', ')', '+', '-' };
@@ -106,7 +105,18 @@ namespace Engine
             }
 
             ProteaseMods = ModificationLoader.ReadModsFromFile(Path.Combine(DataDir, @"Mods", @"ProteaseMods.txt"), out var errors).ToList();
-            ProteaseDictionary.LoadAndMergeCustomProteases(Path.Combine(DataDir, @"ProteolyticDigestion", @"proteases.tsv"), ProteaseMods);
+
+            // mzLib's ProteaseDictionary self-initializes from its own embedded resource.
+            // Only merge user-defined custom proteases on top of that if the file exists.
+            var userProteaseFile = Path.Combine(DataDir, @"ProteolyticDigestion", @"user_proteases.tsv");
+            if (File.Exists(userProteaseFile))
+            {
+                var beforeKeys = new HashSet<string>(ProteaseDictionary.Dictionary.Keys, StringComparer.Ordinal);
+                ProteaseDictionary.LoadAndMergeCustomProteases(userProteaseFile, ProteaseMods);
+                foreach (var key in ProteaseDictionary.Dictionary.Keys)
+                    if (!beforeKeys.Contains(key))
+                        UserAddedProteaseNames.Add(key);
+            }
 
             RefreshAminoAcidDictionary();
         }
