@@ -202,21 +202,21 @@
                 <Setter Property="AutoGenerateColumns" Value="False"/>
             </Style>
 
-
             <!--Styling for the tab items on the left side-->
+            <!--CHANGED: Width 165->220 (no clipping), FontSize 14->15, FontWeight Bold always (not just selected), left margin 5->10-->
             <Style x:Key="TabItemStyle" TargetType="TabItem">
                 <Setter Property="Template">
                     <Setter.Value>
                         <ControlTemplate TargetType="TabItem">
-                            <Grid Height="55" Width="165" Background="{StaticResource SideBarMainColor}">
+                            <Grid Height="50" Width="220" Background="{StaticResource SideBarMainColor}">
                                 <Border Name="Border" Margin="0,0,0,0" Background="Transparent"
-                                                BorderThickness="{TemplateBinding BorderThickness}" BorderBrush="{TemplateBinding BorderBrush}" >
+                                        BorderThickness="{TemplateBinding BorderThickness}" BorderBrush="{TemplateBinding BorderBrush}">
                                     <ContentPresenter 
-                                                x:Name="ContentSite" 
-                                                VerticalAlignment="Center"
-                                                HorizontalAlignment="Left"
-                                                ContentSource="Header" Margin="5,2,10,2"
-                                                RecognizesAccessKey="True">
+                                        x:Name="ContentSite" 
+                                        VerticalAlignment="Center"
+                                        HorizontalAlignment="Left"
+                                        ContentSource="Header" Margin="10,2,10,2"
+                                        RecognizesAccessKey="True">
                                     </ContentPresenter>
                                 </Border>
                             </Grid>
@@ -224,13 +224,11 @@
                             <ControlTemplate.Triggers>
                                 <Trigger Property="IsSelected" Value="True">
                                     <Setter Property="BorderThickness" Value="0,0,7,0"/>
-                                    <Setter Property="FontWeight" Value="Bold"/>
                                     <!--Color of tab item text (when selected)-->
                                     <Setter Property="Foreground" Value="{StaticResource TextColor2}"/>
-                                    <!--Color of tab item right side (when selected)-->
+                                    <!--Color of tab item right side accent bar (when selected)-->
                                     <Setter Property="BorderBrush" Value="{StaticResource AccentColor}"/>
                                 </Trigger>
-
                                 <Trigger Property="IsSelected" Value="False">
                                     <!--Color of tab item text (when deselected)-->
                                     <Setter Property="Foreground" Value="{StaticResource TextColor2}"/>
@@ -239,28 +237,31 @@
                         </ControlTemplate>
                     </Setter.Value>
                 </Setter>
-                <Setter Property="FontSize" Value="14" />
+                <Setter Property="FontSize" Value="15" />
+                <Setter Property="FontWeight" Value="Bold" />
                 <Setter Property="BorderThickness" Value="0" />
                 <Setter Property="Margin" Value="0,0,2,0" />
                 <Setter Property="Padding" Value="0" />
             </Style>
+
+            <!--Wide gap spacer between Individual Protein Analysis and Load Previous Results-->
+            <!--CHANGED: Width 125->220, Height 10->40-->
             <Style x:Key="SpacerTabItemStyle" TargetType="TabItem">
                 <Setter Property="Template">
                     <Setter.Value>
                         <ControlTemplate TargetType="TabItem">
-                            <Grid Height="20" Width="125" Background="{StaticResource SideBarMainColor}">
+                            <Grid Height="40" Width="220" Background="{StaticResource SideBarMainColor}">
                                 <Border Name="Border" Margin="0,0,0,0" Background="Transparent"
-                                                BorderThickness="{TemplateBinding BorderThickness}" BorderBrush="{TemplateBinding BorderBrush}" >
+                                        BorderThickness="{TemplateBinding BorderThickness}" BorderBrush="{TemplateBinding BorderBrush}">
                                     <ContentPresenter 
-                                                x:Name="ContentSite" 
-                                                VerticalAlignment="Center"
-                                                HorizontalAlignment="Left"
-                                                ContentSource="Header" Margin="5,2,10,2"
-                                                RecognizesAccessKey="True">
+                                        x:Name="ContentSite" 
+                                        VerticalAlignment="Center"
+                                        HorizontalAlignment="Left"
+                                        ContentSource="Header" Margin="10,2,10,2"
+                                        RecognizesAccessKey="True">
                                     </ContentPresenter>
                                 </Border>
                             </Grid>
-
                         </ControlTemplate>
                     </Setter.Value>
                 </Setter>
@@ -268,7 +269,7 @@
                 <Setter Property="Margin" Value="0,0,2,0" />
                 <Setter Property="Padding" Value="0" />
             </Style>
-            
+
             <!--Notification Styles-->
             <Style x:Key="NotificationItemStyle" TargetType="Border">
                 <Setter Property="Background" Value="White"/>
@@ -285,7 +286,7 @@
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
-        
+
         <!--Tab Control with all pages-->
         <TabControl Grid.Row="0" Grid.RowSpan="2" TabStripPlacement="Left"
                     BorderThickness="0">
@@ -297,6 +298,22 @@
                 </Style>
             </TabControl.Resources>
 
+            <!-- ═══════════════════════════════════════
+                 SIDEBAR ORDER:
+                  1.  About
+                  2.  Databases
+                  3.  Individual Protein Analysis
+                      [wide gap]
+                  4.  Load Previous Results
+                  5.  Digestion Conditions
+                  6.  Run
+                  7.  Results Summary
+                  8.  Protein Search
+                  9.  Histograms
+                  10. Help
+                 ═══════════════════════════════════════ -->
+
+            <!-- 1. About -->
             <TabItem Header="About" Style="{StaticResource TabItemStyle}">
                 <Grid  Background="{StaticResource DataGridBackgroundColor}" Margin="-2 -5 0 16">
                     <Grid.RowDefinitions>
@@ -357,6 +374,7 @@
                 </Grid>
             </TabItem>
 
+            <!-- 2. Databases -->
             <TabItem Header="Databases" Style="{StaticResource TabItemStyle}">
                 <Grid Style="{StaticResource PageGridStyle}" Margin="-2 -5 0 16">
                     <Grid.RowDefinitions>
@@ -408,100 +426,15 @@
 
             </TabItem>
 
-            <TabItem Header="Digestion Conditions" Style="{StaticResource TabItemStyle}">
-                <local:DigestionConditions x:Name="digestionConditionsControl" />
+            <!-- 3. Individual Protein Analysis -->
+            <TabItem Header="Individual Protein Analysis" Style="{StaticResource TabItemStyle}" Name="IndividualProteinAnalyzerTab">
             </TabItem>
 
-            <TabItem Header="Run" Style="{StaticResource TabItemStyle}" Selector.Selected="OnRunTabSelection">
-                <Grid Style="{StaticResource PageGridStyle}"  Margin="-2 -5 0 16">
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="50"/>
-                        <RowDefinition Height=" 50"/>
-                        <RowDefinition Height="2.7*" />
-                        <RowDefinition Height="1*" />
-                        <RowDefinition Height="2"/>
-                        <RowDefinition Height="50"/>
-                    </Grid.RowDefinitions>
-
-                    <!--Header label-->
-                    <Label Content="Run Summary" Grid.Row="0" Style="{StaticResource HeaderLabelStyle}" />
-
-                    <!--Detail text-->
-                    <TextBlock Grid.Row="1" Style="{StaticResource TextBlockStyle}">
-                       Summary of the databases, proteases and conditions that will be used for analysis.
-                        <LineBreak/>
-                        If everything looks good, hit RUN!
-                    </TextBlock>
-
-
-                    <Grid Grid.Row="2" Background="{StaticResource BackgroundColor}" ScrollViewer.VerticalScrollBarVisibility="Auto">
-                        <TreeView BorderThickness="0" x:Name="RunSummaryTreeView" ItemsSource="{Binding}" DataContext="{x:Type local:RunSummaryForTreeView}" Grid.ColumnSpan="4">
-                            <TreeView.Resources>
-                                <HierarchicalDataTemplate DataType="{x:Type local:RunSummaryForTreeView}" ItemsSource="{Binding Summary}">
-                                    <StackPanel Orientation="Horizontal">
-                                        <TextBlock Text="{Binding DisplayName}" />
-                                    </StackPanel>
-                                </HierarchicalDataTemplate>
-                                <HierarchicalDataTemplate DataType="{x:Type local:CategorySummaryForTreeView}" ItemsSource="{Binding Summary}">
-                                    <StackPanel Orientation="Horizontal">
-                                        <TextBlock Text="{Binding DisplayName}"/>
-                                    </StackPanel>
-                                </HierarchicalDataTemplate>
-                                <DataTemplate DataType="{x:Type local:FeatureForTreeView}">
-                                    <StackPanel Orientation="Horizontal">
-                                        <TextBlock Text="{Binding DisplayName}" />
-                                    </StackPanel>
-                                </DataTemplate>
-                            </TreeView.Resources>
-                            <TreeView.ItemContainerStyle>
-                                <Style TargetType="TreeViewItem">
-                                    <Setter Property="IsExpanded" Value="{Binding Expanded}"/>
-                                </Style>
-                            </TreeView.ItemContainerStyle>
-                        </TreeView>
-                    </Grid>
-
-                    <Grid Grid.Row="3" Background="{StaticResource DataGridBackgroundColor}" >
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="20"/>
-                            <RowDefinition Height="5"/>
-                            <RowDefinition Height="40"/>
-                            <RowDefinition Height="35"/>
-                        </Grid.RowDefinitions>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width=".75*"/>
-                            <ColumnDefinition Width=".25*"/>
-                        </Grid.ColumnDefinitions>
-
-                        <DockPanel Margin="5" Grid.Row="2" LastChildFill="True" Grid.ColumnSpan="2">
-                            <Button x:Name="OpenOutputFolderButton" Content="Open" Width="40" DockPanel.Dock="Right" Click="OpenOutputFolder_Click" Style="{StaticResource ImportantButtonStyle}"></Button>
-                            <Label Content="Output Folder:"/>
-                            <TextBox x:Name="OutputFolderTextBox"/>
-                        </DockPanel>
-                        <Button x:Name="RunTaskButton" Content="Run!" Click="RunTaskButton_Click" FontSize="24" Grid.Row="3" Grid.ColumnSpan="2" Width="400" Style="{StaticResource ImportantButtonStyle}"/>
-
-                    </Grid>
-                    <Grid Grid.Row="5" Background="{StaticResource BackgroundColor}">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition></ColumnDefinition>
-                            <ColumnDefinition></ColumnDefinition>
-                        </Grid.ColumnDefinitions>
-                        <StatusBar Name="RunStatus" Grid.Column="0" Background="{StaticResource BackgroundColor}">
-                            <StatusBarItem>
-                                <TextBlock Style="{StaticResource StatusBarTextStyle}">Running:</TextBlock>
-                            </StatusBarItem>
-                        </StatusBar>
-                        <DockPanel Margin="5" Grid.Column="1">
-                            <Label Content="Run Status:" Style="{StaticResource ProgressTextStyle}" VerticalContentAlignment="Center" />
-                            <TextBox x:Name="ProgressTextBox"  Background="{StaticResource BackgroundColor}" VerticalContentAlignment="Center" BorderThickness="0"/>
-                        </DockPanel>
-
-                    </Grid>
-
-
-                </Grid>
+            <!-- Wide gap between Individual Protein Analysis and Load Previous Results -->
+            <TabItem IsHitTestVisible="False" Style="{StaticResource SpacerTabItemStyle}">
             </TabItem>
 
+            <!-- 4. Load Previous Results -->
             <TabItem Header="Load Previous Results" Style="{StaticResource TabItemStyle}" Name="LoadTab" >
                 <Grid Style="{StaticResource PageGridStyle}" Margin="-2 -5 -2 16">
                     <Grid.RowDefinitions>
@@ -637,22 +570,119 @@
                             Content="Load Results" Click="LoadResults_Click" Style="{StaticResource ImportantButtonStyle}"/>
                 </Grid>
             </TabItem>
-            <TabItem  IsHitTestVisible="False" Style="{StaticResource TabItemStyle}">
 
+            <!-- 5. Digestion Conditions -->
+            <TabItem Header="Digestion Conditions" Style="{StaticResource TabItemStyle}">
+                <local:DigestionConditions x:Name="digestionConditionsControl" />
             </TabItem>
 
+            <!-- 6. Run -->
+            <TabItem Header="Run" Style="{StaticResource TabItemStyle}" Selector.Selected="OnRunTabSelection">
+                <Grid Style="{StaticResource PageGridStyle}"  Margin="-2 -5 0 16">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="50"/>
+                        <RowDefinition Height=" 50"/>
+                        <RowDefinition Height="2.7*" />
+                        <RowDefinition Height="1*" />
+                        <RowDefinition Height="2"/>
+                        <RowDefinition Height="50"/>
+                    </Grid.RowDefinitions>
+
+                    <!--Header label-->
+                    <Label Content="Run Summary" Grid.Row="0" Style="{StaticResource HeaderLabelStyle}" />
+
+                    <!--Detail text-->
+                    <TextBlock Grid.Row="1" Style="{StaticResource TextBlockStyle}">
+                       Summary of the databases, proteases and conditions that will be used for analysis.
+                        <LineBreak/>
+                        If everything looks good, hit RUN!
+                    </TextBlock>
+
+
+                    <Grid Grid.Row="2" Background="{StaticResource BackgroundColor}" ScrollViewer.VerticalScrollBarVisibility="Auto">
+                        <TreeView BorderThickness="0" x:Name="RunSummaryTreeView" ItemsSource="{Binding}" DataContext="{x:Type local:RunSummaryForTreeView}" Grid.ColumnSpan="4">
+                            <TreeView.Resources>
+                                <HierarchicalDataTemplate DataType="{x:Type local:RunSummaryForTreeView}" ItemsSource="{Binding Summary}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="{Binding DisplayName}" />
+                                    </StackPanel>
+                                </HierarchicalDataTemplate>
+                                <HierarchicalDataTemplate DataType="{x:Type local:CategorySummaryForTreeView}" ItemsSource="{Binding Summary}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="{Binding DisplayName}"/>
+                                    </StackPanel>
+                                </HierarchicalDataTemplate>
+                                <DataTemplate DataType="{x:Type local:FeatureForTreeView}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="{Binding DisplayName}" />
+                                    </StackPanel>
+                                </DataTemplate>
+                            </TreeView.Resources>
+                            <TreeView.ItemContainerStyle>
+                                <Style TargetType="TreeViewItem">
+                                    <Setter Property="IsExpanded" Value="{Binding Expanded}"/>
+                                </Style>
+                            </TreeView.ItemContainerStyle>
+                        </TreeView>
+                    </Grid>
+
+                    <Grid Grid.Row="3" Background="{StaticResource DataGridBackgroundColor}" >
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="20"/>
+                            <RowDefinition Height="5"/>
+                            <RowDefinition Height="40"/>
+                            <RowDefinition Height="35"/>
+                        </Grid.RowDefinitions>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width=".75*"/>
+                            <ColumnDefinition Width=".25*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <DockPanel Margin="5" Grid.Row="2" LastChildFill="True" Grid.ColumnSpan="2">
+                            <Button x:Name="OpenOutputFolderButton" Content="Open" Width="40" DockPanel.Dock="Right" Click="OpenOutputFolder_Click" Style="{StaticResource ImportantButtonStyle}"></Button>
+                            <Label Content="Output Folder:"/>
+                            <TextBox x:Name="OutputFolderTextBox"/>
+                        </DockPanel>
+                        <Button x:Name="RunTaskButton" Content="Run!" Click="RunTaskButton_Click" FontSize="24" Grid.Row="3" Grid.ColumnSpan="2" Width="400" Style="{StaticResource ImportantButtonStyle}"/>
+
+                    </Grid>
+                    <Grid Grid.Row="5" Background="{StaticResource BackgroundColor}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition></ColumnDefinition>
+                            <ColumnDefinition></ColumnDefinition>
+                        </Grid.ColumnDefinitions>
+                        <StatusBar Name="RunStatus" Grid.Column="0" Background="{StaticResource BackgroundColor}">
+                            <StatusBarItem>
+                                <TextBlock Style="{StaticResource StatusBarTextStyle}">Running:</TextBlock>
+                            </StatusBarItem>
+                        </StatusBar>
+                        <DockPanel Margin="5" Grid.Column="1">
+                            <Label Content="Run Status:" Style="{StaticResource ProgressTextStyle}" VerticalContentAlignment="Center" />
+                            <TextBox x:Name="ProgressTextBox"  Background="{StaticResource BackgroundColor}" VerticalContentAlignment="Center" BorderThickness="0"/>
+                        </DockPanel>
+
+                    </Grid>
+
+
+                </Grid>
+            </TabItem>
+
+            <!-- 7. Results Summary -->
             <TabItem Header="Results Summary" Style="{StaticResource TabItemStyle}" Name="AllResultsTab">
                 <local:AllResultsWindow />
             </TabItem>
 
-            <TabItem Header="Histograms" Style="{StaticResource TabItemStyle}" Name="AllHistogramsTab">
-                <local:HistogramWindow />
-            </TabItem>
-
+            <!-- 8. Protein Search -->
             <TabItem Header="Protein Search" Style="{StaticResource TabItemStyle}" Name="ProteinCovMap">
                 <local:ProteinResultsWindow/>
             </TabItem>
 
+            <!-- 9. Histograms -->
+            <TabItem Header="Histograms" Style="{StaticResource TabItemStyle}" Name="AllHistogramsTab">
+                <local:HistogramWindow />
+            </TabItem>
+
+            <!-- 10. Help -->
             <TabItem Header="Help" Style="{StaticResource TabItemStyle}">
                 <Grid Style="{StaticResource PageGridStyle}">
                     <Grid.RowDefinitions>
@@ -752,9 +782,10 @@
         </TabControl>
 
         <!--Notifications - separate grid with column definitions to skip tab sidebar-->
+        <!--CHANGED: ColumnDefinition Width 165->220 to match updated tab width-->
         <Grid Grid.Row="1" Margin="1,-10,0,0">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="165" />
+                <ColumnDefinition Width="220" />
                 <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
 

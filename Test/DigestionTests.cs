@@ -233,8 +233,6 @@ namespace Test
                 param.TreatModifiedPeptidesAsDifferent = false;
                 param.OutputFolder = subFolder;
 
-                var t = ProteaseDictionary.Dictionary;
-                var name = ProteaseDictionary.NormalizeProteaseName("trypsin (cleave before proline)");
                 DigestionParams trypsin = new DigestionParams(
                     protease: "trypsin|P",
                     maxMissedCleavages: 0,
@@ -274,7 +272,8 @@ namespace Test
                 string databasePath1 = Path.Combine(TestContext.CurrentContext.TestDirectory, "Databases", "ProteaseModTest.fasta");
                 DbForDigestion database1 = new DbForDigestion(databasePath1);
 
-                var protDic = ProteaseDictionary.LoadProteaseDictionary(Path.Combine(GlobalVariables.DataDir, @"ProteolyticDigestion", @"proteases.tsv"), GlobalVariables.ProteaseMods);
+                // Proteases come from mzLib's embedded resource via ProteaseDictionary.Dictionary.
+                var protDic = ProteaseDictionary.Dictionary;
 
                 RunParameters param = new RunParameters();
                 param.TreatModifiedPeptidesAsDifferent = false;
