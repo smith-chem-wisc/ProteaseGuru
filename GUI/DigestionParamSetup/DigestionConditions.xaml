@@ -165,7 +165,7 @@
                 <ItemsControl ItemsSource="{Binding ProteaseSpecificParameters}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
-                            <local:ProteaseSpecificDigestionControl />
+                            <local:ProteaseSpecificDigestionControl DisplayMode="{x:Static local:ProteaseDisplayMode.Full}" />
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>

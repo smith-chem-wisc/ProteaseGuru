@@ -751,75 +751,9 @@ namespace Tasks
                 }
             }
 
-            // Write digestion conditions
-            List<string> parameters = new();
-
-            // write shared parameters for all digestions to a text file in the output folder
-            parameters.Add("Digestion Conditions:");
-            parameters.Add("Database: " + string.Join(',', peptideByFile.Keys));
-            parameters.Add("Treat modified peptides as different peptides: " + userParams.TreatModifiedPeptidesAsDifferent);
-            parameters.Add("Min Peptide Mass: " + userParams.MinPeptideMassAllowed);
-            parameters.Add("Max Peptide Mass: " + userParams.MaxPeptideMassAllowed);
-
-            // Extract Values from each digestion parameter
-            List<string>? proteases = [];
-            List<int>? missedCleavages = [];
-            List<int>? minLength = [];
-            List<int>? maxLength = [];
-
-            foreach (var specific in userParams.ProteaseSpecificParameters)
-            {
-                proteases.Add(specific.DigestionAgentName);
-                missedCleavages.Add(specific.DigestionParams.MaxMissedCleavages);
-                minLength.Add(specific.DigestionParams.MinLength);
-                maxLength.Add(specific.DigestionParams.MaxLength);
-            }
-
-            // If all share the same value, add that to the shared section
-            if (missedCleavages.Distinct().Count() == 1)
-            {
-                parameters.Add("Missed Cleavages: " + missedCleavages.First());
-                missedCleavages = null;
-            }
-
-            if (minLength.Distinct().Count() == 1)
-            {
-                parameters.Add("Min Peptide Length: " + minLength.First());
-                minLength = null;
-            }
-
-            if (maxLength.Distinct().Count() == 1)
-            {
-                parameters.Add("Max Peptide Length: " + maxLength.First());
-                maxLength = null;
-            }
-
-            if (missedCleavages is null && minLength is null && maxLength is null)
-            {
-                parameters.Add("Proteases: " + string.Join(", ", proteases));
-            }
-            else
-            {
-                for (int i = 0; i < userParams.ProteaseSpecificParameters.Count; i++)
-                {
-                    List<string> specificParams = new();
-                    if (missedCleavages is not null)
-                    {
-                        specificParams.Add("Missed Cleavages: " + missedCleavages[i]);
-                    }
-                    if (minLength is not null)
-                    {
-                        specificParams.Add("Min Peptide Length: " + minLength[i]);
-                    }
-                    if (maxLength is not null)
-                    {
-                        specificParams.Add("Max Peptide Length: " + maxLength[i]);
-                    }
-                    parameters.Add(proteases[i] + ": " + string.Join("\n\t", specificParams));
-                }
-            }
-
-            File.WriteAllLines(filePath + @"\DigestionConditions.txt", parameters);
+            // Write digestion parameters to TOML file
+            string tomlPath = Path.Combine(filePath, "DigestionParameters.toml");
+            RunParameters.ToToml(userParams, tomlPath);
         }
 
         #endregion

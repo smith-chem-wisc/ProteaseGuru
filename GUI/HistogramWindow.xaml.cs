@@ -244,12 +244,10 @@ namespace GUI
             var fileDirectory = UserParams.OutputFolder;
             var fileName = String.Concat(plotName[1],"_HistogramDataTable", ".csv");
             File.WriteAllText(Path.Combine(fileDirectory, fileName), dataTable);            
-            string message = "Data table Created at " + Path.Combine(fileDirectory, fileName) + "! Would you like to copy the file path?";
-            var messageBox = MessageBox.Show(message, "", MessageBoxButton.YesNo);
-            if (messageBox == MessageBoxResult.Yes)
-            {
-                Clipboard.SetText(Path.Combine(fileDirectory, fileName));
-            }
+            
+            NotificationService.Instance.AddNotification($"Data table created at {Path.Combine(fileDirectory, fileName)}!", NotificationType.Success);
+            Clipboard.SetText(Path.Combine(fileDirectory, fileName));
+            NotificationService.Instance.AddNotification("File path copied to clipboard.", NotificationType.Information);
 
             Dictionary<string, IEnumerable<double>> numbersByProtease = new();    // key is protease name, value is data from that protease
             Dictionary<string, Dictionary<string, int>> dictsByProtease = new();   // key is protease name, value is dictionary of bins and their counts
@@ -461,7 +459,7 @@ namespace GUI
 
             if (selectedItem == null)
             {
-                MessageBox.Show("Select a plot type to export!");
+                NotificationService.Instance.AddNotification("Select a plot type to export!", NotificationType.Warning);
                 return;
             }
 
@@ -485,12 +483,10 @@ namespace GUI
     
             plotViewStat.Width = tmpW;
             plotViewStat.Height = tmpH;
-            string message = "PDF Created at " + Path.Combine(fileDirectory, fileName) + "! Would you like to copy the file path?";
-            var messageBox = MessageBox.Show(message, "", MessageBoxButton.YesNo);
-            if (messageBox == MessageBoxResult.Yes)
-            {
-                Clipboard.SetText(Path.Combine(fileDirectory, fileName));
-            }            
+            
+            NotificationService.Instance.AddNotification($"PDF created at {Path.Combine(fileDirectory, fileName)}!", NotificationType.Success);
+            Clipboard.SetText(Path.Combine(fileDirectory, fileName));
+            NotificationService.Instance.AddNotification("File path copied to clipboard.", NotificationType.Information);
         }
        
     }

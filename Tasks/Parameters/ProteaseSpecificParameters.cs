@@ -6,7 +6,7 @@ using Proteomics.ProteolyticDigestion;
 namespace Tasks;
 
 [TreatAsInlineTable]
-public class ProteaseSpecificParameters
+public class ProteaseSpecificParameters : IEquatable<ProteaseSpecificParameters>
 {
     public ProteaseSpecificParameters()
     {
@@ -30,4 +30,29 @@ public class ProteaseSpecificParameters
     public List<Modification> VariableMods { get; set; }
 
     public ProteaseSpecificParameters Clone() => new(DigestionParams.Clone(), [..FixedMods], [..VariableMods]);
+
+    public bool Equals(ProteaseSpecificParameters? other)
+    {
+        if (other is null) return false;
+        if (ReferenceEquals(this, other)) return true;
+        return DigestionParams.MinLength == other.DigestionParams.MinLength
+            && DigestionParams.MaxLength == other.DigestionParams.MaxLength
+            && DigestionParams.DigestionAgent.Name == other.DigestionParams.DigestionAgent.Name
+            && DigestionParams.MaxMissedCleavages == other.DigestionParams.MaxMissedCleavages
+            && FixedMods.SequenceEqual(other.FixedMods)
+            && VariableMods.SequenceEqual(other.VariableMods);
+    }
+
+    public override bool Equals(object? obj)
+    {
+        if (obj is null) return false;
+        if (ReferenceEquals(this, obj)) return true;
+        if (obj.GetType() != GetType()) return false;
+        return Equals((ProteaseSpecificParameters)obj);
+    }
+
+    public override int GetHashCode()
+    {
+        return HashCode.Combine(DigestionParams.MinLength, DigestionParams.MaxLength, DigestionParams.DigestionAgent.Name, DigestionParams.MaxMissedCleavages, FixedMods, VariableMods);
+    }
 }

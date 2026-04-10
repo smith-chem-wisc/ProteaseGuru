@@ -64,11 +64,6 @@ namespace GUI
                 handler(this, new PropertyChangedEventArgs(propertyName));
             }
         }
-
-        public bool MessageShow = true;
-
-        
-
         public PlotModelStat(string plotName, List<string> dbSelected, Dictionary<string, Dictionary<string, Dictionary<IBioPolymer, List<InSilicoPep>>>> peptideByFile, RunParameters userParams, Dictionary<string, Dictionary<IBioPolymer, (double, double)>> sequenceCoverageByProtease)
         {
             privateModel = new PlotModel { Title = (string)ProteinRnaTerminologyConverter.Instance.Convert(plotName, GetType(), null, CultureInfo.InvariantCulture), DefaultFontSize = 12 };
@@ -86,6 +81,7 @@ namespace GUI
 
             if (dbSelected.Count > 1)
             {
+                NotificationService.Instance.AddNotification("Note: More than one protein database has been selected. Unique peptides are defined as being unique to a single protein in all selected databases.", NotificationType.Information);
 
                 List<InSilicoPep> allPeptides = new();
 
@@ -275,6 +271,7 @@ namespace GUI
             }
             else
             {
+                NotificationService.Instance.AddNotification("Note: One protein database has been selected. Unique peptides are defined as being unique to a single protein in this database.", NotificationType.Information);
                 databasePeptides = peptideByFile[dbSelected.FirstOrDefault()];
                 SequenceCoverageByProtease_Return = CalculateProteinSequenceCoverage(databasePeptides);
             }

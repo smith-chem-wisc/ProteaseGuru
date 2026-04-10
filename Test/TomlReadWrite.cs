@@ -86,6 +86,8 @@ public class TomlReadWrite
 
         var globalParams = new GlobalParameters()
         {
+            AskAboutSettingsChangeOnClose = false,
+            OverwriteSettingsWithoutAsking = true
             IsRnaMode = true,
             DefaultParameters = original
         };
@@ -113,6 +115,8 @@ public class TomlReadWrite
         }
 
         Assert.That(deserialized.IsRnaMode, Is.EqualTo(globalParams.IsRnaMode));
+        Assert.That(deserialized.AskAboutSettingsChangeOnClose, Is.EqualTo(globalParams.AskAboutSettingsChangeOnClose));
+        Assert.That(deserialized.OverwriteSettingsWithoutAsking, Is.EqualTo(globalParams.OverwriteSettingsWithoutAsking));
 
         File.Delete(path);
     }

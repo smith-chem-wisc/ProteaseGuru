@@ -41,6 +41,58 @@ public class DigestionConditionsSetupViewModel : BaseViewModel
         SetDefaultProteasesCommand = new RelayCommand(SetDefaultProteases);
         ClearProteasesCommand = new RelayCommand(ClearProteases);
         ResetDigestionConditionsCommand = new RelayCommand(ResetDigestionConditions);
+
+
+        // Initialize local fields with current parameter values
+        LoadFromParameters();
+    }
+
+    /// <summary>
+    /// Loads current values from the underlying RunParameters into local fields.
+    /// Called when loading a new parameters file.
+    /// </summary>
+    public void LoadFromParameters(RunParameters? runParams = null)
+    {
+        if (runParams is not null)
+            _parameters = runParams;
+
+        _treatModifiedPeptidesAsDifferent = _parameters.TreatModifiedPeptidesAsDifferent;
+
+        // Load values from first protease if any exist
+        if (_parameters.ProteaseSpecificParameters.Any())
+        {
+            var firstProtease = _parameters.ProteaseSpecificParameters.First();
+            _maxMissedCleavages = firstProtease.DigestionParams.MaxMissedCleavages;
+            _minLength = firstProtease.DigestionParams.MinLength;
+            _maxLength = firstProtease.DigestionParams.MaxLength;
+        }
+
+        foreach (var specificParams in ProteaseSpecificParameters)
+        {
+            var matchingParams = _parameters.ProteaseSpecificParameters.FirstOrDefault(p => p.DigestionParams.DigestionAgent.Name == specificParams.DigestionAgentName);
+            if (matchingParams != null)
+            {
+                specificParams.MaxMissedCleavages = matchingParams.DigestionParams.MaxMissedCleavages;
+                specificParams.MinLength = matchingParams.DigestionParams.MinLength;
+                specificParams.MaxLength = matchingParams.DigestionParams.MaxLength;
+                specificParams.IsSelected = true;
+            }
+            else
+            {
+                specificParams.MaxMissedCleavages = _maxMissedCleavages;
+                specificParams.MinLength = _minLength;
+                specificParams.MaxLength = _maxLength;
+                specificParams.IsSelected = false;
+            }
+        }
+
+        // Refresh UI
+        OnPropertyChanged(nameof(MaxMissedCleavages));
+        OnPropertyChanged(nameof(MinLength));
+        OnPropertyChanged(nameof(MaxLength));
+        OnPropertyChanged(nameof(MinPeptideMass));
+        OnPropertyChanged(nameof(MaxPeptideMass));
+        OnPropertyChanged(nameof(TreatModifiedPeptidesAsDifferent));
     }
 
     #region Properties to Set AllSpecificParameters
@@ -172,7 +224,7 @@ public class DigestionConditionsSetupViewModel : BaseViewModel
     public ICommand ClearProteasesCommand { get; }
     public ICommand ResetDigestionConditionsCommand { get; }
 
-    private string[] _defaultProteases = ["Arg-C", "Arg-N", "chymotrypsin (don't cleave before proline)", "Glu-C", "Glu-C (with asp)", "Lys-N"];
+    private string[] _defaultProteases = ["trypsin|P", "Lys-C|P", "Asp-N", "Glu-C", "chymotrypsin|P", "Arg-C"];
     private string[] _defaultRnases = ["RNase T1", "RNase_MC1", "Cusativin"];
 
     private void SetDefaultProteases()
@@ -222,31 +274,59 @@ public class DigestionConditionsSetupViewModel : BaseViewModel
             specificParametersViewModel.MaxLength = MaxLength;
             specificParametersViewModel.IsSelected = false;
         }
-        
+
         ClearProteases();
     }
 
 
     #endregion
 
+    // Proteases ProteaseGuru exposes in its UI — exactly the entries from mzLib's
+    // embedded ProteaseDictionary that represent real digestive enzymes.
+    // Utility/test entries (non-specific, top-down, singleN, singleC, peptidomics,
+    // tryptophan oxidation, CNBr_old, CNBr_N, StcE-trypsin, ProAlanase, elastase|P)
+    // are excluded.
+    private static readonly HashSet<string> _allowedProteases = new(StringComparer.Ordinal)
+    {
+        "Arg-C",
+        "Asp-N",
+        "chymotrypsin|P",
+        "CNBr",
+        "Glu-C",
+        "Glu-C (with asp)",
+        "Lys-C|P",
+        "Lys-N",
+        "trypsin",
+        "trypsin|P",
+        "collagenase",
+    };
+
     public void PopulateProteaseCollection()
     {
-        string proteaseDirectory = System.IO.Path.Combine(GlobalVariables.DataDir, @"ProteolyticDigestion");
-        string proteaseFilePath = System.IO.Path.Combine(proteaseDirectory, @"proteases.tsv");
-        Dictionary<string, Protease> dict = ProteaseDictionary.LoadProteaseDictionary(proteaseFilePath, GlobalVariables.ProteaseMods);
-
-        foreach (var protease in dict)
+        var dict = ProteaseDictionary.Dictionary;
+        // Show the curated mzLib proteases plus any proteases the user has added at runtime.
+        foreach (var protease in dict.Where(kvp =>
+            _allowedProteases.Contains(kvp.Key) ||
+            GlobalVariables.UserAddedProteaseNames.Contains(kvp.Key)))
         {
             ProteaseSpecificParametersViewModel? current = ProteaseSpecificParameters.FirstOrDefault(p => p.DigestionAgentName == protease.Value.Name);
+
+            bool shouldSelect = _parameters.ProteaseSpecificParameters.Any(p => p.DigestionParams.DigestionAgent.Name == protease.Value.Name);
 
             if (current == null)
             {
                 var newDig = new DigestionParams(protease.Key, MaxMissedCleavages, MinLength, MaxLength);
                 var newParams = new ProteaseSpecificParameters(newDig, null, null);
-                var newParamsVM = new ProteaseSpecificParametersViewModel(newParams, this);
+                var newParamsVM = new ProteaseSpecificParametersViewModel(newParams, this)
+                {
+                    IsSelected = shouldSelect
+                };
                 ProteaseSpecificParameters.Add(newParamsVM);
             }
-        }
+            else
+            {
+                current.IsSelected = shouldSelect;
+            }
 
         foreach (var rnase in RnaseDictionary.Dictionary)
         {

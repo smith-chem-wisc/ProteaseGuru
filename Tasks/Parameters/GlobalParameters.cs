@@ -1,6 +1,9 @@
 namespace Tasks;
 public class GlobalParameters : ParameterBaseClass<GlobalParameters>, IEquatable<GlobalParameters>
 {
+    public RunParameters RunParameters { get; set; } = new();
+    public bool AskAboutSettingsChangeOnClose { get; set; } = true;
+    public bool OverwriteSettingsWithoutAsking { get; set; } = false;
     public static string DefaultGlobalParametersFilePath => Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "GlobalParameters.toml");
 
     public bool IsRnaMode { get; set; } = false;
