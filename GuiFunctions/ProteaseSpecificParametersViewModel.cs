@@ -1,3 +1,4 @@
+using Engine;
 using Omics.Digestion;
 using Tasks;
 using Transcriptomics.Digestion;
@@ -27,7 +28,7 @@ public class ProteaseSpecificParametersViewModel : BaseViewModel
     public bool IsRna => ProteaseSpecificParams.DigestionParams.DigestionAgent is Rnase;
     public string DigestionAgentName => ProteaseSpecificParams.DigestionParams.DigestionAgent.Name;
     public DigestionAgent DigestionAgent => ProteaseSpecificParams.DigestionParams.DigestionAgent;
-    public string ToolTip => ProteaseSpecificParams.DigestionParams.DigestionAgent.Name + " -- Cleavage specificity:  " + string.Join(",", DigestionAgent.DigestionMotifs.Select(p => p).ToString());
+    public string ToolTip => ProteaseSpecificParams.DigestionParams.DigestionAgent.Name + " -- Cleavage specificity:  " + DigestionAgent.DigestionMotifs.ToMotifString();
 
     public bool IsSelected
     {
