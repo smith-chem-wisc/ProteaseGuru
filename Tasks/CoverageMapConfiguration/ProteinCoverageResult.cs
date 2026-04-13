@@ -76,7 +76,7 @@ namespace Tasks.CoverageMapConfiguration
         {
             return SharedPeptides
                 .GroupBy(p => p.Protease)
-                .ToDictionary(g => g.Key, g => g.ToHashSet().Count);
+                .ToDictionary(g => g.Key, g => g.Count());
         }
 
         /// <summary>
@@ -89,7 +89,7 @@ namespace Tasks.CoverageMapConfiguration
             return UniquePeptides
                 .Where(p => p.PflyDetectability == true)
                 .GroupBy(p => p.Protease)
-                .ToDictionary(g => g.Key, g => g.ToHashSet().Count);
+                .ToDictionary(g => g.Key, g => g.Count());
         }
 
         /// <summary>
@@ -102,7 +102,7 @@ namespace Tasks.CoverageMapConfiguration
             return SharedPeptides
                 .Where(p => p.PflyDetectability == true)
                 .GroupBy(p => p.Protease)
-                .ToDictionary(g => g.Key, g => g.ToHashSet().Count);
+                .ToDictionary(g => g.Key, g => g.Count());
         }
 
         #endregion

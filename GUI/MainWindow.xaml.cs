@@ -724,9 +724,9 @@ namespace GUI
                         {
                             chronologerRetentionTime = Convert.ToDouble(info[17]);
                         }
-                        if (info.Length > 18 && info[18].IsNotNullOrEmpty())
+                        if (info.Length > 18 && bool.TryParse(info[18], out bool parsedDetectability))
                         {
-                            pflyDetectability = Convert.ToBoolean(info[18]);
+                            pflyDetectability = parsedDetectability;
                         }
 
                         InSilicoPep pep = new InSilicoPep(baseSeq, fullSeq, previousAA, nextAA, unique, hydrophobicity, electrophoreticMobility,

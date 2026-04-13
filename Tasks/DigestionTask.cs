@@ -48,7 +48,6 @@ namespace Tasks
         public Dictionary<string, Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>>? PeptideByFile;
         public static Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>? AllPeptidesByProtease;
         public Dictionary<string, Dictionary<Protein, (double, double)>> SequenceCoverageByProtease = new();
-        public Dictionary<string, Dictionary<Protein, (double, double)>> SequenceCoverageByProteaseFromDetectablePeptides = new();
 
         #endregion
 
@@ -117,18 +116,6 @@ namespace Tasks
                 Status("Writing Peptide Output...", "peptides");
                 WritePeptidesToTsv(PeptideByFile, OutputFolder, DigestionParameters);
                 SequenceCoverageByProtease = CalculateProteinSequenceCoverage(PeptideByFile);
-                SequenceCoverageByProteaseFromDetectablePeptides = CalculateProteinSequenceCoverage(
-                    PeptideByFile.ToDictionary(
-                        db => db.Key,
-                        db => db.Value.ToDictionary(
-                            protease => protease.Key,
-                            protease => protease.Value.ToDictionary(
-                                protein => protein.Key,
-                                protein => protein.Value.Where(peptide => peptide.PflyDetectability == true).ToList()
-                            )
-                        )
-                    )
-                );
                 MyTaskResults myRunResults = new MyTaskResults(this);
                 Status("Writing Results Summary...", "summary");
 
@@ -413,12 +400,13 @@ namespace Tasks
 
         private bool?[] BatchCalculateDetectabilitiesPfly(List<PeptideWithSetModifications> peptides)
         {
+            if (peptides.Count == 0) return new bool?[0];
+
             var inputs = peptides.Select(p => new DetectabilityPredictionInput(p.FullSequence)).ToList();
             var model = new PFly2024FineTuned();
             List<PeptideDetectabilityPrediction> results = model.Predict(inputs);
             var predictedDetectability = results.Select(r => r.DetectabilityProbabilities.HasValue ? r.DetectabilityProbabilities.Value.NotDetectable < 0.5 : (bool?)null).ToArray();
             return predictedDetectability;
-
         }
 
         /// <summary>

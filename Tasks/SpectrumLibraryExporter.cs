@@ -152,13 +152,17 @@ public static class SpectrumLibraryExporter
         var hcdModel = new Prosit2020IntensityHCD();
         _ = await Task.Run(() => hcdModel.Predict(hcdModelInputs), cancellationToken);
 
-        if (!hcdModel.ValidInputsMask.Any())
+        var mask = hcdModel.ValidInputsMask.ToList();
+        int validCount = mask.Count(b => b);
+        int invalidCount = mask.Count - validCount;
+
+        if (validCount == 0)
             throw new InvalidOperationException(
                 "All peptide/charge combinations were rejected by Prosit_2020_intensity_HCD.");
 
         progress?.Report(
-            $"HCD prediction complete: {hcdModel.ValidInputsMask.Count(b => b)} spectra generated. " +
-            $"{hcdModel.ValidInputsMask.Count(b => !b)} invalid inputs were skipped. " +
+            $"HCD prediction complete: {validCount} spectra generated. " +
+            $"{invalidCount} invalid inputs were skipped. " +
             $"Writing spectral library to {outputPath}…");
         cancellationToken.ThrowIfCancellationRequested();
 
@@ -166,7 +170,7 @@ public static class SpectrumLibraryExporter
         if (duplicatesWarning != null)
             progress?.Report($"Library note: {duplicatesWarning.Message}");
 
-        progress?.Report($"Done. {hcdModel.ValidInputsMask.Count(b => b)} spectra written to: {outputPath}");
+        progress?.Report($"Done. {validCount} spectra written to: {outputPath}");
 
         return outputPath;
     }
