@@ -659,7 +659,7 @@ namespace GUI
                     if (dict.ContainsKey(proteaseName))
                     {
                         IDigestionParams digestionParams;
-                        if (GlobalVariables.AnalyteType == AnalyteType.Oligo)
+                        if (GuiGlobalParamsViewModel.Instance.IsRnaMode)
                             digestionParams = new RnaDigestionParams(
                                 rnase: proteaseName,
                                 maxMissedCleavages: missedCleavages,

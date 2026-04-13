@@ -138,6 +138,15 @@ namespace GUI
             ProteaseOptionsItemsControl.ItemsSource = _allProteaseVm.ProteaseSpecificParameters;
             foreach (var vm in _allProteaseVm.ProteaseSpecificParameters)
                 vm.PropertyChanged += OnProteaseParameterChanged;
+
+            // When mode switches, deselect all wrong-mode entries and refresh the map
+            GuiGlobalParamsViewModel.Instance.PropertyChanged += (s, e) =>
+            {
+                if (e.PropertyName != nameof(GuiGlobalParamsViewModel.IsRnaMode)) return;
+                foreach (var vm in _allProteaseVm.ProteaseSpecificParameters.Where(p => !p.IsVisible))
+                    vm.IsSelected = false;
+                RefreshMaxCoverage();
+            };
         }
 
         private void SetUpProteinsForTreeView()
@@ -225,7 +234,7 @@ namespace GUI
             if (SelectedProtein == null) return;
 
             var checkedProteases = _allProteaseVm.ProteaseSpecificParameters
-                .Where(vm => vm.IsSelected)
+                .Where(vm => vm.IsSelected && vm.IsVisible)
                 .ToList();
 
             maxCoverageMap.Children.Clear();
@@ -405,7 +414,7 @@ namespace GUI
             }
 
             var checkedProteases = _allProteaseVm.ProteaseSpecificParameters
-                .Where(vm => vm.IsSelected)
+                .Where(vm => vm.IsSelected && vm.IsVisible)
                 .ToList();
 
             if (checkedProteases.Count == 0)
@@ -506,10 +515,12 @@ namespace GUI
             foreach (var vm in _allProteaseVm.ProteaseSpecificParameters)
                 vm.PropertyChanged -= OnProteaseParameterChanged;
 
-            var trypsin = _allProteaseVm.ProteaseSpecificParameters
-                .FirstOrDefault(vm => vm.DigestionAgentName == "trypsin|P");
-            if (trypsin != null)
-                trypsin.IsSelected = true;
+            // Select a sensible default based on current mode
+            string defaultAgent = GuiGlobalParamsViewModel.Instance.IsRnaMode ? "RNase T1" : "trypsin|P";
+            var defaultVm = _allProteaseVm.ProteaseSpecificParameters
+                .FirstOrDefault(vm => vm.DigestionAgentName == defaultAgent);
+            if (defaultVm != null)
+                defaultVm.IsSelected = true;
 
             foreach (var vm in _allProteaseVm.ProteaseSpecificParameters)
                 vm.PropertyChanged += OnProteaseParameterChanged;

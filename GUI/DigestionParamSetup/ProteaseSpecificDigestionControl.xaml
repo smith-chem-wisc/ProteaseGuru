@@ -99,6 +99,7 @@
 
         <DataTemplate x:Key="CompactLayoutTemplate">
             <Border BorderBrush="{StaticResource BorderColor}" BorderThickness="1" 
+                    Visibility="{Binding IsVisible, Converter={StaticResource BoolToVisibilityConverter}}"
                     Background="{Binding IsSelected, Converter={StaticResource SelectedProteaseToBackgroundConverter}}"
                     Margin="5,2,5,2" Padding="4,3,4,4" CornerRadius="10">
                 <StackPanel Background="{Binding IsSelected, Converter={StaticResource SelectedProteaseToBackgroundConverter}}">
