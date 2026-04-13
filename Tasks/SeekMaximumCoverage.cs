@@ -1,6 +1,7 @@
 using Omics;
 using Proteomics;
 using Proteomics.ProteolyticDigestion;
+using Transcriptomics.Digestion;
 
 namespace Tasks;
 

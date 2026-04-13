@@ -26,6 +26,7 @@ using Omics.Modifications;
 using Proteomics;
 using Proteomics.ProteolyticDigestion;
 using Tasks;
+using Transcriptomics.Digestion;
 using UsefulProteomicsDatabases;
 using static Tasks.ProteaseGuruTask;
 
@@ -657,11 +658,19 @@ namespace GUI
                 {
                     if (dict.ContainsKey(proteaseName))
                     {
-                        DigestionParams digestionParams = new DigestionParams(
-                            protease: proteaseName,
-                            maxMissedCleavages: missedCleavages,
-                            minPeptideLength: minPeptideLength,
-                            maxPeptideLength: maxPeptideLength);
+                        IDigestionParams digestionParams;
+                        if (GlobalVariables.AnalyteType == AnalyteType.Oligo)
+                            digestionParams = new RnaDigestionParams(
+                                rnase: proteaseName,
+                                maxMissedCleavages: missedCleavages,
+                                minLength: minPeptideLength,
+                                maxLength: maxPeptideLength);
+                        else
+                            digestionParams = new DigestionParams(
+                                protease: proteaseName,
+                                maxMissedCleavages: missedCleavages,
+                                minPeptideLength: minPeptideLength,
+                                maxPeptideLength: maxPeptideLength);
 
                         loadedParams.ProteaseSpecificParameters.Add(
                             new ProteaseSpecificParameters(digestionParams));
