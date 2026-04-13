@@ -160,15 +160,14 @@ namespace GUI
                             }
                             catch (Exception ee)
                             {
-                                MessageBox.Show(ee.ToString());
-                                GuiWarnHandler(null, new StringEventArgs("Cannot parse modification info from: " + draggedFilePath, null));
+                                NotificationService.Instance.AddNotification($"Cannot parse modification info from: {draggedFilePath}. Error: {ee.Message}", NotificationType.Error);
                                 ProteinDbObservableCollection.Remove(uu);
                             }
                         }
                     }
                     break;
                 default:
-                    GuiWarnHandler(null, new StringEventArgs("Unrecognized file type: " + theExtension, null));
+                    GuiWarnHandler(null, new Engine.StringEventArgs("Unrecognized file type: " + theExtension, null));
                     break;
             }
         }
@@ -205,8 +204,7 @@ namespace GUI
                             }
                             catch (Exception ee)
                             {
-                                MessageBox.Show(ee.ToString());
-                                GuiWarnHandler(null, new StringEventArgs("Cannot parse modification info from: " + draggedFilePath, null));
+                                NotificationService.Instance.AddNotification($"Cannot parse modification info from: {draggedFilePath}. Error: {ee.Message}", NotificationType.Error);
                                 ReloadProteinDbObservableCollection.Remove(uu);
                             }
                         }
@@ -227,7 +225,7 @@ namespace GUI
                     }
                     break;
                 default:
-                    GuiWarnHandler(null, new StringEventArgs("Unrecognized file type: " + theExtension, null));
+                    GuiWarnHandler(null, new Engine.StringEventArgs("Unrecognized file type: " + theExtension, null));
                     break;
             }
         }
@@ -270,16 +268,20 @@ namespace GUI
             // print any error messages reading the mods to the notifications area
             foreach (var error in GlobalVariables.ErrorsReadingMods)
             {
-                GuiWarnHandler(null, new StringEventArgs(error, null));
+                GuiWarnHandler(null, new Engine.StringEventArgs(error, null));
             }
             GlobalVariables.ErrorsReadingMods.Clear();
         }
 
-        private void GuiWarnHandler(object sender, StringEventArgs e)
+        private void GuiWarnHandler(object sender, Engine.StringEventArgs e)
         {
             if (!Dispatcher.CheckAccess())
             {
                 Dispatcher.BeginInvoke(new Action(() => GuiWarnHandler(sender, e)));
+            }
+            else
+            {
+                NotificationService.Instance.AddNotification(e.S, NotificationType.Warning);
             }
         }
 
@@ -321,7 +323,7 @@ namespace GUI
                 }
                 catch (Exception ex)
                 {
-                    GuiWarnHandler(null, new StringEventArgs("Error opening directory: " + ex.Message, null));
+                    GuiWarnHandler(null, new Engine.StringEventArgs("Error opening directory: " + ex.Message, null));
                 }
             }
 
@@ -338,7 +340,7 @@ namespace GUI
             else
             {
                 // this should only happen if the file path is empty or something unexpected happened
-                GuiWarnHandler(null, new StringEventArgs("Output folder does not exist", null));
+                GuiWarnHandler(null, new Engine.StringEventArgs("Output folder does not exist", null));
             }
         }
 
@@ -736,7 +738,7 @@ namespace GUI
                 foreach (var db in ReloadProteinDbObservableCollection)
                 {
                     var dbName = db.FileName;
-                    var proteinsFromDb = LoadProteins(new DbForDigestion(db.FilePath));
+                    var proteinsFromDb = new DigestionTask().LoadBioPolymers(db.FilePath);
                     var proteaseParams = loadedParams.ProteaseSpecificParameters;
 
                     Dictionary<IBioPolymer, List<InSilicoPep>> proteinDic = new();
@@ -926,16 +928,16 @@ namespace GUI
                 return;
             }
 
-            var allProteins = new List<Protein>();
+            var allProteins = new List<IBioPolymer>();
             foreach (var db in ProteinDbObservableCollection)
             {
                 try
                 {
-                    allProteins.AddRange(LoadProteins(new DbForDigestion(db.FilePath)));
+                    allProteins.AddRange(new DigestionTask().LoadBioPolymers(db.FilePath));
                 }
                 catch (Exception ex)
                 {
-                    GuiWarnHandler(null, new StringEventArgs($"Error loading proteins from {db.FilePath}: {ex.Message}", null));
+                    GuiWarnHandler(null, new Engine.StringEventArgs($"Error loading proteins from {db.FilePath}: {ex.Message}", null));
                 }
             }
 
@@ -944,39 +946,7 @@ namespace GUI
                 fastaPath: ProteinDbObservableCollection.First().FilePath);
         }
 
-        protected List<Protein> LoadProteins(DbForDigestion database)
-        {
-            List<string> dbErrors = new();
-            List<Protein> proteinList = new();
-
-            string theExtension = System.IO.Path.GetExtension(database.FilePath).ToLowerInvariant();
-            bool compressed = theExtension.EndsWith("gz"); // allows for .bgz and .tgz, too which are used on occasion
-            theExtension = compressed ? System.IO.Path.GetExtension(System.IO.Path.GetFileNameWithoutExtension(database.FilePath)).ToLowerInvariant() : theExtension;
-
-            if (theExtension.Equals(".fasta") || theExtension.Equals(".fa"))
-            {
-                proteinList = ProteinDbLoader.LoadProteinFasta(database.FilePath, true, DecoyType.None, false, out dbErrors, ProteinDbLoader.UniprotAccessionRegex,
-                    ProteinDbLoader.UniprotFullNameRegex, ProteinDbLoader.UniprotFullNameRegex, ProteinDbLoader.UniprotGeneNameRegex,
-                    ProteinDbLoader.UniprotOrganismRegex, -1);
-
-                return proteinList;
-
-
-            }
-            else
-            {
-                List<string> modTypesToExclude = new() { };
-                proteinList = ProteinDbLoader.LoadProteinXML(database.FilePath, true, DecoyType.None, GlobalVariables.AllModsKnown, false, modTypesToExclude,
-                    out Dictionary<string, Modification> um, -1, 4, 1);
-
-                return proteinList;
-
-            }
-
-
-        }
-
-        private void NewoutLabelStatus(object sender, StringEventArgs s)
+        private void NewoutLabelStatus(object sender, Engine.StringEventArgs s)
         {
             if (!Dispatcher.CheckAccess())
             {

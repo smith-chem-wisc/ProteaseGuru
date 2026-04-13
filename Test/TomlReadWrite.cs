@@ -87,7 +87,7 @@ public class TomlReadWrite
         var globalParams = new GlobalParameters()
         {
             AskAboutSettingsChangeOnClose = false,
-            OverwriteSettingsWithoutAsking = true
+            OverwriteSettingsWithoutAsking = true,
             IsRnaMode = true,
             DefaultParameters = original
         };

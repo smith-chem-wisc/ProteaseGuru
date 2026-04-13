@@ -1,9 +1,10 @@
+using System.Text.RegularExpressions;
+using Omics;
 using Omics.Modifications;
+using PredictionClients.Koina.SupportedModels.FragmentIntensityModels;
+using PredictionClients.Koina.SupportedModels.RetentionTimeModels;
 using Proteomics;
 using Proteomics.ProteolyticDigestion;
-using PredictionClients.Koina.SupportedModels.RetentionTimeModels;
-using PredictionClients.Koina.SupportedModels.FragmentIntensityModels;
-using System.Text.RegularExpressions;
 
 namespace Tasks;
 
@@ -65,7 +66,7 @@ public static class SpectrumLibraryExporter
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>Full path of the written .msp file.</returns>
     public static async Task<string> ExportAsync(
-        Protein protein,
+        IBioPolymer protein,
         IEnumerable<ProteaseSpecificParameters> proteaseParams,
         IReadOnlyList<int> chargeStates,
         int nce,
@@ -220,7 +221,7 @@ public static class SpectrumLibraryExporter
     /// Prosit2019iRT and Prosit2020IntensityHCD constructors.
     /// </summary>
     private static List<string> DigestToUniqueMzLibSequences(
-        Protein protein,
+        IBioPolymer protein,
         IEnumerable<ProteaseSpecificParameters> proteaseParams)
     {
         var seen = new HashSet<string>(StringComparer.Ordinal);
@@ -266,7 +267,7 @@ public static class SpectrumLibraryExporter
     // Output-path helper
     // ═════════════════════════════════════════════════════════════════════════
 
-    private static string BuildOutputPath(Protein protein, string? fastaPath)
+    private static string BuildOutputPath(IBioPolymer protein, string? fastaPath)
     {
         string dir;
         if (!string.IsNullOrWhiteSpace(fastaPath) && File.Exists(fastaPath))

@@ -4,10 +4,12 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using GuiFunctions;
+using Omics;
 using Proteomics;
 using Proteomics.ProteolyticDigestion;
 using Tasks;
 using Tasks.CoverageMapConfiguration;
+using Transcriptomics.Digestion;
 
 namespace GUI
 {
@@ -18,7 +20,7 @@ namespace GUI
         private readonly ProteinCoverageAnalyzer _analyzer;
         private ObservableCollection<string> proteinList;
         private ObservableCollection<string> filteredList;
-        private Dictionary<Protein, ProteinForTreeView> ProteinsForTreeView;
+        private Dictionary<IBioPolymer, ProteinForTreeView> ProteinsForTreeView;
         private Dictionary<string, SolidColorBrush> ModsByColor;
         private List<string> SelectedProteases;
         private ProteinForTreeView SelectedProtein;
@@ -42,20 +44,20 @@ namespace GUI
 
         public IndividualProteinAnalyzerWindow() { }
 
-        public IndividualProteinAnalyzerWindow(List<Protein> proteins, string? fastaPath = null)
+        public IndividualProteinAnalyzerWindow(List<IBioPolymer> proteins, string? fastaPath = null)
         {
             InitializeComponent();
             _fastaPath = fastaPath;
 
-            var emptyPeptideByFile = new Dictionary<string, Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>>();
-            var emptySeqCov = new Dictionary<string, Dictionary<Protein, (double, double)>>();
+            var emptyPeptideByFile = new Dictionary<string, Dictionary<string, Dictionary<IBioPolymer, List<InSilicoPep>>>>();
+            var emptySeqCov = new Dictionary<string, Dictionary<IBioPolymer, (double, double)>>();
             _analyzer = new ProteinCoverageAnalyzer(emptyPeptideByFile, emptySeqCov);
 
             SelectedProteases = new List<string>();
             SelectedProtein = null;
             proteinList = new ObservableCollection<string>();
             filteredList = new ObservableCollection<string>();
-            ProteinsForTreeView = new Dictionary<Protein, ProteinForTreeView>();
+            ProteinsForTreeView = new Dictionary<IBioPolymer, ProteinForTreeView>();
             ModsByColor = new Dictionary<string, SolidColorBrush>();
 
             (_stableProteaseColors, _stableProteaseBrushes) = SequenceCoverageMap.BuildStableColorMaps();
@@ -77,9 +79,9 @@ namespace GUI
         }
 
         public IndividualProteinAnalyzerWindow(
-            Dictionary<string, Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>> peptideByFile,
+            Dictionary<string, Dictionary<string, Dictionary<IBioPolymer, List<InSilicoPep>>>> peptideByFile,
             RunParameters userParams,
-            Dictionary<string, Dictionary<Protein, (double, double)>> sequenceCoverageByProtease,
+            Dictionary<string, Dictionary<IBioPolymer, (double, double)>> sequenceCoverageByProtease,
             string? fastaPath = null)
         {
             InitializeComponent();
@@ -91,7 +93,7 @@ namespace GUI
             SelectedProtein = null;
             proteinList = new ObservableCollection<string>();
             filteredList = new ObservableCollection<string>();
-            ProteinsForTreeView = new Dictionary<Protein, ProteinForTreeView>();
+            ProteinsForTreeView = new Dictionary<IBioPolymer, ProteinForTreeView>();
             ModsByColor = new Dictionary<string, SolidColorBrush>();
 
             (_stableProteaseColors, _stableProteaseBrushes) = SequenceCoverageMap.BuildStableColorMaps();
@@ -113,6 +115,11 @@ namespace GUI
         {
             int i = 0;
             foreach (var key in ProteaseDictionary.Dictionary.Keys)
+            {
+                if (key == proteaseName) return i;
+                i++;
+            }
+            foreach (var key in RnaseDictionary.Dictionary.Keys)
             {
                 if (key == proteaseName) return i;
                 i++;
@@ -270,7 +277,7 @@ namespace GUI
         }
 
         private Dictionary<string, List<(int Start, int End)>> BuildPeptidesByProtease(
-            Protein protein,
+            IBioPolymer protein,
             IEnumerable<ProteaseSpecificParameters> allParams)
         {
             return _seeker.GetDetectablePeptideIntervals(protein, allParams);
@@ -281,7 +288,7 @@ namespace GUI
         #region Max Coverage Map Drawing
 
         private void DrawMaxCoverageMap(
-            Protein protein,
+            IBioPolymer protein,
             SeekMaximumCoverage.CombinationResult result,
             Dictionary<string, List<(int Start, int End)>> pepsByProtease,
             List<string> orderedCheckedProteases)
@@ -293,7 +300,7 @@ namespace GUI
         }
 
         private void DrawLaneViewCoverageMap(
-            Protein protein,
+            IBioPolymer protein,
             SeekMaximumCoverage.CombinationResult result,
             Dictionary<string, List<(int Start, int End)>> pepsByProtease,
             List<string> orderedCheckedProteases)
@@ -321,7 +328,7 @@ namespace GUI
         }
 
         private void DrawPeptideViewCoverageMap(
-            Protein protein,
+            IBioPolymer protein,
             SeekMaximumCoverage.CombinationResult result,
             Dictionary<string, List<(int Start, int End)>> pepsByProtease,
             List<string> orderedCheckedProteases)

@@ -69,15 +69,6 @@ namespace GUI
             privateModel = new PlotModel { Title = (string)ProteinRnaTerminologyConverter.Instance.Convert(plotName, GetType(), null, CultureInfo.InvariantCulture), DefaultFontSize = 12 };
 
             Dictionary<string, Dictionary<IBioPolymer, List<InSilicoPep>>> databasePeptides = new();
-            // Show informational message about unique peptide definition (once per session)
-            if (MessageShow)
-            {
-                var message = dbSelected.Count > 1
-                    ? $"Note: More than one database was analyzed. Unique peptides are defined as being unique to a single {GlobalVariables.AnalyteType.GetUniqueFormLabel()} in all analyzed databases."
-                    : $"Note: One database was analyzed. Unique peptides are defined as being unique to a single {GlobalVariables.AnalyteType.GetUniqueFormLabel()} in the analyzed database.";
-                MessageBox.Show(message);
-                MessageShow = false;
-            }
 
             if (dbSelected.Count > 1)
             {

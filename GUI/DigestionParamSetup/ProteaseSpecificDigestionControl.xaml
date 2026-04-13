@@ -17,59 +17,81 @@
 
         <BooleanToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
         <local:SelectedProteaseToBackgroundConverter x:Key="SelectedProteaseToBackgroundConverter" />
+        <DataTemplate x:Key="FullLayoutTemplate">
+            <Border BorderBrush="{StaticResource BorderColor}" BorderThickness="1"
+                    Visibility="{Binding IsVisible, Converter={StaticResource BoolToVisibilityConverter}}"
+                    Background="{Binding IsSelected, Converter={StaticResource SelectedProteaseToBackgroundConverter}}"
+                    Margin="5,2,5,2" Padding="2" CornerRadius="10">
+                <Grid
+                    Background="{Binding IsSelected, Converter={StaticResource SelectedProteaseToBackgroundConverter}}">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
 
-    <Border BorderBrush="{StaticResource BorderColor}" BorderThickness="1"
-            Visibility="{Binding IsVisible, Converter={StaticResource BoolToVisibilityConverter}}"
-            Background="{Binding IsSelected, Converter={StaticResource SelectedProteaseToBackgroundConverter}}"
-            Margin="5,2,5,2" Padding="2" CornerRadius="10">
-        <Grid Background="{Binding IsSelected, Converter={StaticResource SelectedProteaseToBackgroundConverter}}">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="*"/>
-            </Grid.RowDefinitions>
-            
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="2*"/>
-                <ColumnDefinition Width="*"/>
-            </Grid.ColumnDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="2*" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
 
                     <!-- Header -->
                     <StackPanel Grid.Column="0" Grid.Row="0" Grid.ColumnSpan="2" Orientation="Horizontal">
                         <CheckBox IsChecked="{Binding IsSelected, Mode=TwoWay}"
-                                  VerticalAlignment="Center" Margin="0,0,5,0"/>
+                                  VerticalAlignment="Center" Margin="0,0,5,0" />
                         <TextBlock Text="{Binding DigestionAgentName}"
                                    Foreground="{StaticResource TextColor1}"
                                    FontWeight="Bold" FontSize="16"
                                    ToolTip="{Binding ToolTip}"
-                                   VerticalAlignment="Center"/>
+                                   VerticalAlignment="Center" />
                     </StackPanel>
 
                     <!-- Parameters Grid -->
                     <DockPanel Grid.Row="0" Grid.Column="1" Margin="0,5,0,0"
                                Background="{Binding IsSelected, Converter={StaticResource SelectedProteaseToBackgroundConverter}}"
-                          IsEnabled="{Binding IsSelected}">
+                               IsEnabled="{Binding IsSelected}">
                         <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
-                            <Grid Background="{Binding IsSelected, Converter={StaticResource SelectedProteaseToBackgroundConverter}}">
+                            <Grid
+                                Background="{Binding IsSelected, Converter={StaticResource SelectedProteaseToBackgroundConverter}}">
                                 <Grid.RowDefinitions>
-                                    <RowDefinition Height="Auto"/>
-                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
                                 </Grid.RowDefinitions>
                                 <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
-                                <TextBlock Grid.Row="0" Grid.Column="0" Text="min" FontSize="10" Foreground="{StaticResource TextColor1}" Margin="0 -6 0 0" HorizontalAlignment="Center"/>
-                                <TextBlock Grid.Row="0" Grid.Column="1" Text="-" FontSize="10" HorizontalAlignment="Center"/>
-                                <TextBlock Grid.Row="0" Grid.Column="2" Margin="0 -6 0 0" Text="max" FontSize="10" Foreground="{StaticResource TextColor1}" HorizontalAlignment="Center"/>
-                                <local:IntegerTextBoxControl Grid.Row="1" Grid.Column="0" Foreground="{StaticResource TextColor1}" Text="{Binding MinLength, UpdateSourceTrigger=PropertyChanged, Mode=TwoWay}" AllowNegative="False" Width="50" HorizontalAlignment="Left" Margin="0 -6 0 0" ToolTip="Minimum allowed peptide length"/>
-                                <TextBlock Grid.Row="1" Grid.Column="1" Foreground="{StaticResource TextColor1}" Text="-" FontSize="14" FontWeight="Bold" VerticalAlignment="Center" HorizontalAlignment="Center"/>
-                                <local:IntegerTextBoxControl Grid.Row="1" Grid.Column="2" Foreground="{StaticResource TextColor1}" Text="{Binding MaxLength, UpdateSourceTrigger=PropertyChanged, Mode=TwoWay}" Margin="0 -6 0 0" AllowNegative="False" Width="50" HorizontalAlignment="Left" ToolTip="Maximum allowed peptide length"/>
+                                <TextBlock Grid.Row="0" Grid.Column="0" Text="min" FontSize="10"
+                                           Foreground="{StaticResource TextColor1}" Margin="0 -6 0 0"
+                                           HorizontalAlignment="Center" />
+                                <TextBlock Grid.Row="0" Grid.Column="1" Text="-" FontSize="10"
+                                           HorizontalAlignment="Center" />
+                                <TextBlock Grid.Row="0" Grid.Column="2" Margin="0 -6 0 0" Text="max" FontSize="10"
+                                           Foreground="{StaticResource TextColor1}" HorizontalAlignment="Center" />
+                                <local:IntegerTextBoxControl Grid.Row="1" Grid.Column="0"
+                                                             Foreground="{StaticResource TextColor1}"
+                                                             Text="{Binding MinLength, UpdateSourceTrigger=PropertyChanged, Mode=TwoWay}"
+                                                             AllowNegative="False" Width="50"
+                                                             HorizontalAlignment="Left" Margin="0 -6 0 0"
+                                                             ToolTip="Minimum allowed peptide length" />
+                                <TextBlock Grid.Row="1" Grid.Column="1" Foreground="{StaticResource TextColor1}"
+                                           Text="-" FontSize="14" FontWeight="Bold" VerticalAlignment="Center"
+                                           HorizontalAlignment="Center" />
+                                <local:IntegerTextBoxControl Grid.Row="1" Grid.Column="2"
+                                                             Foreground="{StaticResource TextColor1}"
+                                                             Text="{Binding MaxLength, UpdateSourceTrigger=PropertyChanged, Mode=TwoWay}"
+                                                             Margin="0 -6 0 0" AllowNegative="False" Width="50"
+                                                             HorizontalAlignment="Left"
+                                                             ToolTip="Maximum allowed peptide length" />
                             </Grid>
                         </StackPanel>
                         <Label DockPanel.Dock="Right" Content="Length:" VerticalAlignment="Center" />
-                        <local:IntegerTextBoxControl DockPanel.Dock="Right" Text="{Binding MaxMissedCleavages, UpdateSourceTrigger=PropertyChanged, Mode=TwoWay}" AllowNegative="False" Width="50" HorizontalAlignment="Left" ToolTip="Maximum number of missed proteolytic cleavages allowed"/>
-                        <Label DockPanel.Dock="Right" Content="Missed Cleavages:" VerticalAlignment="Center" Margin="0,0,5,0"/>
+                        <local:IntegerTextBoxControl DockPanel.Dock="Right"
+                                                     Text="{Binding MaxMissedCleavages, UpdateSourceTrigger=PropertyChanged, Mode=TwoWay}"
+                                                     AllowNegative="False" Width="50" HorizontalAlignment="Left"
+                                                     ToolTip="Maximum number of missed proteolytic cleavages allowed" />
+                        <Label DockPanel.Dock="Right" Content="Missed Cleavages:" VerticalAlignment="Center"
+                               Margin="0,0,5,0" />
                     </DockPanel>
                 </Grid>
             </Border>

@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.Windows.Input;
 using Engine;
 using Omics.Modifications;
+using Proteomics.AminoAcidPolymer;
 using Proteomics.ProteolyticDigestion;
 using Tasks;
 using Transcriptomics.Digestion;
@@ -16,7 +17,7 @@ public class DigestionConditionsSetupViewModel : BaseViewModel
 
     public ObservableCollection<ProteaseSpecificParametersViewModel> ProteaseSpecificParameters { get; } = new();
 
-    private readonly RunParameters _parameters;
+    private RunParameters _parameters;
     public RunParameters Parameters
     {
         get
@@ -310,7 +311,6 @@ public class DigestionConditionsSetupViewModel : BaseViewModel
             GlobalVariables.UserAddedProteaseNames.Contains(kvp.Key)))
         {
             ProteaseSpecificParametersViewModel? current = ProteaseSpecificParameters.FirstOrDefault(p => p.DigestionAgentName == protease.Value.Name);
-
             bool shouldSelect = _parameters.ProteaseSpecificParameters.Any(p => p.DigestionParams.DigestionAgent.Name == protease.Value.Name);
 
             if (current == null)
@@ -327,16 +327,26 @@ public class DigestionConditionsSetupViewModel : BaseViewModel
             {
                 current.IsSelected = shouldSelect;
             }
+        }
 
         foreach (var rnase in RnaseDictionary.Dictionary)
         {
             ProteaseSpecificParametersViewModel? current = ProteaseSpecificParameters.FirstOrDefault(p => p.DigestionAgentName == rnase.Value.Name);
+            bool shouldSelect = _parameters.ProteaseSpecificParameters.Any(p => p.DigestionParams.DigestionAgent.Name == rnase.Value.Name);
+
             if (current == null)
             {
                 var newDig = new RnaDigestionParams(rnase.Key, MaxMissedCleavages, MinLength, MaxLength);
                 var newParams = new ProteaseSpecificParameters(newDig, null, null);
-                var newParamsVM = new ProteaseSpecificParametersViewModel(newParams, this);
+                var newParamsVM = new ProteaseSpecificParametersViewModel(newParams, this)
+                {
+                    IsSelected = shouldSelect
+                };
                 ProteaseSpecificParameters.Add(newParamsVM);
+            }
+            else
+            {
+                current.IsSelected = shouldSelect;
             }
         }
     }

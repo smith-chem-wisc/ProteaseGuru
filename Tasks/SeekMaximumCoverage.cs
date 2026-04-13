@@ -1,3 +1,4 @@
+using Omics;
 using Proteomics;
 using Proteomics.ProteolyticDigestion;
 
@@ -111,7 +112,7 @@ public class SeekMaximumCoverage
     /// </param>
     /// <returns>Dictionary mapping protease name to set of covered residue indices (0-based).</returns>
     public Dictionary<string, HashSet<int>> CalculateCoverageByProtease(
-        Protein protein,
+        IBioPolymer protein,
         IEnumerable<ProteaseSpecificParameters> proteaseParams)
     {
         var coverage = new Dictionary<string, HashSet<int>>();
@@ -152,7 +153,7 @@ public class SeekMaximumCoverage
     /// (OneBasedStart, OneBasedEnd) intervals.
     /// </returns>
     public Dictionary<string, List<(int Start, int End)>> GetDetectablePeptideIntervals(
-        Protein protein,
+        IBioPolymer protein,
         IEnumerable<ProteaseSpecificParameters> proteaseParams)
     {
         var result = new Dictionary<string, List<(int Start, int End)>>();
