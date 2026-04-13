@@ -3,6 +3,7 @@ using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using Engine;
 using GuiFunctions;
 using Omics;
 using Proteomics;
@@ -493,7 +494,7 @@ namespace GUI
             }
             else
             {
-                coverageViewToggleButton.Content = "Peptide View";
+                coverageViewToggleButton.Content = $"{GlobalVariables.AnalyteType.GetUniqueFormLabel()} View";
             }
         }
 

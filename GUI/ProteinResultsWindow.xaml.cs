@@ -296,9 +296,6 @@ namespace GUI
             var uniquePepCounts = coverageResult.GetUniquePeptideCountsByProtease();
             var sharedPepCounts = coverageResult.GetSharedPeptideCountsByProtease();
 
-            // Update the header label
-            proteinSummaryHeader.Content = $"Digestion Results for {coverageResult.DisplayName}";
-
             // Pre-compute unique coverage for multi-database scenario (once, not per-protease)
             Dictionary<string, double>? uniqueCoverageByProtease = null;
             if (_analyzer.IsMultiDatabase)
@@ -444,7 +441,7 @@ namespace GUI
             }
             else
             {
-                coverageViewToggleButton.Content = "Peptide View";
+                coverageViewToggleButton.Content = $"{GlobalVariables.AnalyteType.GetUniqueFormLabel()} View";
             }
         }
 

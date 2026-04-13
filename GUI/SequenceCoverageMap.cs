@@ -10,6 +10,7 @@ using Tasks;
 using Tasks.CoverageMapConfiguration;
 using Proteomics.ProteolyticDigestion;
 using Engine;
+using Transcriptomics.Digestion;
 
 namespace GUI
 {
@@ -632,7 +633,7 @@ namespace GUI
         public static (Dictionary<string, Color> colors, Dictionary<string, SolidColorBrush> brushes)
             BuildStableColorMaps()
         {
-            var allNames = ProteaseDictionary.Dictionary.Keys.ToList();
+            var allNames = ProteaseDictionary.Dictionary.Keys.Concat(RnaseDictionary.Dictionary.Keys);
             var rgbMap = CoverageMapConfiguration.CreateProteaseColorMap(allNames);
 
             var colors = new Dictionary<string, Color>();
@@ -657,17 +658,6 @@ namespace GUI
             var fb = new SolidColorBrush(Colors.DimGray);
             fb.Freeze();
             return fb;
-        }
-
-        public static int GetStableColorIndex(string proteaseName)
-        {
-            int i = 0;
-            foreach (var key in ProteaseDictionary.Dictionary.Keys)
-            {
-                if (key == proteaseName) return i;
-                i++;
-            }
-            return int.MaxValue;
         }
 
         // ── Lane View Drawing ─────────────────────────────────────────────────

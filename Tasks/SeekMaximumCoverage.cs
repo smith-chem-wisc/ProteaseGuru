@@ -78,7 +78,7 @@ public class SeekMaximumCoverage
     /// <see cref="RunParameters"/>. Always returns true when no parameters are set
     /// or when the relevant bound is -1 (unset).
     /// </summary>
-    private bool PassesMassFilter(PeptideWithSetModifications peptide)
+    private bool PassesMassFilter(IBioPolymerWithSetMods peptide)
     {
         if (_runParameters == null)
             return true;
@@ -126,7 +126,7 @@ public class SeekMaximumCoverage
                 proteaseParam.FixedMods,
                 proteaseParam.VariableMods);
 
-            foreach (PeptideWithSetModifications peptide in peptides)
+            foreach (IBioPolymerWithSetMods peptide in peptides)
             {
                 if (!PassesMassFilter(peptide))
                     continue;
@@ -167,7 +167,7 @@ public class SeekMaximumCoverage
                 proteaseParam.FixedMods,
                 proteaseParam.VariableMods);
 
-            foreach (PeptideWithSetModifications peptide in peptides)
+            foreach (IBioPolymerWithSetMods peptide in peptides)
             {
                 if (!PassesMassFilter(peptide))
                     continue;

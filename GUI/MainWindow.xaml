@@ -254,14 +254,13 @@
                 </Style.Triggers>
             </Style>
             <!--Styling for the tab items on the left side-->
-            <!--CHANGED: Width 165->220 (no clipping), FontSize 14->15, FontWeight Bold always (not just selected), left margin 5->10-->
             <Style x:Key="TabItemStyle" TargetType="TabItem">
                 <Setter Property="Background" Value="{StaticResource SideBarMainColor}"/>
                 <Setter Property="BorderBrush" Value="{StaticResource AccentColor}"/>
                 <Setter Property="Template">
                     <Setter.Value>
                         <ControlTemplate TargetType="TabItem">
-                            <Grid Height="45" Width="165" Background="{TemplateBinding Background}">
+                            <Grid Height="45" Width="210" Background="{TemplateBinding Background}">
                                 <Border Name="Border" Margin="0,0,0,0" Background="Transparent"
                                         BorderThickness="{TemplateBinding BorderThickness}"
                                         BorderBrush="{Binding BorderBrush, RelativeSource={RelativeSource TemplatedParent}}">
@@ -305,12 +304,13 @@
             </Style>
 
             <!--Wide gap spacer between Individual Protein Analysis and Load Previous Results-->
-            <!--CHANGED: Width 125->220, Height 10->40-->
             <Style x:Key="SpacerTabItemStyle" TargetType="TabItem">
+                <Setter Property="Background" Value="{StaticResource SideBarMainColor}"/>
+                <Setter Property="BorderBrush" Value="{StaticResource AccentColor}"/>
                 <Setter Property="Template">
                     <Setter.Value>
                         <ControlTemplate TargetType="TabItem">
-                            <Grid Height="40" Width="220" Background="{StaticResource SideBarMainColor}">
+                            <Grid Height="40" Width="210" >
                                 <Border Name="Border" Margin="0,0,0,0" Background="Transparent"
                                         BorderThickness="{TemplateBinding BorderThickness}" BorderBrush="{TemplateBinding BorderBrush}">
                                     <ContentPresenter 
@@ -328,6 +328,12 @@
                 <Setter Property="BorderThickness" Value="0" />
                 <Setter Property="Margin" Value="0,0,2,0" />
                 <Setter Property="Padding" Value="0" />
+                <Style.Triggers>
+                    <DataTrigger Binding="{Binding Source={x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}, Path=IsRnaMode}" Value="True">
+                        <Setter Property="Background" Value="{StaticResource RnaSideBarMainColor}"/>
+                        <Setter Property="BorderBrush" Value="{StaticResource RnaSideBarMainColor}"/>
+                    </DataTrigger>
+                </Style.Triggers>
             </Style>
 
             <!--Notification Styles-->
@@ -570,7 +576,11 @@
             </TabItem>
 
             <!-- 3. Individual Protein Analysis -->
-            <TabItem Header="Individual Protein Analysis" Style="{StaticResource TabItemStyle}" Name="IndividualProteinAnalyzerTab">
+            <TabItem Style="{StaticResource TabItemStyle}" Name="IndividualProteinAnalyzerTab">
+                <TabItem.Header>
+                    <Binding Converter="{StaticResource ProtTermConverter}"  Source="{x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}" Path ="IsRnaMode"
+                             ConverterParameter="Individual Protein Analysis"/>
+                </TabItem.Header>
             </TabItem>
 
             <!-- Wide gap between Individual Protein Analysis and Load Previous Results -->
@@ -964,10 +974,9 @@
         </TabControl>
 
         <!--Notifications - separate grid with column definitions to skip tab sidebar-->
-        <!--CHANGED: ColumnDefinition Width 165->220 to match updated tab width-->
         <Grid Grid.Row="1" Margin="1,-10,0,0">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="220" />
+                <ColumnDefinition Width="210" />
                 <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
 
