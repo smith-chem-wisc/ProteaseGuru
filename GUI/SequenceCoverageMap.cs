@@ -5,6 +5,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Shapes;
+using Easy.Common.Extensions;
 using Proteomics;
 using Tasks;
 using Tasks.CoverageMapConfiguration;
@@ -22,6 +23,15 @@ namespace GUI
 
     static class SequenceCoverageMap
     {
+        // Cached FontFamily avoids allocating a new object on every character drawn.
+        private static readonly FontFamily ArialFontFamily = new FontFamily("Arial");
+
+        // Pre-built single-character uppercase strings avoid a ToString()+ToUpper()
+        // allocation for every residue rendered. Indexed by char value (0-127).
+        private static readonly string[] UpperCharStrings = Enumerable.Range(0, 128)
+            .Select(c => char.ToUpperInvariant((char)c).ToString())
+            .ToArray();
+
         // ── Bar geometry constants ────────────────────────────────────────────
         public const int SeqTextHeight = 20;
         public const int BarHeight = 6;
@@ -29,7 +39,7 @@ namespace GUI
         public const int BarTopMargin = 6;
         public const int BottomLineGap = 12;
 
-        public static int Highlight(int start, int end, Canvas map, Dictionary<int, List<int>> indices,
+        public static int Highlight(int start, int end, Canvas map, Dictionary<int, HashSet<int>> indices,
             int height, Color clr, bool unique, bool startPep, bool endPep, int partial = -1,
             int residueSpacing = 25, int seqLeftOffset = 45)
         {
@@ -49,11 +59,11 @@ namespace GUI
                     // only does this if partially highlighted peptides dont continue on the first line
                     if (!indices.ContainsKey(i))
                     {
-                        indices.Add(i, new List<int>());
+                        indices.Add(i, new HashSet<int>());
                     }
 
                     // check if 
-                    if (!indices[i].Any(d => d == start))
+                    if (indices[i].Contains(start))
                     {
                         break;
                     }
@@ -69,7 +79,7 @@ namespace GUI
             }
             else
             {
-                indices.Add(i, Enumerable.Range(start, end - start + 1).ToList());
+                indices.Add(i, Enumerable.Range(start, end - start + 1).ToHashSet());
             }
 
             // highlight peptide
@@ -105,13 +115,12 @@ namespace GUI
             {
                 tb.FontWeight = FontWeights.ExtraBold;
             }
-            tb.FontFamily = new FontFamily("Arial");
+            tb.FontFamily = ArialFontFamily;
 
             Canvas.SetTop(tb, loc.Y);
             Canvas.SetLeft(tb, loc.X);
             Panel.SetZIndex(tb, 2);
             cav.Children.Add(tb);
-            cav.UpdateLayout();
         }
 
         /// <summary>
@@ -125,7 +134,7 @@ namespace GUI
             tb.Text = txt;
             tb.FontSize = 15;
             tb.FontWeight = FontWeights.Normal;
-            tb.FontFamily = new FontFamily("Arial");
+            tb.FontFamily = ArialFontFamily;
 
             // Add underline decoration for uncovered amino acids
             tb.TextDecorations = TextDecorations.Underline;
@@ -134,7 +143,6 @@ namespace GUI
             Canvas.SetLeft(tb, loc.X);
             Panel.SetZIndex(tb, 2);
             cav.Children.Add(tb);
-            cav.UpdateLayout();
         }
         /// <summary>
         /// Draws a single amino acid character for residues covered by SHARED peptides only.
@@ -146,7 +154,7 @@ namespace GUI
             tb.Text = txt;
             tb.FontSize = 15;
             tb.FontWeight = FontWeights.Normal;
-            tb.FontFamily = new FontFamily("Arial");
+            tb.FontFamily = ArialFontFamily;
 
             // Create a translucent brush for shared peptide coverage
             if (clr == Brushes.Red)
@@ -162,7 +170,6 @@ namespace GUI
             Canvas.SetLeft(tb, loc.X);
             Panel.SetZIndex(tb, 2);
             cav.Children.Add(tb);
-            cav.UpdateLayout();
         }
         public static void txtDrawingLabel(Canvas cav, Point loc, string txt, Brush clr)
         {
@@ -178,13 +185,12 @@ namespace GUI
             {
                 tb.FontWeight = FontWeights.ExtraBold;
             }
-            tb.FontFamily = new FontFamily("Arial");
+            tb.FontFamily = ArialFontFamily;
 
             Canvas.SetTop(tb, loc.Y);
             Canvas.SetLeft(tb, loc.X);
             Panel.SetZIndex(tb, 2);
             cav.Children.Add(tb);
-            cav.UpdateLayout();
         }
 
         // draw line for peptides
@@ -740,7 +746,7 @@ namespace GUI
 
                 for (int r = 0; r < line.Length; r++)
                 {
-                    string ch = line[r].ToString().ToUpper();
+                    string ch = UpperCharStrings[line[r]]; ;
                     txtDrawing(mapCanvas, new Point(r * residueSpacing + seqLeftOffset, height), ch, Brushes.Black);
                 }
 
@@ -939,7 +945,7 @@ namespace GUI
                 bool isCoveredByUnique = uniqueCovered.Contains(residuePosition);
                 bool isCoveredBySharedOnly = sharedOnlyCovered.Contains(residuePosition);
 
-                string character = line[r].ToString().ToUpper();
+                string character = UpperCharStrings[line[r]];
 
                 if (isCoveredByUnique)
                     txtDrawing(mapCanvas, new Point(r * spacing + seqLeftOffset, height), character, Brushes.Black);
@@ -1085,7 +1091,7 @@ namespace GUI
                 baseSequence, CoverageMapDataPreparer.DefaultResiduesPerLine);
 
             int height = 10;
-            var indices = new Dictionary<int, List<int>>();
+            var indices = new Dictionary<int, HashSet<int>>();
             int accumIndex = 0;
             var partialPeptideMatches = new Dictionary<PeptideDrawEntry, (int, int)>();
 

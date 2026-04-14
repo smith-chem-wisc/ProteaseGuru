@@ -264,7 +264,11 @@ namespace GUI
             {
                 NotificationService.Instance.AddNotification("Note: One protein database has been selected. Unique peptides are defined as being unique to a single protein in this database.", NotificationType.Information);
                 databasePeptides = peptideByFile[dbSelected.FirstOrDefault()];
-                SequenceCoverageByProtease_Return = CalculateProteinSequenceCoverage(databasePeptides);
+                // Reuse the pre-computed coverage result when available; only recalculate if the
+                // caller did not supply one (e.g. first run before any coverage has been computed).
+                SequenceCoverageByProtease_Return = sequenceCoverageByProtease.Count > 0
+                    ? sequenceCoverageByProtease
+                    : CalculateProteinSequenceCoverage(databasePeptides);
             }
 
             List<InSilicoPep> peptides = new();
@@ -308,9 +312,9 @@ namespace GUI
             foreach (var protease in peptidesByProtease)
             {
                 List<double> uniquePeptides = new List<double>();
-                foreach (var protein in protease.Value.GroupBy(pep => pep.Protein).ToDictionary(group => group.Key, group => group.ToList()))
+                foreach (var proteinGroup in protease.Value.GroupBy(pep => pep.Protein))
                 {
-                    uniquePeptides.Add(protein.Value.Where(pep => pep.Unique).Count());
+                    uniquePeptides.Add(proteinGroup.Count(pep => pep.Unique));
                 }
                 UniquePeptidesPerProtein.Add(protease.Key, uniquePeptides);
             }
@@ -428,24 +432,15 @@ namespace GUI
             List<char> aminoAcids = PeptidesByProtease.Values.SelectMany(p => p.SelectMany(peptide => peptide.BaseSequence)).Distinct().OrderBy(aa => aa).ToList();
             foreach (var protease in PeptidesByProtease)
             {
-                Dictionary<char, int> aminoAcidCount = new Dictionary<char, int>();
+                // Pre-populate the count dictionary with zero for every known amino acid.
+                Dictionary<char, int> aminoAcidCount = aminoAcids.ToDictionary(aa => aa, _ => 0);
                 foreach (var peptide in protease.Value)
                 {
-                    foreach (var aa in aminoAcids)
+                    // Single O(N) pass over the sequence instead of O(N×A) nested loops.
+                    foreach (char c in peptide.BaseSequence)
                     {
-                        int aaCount = 0;
-                        if (peptide.BaseSequence.Contains(aa))
-                        {
-                            aaCount = peptide.BaseSequence.Where(x => x == aa).Count();
-                        }
-                        if (aminoAcidCount.ContainsKey(aa))
-                        {
-                            aminoAcidCount[aa] += aaCount;
-                        }
-                        else
-                        {
-                            aminoAcidCount.Add(aa, aaCount);
-                        }
+                        if (aminoAcidCount.ContainsKey(c))
+                            aminoAcidCount[c]++;
                     }
                 }
                 dictsByProtease.Add(protease.Key, aminoAcidCount);
@@ -547,7 +542,8 @@ namespace GUI
             double labelAngle = 0;
             SortedList<double, double> numCategory = new SortedList<double, double>();
             Dictionary<string, IEnumerable<double>> numbersByProtease = new();
-            Dictionary<string, Dictionary<string, int>> dictsByProtease = new();
+            // Keyed by int bin index to avoid repeated ToString/Parse round-trips.
+            Dictionary<string, Dictionary<int, int>> dictsByProtease = new();
 
             switch (plotType)
             {
@@ -558,7 +554,7 @@ namespace GUI
                     {
                         numbersByProtease.Add(key, PeptidesByProtease[key].Select(p => Convert.ToDouble(p.Length)));
                         var results = numbersByProtease[key].GroupBy(p => roundToBin(p, binSize)).OrderBy(p => p.Key).Select(p => p);
-                        dictsByProtease.Add(key, results.ToDictionary(p => p.Key.ToString(), v => v.Count()));
+                        dictsByProtease.Add(key, results.ToDictionary(p => p.Key, v => v.Count()));
                     }
                     break;
                 case 2: // Protein Sequence Coverage
@@ -567,9 +563,8 @@ namespace GUI
                     foreach (string key in SequenceCoverageByProtease.Keys)
                     {
                         numbersByProtease.Add(key, SequenceCoverageByProtease[key].Select(p => p));
-                        var testList = numbersByProtease[key].Select(p => roundToBin(p, binSize)).ToList();
-                        var results = numbersByProtease[key].GroupBy(p => roundToBin(p, binSize)).OrderBy(p => p.Key).Select(p => p).ToList();
-                        dictsByProtease.Add(key, results.ToDictionary(p => p.Key.ToString(), v => v.Count()));
+                        var results = numbersByProtease[key].GroupBy(p => roundToBin(p, binSize)).OrderBy(p => p.Key).Select(p => p);
+                        dictsByProtease.Add(key, results.ToDictionary(p => p.Key, v => v.Count()));
                     }
                     break;
                 case 3: // Protein Sequence Coverage (unique peptides)
@@ -578,9 +573,8 @@ namespace GUI
                     foreach (string key in SequenceCoverageUniqueByProtease.Keys)
                     {
                         numbersByProtease.Add(key, SequenceCoverageUniqueByProtease[key].Select(p => p));
-                        var testList = numbersByProtease[key].Select(p => roundToBin(p, binSize)).ToList();
-                        var results = numbersByProtease[key].GroupBy(p => roundToBin(p, binSize)).OrderBy(p => p.Key).Select(p => p).ToList();
-                        dictsByProtease.Add(key, results.ToDictionary(p => p.Key.ToString(), v => v.Count()));
+                        var results = numbersByProtease[key].GroupBy(p => roundToBin(p, binSize)).OrderBy(p => p.Key).Select(p => p);
+                        dictsByProtease.Add(key, results.ToDictionary(p => p.Key, v => v.Count()));
                     }
                     break;
                 case 4: // Number of Unique Peptides per Protein
@@ -605,7 +599,7 @@ namespace GUI
                     {
                         numbersByProtease.Add(key, UniquePeptidesPerProtein[key].Select(p => p));
                         var results = numbersByProtease[key].GroupBy(p => roundToBin(p, binSize)).OrderBy(p => p.Key).Select(p => p);
-                        dictsByProtease.Add(key, results.ToDictionary(p => p.Key.ToString(), v => v.Count()));
+                        dictsByProtease.Add(key, results.ToDictionary(p => p.Key, v => v.Count()));
                     }
                     break;
                 case 5: // Predicted Peptide Hydrophobicity
@@ -615,7 +609,7 @@ namespace GUI
                     {
                         numbersByProtease.Add(key, PeptidesByProtease[key].Select(p => p.Hydrophobicity));
                         var results = numbersByProtease[key].GroupBy(p => roundToBin(p, binSize)).OrderBy(p => p.Key).Select(p => p);
-                        dictsByProtease.Add(key, results.ToDictionary(p => p.Key.ToString(), v => v.Count()));
+                        dictsByProtease.Add(key, results.ToDictionary(p => p.Key, v => v.Count()));
                     }
                     break;
                 case 6: // Predicted Peptide Electrophoretic Mobility
@@ -625,7 +619,7 @@ namespace GUI
                     {
                         numbersByProtease.Add(key, PeptidesByProtease[key].Select(p => p.ElectrophoreticMobility));
                         var results = numbersByProtease[key].GroupBy(p => roundToBin(p, binSize)).OrderBy(p => p.Key).Select(p => p);
-                        dictsByProtease.Add(key, results.ToDictionary(p => p.Key.ToString(), v => v.Count()));
+                        dictsByProtease.Add(key, results.ToDictionary(p => p.Key, v => v.Count()));
                     }
                     break;
                 case 7: // Chronologer Predicted Retention Time
@@ -642,7 +636,7 @@ namespace GUI
                         {
                             numbersByProtease.Add(key, validPredictions);
                             var results = numbersByProtease[key].GroupBy(p => roundToBin(p, binSize)).OrderBy(p => p.Key).Select(p => p);
-                            dictsByProtease.Add(key, results.ToDictionary(p => p.Key.ToString(), v => v.Count()));
+                            dictsByProtease.Add(key, results.ToDictionary(p => p.Key, v => v.Count()));
                         }
                     }
                     break;
@@ -668,12 +662,15 @@ namespace GUI
                 {
                     category[i - start] = Math.Round((i * binSize), 3).ToString(CultureInfo.InvariantCulture);
                 }
-                foreach (Dictionary<string, int> dict in dictsByProtease.Values)
+                foreach (Dictionary<int, int> dict in dictsByProtease.Values)
                 {
-                    totalCounts[i - start] += dict.ContainsKey(i.ToString(CultureInfo.InvariantCulture)) ? dict[i.ToString(CultureInfo.InvariantCulture)] : 0;
-                    if (totalCounts[i - start] > MaxValue)
+                    if (dict.TryGetValue(i, out int binCount))
                     {
-                        MaxValue = totalCounts[i - start];
+                        totalCounts[i - start] += binCount;
+                        if (totalCounts[i - start] > MaxValue)
+                        {
+                            MaxValue = totalCounts[i - start];
+                        }
                     }
                 }
             }
@@ -714,8 +711,9 @@ namespace GUI
                 };
                 foreach (var d in dictsByProtease[key])
                 {
-                    int bin = int.Parse(d.Key);
-                    var hist = new HistItem(d.Value, bin - start, (bin * binSize).ToString(CultureInfo.InvariantCulture), totalCounts[bin - start]);
+                    int bin = d.Key;
+                    string binLabel = (bin * binSize).ToString(CultureInfo.InvariantCulture);
+                    var hist = new HistItem(d.Value, bin - start, binLabel, totalCounts[bin - start]);
                     column.Items.Add(hist);
                     if (DataTable.ContainsKey(hist.bin))
                     {
