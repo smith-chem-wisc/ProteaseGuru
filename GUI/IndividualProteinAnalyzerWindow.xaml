@@ -10,6 +10,7 @@ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     <UserControl.Resources>
 
         <gui:ProteinRnaTerminologyConverter x:Key="ProtTermConverter" />
+        <gui:CollapseOnRnaModeConverter x:Key="CollapseOnRna" />
 
         <SolidColorBrush x:Key="BackgroundColor" Color="#D5D5D5" />
         <SolidColorBrush x:Key="TextColor1" Color="#131313" />
@@ -197,7 +198,9 @@ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
 
                 <!-- Export Spectrum Library panel -->
                 <Border Grid.Row="0" BorderBrush="{StaticResource BorderColor}" BorderThickness="0,0,0,1"
-                        Background="{StaticResource BackgroundColor}" Padding="4,3,4,4">
+                        Background="{StaticResource BackgroundColor}" Padding="4,3,4,4"
+                        Visibility="{Binding Source={x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}, Path=IsRnaMode, Converter={StaticResource CollapseOnRna}}">
+                    
                     <StackPanel Orientation="Vertical">
 
                         <DockPanel LastChildFill="False">
