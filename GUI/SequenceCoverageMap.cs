@@ -1090,6 +1090,17 @@ namespace GUI
             var splitSeq = CoverageMapDataPreparer.SplitSequenceIntoLines(
                 baseSequence, CoverageMapDataPreparer.DefaultResiduesPerLine);
 
+            // Pre-sort entries once and bucket them by start-line index so each line
+            // only touches the entries that begin on or before it. This reduces the
+            // per-line filtering from O(N) to O(k) where k is entries on that line,
+            // and eliminates the O(N) List.Remove calls (total was O(N²)).
+            int rpl = CoverageMapDataPreparer.DefaultResiduesPerLine;
+            var sortedEntries = entries.OrderBy(e => e.StartResidue).ToList();
+
+            // entryStartIndex tracks the first entry in sortedEntries that hasn't
+            // been dispatched to a line yet (entries are processed in start order).
+            int entryStartIndex = 0;
+
             int height = 10;
             var indices = new Dictionary<int, HashSet<int>>();
             int accumIndex = 0;
@@ -1123,14 +1134,14 @@ namespace GUI
             {
                 var line = splitSeq[lineIndex];
                 indices.Clear();
-                var lineLabel = (lineIndex * CoverageMapDataPreparer.DefaultResiduesPerLine) + 1;
+                var lineLabel = lineIndex * rpl + 1;
+                int lineStartResidue = lineLabel;          // 1-based first residue on this line
+                int lineEndResidue = lineStartResidue + line.Length - 1;
 
                 txtDrawingLabel(mapCanvas, new Point(0, height), lineLabel.ToString(), Brushes.Black);
-
-                int lineStartResidue = lineIndex * CoverageMapDataPreparer.DefaultResiduesPerLine + 1;
                 DrawSequenceCharacters(mapCanvas, line, height, residueSpacing, uniqueCovered, sharedOnlyCovered, lineStartResidue, seqLeftOffset);
 
-                // Process partial peptides
+                // Process carry-over partial peptides from the previous line
                 if (partialPeptideMatches.Count > 0)
                 {
                     var temp = new Dictionary<PeptideDrawEntry, (int, int)>(partialPeptideMatches);
@@ -1162,14 +1173,22 @@ namespace GUI
                     }
                 }
 
-                // Draw peptide highlights for this line
-                var peptidesOnThisLine = entries
-                    .Where(p => p.StartResidue - accumIndex - 1 < line.Length)
-                    .OrderBy(p => p.StartResidue)
-                    .ToList();
-
-                foreach (var peptide in peptidesOnThisLine)
+                // Advance through the pre-sorted list: collect every entry whose
+                // start residue falls on this line (startResidue <= lineEndResidue)
+                // and which hasn't been processed yet (i.e., startResidue >= lineStartResidue).
+                // Because entries are sorted by StartResidue and we maintain entryStartIndex,
+                // this is an O(k) scan per line instead of O(N).
+                int i = entryStartIndex;
+                while (i < sortedEntries.Count && sortedEntries[i].StartResidue <= lineEndResidue)
                 {
+                    var peptide = sortedEntries[i];
+                    i++;
+
+                    // Skip entries that ended before this line (they were already handled
+                    // as partials in a previous line, or are duplicate-covered entries)
+                    if (peptide.EndResidue < lineStartResidue)
+                        continue;
+
                     var partialIndex = CoverageMapDataPreparer.CheckPartialMatch(peptide.EndResidue, line.Length, accumIndex);
                     int start = peptide.StartResidue - accumIndex - 1;
                     int end = Math.Min(peptide.EndResidue - accumIndex - 1, line.Length - 1);
@@ -1189,8 +1208,8 @@ namespace GUI
                             proteaseByColor[peptide.Protease], isUnique, true, true, -1,
                             residueSpacing, seqLeftOffset);
                     }
-                    entries.Remove(peptide);
                 }
+                entryStartIndex = i;
 
                 int addedSpace = indices.Count > 7 ? (indices.Count - 7) * 10 : 0;
                 height += 100 + addedSpace;

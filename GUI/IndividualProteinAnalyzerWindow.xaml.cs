@@ -244,7 +244,10 @@ namespace GUI
             if (checkedProteases.Count == 0) return;
 
             var proteaseParams = checkedProteases.Select(vm => vm.ProteaseSpecificParams).ToList();
-            var coverageDict = _seeker.CalculateCoverageByProtease(SelectedProtein.Protein, proteaseParams);
+
+            // Single digest pass per protease produces both coverage sets and interval lists,
+            // avoiding the previous double-digest (CalculateCoverageByProtease + GetDetectablePeptideIntervals).
+            var (coverageDict, allIntervalsDict) = _seeker.CalculateCoverageAndIntervals(SelectedProtein.Protein, proteaseParams);
 
             SeekMaximumCoverage.CombinationResult result;
             if (greedyToggle.IsChecked == true)
@@ -274,10 +277,10 @@ namespace GUI
             else
                 result = _seeker.BestTriplet(coverageDict);
 
-            var winningParams = proteaseParams
-                .Where(p => result.Proteases.Contains(p.DigestionAgentName))
-                .ToList();
-            var pepsByProtease = BuildPeptidesByProtease(SelectedProtein.Protein, winningParams);
+            // Re-use the already-computed interval dict; filter to the winning proteases only.
+            var pepsByProtease = result.Proteases
+                .Where(allIntervalsDict.ContainsKey)
+                .ToDictionary(name => name, name => allIntervalsDict[name]);
 
             var orderedChecked = result.Proteases
                 .OrderBy(GetStableColorIndex)
