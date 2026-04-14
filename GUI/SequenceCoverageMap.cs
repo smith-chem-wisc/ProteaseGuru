@@ -63,7 +63,7 @@ namespace GUI
                     }
 
                     // check if 
-                    if (indices[i].Contains(start))
+                    if (!indices[i].Contains(start))
                     {
                         break;
                     }
@@ -1090,16 +1090,19 @@ namespace GUI
             var splitSeq = CoverageMapDataPreparer.SplitSequenceIntoLines(
                 baseSequence, CoverageMapDataPreparer.DefaultResiduesPerLine);
 
-            // Pre-sort entries once and bucket them by start-line index so each line
-            // only touches the entries that begin on or before it. This reduces the
-            // per-line filtering from O(N) to O(k) where k is entries on that line,
-            // and eliminates the O(N) List.Remove calls (total was O(N²)).
+// Pre-bucket entries by starting line index for O(1) direct lookup.
+            // This eliminates the O(k) per-line scan that was previously needed.
             int rpl = CoverageMapDataPreparer.DefaultResiduesPerLine;
-            var sortedEntries = entries.OrderBy(e => e.StartResidue).ToList();
+            int lineCount = splitSeq.Count;
+            var buckets = new List<PeptideDrawEntry>[lineCount];
+            for (int b = 0; b < lineCount; b++) buckets[b] = new List<PeptideDrawEntry>();
 
-            // entryStartIndex tracks the first entry in sortedEntries that hasn't
-            // been dispatched to a line yet (entries are processed in start order).
-            int entryStartIndex = 0;
+            foreach (var entry in entries)
+            {
+                int startLine = (entry.StartResidue - 1) / rpl;
+                if (startLine >= 0 && startLine < lineCount)
+                    buckets[startLine].Add(entry);
+            }
 
             int height = 10;
             var indices = new Dictionary<int, HashSet<int>>();
@@ -1173,17 +1176,10 @@ namespace GUI
                     }
                 }
 
-                // Advance through the pre-sorted list: collect every entry whose
-                // start residue falls on this line (startResidue <= lineEndResidue)
-                // and which hasn't been processed yet (i.e., startResidue >= lineStartResidue).
-                // Because entries are sorted by StartResidue and we maintain entryStartIndex,
-                // this is an O(k) scan per line instead of O(N).
-                int i = entryStartIndex;
-                while (i < sortedEntries.Count && sortedEntries[i].StartResidue <= lineEndResidue)
+// Process peptides that START on this line - direct O(1) bucket lookup
+                var peptidesStartingHere = buckets[lineIndex].OrderBy(p => p.StartResidue);
+                foreach (var peptide in peptidesStartingHere)
                 {
-                    var peptide = sortedEntries[i];
-                    i++;
-
                     // Skip entries that ended before this line (they were already handled
                     // as partials in a previous line, or are duplicate-covered entries)
                     if (peptide.EndResidue < lineStartResidue)
@@ -1209,7 +1205,6 @@ namespace GUI
                             residueSpacing, seqLeftOffset);
                     }
                 }
-                entryStartIndex = i;
 
                 int addedSpace = indices.Count > 7 ? (indices.Count - 7) * 10 : 0;
                 height += 100 + addedSpace;
