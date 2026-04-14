@@ -10,6 +10,7 @@
              d:DesignHeight="600" d:DesignWidth="1200">
     <UserControl.Resources>
         <local:ProteinRnaTerminologyConverter x:Key="ProtTermConverter" />
+        <local:CollapseOnRnaModeConverter x:Key="CollapseOnRnaMode" />
         
         <SolidColorBrush x:Key="DataGridHeaderColor" Color="#F9690E" />
         <SolidColorBrush x:Key="DataGridBackgroundColor" Color="#D5D5D5" />
@@ -289,6 +290,11 @@
                                         </ComboBoxItem.ToolTip>
                                     </ComboBoxItem>
                                     <ComboBoxItem>
+                                        <ComboBoxItem.Visibility>
+                                            <Binding Path="IsRnaMode"
+                                                     Source="{x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}"
+                                                     Converter="{StaticResource CollapseOnRnaMode}" />
+                                        </ComboBoxItem.Visibility>
                                         <ComboBoxItem.Content>
                                             <Binding Converter="{StaticResource ProtTermConverter}" 
                                                      ConverterParameter="Predicted Peptide Hydrophobicity"/>
@@ -307,6 +313,11 @@
                                         </ComboBoxItem.ToolTip>
                                     </ComboBoxItem>
                                     <ComboBoxItem>
+                                        <ComboBoxItem.Visibility>
+                                            <Binding Path="IsRnaMode"
+                                                     Source="{x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}"
+                                                     Converter="{StaticResource CollapseOnRnaMode}" />
+                                        </ComboBoxItem.Visibility>
                                         <ComboBoxItem.Content>
                                             <Binding Converter="{StaticResource ProtTermConverter}" 
                                                      ConverterParameter="Predicted Peptide Electrophoretic Mobility"/>
@@ -325,6 +336,11 @@
                                         </ComboBoxItem.ToolTip>
                                     </ComboBoxItem>
                                     <ComboBoxItem>
+                                        <ComboBoxItem.Visibility>
+                                            <Binding Path="IsRnaMode"
+                                                     Source="{x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}"
+                                                     Converter="{StaticResource CollapseOnRnaMode}" />
+                                        </ComboBoxItem.Visibility>
                                         <ComboBoxItem.Content>
                                             <Binding Converter="{StaticResource ProtTermConverter}" 
                                                      ConverterParameter="Chronologer Predicted Retention Time"/>
