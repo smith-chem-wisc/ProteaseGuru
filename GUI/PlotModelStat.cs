@@ -333,7 +333,7 @@ namespace GUI
                 "Number of Unique Oligos per Transcript" => " Number of Unique Peptides per Protein",
                 "Predicted Oligo Hydrophobicity" => " Predicted Peptide Hydrophobicity",
                 "Predicted Oligo Electrophoretic Mobility" => " Predicted Peptide Electrophoretic Mobility",
-                "Nucleotide Distribution" => " Amino Acid Distribution",
+                "Nucleic Acid Distribution" => " Amino Acid Distribution",
                 _ => plotType
             };
         }
@@ -410,7 +410,6 @@ namespace GUI
             }
         }
 
-        // Replace the columnPlot() method with this:
         private void columnPlot()
         {
             // OxyPlot 2.2: Legend properties moved to separate Legend object
@@ -521,7 +520,6 @@ namespace GUI
                 privateModel.Series.Add(columns);
             }
         }
-        // Replace the histogramPlot() method with this:
         private void histogramPlot(int plotType)
         {
             // OxyPlot 2.2: Legend properties moved to separate Legend object
