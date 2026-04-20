@@ -17,9 +17,6 @@ namespace Test.GuiTests
         {
             // Ensure singleton reset before each test
             ResetSingleton();
-
-            // Clear any event handlers from previous tests
-            ClearEventHandlers();
         }
 
         [TearDown]
@@ -36,7 +33,6 @@ namespace Test.GuiTests
             catch { }
 
             ResetSingleton();
-            ClearEventHandlers();
         }
 
         private static void ResetSingleton()
@@ -45,15 +41,6 @@ namespace Test.GuiTests
             var instField = vmType.GetField("_instance", BindingFlags.NonPublic | BindingFlags.Static);
             instField.SetValue(null, null);
         }
-
-        private static void ClearEventHandlers()
-        {
-            // Clear static event handlers to prevent cross-test contamination
-            var requestModeSwitchField = typeof(GuiGlobalParamsViewModel)
-                .GetProperty("RequestModeSwitchConfirmation", BindingFlags.Public | BindingFlags.Static);
-            requestModeSwitchField.SetValue(null, null);
-        }
-
 
         [Test]
         public void SettingsFileExists_ReturnsTrueAfterSave()
@@ -79,9 +66,6 @@ namespace Test.GuiTests
                 if (prop.PropertyType != typeof(bool)) continue;
                 if (!prop.CanRead || !prop.CanWrite) continue;
                 if (prop.GetIndexParameters().Length > 0) continue;
-                // Skip IsRnaMode as it has special behavior tested separately
-                if (prop.Name == nameof(GuiGlobalParamsViewModel.IsRnaMode)) continue;
-
                 testedCount++;
 
                 bool eventFired = false;
