@@ -1,6 +1,7 @@
 using Omics.Modifications;
 using Proteomics;
 using Proteomics.ProteolyticDigestion;
+using PredictionClients.Koina.AbstractClasses;
 using PredictionClients.Koina.SupportedModels.RetentionTimeModels;
 using PredictionClients.Koina.SupportedModels.FragmentIntensityModels;
 using System.Text.RegularExpressions;
@@ -38,13 +39,6 @@ public static class SpectrumLibraryExporter
 
     // ── Regex for stripping mod brackets when measuring base-sequence length ───
     private static readonly Regex ModPattern = new(@"\[[^\]]+\]", RegexOptions.Compiled);
-
-    // ── mzLib -> UNIMOD conversion to look up RT predictions ──────────────────
-    // The RT model converts mzLib -> UNIMOD internally before storing predictions,
-    // so we must apply the same conversion when building the RT lookup dictionary.
-    private static string MzLibToUnimod(string seq) => seq
-        .Replace("[Common Variable:Oxidation on M]", "[UNIMOD:35]")
-        .Replace("[Common Fixed:Carbamidomethyl on C]", "[UNIMOD:4]");
 
     /// <summary>
     /// Main entry point. Runs asynchronously; <paramref name="progress"/> receives
@@ -110,93 +104,94 @@ public static class SpectrumLibraryExporter
         progress?.Report($"Digest complete: {uniqueMzLibSequences.Count} unique Prosit-compatible peptides.");
 
         // ── Step 2: Prosit iRT prediction ──────────────────────────────────────
-        // The Prosit2019iRT constructor accepts mzLib-format sequences, validates
-        // them, and converts to UNIMOD internally. Predictions are stored with
-        // UNIMOD-format keys in prediction.FullSequence.
+        // The model now takes config-only at construction; sequences are passed to
+        // Predict(). Each prediction's FullSequence is the original mzLib-format
+        // input, so we can key the iRT lookup directly without UNIMOD conversion.
         progress?.Report("Requesting iRT values from Prosit_2019_irt via Koina…");
         cancellationToken.ThrowIfCancellationRequested();
 
-        var rtModel = new Prosit2019iRT(uniqueMzLibSequences, out var rtWarning);
+        var rtModel = new Prosit2019iRT();
+        var rtInputs = uniqueMzLibSequences
+            .Select(s => new RetentionTimePredictionInput(s))
+            .ToList();
 
-        if (rtWarning != null)
-            progress?.Report($"RT model note: {rtWarning.Message}");
+        // Predict() is sync internally; wrap in Task.Run so the UI thread stays
+        // responsive while Koina is round-tripping batched HTTP requests.
+        var rtPredictions = await Task.Run(() => rtModel.Predict(rtInputs), cancellationToken);
 
-        if (rtModel.PeptideSequences.Count == 0)
+        int rtValidCount = rtPredictions.Count(p => p.PredictedRetentionTime.HasValue);
+        if (rtValidCount == 0)
+        {
+            string firstReason = rtPredictions
+                .Select(p => p.Warning?.Message)
+                .FirstOrDefault(m => !string.IsNullOrEmpty(m)) ?? "no details";
             throw new InvalidOperationException(
-                "All peptides were rejected by Prosit_2019_irt. " +
-                $"Details: {rtWarning?.Message}");
+                $"All peptides were rejected by Prosit_2019_irt. Details: {firstReason}");
+        }
 
-        // RunInferenceAsync returns Task<WarningException?> — no cancellation
-        // token overload exists in mzLib; the model manages its own HTTP timeout.
-        await rtModel.RunInferenceAsync();
+        var mzLibToIrt = new Dictionary<string, double?>(rtPredictions.Count);
+        foreach (var pred in rtPredictions)
+            mzLibToIrt[pred.FullSequence] = pred.PredictedRetentionTime;
 
-        // Build a UNIMOD-keyed RT lookup from the predictions.
-        // The model stores prediction.FullSequence in UNIMOD format, so we convert
-        // each mzLib sequence to UNIMOD to perform the lookup below.
-        var unimodToIrt = new Dictionary<string, double?>(rtModel.Predictions.Count);
-        foreach (var pred in rtModel.Predictions)
-            unimodToIrt[pred.FullSequence] = pred.PredictedRetentionTime;
+        progress?.Report($"iRT predictions received for {rtValidCount} peptides.");
 
-        progress?.Report($"iRT predictions received for {unimodToIrt.Count} peptides.");
-
-        // ── Step 3: Build the four parallel lists for Prosit2020IntensityHCD ───
-        // One row per (unique peptide × charge state).
-        // All four lists must be the same length — the model constructor enforces this.
-        var hcdSequences = new List<string>();
-        var hcdCharges = new List<int>();
-        var hcdEnergies = new List<int>();
-        var hcdRetentionTimes = new List<double?>();
+        // ── Step 3: Build aligned HCD inputs and retention-time array ──────────
+        // One row per (unique peptide × charge state). The retention-time array
+        // must be the same length as the prediction list when we later call
+        // GenerateLibrarySpectraFromPredictions().
+        var hcdInputs = new List<FragmentIntensityPredictionInput>();
+        var alignedRetentionTimes = new List<double?>();
 
         foreach (var mzLibSeq in uniqueMzLibSequences)
         {
-            // Convert mzLib -> UNIMOD to look up the iRT value from step 2.
-            double? irt = unimodToIrt.TryGetValue(MzLibToUnimod(mzLibSeq), out var rt) ? rt : null;
+            double? irt = mzLibToIrt.TryGetValue(mzLibSeq, out var rt) ? rt : null;
 
             foreach (int z in validCharges)
             {
-                hcdSequences.Add(mzLibSeq);
-                hcdCharges.Add(z);
-                hcdEnergies.Add(nce);           // List<int> as required by the model
-                hcdRetentionTimes.Add(irt);     // null is acceptable for any row
+                hcdInputs.Add(new FragmentIntensityPredictionInput(
+                    FullSequence: mzLibSeq,
+                    PrecursorCharge: z,
+                    CollisionEnergy: nce,
+                    InstrumentType: null,
+                    FragmentationType: null));
+                alignedRetentionTimes.Add(irt);
             }
         }
 
         // ── Step 4: Prosit HCD intensity prediction + library write ────────────
-        // The HCD model writes the .msp file itself when spectralLibrarySavePath
-        // is non-null. RunInferenceAsync calls SavePredictedSpectralLibrary
-        // internally, which uses mzLib's SpectralLibrary writer.
+        // The HCD model no longer writes the .msp file as a side effect of
+        // inference; library generation is now a separate explicit call.
         progress?.Report(
             $"Requesting HCD intensities from Prosit_2020_intensity_HCD " +
-            $"({hcdSequences.Count} spectra, NCE {nce})…");
+            $"({hcdInputs.Count} spectra, NCE {nce})…");
         cancellationToken.ThrowIfCancellationRequested();
 
         string outputPath = BuildOutputPath(protein, fastaPath);
         Directory.CreateDirectory(Path.GetDirectoryName(outputPath)!);
 
-        var hcdModel = new Prosit2020IntensityHCD(
-            peptideSequences: hcdSequences,
-            precursorCharges: hcdCharges,
-            collisionEnergies: hcdEnergies,
-            retentionTimes: hcdRetentionTimes,
-            warnings: out var hcdWarning,
-            spectralLibrarySavePath: outputPath);
+        var hcdModel = new Prosit2020IntensityHCD();
+        var hcdPredictions = await Task.Run(() => hcdModel.Predict(hcdInputs), cancellationToken);
 
-        if (hcdWarning != null)
-            progress?.Report($"HCD model note: {hcdWarning.Message}");
-
-        if (hcdModel.PeptideSequences.Count == 0)
+        int hcdValidCount = hcdPredictions.Count(p => p.FragmentIntensities is { Count: > 0 });
+        if (hcdValidCount == 0)
+        {
+            string firstReason = hcdPredictions
+                .Select(p => p.Warning?.Message)
+                .FirstOrDefault(m => !string.IsNullOrEmpty(m)) ?? "no details";
             throw new InvalidOperationException(
-                "All peptide/charge combinations were rejected by Prosit_2020_intensity_HCD. " +
-                $"Details: {hcdWarning?.Message}");
+                $"All peptide/charge combinations were rejected by Prosit_2020_intensity_HCD. " +
+                $"Details: {firstReason}");
+        }
 
-        // RunInferenceAsync returns Task<WarningException?> (not Task).
-        var duplicatesWarning = await hcdModel.RunInferenceAsync();
+        var spectra = hcdModel.GenerateLibrarySpectraFromPredictions(
+            alignedRetentionTimes: alignedRetentionTimes.ToArray(),
+            warning: out var libraryWarning,
+            filepath: outputPath);
 
-        if (duplicatesWarning != null)
-            progress?.Report($"Library note: {duplicatesWarning.Message}");
+        if (libraryWarning != null)
+            progress?.Report($"Library note: {libraryWarning.Message}");
 
-        progress?.Report(
-            $"Done. {hcdModel.PredictedSpectra.Count} spectra written to: {outputPath}");
+        progress?.Report($"Done. {spectra.Count} spectra written to: {outputPath}");
 
         return outputPath;
     }
