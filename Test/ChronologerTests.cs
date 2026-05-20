@@ -123,7 +123,7 @@ internal class ChronologerTests
                     continue;
                 }
 
-                var result = rtPredictor.PredictRetentionTime(peptide, out var failureReason);
+                var result = rtPredictor.PredictRetentionTimeEquivalent(peptide, out var failureReason);
 
                 if (result.HasValue)
                 {
@@ -192,8 +192,8 @@ internal class ChronologerTests
 
             for (int i = 0; i < validPeptides.Count; i++)
             {
-                var result1 = rtPredictor.PredictRetentionTime(validPeptides[i], out var failureReason1);
-                var result2 = rtPredictor.PredictRetentionTime(validPeptides[i], out var failureReason2);
+                var result1 = rtPredictor.PredictRetentionTimeEquivalent(validPeptides[i], out var failureReason1);
+                var result2 = rtPredictor.PredictRetentionTimeEquivalent(validPeptides[i], out var failureReason2);
 
                 results1[i] = result1 ?? -1;
                 results2[i] = result2 ?? -1;
