@@ -380,7 +380,7 @@ namespace Tasks
                     var predictor = CheckoutPredictor();
                     try
                     {
-                        var result = predictor.PredictRetentionTime(peptides[i], out _);
+                        var result = predictor.PredictRetentionTimeEquivalent(peptides[i], out _);
                         results[i] = result ?? -1;
                     }
                     finally
