@@ -7,7 +7,9 @@ using Omics.Modifications;
 using Proteomics;
 using Proteomics.ProteolyticDigestion;
 using Proteomics.RetentionTimePrediction;
+using Transcriptomics;
 using UsefulProteomicsDatabases;
+using UsefulProteomicsDatabases.Transcriptomics;
 
 namespace Tasks
 {
@@ -32,7 +34,7 @@ namespace Tasks
         #region Chronologer Predictor Pool
 
         // Instance-scoped predictor pool to avoid cross-instance race conditions
-        private readonly object _predictorLock = new object();
+        private readonly object _predictorLock = new();
         private ConcurrentBag<ChronologerRetentionTimePredictor>? _predictorPool;
         private bool _disposed;
 
@@ -44,9 +46,9 @@ namespace Tasks
         public static event EventHandler<StringEventArgs>? OutLabelStatusHandler;
 
         public RunParameters DigestionParameters { get; set; }
-        public Dictionary<string, Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>>? PeptideByFile;
-        public static Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>? AllPeptidesByProtease;
-        public Dictionary<string, Dictionary<Protein, (double, double)>> SequenceCoverageByProtease = new();
+        public Dictionary<string, Dictionary<string, Dictionary<IBioPolymer, List<InSilicoPep>>>>? PeptideByFile;
+        public static Dictionary<string, Dictionary<IBioPolymer, List<InSilicoPep>>>? AllPeptidesByProtease;
+        public Dictionary<string, Dictionary<IBioPolymer, (double, double)>> SequenceCoverageByProtease = new();
 
         #endregion
 
@@ -68,12 +70,11 @@ namespace Tasks
 
             try
             {
-                AllPeptidesByProtease = new Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>();
-                PeptideByFile = new Dictionary<string, Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>>(dbFileList.Count);
+                AllPeptidesByProtease = new Dictionary<string, Dictionary<IBioPolymer, List<InSilicoPep>>>();
+                PeptideByFile = new Dictionary<string, Dictionary<string, Dictionary<IBioPolymer, List<InSilicoPep>>>>(dbFileList.Count);
 
                 // Use a thread-safe dictionary for parallel writes
-                var concurrentPeptideByFile = new ConcurrentDictionary<string, ConcurrentDictionary<string, Dictionary<Protein, List<InSilicoPep>>>>();
-
+                var concurrentPeptideByFile = new ConcurrentDictionary<string, ConcurrentDictionary<string, Dictionary<IBioPolymer, List<InSilicoPep>>>>();
                 // Outer parallelism: limited to avoid oversubscription with inner parallel loops
                 var outerParallelOptions = new ParallelOptions
                 {
@@ -84,14 +85,14 @@ namespace Tasks
                 Parallel.ForEach(dbFileList, outerParallelOptions, database =>
                 {
                     Status("Loading Protein Database(s)...", "loadDbs");
-                    List<Protein> proteins = LoadProteins(database);
+                    List<IBioPolymer> proteins = LoadBioPolymers(database.FilePath);
 
                     // Initialize the entry for this database
-                    var proteaseResults = new ConcurrentDictionary<string, Dictionary<Protein, List<InSilicoPep>>>();
+                    var proteaseResults = new ConcurrentDictionary<string, Dictionary<IBioPolymer, List<InSilicoPep>>>();
                     concurrentPeptideByFile[database.FileName] = proteaseResults;
 
                     string databaseFileName = database.FileName;
-                    List<Protein> proteinsForDigestion = proteins;
+                    List<IBioPolymer> proteinsForDigestion = proteins;
 
                     // Process each protease sequentially within each database
                     // (inner batch methods handle parallelism)
@@ -109,7 +110,7 @@ namespace Tasks
                 // Convert concurrent dictionary back to regular dictionary
                 foreach (var dbEntry in concurrentPeptideByFile)
                 {
-                    PeptideByFile[dbEntry.Key] = new Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>(dbEntry.Value);
+                    PeptideByFile[dbEntry.Key] = new Dictionary<string, Dictionary<IBioPolymer, List<InSilicoPep>>>(dbEntry.Value);
                 }
 
                 Status("Writing Peptide Output...", "peptides");
@@ -136,45 +137,73 @@ namespace Tasks
 
         #region Protein Loading
 
-        /// <summary>
-        /// Load proteins from XML or FASTA databases and keep them associated with the database file name.
-        /// </summary>
-        protected List<Protein> LoadProteins(DbForDigestion database)
+        public List<IBioPolymer> LoadBioPolymers(string dbPath)
         {
-            List<string> dbErrors = new List<string>();
-            List<Protein> proteinList = new List<Protein>();
+            List<IBioPolymer> bioPolymerList;
 
-            string theExtension = Path.GetExtension(database.FilePath).ToLowerInvariant();
-            bool compressed = theExtension.EndsWith("gz");
-            theExtension = compressed
-                ? Path.GetExtension(Path.GetFileNameWithoutExtension(database.FilePath)).ToLowerInvariant()
-                : theExtension;
+            if (GlobalVariables.AnalyteType == AnalyteType.Oligo)
+                bioPolymerList = LoadOligoDb(dbPath, out Dictionary<string, Modification> unknownModification)
+                    .Cast<IBioPolymer>().ToList();
+            else
+                bioPolymerList = LoadProteinDb(dbPath, out Dictionary<string, Modification> unknownModifications)
+                    .Cast<IBioPolymer>().ToList();
+
+            if (!bioPolymerList.Any())
+                Warn("Warning: No protein entries were found in the database");
+
+            return bioPolymerList;
+        }
+
+        public static IEnumerable<RNA> LoadOligoDb(string fileName, out Dictionary<string, Modification> unknownMods, int maxThreads = 1, string? decoyIdentifier = null)
+        {
+            unknownMods = null;
+            decoyIdentifier ??= GlobalVariables.DecoyIdentifier;
+            List<RNA> rnaList;
+
+            string theExtension = Path.GetExtension(fileName).ToLowerInvariant();
+            bool compressed = theExtension.EndsWith("gz"); // allows for .bgz and .tgz, too which are used on occasion
+            theExtension = compressed ? Path.GetExtension(Path.GetFileNameWithoutExtension(fileName)).ToLowerInvariant() : theExtension;
 
             if (theExtension.Equals(".fasta") || theExtension.Equals(".fa"))
             {
-                proteinList = ProteinDbLoader.LoadProteinFasta(
-                    database.FilePath, true, DecoyType.None, false, out dbErrors,
-                    ProteinDbLoader.UniprotAccessionRegex,
-                    ProteinDbLoader.UniprotFullNameRegex,
-                    ProteinDbLoader.UniprotFullNameRegex,
-                    ProteinDbLoader.UniprotGeneNameRegex,
-                    ProteinDbLoader.UniprotOrganismRegex, -1);
+                rnaList = RnaDbLoader.LoadRnaFasta(fileName, true, DecoyType.None, false, out var dbErrors);
             }
             else
             {
-                List<string> modTypesToExclude = new List<string>();
-                proteinList = ProteinDbLoader.LoadProteinXML(
-                    database.FilePath, true, DecoyType.None, GlobalVariables.AllModsKnown,
-                    false, modTypesToExclude, out Dictionary<string, Modification> um, -1, 4, 1);
+                var headerMods = ProteinDbLoader.GetPtmListFromProteinXml(fileName);
+                foreach (var mod in headerMods)
+                    Mods.AddOrUpdateModification(mod, true);
+                // TODO: Add in variant params when fixed in MzLib. 
+                rnaList = RnaDbLoader.LoadRnaXML(fileName, true, DecoyType.None, false, Mods.AllRnaModsList, [], out unknownMods, maxThreads, decoyIdentifier: decoyIdentifier);
             }
+            return rnaList.Where(p => p.BaseSequence.Length > 0);
+        }
 
-            if (!proteinList.Any())
+        public static IEnumerable<Protein> LoadProteinDb(string fileName, out Dictionary<string, Modification> um, int maxThreads = 1, string? decoyIdentifier = null)
+        {
+            um = new Dictionary<string, Modification>();
+            decoyIdentifier ??= GlobalVariables.DecoyIdentifier;
+            List<Protein> proteinList;
+
+            string theExtension = Path.GetExtension(fileName).ToLowerInvariant();
+            bool compressed = theExtension.EndsWith("gz"); // allows for .bgz and .tgz, too which are used on occasion
+            theExtension = compressed ? Path.GetExtension(Path.GetFileNameWithoutExtension(fileName)).ToLowerInvariant() : theExtension;
+
+            if (theExtension.Equals(".fasta") || theExtension.Equals(".fa"))
             {
-                Warn("Warning: No protein entries were found in the database");
-                return new List<Protein>();
+                proteinList = ProteinDbLoader.LoadProteinFasta(fileName, true, DecoyType.None, false, out var dbErrors,
+                    ProteinDbLoader.UniprotAccessionRegex, ProteinDbLoader.UniprotFullNameRegex, ProteinDbLoader.UniprotFullNameRegex, ProteinDbLoader.UniprotGeneNameRegex,
+                    ProteinDbLoader.UniprotOrganismRegex, maxThreads, addTruncations: false);
             }
+            else
+            {
+                var headerMods = ProteinDbLoader.GetPtmListFromProteinXml(fileName);
+                foreach (var mod in headerMods)
+                    Mods.AddOrUpdateModification(mod, false);
 
-            return proteinList;
+                proteinList = ProteinDbLoader.LoadProteinXML(fileName, true, DecoyType.None, Mods.AllProteinModsList, false, [], out um, maxThreads, 4, 1, addTruncations: false, decoyIdentifier: decoyIdentifier);
+            }
+            return proteinList.Where(p => p.BaseSequence.Length > 0);
         }
 
         #endregion
@@ -189,9 +218,9 @@ namespace Tasks
         /// <param name="databasePeptides">Dictionary mapping proteins to their digested peptides</param>
         /// <param name="userParams">User-specified digestion parameters</param>
         /// <returns>Dictionary mapping proteins to their processed InSilicoPep objects</returns>
-        Dictionary<Protein, List<InSilicoPep>> DeterminePeptideStatus(
+        Dictionary<IBioPolymer, List<InSilicoPep>> DeterminePeptideStatus(
             string databaseName,
-            Dictionary<Protein, List<IBioPolymerWithSetMods>> databasePeptides,
+            Dictionary<IBioPolymer, List<IBioPolymerWithSetMods>> databasePeptides,
             RunParameters userParams)
         {
             // PHASE 1: Determine uniqueness for all peptide sequences
@@ -227,6 +256,12 @@ namespace Tasks
                 mobilityValues = BatchCalculateElectrophoreticMobility(allPeptides);
                 retentionTimesChronologer = BatchCalculateRetentionTimesChronologer(allPeptides);
             }
+            else
+            {
+                hydrophobicityValues = new double[allWithSetMods.Count];
+                mobilityValues = new double[allWithSetMods.Count];
+                retentionTimesChronologer = new double[allWithSetMods.Count];
+            }
 
             // Create a lookup from peptide to its calculated values
             var peptideToIndex = new Dictionary<IBioPolymerWithSetMods, int>();
@@ -237,7 +272,7 @@ namespace Tasks
             }
 
             // PHASE 3: Build InSilicoPep objects
-            var inSilicoPeptides = new Dictionary<Protein, List<InSilicoPep>>();
+            var inSilicoPeptides = new Dictionary<IBioPolymer, List<InSilicoPep>>();
 
             foreach (var proteinEntry in databasePeptides)
             {
@@ -457,7 +492,7 @@ namespace Tasks
             return double.IsNaN(mobility) ? 0 : mobility;
         }
 
-        private static readonly HashSet<string> ShiftingModifications = new HashSet<string>(StringComparer.Ordinal)
+        private static readonly HashSet<string> ShiftingModifications = new(StringComparer.Ordinal)
         {
             "Acetylation", "Ammonia loss", "Carbamyl", "Deamidation", "Formylation",
             "N2-acetylarginine", "N6-acetyllysine", "N-acetylalanine", "N-acetylaspartate",
@@ -480,12 +515,12 @@ namespace Tasks
         /// <summary>
         /// Calculates protein sequence coverage for each protease across all databases.
         /// </summary>
-        private Dictionary<string, Dictionary<Protein, (double, double)>> CalculateProteinSequenceCoverage(
-            Dictionary<string, Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>> peptideByFile)
+        private Dictionary<string, Dictionary<IBioPolymer, (double, double)>> CalculateProteinSequenceCoverage(
+            Dictionary<string, Dictionary<string, Dictionary<IBioPolymer, List<InSilicoPep>>>> peptideByFile)
         {
             // PHASE 1: Aggregate peptides from all databases by protease
             var allDatabasePeptidesByProtease = new Dictionary<string, List<InSilicoPep>>();
-            var accessionToProtein = new Dictionary<string, Protein>();
+            var accessionToProtein = new Dictionary<string, IBioPolymer>();
 
             foreach (var database in peptideByFile)
             {
@@ -517,7 +552,7 @@ namespace Tasks
             }
 
             // PHASE 2: Calculate coverage for each protease-protein combination
-            var proteinSequenceCoverageByProtease = new Dictionary<string, Dictionary<Protein, (double, double)>>();
+            var proteinSequenceCoverageByProtease = new Dictionary<string, Dictionary<IBioPolymer, (double, double)>>();
 
             foreach (var protease in allDatabasePeptidesByProtease)
             {
@@ -528,14 +563,14 @@ namespace Tasks
                     .GroupBy(p => p.Protein)
                     .ToDictionary(group => group.Key, group => group.ToList());
 
-                var sequenceCoverages = new Dictionary<Protein, (double, double)>();
+                var sequenceCoverages = new Dictionary<IBioPolymer, (double, double)>();
 
                 foreach (var proteinGroup in peptidesByProteinAccession)
                 {
                     string proteinAccession = proteinGroup.Key;
                     var peptidesForThisProtein = proteinGroup.Value;
 
-                    if (!accessionToProtein.TryGetValue(proteinAccession, out Protein? actualProtein))
+                    if (!accessionToProtein.TryGetValue(proteinAccession, out IBioPolymer? actualProtein))
                         continue;
 
                     int proteinSequenceLength = actualProtein.Length;
@@ -575,10 +610,10 @@ namespace Tasks
         /// Digests proteins for each database using the protease and settings provided.
         /// </summary>
         //digest proteins for each database using the protease and settings provided
-        protected Dictionary<Protein, List<IBioPolymerWithSetMods>> DigestDatabase(List<Protein> proteinsFromDatabase,
+        protected Dictionary<IBioPolymer, List<IBioPolymerWithSetMods>> DigestDatabase(List<IBioPolymer> proteinsFromDatabase,
             ProteaseSpecificParameters proteaseSpecificParameters, RunParameters globalDigestionParams)
         {
-            Dictionary<Protein, List<IBioPolymerWithSetMods>> peptidesForProtein = new(proteinsFromDatabase.Count);
+            Dictionary<IBioPolymer, List<IBioPolymerWithSetMods>> peptidesForProtein = new(proteinsFromDatabase.Count);
             foreach (var protein in proteinsFromDatabase)
             {
                 List<IBioPolymerWithSetMods> peptides = protein.Digest(proteaseSpecificParameters.DigestionParams, proteaseSpecificParameters.FixedMods, proteaseSpecificParameters.VariableMods).ToList();
@@ -608,7 +643,7 @@ namespace Tasks
         /// Writes peptides to TSV files as results.
         /// </summary>
         protected static void WritePeptidesToTsv(
-            Dictionary<string, Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>> peptideByFile,
+            Dictionary<string, Dictionary<string, Dictionary<IBioPolymer, List<InSilicoPep>>>> peptideByFile,
             string filePath,
             RunParameters userParams)
         {

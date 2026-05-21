@@ -1,9 +1,9 @@
 using NUnit.Framework;
+using Omics;
 using Proteomics;
 using Proteomics.ProteolyticDigestion;
 using Tasks;
 using Tasks.CoverageMapConfiguration;
-using Omics.Digestion;
 
 namespace Test
 {
@@ -728,7 +728,7 @@ KEFTPPVQAAYQKVVAGVANALAHKYH";
         [Test]
         public void ProteinCoverageAnalyzer_Constructor_ThrowsOnNullPeptideByFile()
         {
-            var coverage = new Dictionary<string, Dictionary<Protein, (double, double)>>();
+            var coverage = new Dictionary<string, Dictionary<IBioPolymer, (double, double)>>();
 
             Assert.Throws<ArgumentNullException>(() =>
                 new ProteinCoverageAnalyzer(null, coverage));
@@ -737,7 +737,7 @@ KEFTPPVQAAYQKVVAGVANALAHKYH";
         [Test]
         public void ProteinCoverageAnalyzer_Constructor_ThrowsOnNullCoverage()
         {
-            var peptideByFile = new Dictionary<string, Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>>();
+            var peptideByFile = new Dictionary<string, Dictionary<string, Dictionary<IBioPolymer, List<InSilicoPep>>>>();
 
             Assert.Throws<ArgumentNullException>(() =>
                 new ProteinCoverageAnalyzer(peptideByFile, null));
@@ -746,8 +746,8 @@ KEFTPPVQAAYQKVVAGVANALAHKYH";
         [Test]
         public void ProteinCoverageAnalyzer_EmptyData_InitializesEmpty()
         {
-            var peptideByFile = new Dictionary<string, Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>>();
-            var coverage = new Dictionary<string, Dictionary<Protein, (double, double)>>();
+            var peptideByFile = new Dictionary<string, Dictionary<string, Dictionary<IBioPolymer, List<InSilicoPep>>>>();
+            var coverage = new Dictionary<string, Dictionary<IBioPolymer, (double, double)>>();
 
             var analyzer = new ProteinCoverageAnalyzer(peptideByFile, coverage);
 
@@ -763,13 +763,13 @@ KEFTPPVQAAYQKVVAGVANALAHKYH";
             var protein = new Protein("PEPTIDE", "TestProtein");
             var peptides = new List<InSilicoPep>();
 
-            var peptideByFile = new Dictionary<string, Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>>
+            var peptideByFile = new Dictionary<string, Dictionary<string, Dictionary<IBioPolymer, List<InSilicoPep>>>>
             {
                 {
-                    "Database1.fasta", new Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>
+                    "Database1.fasta", new Dictionary<string, Dictionary<IBioPolymer, List<InSilicoPep>>>
                     {
                         {
-                            "trypsin", new Dictionary<Protein, List<InSilicoPep>>
+                            "trypsin", new Dictionary<IBioPolymer, List<InSilicoPep>>
                             {
                                 { protein, peptides }
                             }
@@ -777,9 +777,9 @@ KEFTPPVQAAYQKVVAGVANALAHKYH";
                     }
                 }
             };
-            var coverage = new Dictionary<string, Dictionary<Protein, (double, double)>>
+            var coverage = new Dictionary<string, Dictionary<IBioPolymer, (double, double)>>
             {
-                { "trypsin", new Dictionary<Protein, (double, double)> { { protein, (0.5, 0.3) } } }
+                { "trypsin", new Dictionary<IBioPolymer, (double, double)> { { protein, (0.5, 0.3) } } }
             };
 
             var analyzer = new ProteinCoverageAnalyzer(peptideByFile, coverage);
@@ -795,25 +795,25 @@ KEFTPPVQAAYQKVVAGVANALAHKYH";
             var protein1 = new Protein("PEPTIDE", "TestProtein1");
             var protein2 = new Protein("PEPTIDE", "TestProtein2");
 
-            var peptideByFile = new Dictionary<string, Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>>
+            var peptideByFile = new Dictionary<string, Dictionary<string, Dictionary<IBioPolymer, List<InSilicoPep>>>>
             {
                 {
-                    "Database1.fasta", new Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>
+                    "Database1.fasta", new Dictionary<string, Dictionary<IBioPolymer, List<InSilicoPep>>>
                     {
-                        { "trypsin", new Dictionary<Protein, List<InSilicoPep>> { { protein1, new List<InSilicoPep>() } } }
+                        { "trypsin", new Dictionary<IBioPolymer, List<InSilicoPep>> { { protein1, new List<InSilicoPep>() } } }
                     }
                 },
                 {
-                    "Database2.fasta", new Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>
+                    "Database2.fasta", new Dictionary<string, Dictionary<IBioPolymer, List<InSilicoPep>>>
                     {
-                        { "trypsin", new Dictionary<Protein, List<InSilicoPep>> { { protein2, new List<InSilicoPep>() } } }
+                        { "trypsin", new Dictionary<IBioPolymer, List<InSilicoPep>> { { protein2, new List<InSilicoPep>() } } }
                     }
                 }
             };
-            var coverage = new Dictionary<string, Dictionary<Protein, (double, double)>>
+            var coverage = new Dictionary<string, Dictionary<IBioPolymer, (double, double)>>
             {
                 {
-                    "trypsin", new Dictionary<Protein, (double, double)>
+                    "trypsin", new Dictionary<IBioPolymer, (double, double)>
                     {
                         { protein1, (0.5, 0.3) },
                         { protein2, (0.6, 0.4) }
@@ -831,18 +831,18 @@ KEFTPPVQAAYQKVVAGVANALAHKYH";
         {
             var protein = new Protein("PEPTIDE", "TestProtein");
 
-            var peptideByFile = new Dictionary<string, Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>>
+            var peptideByFile = new Dictionary<string, Dictionary<string, Dictionary<IBioPolymer, List<InSilicoPep>>>>
             {
                 {
-                    "Database1.fasta", new Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>
+                    "Database1.fasta", new Dictionary<string, Dictionary<IBioPolymer, List<InSilicoPep>>>
                     {
-                        { "trypsin", new Dictionary<Protein, List<InSilicoPep>> { { protein, new List<InSilicoPep>() } } }
+                        { "trypsin", new Dictionary<IBioPolymer, List<InSilicoPep>> { { protein, new List<InSilicoPep>() } } }
                     }
                 }
             };
-            var coverage = new Dictionary<string, Dictionary<Protein, (double, double)>>
+            var coverage = new Dictionary<string, Dictionary<IBioPolymer, (double, double)>>
             {
-                { "trypsin", new Dictionary<Protein, (double, double)> { { protein, (0.5, 0.3) } } }
+                { "trypsin", new Dictionary<IBioPolymer, (double, double)> { { protein, (0.5, 0.3) } } }
             };
 
             var analyzer = new ProteinCoverageAnalyzer(peptideByFile, coverage);
@@ -856,8 +856,8 @@ KEFTPPVQAAYQKVVAGVANALAHKYH";
         [Test]
         public void ProteinCoverageAnalyzer_GetCoverageResultByAccession_NotFound()
         {
-            var peptideByFile = new Dictionary<string, Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>>();
-            var coverage = new Dictionary<string, Dictionary<Protein, (double, double)>>();
+            var peptideByFile = new Dictionary<string, Dictionary<string, Dictionary<IBioPolymer, List<InSilicoPep>>>>();
+            var coverage = new Dictionary<string, Dictionary<IBioPolymer, (double, double)>>();
 
             var analyzer = new ProteinCoverageAnalyzer(peptideByFile, coverage);
 
@@ -871,18 +871,18 @@ KEFTPPVQAAYQKVVAGVANALAHKYH";
         {
             var protein = new Protein("PEPTIDE", "TestProtein");
 
-            var peptideByFile = new Dictionary<string, Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>>
+            var peptideByFile = new Dictionary<string, Dictionary<string, Dictionary<IBioPolymer, List<InSilicoPep>>>>
             {
                 {
-                    "Database1.fasta", new Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>
+                    "Database1.fasta", new Dictionary<string, Dictionary<IBioPolymer, List<InSilicoPep>>>
                     {
-                        { "trypsin", new Dictionary<Protein, List<InSilicoPep>> { { protein, new List<InSilicoPep>() } } }
+                        { "trypsin", new Dictionary<IBioPolymer, List<InSilicoPep>> { { protein, new List<InSilicoPep>() } } }
                     }
                 }
             };
-            var coverage = new Dictionary<string, Dictionary<Protein, (double, double)>>
+            var coverage = new Dictionary<string, Dictionary<IBioPolymer, (double, double)>>
             {
-                { "trypsin", new Dictionary<Protein, (double, double)> { { protein, (0.5, 0.3) } } }
+                { "trypsin", new Dictionary<IBioPolymer, (double, double)> { { protein, (0.5, 0.3) } } }
             };
 
             var analyzer = new ProteinCoverageAnalyzer(peptideByFile, coverage);
@@ -900,13 +900,13 @@ KEFTPPVQAAYQKVVAGVANALAHKYH";
             var proteinA = new Protein("PEPTIDE", "ProteinA");
             var proteinB = new Protein("PEPTIDE", "ProteinB");
 
-            var peptideByFile = new Dictionary<string, Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>>
+            var peptideByFile = new Dictionary<string, Dictionary<string, Dictionary<IBioPolymer, List<InSilicoPep>>>>
             {
                 {
-                    "Database1.fasta", new Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>
+                    "Database1.fasta", new Dictionary<string, Dictionary<IBioPolymer, List<InSilicoPep>>>
                     {
                         {
-                            "trypsin", new Dictionary<Protein, List<InSilicoPep>>
+                            "trypsin", new Dictionary<IBioPolymer, List<InSilicoPep>>
                             {
                                 { proteinC, new List<InSilicoPep>() },
                                 { proteinA, new List<InSilicoPep>() },
@@ -916,10 +916,10 @@ KEFTPPVQAAYQKVVAGVANALAHKYH";
                     }
                 }
             };
-            var coverage = new Dictionary<string, Dictionary<Protein, (double, double)>>
+            var coverage = new Dictionary<string, Dictionary<IBioPolymer, (double, double)>>
             {
                 {
-                    "trypsin", new Dictionary<Protein, (double, double)>
+                    "trypsin", new Dictionary<IBioPolymer, (double, double)>
                     {
                         { proteinC, (0.5, 0.3) },
                         { proteinA, (0.5, 0.3) },

@@ -4,8 +4,14 @@
     <OutputType>WinExe</OutputType>
     <TargetFramework>net8.0-windows</TargetFramework>
     <UseWPF>true</UseWPF>
+    <Platforms>x64</Platforms>
     <ApplicationIcon>Icons\proteaseGuru.ico</ApplicationIcon>
   </PropertyGroup>
+
+  <ItemGroup>
+    <None Remove="Icons\IconProtein.bmp" />
+    <None Remove="Icons\IconRna.bmp" />
+  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="mzLib" Version="1.0.579" />
@@ -31,6 +37,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Resource Include="Icons\IconProtein.bmp">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Resource>
+    <Resource Include="Icons\IconRna.bmp">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Resource>
     <Resource Include="proteaseGuru.ico">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Resource>

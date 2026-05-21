@@ -26,9 +26,4 @@ public partial class DigestionConditions : UserControl
         if (dialog.proteaseAdded)
             viewModel.PopulateProteaseCollection();
     }
-
-    private void SaveDigestionTask_Click(object sender, RoutedEventArgs e)
-    {
-
-    }
 }

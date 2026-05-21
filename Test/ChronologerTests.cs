@@ -11,7 +11,7 @@ namespace Test;
 internal class ChronologerTests
 {
     // Lock object to synchronize access to Chronologer predictor across tests
-    private static readonly object ChronologerLock = new object();
+    private static readonly object ChronologerLock = new();
 
     [Test]
     public static void ChronologerRetentionTimePredictionTest()

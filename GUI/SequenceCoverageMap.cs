@@ -5,10 +5,13 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Shapes;
+using Easy.Common.Extensions;
 using Proteomics;
 using Tasks;
 using Tasks.CoverageMapConfiguration;
 using Proteomics.ProteolyticDigestion;
+using Engine;
+using Transcriptomics.Digestion;
 
 namespace GUI
 {
@@ -20,6 +23,15 @@ namespace GUI
 
     static class SequenceCoverageMap
     {
+        // Cached FontFamily avoids allocating a new object on every character drawn.
+        private static readonly FontFamily ArialFontFamily = new FontFamily("Arial");
+
+        // Pre-built single-character uppercase strings avoid a ToString()+ToUpper()
+        // allocation for every residue rendered. Indexed by char value (0-127).
+        private static readonly string[] UpperCharStrings = Enumerable.Range(0, 128)
+            .Select(c => char.ToUpperInvariant((char)c).ToString())
+            .ToArray();
+
         // ── Bar geometry constants ────────────────────────────────────────────
         public const int SeqTextHeight = 20;
         public const int BarHeight = 6;
@@ -27,7 +39,7 @@ namespace GUI
         public const int BarTopMargin = 6;
         public const int BottomLineGap = 12;
 
-        public static int Highlight(int start, int end, Canvas map, Dictionary<int, List<int>> indices,
+        public static int Highlight(int start, int end, Canvas map, Dictionary<int, HashSet<int>> indices,
             int height, Color clr, bool unique, bool startPep, bool endPep, int partial = -1,
             int residueSpacing = 25, int seqLeftOffset = 45)
         {
@@ -47,11 +59,11 @@ namespace GUI
                     // only does this if partially highlighted peptides dont continue on the first line
                     if (!indices.ContainsKey(i))
                     {
-                        indices.Add(i, new List<int>());
+                        indices.Add(i, new HashSet<int>());
                     }
 
                     // check if 
-                    if (!indices[i].Any(d => d == start))
+                    if (!indices[i].Contains(start))
                     {
                         break;
                     }
@@ -67,7 +79,7 @@ namespace GUI
             }
             else
             {
-                indices.Add(i, Enumerable.Range(start, end - start + 1).ToList());
+                indices.Add(i, Enumerable.Range(start, end - start + 1).ToHashSet());
             }
 
             // highlight peptide
@@ -103,13 +115,12 @@ namespace GUI
             {
                 tb.FontWeight = FontWeights.ExtraBold;
             }
-            tb.FontFamily = new FontFamily("Arial");
+            tb.FontFamily = ArialFontFamily;
 
             Canvas.SetTop(tb, loc.Y);
             Canvas.SetLeft(tb, loc.X);
             Panel.SetZIndex(tb, 2);
             cav.Children.Add(tb);
-            cav.UpdateLayout();
         }
 
         /// <summary>
@@ -123,7 +134,7 @@ namespace GUI
             tb.Text = txt;
             tb.FontSize = 15;
             tb.FontWeight = FontWeights.Normal;
-            tb.FontFamily = new FontFamily("Arial");
+            tb.FontFamily = ArialFontFamily;
 
             // Add underline decoration for uncovered amino acids
             tb.TextDecorations = TextDecorations.Underline;
@@ -132,7 +143,6 @@ namespace GUI
             Canvas.SetLeft(tb, loc.X);
             Panel.SetZIndex(tb, 2);
             cav.Children.Add(tb);
-            cav.UpdateLayout();
         }
         /// <summary>
         /// Draws a single amino acid character for residues covered by SHARED peptides only.
@@ -144,7 +154,7 @@ namespace GUI
             tb.Text = txt;
             tb.FontSize = 15;
             tb.FontWeight = FontWeights.Normal;
-            tb.FontFamily = new FontFamily("Arial");
+            tb.FontFamily = ArialFontFamily;
 
             // Create a translucent brush for shared peptide coverage
             if (clr == Brushes.Red)
@@ -160,7 +170,6 @@ namespace GUI
             Canvas.SetLeft(tb, loc.X);
             Panel.SetZIndex(tb, 2);
             cav.Children.Add(tb);
-            cav.UpdateLayout();
         }
         public static void txtDrawingLabel(Canvas cav, Point loc, string txt, Brush clr)
         {
@@ -176,13 +185,12 @@ namespace GUI
             {
                 tb.FontWeight = FontWeights.ExtraBold;
             }
-            tb.FontFamily = new FontFamily("Arial");
+            tb.FontFamily = ArialFontFamily;
 
             Canvas.SetTop(tb, loc.Y);
             Canvas.SetLeft(tb, loc.X);
             Panel.SetZIndex(tb, 2);
             cav.Children.Add(tb);
-            cav.UpdateLayout();
         }
 
         // draw line for peptides
@@ -294,9 +302,9 @@ namespace GUI
             // Updated to include three categories
             string[] peptideCategories = new string[3]
             {
-                "Shared peptides (translucent)",
-                "Unique peptides (bold)",
-                "Not covered (underlined)"
+                $"Shared {GlobalVariables.AnalyteType.GetUniqueFormLabel()} (translucent)",
+                $"Unique {GlobalVariables.AnalyteType.GetUniqueFormLabel()} (bold)",
+                $"Not covered (underlined)"
             };
 
             foreach (string peptide in peptideCategories)
@@ -631,7 +639,7 @@ namespace GUI
         public static (Dictionary<string, Color> colors, Dictionary<string, SolidColorBrush> brushes)
             BuildStableColorMaps()
         {
-            var allNames = ProteaseDictionary.Dictionary.Keys.ToList();
+            var allNames = ProteaseDictionary.Dictionary.Keys.Concat(RnaseDictionary.Dictionary.Keys);
             var rgbMap = CoverageMapConfiguration.CreateProteaseColorMap(allNames);
 
             var colors = new Dictionary<string, Color>();
@@ -656,17 +664,6 @@ namespace GUI
             var fb = new SolidColorBrush(Colors.DimGray);
             fb.Freeze();
             return fb;
-        }
-
-        public static int GetStableColorIndex(string proteaseName)
-        {
-            int i = 0;
-            foreach (var key in ProteaseDictionary.Dictionary.Keys)
-            {
-                if (key == proteaseName) return i;
-                i++;
-            }
-            return int.MaxValue;
         }
 
         // ── Lane View Drawing ─────────────────────────────────────────────────
@@ -749,7 +746,7 @@ namespace GUI
 
                 for (int r = 0; r < line.Length; r++)
                 {
-                    string ch = line[r].ToString().ToUpper();
+                    string ch = UpperCharStrings[line[r]]; ;
                     txtDrawing(mapCanvas, new Point(r * residueSpacing + seqLeftOffset, height), ch, Brushes.Black);
                 }
 
@@ -948,7 +945,7 @@ namespace GUI
                 bool isCoveredByUnique = uniqueCovered.Contains(residuePosition);
                 bool isCoveredBySharedOnly = sharedOnlyCovered.Contains(residuePosition);
 
-                string character = line[r].ToString().ToUpper();
+                string character = UpperCharStrings[line[r]];
 
                 if (isCoveredByUnique)
                     txtDrawing(mapCanvas, new Point(r * spacing + seqLeftOffset, height), character, Brushes.Black);
@@ -1093,8 +1090,22 @@ namespace GUI
             var splitSeq = CoverageMapDataPreparer.SplitSequenceIntoLines(
                 baseSequence, CoverageMapDataPreparer.DefaultResiduesPerLine);
 
+// Pre-bucket entries by starting line index for O(1) direct lookup.
+            // This eliminates the O(k) per-line scan that was previously needed.
+            int rpl = CoverageMapDataPreparer.DefaultResiduesPerLine;
+            int lineCount = splitSeq.Count;
+            var buckets = new List<PeptideDrawEntry>[lineCount];
+            for (int b = 0; b < lineCount; b++) buckets[b] = new List<PeptideDrawEntry>();
+
+            foreach (var entry in entries)
+            {
+                int startLine = (entry.StartResidue - 1) / rpl;
+                if (startLine >= 0 && startLine < lineCount)
+                    buckets[startLine].Add(entry);
+            }
+
             int height = 10;
-            var indices = new Dictionary<int, List<int>>();
+            var indices = new Dictionary<int, HashSet<int>>();
             int accumIndex = 0;
             var partialPeptideMatches = new Dictionary<PeptideDrawEntry, (int, int)>();
 
@@ -1126,14 +1137,14 @@ namespace GUI
             {
                 var line = splitSeq[lineIndex];
                 indices.Clear();
-                var lineLabel = (lineIndex * CoverageMapDataPreparer.DefaultResiduesPerLine) + 1;
+                var lineLabel = lineIndex * rpl + 1;
+                int lineStartResidue = lineLabel;          // 1-based first residue on this line
+                int lineEndResidue = lineStartResidue + line.Length - 1;
 
                 txtDrawingLabel(mapCanvas, new Point(0, height), lineLabel.ToString(), Brushes.Black);
-
-                int lineStartResidue = lineIndex * CoverageMapDataPreparer.DefaultResiduesPerLine + 1;
                 DrawSequenceCharacters(mapCanvas, line, height, residueSpacing, uniqueCovered, sharedOnlyCovered, lineStartResidue, seqLeftOffset);
 
-                // Process partial peptides
+                // Process carry-over partial peptides from the previous line
                 if (partialPeptideMatches.Count > 0)
                 {
                     var temp = new Dictionary<PeptideDrawEntry, (int, int)>(partialPeptideMatches);
@@ -1165,14 +1176,15 @@ namespace GUI
                     }
                 }
 
-                // Draw peptide highlights for this line
-                var peptidesOnThisLine = entries
-                    .Where(p => p.StartResidue - accumIndex - 1 < line.Length)
-                    .OrderBy(p => p.StartResidue)
-                    .ToList();
-
-                foreach (var peptide in peptidesOnThisLine)
+// Process peptides that START on this line - direct O(1) bucket lookup
+                var peptidesStartingHere = buckets[lineIndex].OrderBy(p => p.StartResidue);
+                foreach (var peptide in peptidesStartingHere)
                 {
+                    // Skip entries that ended before this line (they were already handled
+                    // as partials in a previous line, or are duplicate-covered entries)
+                    if (peptide.EndResidue < lineStartResidue)
+                        continue;
+
                     var partialIndex = CoverageMapDataPreparer.CheckPartialMatch(peptide.EndResidue, line.Length, accumIndex);
                     int start = peptide.StartResidue - accumIndex - 1;
                     int end = Math.Min(peptide.EndResidue - accumIndex - 1, line.Length - 1);
@@ -1192,7 +1204,6 @@ namespace GUI
                             proteaseByColor[peptide.Protease], isUnique, true, true, -1,
                             residueSpacing, seqLeftOffset);
                     }
-                    entries.Remove(peptide);
                 }
 
                 int addedSpace = indices.Count > 7 ? (indices.Count - 7) * 10 : 0;

@@ -1,5 +1,7 @@
+using Omics;
 using Proteomics;
 using Proteomics.ProteolyticDigestion;
+using Transcriptomics.Digestion;
 
 namespace Tasks;
 
@@ -77,7 +79,7 @@ public class SeekMaximumCoverage
     /// <see cref="RunParameters"/>. Always returns true when no parameters are set
     /// or when the relevant bound is -1 (unset).
     /// </summary>
-    private bool PassesMassFilter(PeptideWithSetModifications peptide)
+    private bool PassesMassFilter(IBioPolymerWithSetMods peptide)
     {
         if (_runParameters == null)
             return true;
@@ -111,7 +113,7 @@ public class SeekMaximumCoverage
     /// </param>
     /// <returns>Dictionary mapping protease name to set of covered residue indices (0-based).</returns>
     public Dictionary<string, HashSet<int>> CalculateCoverageByProtease(
-        Protein protein,
+        IBioPolymer protein,
         IEnumerable<ProteaseSpecificParameters> proteaseParams)
     {
         var coverage = new Dictionary<string, HashSet<int>>();
@@ -125,7 +127,7 @@ public class SeekMaximumCoverage
                 proteaseParam.FixedMods,
                 proteaseParam.VariableMods);
 
-            foreach (PeptideWithSetModifications peptide in peptides)
+            foreach (IBioPolymerWithSetMods peptide in peptides)
             {
                 if (!PassesMassFilter(peptide))
                     continue;
@@ -152,7 +154,7 @@ public class SeekMaximumCoverage
     /// (OneBasedStart, OneBasedEnd) intervals.
     /// </returns>
     public Dictionary<string, List<(int Start, int End)>> GetDetectablePeptideIntervals(
-        Protein protein,
+        IBioPolymer protein,
         IEnumerable<ProteaseSpecificParameters> proteaseParams)
     {
         var result = new Dictionary<string, List<(int Start, int End)>>();
@@ -166,7 +168,7 @@ public class SeekMaximumCoverage
                 proteaseParam.FixedMods,
                 proteaseParam.VariableMods);
 
-            foreach (PeptideWithSetModifications peptide in peptides)
+            foreach (IBioPolymerWithSetMods peptide in peptides)
             {
                 if (!PassesMassFilter(peptide))
                     continue;
@@ -182,6 +184,59 @@ public class SeekMaximumCoverage
         }
 
         return result;
+    }
+
+    /// <summary>
+    /// Performs a single digest pass per protease, producing both the 0-based coverage
+    /// set (used by combination-search algorithms) and the 1-based interval list (used
+    /// for drawing coverage maps) simultaneously.
+    ///
+    /// Callers that previously invoked <see cref="CalculateCoverageByProtease"/> and
+    /// <see cref="GetDetectablePeptideIntervals"/> back-to-back on the same protein/params
+    /// should use this method instead to halve the number of digestions performed.
+    /// </summary>
+    public (Dictionary<string, HashSet<int>> Coverage,
+            Dictionary<string, List<(int Start, int End)>> Intervals)
+        CalculateCoverageAndIntervals(
+            IBioPolymer protein,
+            IEnumerable<ProteaseSpecificParameters> proteaseParams)
+    {
+        var coverage = new Dictionary<string, HashSet<int>>();
+        var intervals = new Dictionary<string, List<(int Start, int End)>>();
+
+        foreach (var proteaseParam in proteaseParams)
+        {
+            var coveredIndices = new HashSet<int>();
+            var rawIntervals = new List<(int, int)>();
+
+            var peptides = protein.Digest(
+                proteaseParam.DigestionParams,
+                proteaseParam.FixedMods,
+                proteaseParam.VariableMods);
+
+            foreach (IBioPolymerWithSetMods peptide in peptides)
+            {
+                if (!PassesMassFilter(peptide))
+                    continue;
+
+                int start = peptide.OneBasedStartResidue;
+                int end = peptide.OneBasedEndResidue;
+
+                rawIntervals.Add((start, end));
+
+                // 0-based indices for coverage sets
+                for (int i = start - 1; i <= end - 1; i++)
+                    coveredIndices.Add(i);
+            }
+
+            coverage[proteaseParam.DigestionAgentName] = coveredIndices;
+            intervals[proteaseParam.DigestionAgentName] = rawIntervals
+                .Distinct()
+                .OrderBy(t => t.Item1)
+                .ToList();
+        }
+
+        return (coverage, intervals);
     }
 
     #endregion

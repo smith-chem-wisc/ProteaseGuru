@@ -1,16 +1,34 @@
+using Engine;
 using Omics.Digestion;
 using Tasks;
+using Transcriptomics.Digestion;
 
 namespace GuiFunctions;
 
-public class ProteaseSpecificParametersViewModel(ProteaseSpecificParameters dig, DigestionConditionsSetupViewModel root) : BaseViewModel(root)
+public class ProteaseSpecificParametersViewModel : BaseViewModel
 {
     private bool _isSelected;
-    public ProteaseSpecificParameters ProteaseSpecificParams { get; } = dig;
 
+    public ProteaseSpecificParametersViewModel(ProteaseSpecificParameters dig, DigestionConditionsSetupViewModel root) : base(root)
+    {
+        ProteaseSpecificParams = dig;
+        
+        // Subscribe to mode changes
+        GuiGlobalParamsViewModel.Instance.PropertyChanged += (sender, args) =>
+        {
+            if (args.PropertyName == nameof(GuiGlobalParamsViewModel.IsRnaMode))
+            {
+                OnPropertyChanged(nameof(IsVisible));
+            }
+        };
+    }
+
+    public ProteaseSpecificParameters ProteaseSpecificParams { get; }
+
+    public bool IsRna => ProteaseSpecificParams.DigestionParams.DigestionAgent is Rnase;
     public string DigestionAgentName => ProteaseSpecificParams.DigestionParams.DigestionAgent.Name;
     public DigestionAgent DigestionAgent => ProteaseSpecificParams.DigestionParams.DigestionAgent;
-    public string ToolTip => ProteaseSpecificParams.DigestionParams.DigestionAgent.Name + " -- Cleavage specificity:  " + string.Join(",", DigestionAgent.DigestionMotifs.Select(p => p).ToString());
+    public string ToolTip => ProteaseSpecificParams.DigestionParams.DigestionAgent.Name + " -- Cleavage specificity:  " + DigestionAgent.DigestionMotifs.ToMotifString();
 
     public bool IsSelected
     {
@@ -21,6 +39,8 @@ public class ProteaseSpecificParametersViewModel(ProteaseSpecificParameters dig,
             OnPropertyChanged(nameof(IsSelected));
         }
     }
+
+    public bool IsVisible => GuiGlobalParamsViewModel.Instance.IsRnaMode == IsRna;
 
     public int MaxMissedCleavages
     {
