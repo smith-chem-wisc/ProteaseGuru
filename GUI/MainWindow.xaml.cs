@@ -29,7 +29,6 @@ using Tasks;
 using Transcriptomics.Digestion;
 using UsefulProteomicsDatabases;
 using GuiFunctions;
-using Easy.Common.Extensions;
 using static Tasks.ProteaseGuruTask;
 
 namespace GUI
