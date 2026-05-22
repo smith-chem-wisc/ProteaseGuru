@@ -84,7 +84,7 @@ namespace GUI
 
                     foreach (var entry in unique)
                     {
-                        if (entry.Value.DistinctBy(p => p.Database).ToList().Count > 1)
+                        if (entry.Value.DistinctBy(p => p.Database).Count() > 1)
                         {
                             uniqueCount = uniqueCount - 1;
                             sharedCount = sharedCount + 1;
