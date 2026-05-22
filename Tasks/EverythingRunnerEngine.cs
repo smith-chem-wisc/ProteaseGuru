@@ -1,8 +1,9 @@
-using Engine;
-using Proteomics;
 using System.Diagnostics;
 using System.Globalization;
 using System.Text;
+using Engine;
+using Omics;
+using Proteomics;
 
 namespace Tasks
 {
@@ -17,7 +18,7 @@ namespace Tasks
             RunList = runList;
             OutputFolder = outputFolder.Trim('"');            
             CurrentXmlDbFilenameList = startingXmlDbFilenameList;
-            PeptideByFile = new Dictionary<string, Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>>();
+            PeptideByFile = new Dictionary<string, Dictionary<string, Dictionary<IBioPolymer, List<InSilicoPep>>>>();
         }
 
         public static event EventHandler<StringEventArgs>? FinishedWritingAllResultsFileHandler;
@@ -30,7 +31,7 @@ namespace Tasks
 
         public static event EventHandler<StringEventArgs>? WarnHandler;
 
-        public Dictionary<string, Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>> PeptideByFile;
+        public Dictionary<string, Dictionary<string, Dictionary<IBioPolymer, List<InSilicoPep>>>> PeptideByFile;
 
         public MyTaskResults? Run()
         {

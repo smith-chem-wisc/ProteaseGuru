@@ -1,5 +1,6 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using Omics;
 using Proteomics;
 using Tasks;
 
@@ -8,7 +9,7 @@ namespace GUI
     //gives structure for protein information in protein search window
     class ProteinForTreeView
     {
-        public ProteinForTreeView(Protein protein, string displayName, List<InSilicoPep> uniquePep,
+        public ProteinForTreeView(IBioPolymer protein, string displayName, List<InSilicoPep> uniquePep,
             List<InSilicoPep> sharedPep, List<InSilicoPep> allPep)
         {
             Protein = protein;
@@ -20,7 +21,7 @@ namespace GUI
             Summary = new ObservableCollection<SummaryForTreeView>();
         }
 
-        public Protein Protein { get; }
+        public IBioPolymer Protein { get; }
         public List<InSilicoPep> UniquePeptides { get; }
         public List<InSilicoPep> SharedPeptides { get; }
         public List<InSilicoPep> AllPeptides { get; }

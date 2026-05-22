@@ -4,12 +4,17 @@ public class GlobalParameters : ParameterBaseClass<GlobalParameters>, IEquatable
     public RunParameters RunParameters { get; set; } = new();
     public bool AskAboutSettingsChangeOnClose { get; set; } = true;
     public bool OverwriteSettingsWithoutAsking { get; set; } = false;
+    public static string DefaultGlobalParametersFilePath => Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "GlobalParameters.toml");
+
+    public bool IsRnaMode { get; set; } = false;
+    public RunParameters? DefaultParameters { get; set; } = null;
 
     public GlobalParameters Clone()
     {
         return new GlobalParameters
         {
-            RunParameters = this.RunParameters.Clone()
+            IsRnaMode = this.IsRnaMode,
+            DefaultParameters = this.DefaultParameters?.Clone()
         };
     }
 
@@ -17,7 +22,7 @@ public class GlobalParameters : ParameterBaseClass<GlobalParameters>, IEquatable
     {
         if (other is null) return false;
         if (ReferenceEquals(this, other)) return true;
-        return Equals(RunParameters, other.RunParameters);
+        return IsRnaMode == other.IsRnaMode && Equals(DefaultParameters, other.DefaultParameters);
     }
 
     public override bool Equals(object? obj)
@@ -30,6 +35,6 @@ public class GlobalParameters : ParameterBaseClass<GlobalParameters>, IEquatable
 
     public override int GetHashCode()
     {
-        return HashCode.Combine(RunParameters);
+        return HashCode.Combine(IsRnaMode, DefaultParameters);
     }
 }

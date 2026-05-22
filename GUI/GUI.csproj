@@ -4,11 +4,17 @@
     <OutputType>WinExe</OutputType>
     <TargetFramework>net8.0-windows</TargetFramework>
     <UseWPF>true</UseWPF>
+    <Platforms>x64</Platforms>
     <ApplicationIcon>Icons\proteaseGuru.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="mzLib" Version="1.0.576" />
+    <None Remove="Icons\IconProtein.bmp" />
+    <None Remove="Icons\IconRna.bmp" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="mzLib" Version="1.0.579" />
     <PackageReference Include="Nett" Version="0.15.0" />
     <PackageReference Include="OxyPlot.Core" Version="2.2.0" />
     <PackageReference Include="OxyPlot.SkiaSharp" Version="2.2.0" />
@@ -31,6 +37,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Resource Include="Icons\IconProtein.bmp">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Resource>
+    <Resource Include="Icons\IconRna.bmp">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Resource>
     <Resource Include="proteaseGuru.ico">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Resource>

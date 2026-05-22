@@ -18,8 +18,9 @@ namespace Engine
         private static char[] _InvalidAminoAcids = new char[] { 'X', 'B', 'J', 'Z', ':', '|', ';', '[', ']', '{', '}', '(', ')', '+', '-' };
 
         // this affects output labels, etc. and can be changed to "Proteoform" for top-down searches
-        public static string AnalyteType = "Peptide";
+        public static AnalyteType AnalyteType;
 
+        public static string DecoyIdentifier = "DECOY";
         static GlobalVariables()
         {
             var version = typeof(GlobalVariables).Assembly.GetName().Version;
@@ -121,7 +122,7 @@ namespace Engine
             RefreshAminoAcidDictionary();
         }
 
-        public static List<string> ErrorsReadingMods = new List<string>();
+        public static List<string> ErrorsReadingMods = new();
 
         // File locations
         public static string DataDir { get; }
@@ -192,7 +193,7 @@ namespace Engine
             if (File.Exists(aminoAcidPath))
             {
                 string[] aminoAcidLines = File.ReadAllLines(aminoAcidPath);
-                List<Residue> residuesToAdd = new List<Residue>();
+                List<Residue> residuesToAdd = new();
                 for (int i = 1; i < aminoAcidLines.Length; i++)
                 {
                     string[] line = aminoAcidLines[i].Split('\t').ToArray();

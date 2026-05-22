@@ -1,7 +1,10 @@
-using Proteomics;
+using System.Text.RegularExpressions;
+using Omics;
+using Omics.Modifications;
 using PredictionClients.Koina.SupportedModels.FragmentIntensityModels;
 using PredictionClients.Koina.SupportedModels.RetentionTimeModels;
-using System.Text.RegularExpressions;
+using Proteomics;
+using Proteomics.ProteolyticDigestion;
 using PredictionClients.Koina.AbstractClasses;
 
 namespace Tasks;
@@ -58,7 +61,7 @@ public static class SpectrumLibraryExporter
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>Full path of the written .msp file.</returns>
     public static async Task<string> ExportAsync(
-        Protein protein,
+        IBioPolymer protein,
         IEnumerable<ProteaseSpecificParameters> proteaseParams,
         IReadOnlyList<int> chargeStates,
         int nce,
@@ -103,74 +106,94 @@ public static class SpectrumLibraryExporter
         progress?.Report($"Digest complete: {uniqueMzLibSequences.Count} unique Prosit-compatible peptides.");
 
         // ── Step 2: Prosit iRT prediction ──────────────────────────────────────
+        // The model now takes config-only at construction; sequences are passed to
+        // Predict(). Each prediction's FullSequence is the original mzLib-format
+        // input, so we can key the iRT lookup directly without UNIMOD conversion.
         progress?.Report("Requesting iRT values from Prosit_2019_irt via Koina…");
         cancellationToken.ThrowIfCancellationRequested();
 
-        var irtModelInputs = uniqueMzLibSequences.Select(p => new RetentionTimePredictionInput(FullSequence: p)).ToList();
-
         var rtModel = new Prosit2019iRT();
-        var irtPredictions = await Task.Run(() => rtModel.Predict(irtModelInputs), cancellationToken);
+        var rtInputs = uniqueMzLibSequences
+            .Select(s => new RetentionTimePredictionInput(s))
+            .ToList();
 
-        var seqToIrt = new Dictionary<string, double?>(uniqueMzLibSequences.Count);
-        for (int i = 0; i < uniqueMzLibSequences.Count; i++)
+        // Predict() is sync internally; wrap in Task.Run so the UI thread stays
+        // responsive while Koina is round-tripping batched HTTP requests.
+        var rtPredictions = await Task.Run(() => rtModel.Predict(rtInputs), cancellationToken);
+
+        int rtValidCount = rtPredictions.Count(p => p.PredictedRetentionTime.HasValue);
+        if (rtValidCount == 0)
         {
-            seqToIrt[uniqueMzLibSequences[i]] = irtPredictions[i].PredictedRetentionTime;
+            string firstReason = rtPredictions
+                .Select(p => p.Warning?.Message)
+                .FirstOrDefault(m => !string.IsNullOrEmpty(m)) ?? "no details";
+            throw new InvalidOperationException(
+                $"All peptides were rejected by Prosit_2019_irt. Details: {firstReason}");
         }
 
-        progress?.Report($"iRT predictions received for {seqToIrt.Count} peptides.");
-        cancellationToken.ThrowIfCancellationRequested();
+        var mzLibToIrt = new Dictionary<string, double?>(rtPredictions.Count);
+        foreach (var pred in rtPredictions)
+            mzLibToIrt[pred.FullSequence] = pred.PredictedRetentionTime;
 
-        // ── Step 3: Build the inputs for Prosit2020IntensityHCD ───
+        progress?.Report($"iRT predictions received for {rtValidCount} peptides.");
 
-        var hcdModelInputs = new List<FragmentIntensityPredictionInput>();
-        var alignedRts = new List<double?>();
+        // ── Step 3: Build aligned HCD inputs and retention-time array ──────────
+        // One row per (unique peptide × charge state). The retention-time array
+        // must be the same length as the prediction list when we later call
+        // GenerateLibrarySpectraFromPredictions().
+        var hcdInputs = new List<FragmentIntensityPredictionInput>();
+        var alignedRetentionTimes = new List<double?>();
 
         foreach (var mzLibSeq in uniqueMzLibSequences)
         {
-            var irt = seqToIrt.TryGetValue(mzLibSeq, out var rt) ? rt : null;
+            double? irt = mzLibToIrt.TryGetValue(mzLibSeq, out var rt) ? rt : null;
+
             foreach (int z in validCharges)
             {
-                alignedRts.Add(irt);
-                hcdModelInputs.Add(new FragmentIntensityPredictionInput(
+                hcdInputs.Add(new FragmentIntensityPredictionInput(
                     FullSequence: mzLibSeq,
                     PrecursorCharge: z,
                     CollisionEnergy: nce,
                     InstrumentType: null,
                     FragmentationType: null));
+                alignedRetentionTimes.Add(irt);
             }
         }
 
         // ── Step 4: Prosit HCD intensity prediction + library write ────────────
+        // The HCD model no longer writes the .msp file as a side effect of
+        // inference; library generation is now a separate explicit call.
         progress?.Report(
             $"Requesting HCD intensities from Prosit_2020_intensity_HCD " +
-            $"({hcdModelInputs.Count} spectra, NCE {nce})…");
+            $"({hcdInputs.Count} spectra, NCE {nce})…");
         cancellationToken.ThrowIfCancellationRequested();
 
         string outputPath = BuildOutputPath(protein, fastaPath);
         Directory.CreateDirectory(Path.GetDirectoryName(outputPath)!);
 
         var hcdModel = new Prosit2020IntensityHCD();
-        _ = await Task.Run(() => hcdModel.Predict(hcdModelInputs), cancellationToken);
+        var hcdPredictions = await Task.Run(() => hcdModel.Predict(hcdInputs), cancellationToken);
 
-        var mask = hcdModel.ValidInputsMask.ToList();
-        int validCount = mask.Count(b => b);
-        int invalidCount = mask.Count - validCount;
-
-        if (validCount == 0)
+        int hcdValidCount = hcdPredictions.Count(p => p.FragmentIntensities is { Count: > 0 });
+        if (hcdValidCount == 0)
+        {
+            string firstReason = hcdPredictions
+                .Select(p => p.Warning?.Message)
+                .FirstOrDefault(m => !string.IsNullOrEmpty(m)) ?? "no details";
             throw new InvalidOperationException(
-                "All peptide/charge combinations were rejected by Prosit_2020_intensity_HCD.");
+                $"All peptide/charge combinations were rejected by Prosit_2020_intensity_HCD. " +
+                $"Details: {firstReason}");
+        }
 
-        progress?.Report(
-            $"HCD prediction complete: {validCount} spectra generated. " +
-            $"{invalidCount} invalid inputs were skipped. " +
-            $"Writing spectral library to {outputPath}…");
-        cancellationToken.ThrowIfCancellationRequested();
+        var spectra = hcdModel.GenerateLibrarySpectraFromPredictions(
+            alignedRetentionTimes: alignedRetentionTimes.ToArray(),
+            warning: out var libraryWarning,
+            filepath: outputPath);
 
-        hcdModel.GenerateLibrarySpectraFromPredictions(alignedRts.ToArray(), out var duplicatesWarning, filepath: outputPath);
-        if (duplicatesWarning != null)
-            progress?.Report($"Library note: {duplicatesWarning.Message}");
+        if (libraryWarning != null)
+            progress?.Report($"Library note: {libraryWarning.Message}");
 
-        progress?.Report($"Done. {validCount} spectra written to: {outputPath}");
+        progress?.Report($"Done. {spectra.Count} spectra written to: {outputPath}");
 
         return outputPath;
     }
@@ -194,7 +217,7 @@ public static class SpectrumLibraryExporter
     /// Prosit2019iRT and Prosit2020IntensityHCD constructors.
     /// </summary>
     private static List<string> DigestToUniqueMzLibSequences(
-        Protein protein,
+        IBioPolymer protein,
         IEnumerable<ProteaseSpecificParameters> proteaseParams)
     {
         var seen = new HashSet<string>(StringComparer.Ordinal);
@@ -240,7 +263,7 @@ public static class SpectrumLibraryExporter
     // Output-path helper
     // ═════════════════════════════════════════════════════════════════════════
 
-    private static string BuildOutputPath(Protein protein, string? fastaPath)
+    private static string BuildOutputPath(IBioPolymer protein, string? fastaPath)
     {
         string dir;
         if (!string.IsNullOrWhiteSpace(fastaPath) && File.Exists(fastaPath))

@@ -3,12 +3,13 @@
     <PropertyGroup>
         <OutputType>Library</OutputType>
         <TargetFramework>net8.0</TargetFramework>
+        <Platforms>x64</Platforms>
     </PropertyGroup>
 
-  <ItemGroup>
-    <PackageReference Include="mzLib" Version="1.0.576" />
-    <PackageReference Include="TopDownProteomics" Version="0.0.298" />
-  </ItemGroup>
+    <ItemGroup>
+        <PackageReference Include="mzLib" Version="1.0.579" />
+        <PackageReference Include="TopDownProteomics" Version="0.0.298" />
+    </ItemGroup>
 
     <ItemGroup>
         <None Update="Data\elements.dat" CopyToOutputDirectory="Always" />

@@ -1,3 +1,4 @@
+using Omics;
 using Proteomics;
 
 namespace Tasks.CoverageMapConfiguration
@@ -14,18 +15,18 @@ namespace Tasks.CoverageMapConfiguration
         /// Master data structure: Database -> Protease -> Protein -> Peptides
         /// Contains all peptide results organized hierarchically
         /// </summary>
-        public Dictionary<string, Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>> PeptideByFile { get; }
+        public Dictionary<string, Dictionary<string, Dictionary<IBioPolymer, List<InSilicoPep>>>> PeptideByFile { get; }
 
         /// <summary>
         /// Reorganized peptide data: Protein -> Protease -> Peptides
         /// Used for quick lookup when analyzing coverage
         /// </summary>
-        public Dictionary<Protein, Dictionary<string, List<InSilicoPep>>> PeptideByProteaseAndProtein { get; private set; }
+        public Dictionary<IBioPolymer, Dictionary<string, List<InSilicoPep>>> PeptideByProteaseAndProtein { get; private set; }
 
         /// <summary>
         /// Maps Protein objects to their analysis representation with categorized peptides
         /// </summary>
-        public Dictionary<Protein, ProteinCoverageResult> ProteinCoverageResults { get; private set; }
+        public Dictionary<IBioPolymer, ProteinCoverageResult> ProteinCoverageResults { get; private set; }
 
         /// <summary>
         /// List of all unique protein accessions from all databases
@@ -40,7 +41,7 @@ namespace Tasks.CoverageMapConfiguration
         /// <summary>
         /// Sequence coverage statistics: Protease -> Protein -> (total coverage, unique coverage)
         /// </summary>
-        public Dictionary<string, Dictionary<Protein, (double, double)>> SequenceCoverageByProtease { get; }
+        public Dictionary<string, Dictionary<IBioPolymer, (double, double)>> SequenceCoverageByProtease { get; }
 
         /// <summary>
         /// Indicates whether multiple databases were analyzed
@@ -57,15 +58,15 @@ namespace Tasks.CoverageMapConfiguration
         /// <param name="peptideByFile">Hierarchical peptide data: Database -> Protease -> Protein -> Peptides</param>
         /// <param name="sequenceCoverageByProtease">Pre-calculated sequence coverage statistics</param>
         public ProteinCoverageAnalyzer(
-            Dictionary<string, Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>> peptideByFile,
-            Dictionary<string, Dictionary<Protein, (double, double)>> sequenceCoverageByProtease)
+            Dictionary<string, Dictionary<string, Dictionary<IBioPolymer, List<InSilicoPep>>>> peptideByFile,
+            Dictionary<string, Dictionary<IBioPolymer, (double, double)>> sequenceCoverageByProtease)
         {
             PeptideByFile = peptideByFile ?? throw new ArgumentNullException(nameof(peptideByFile));
             SequenceCoverageByProtease = sequenceCoverageByProtease ?? throw new ArgumentNullException(nameof(sequenceCoverageByProtease));
 
             // Initialize collections
-            PeptideByProteaseAndProtein = new Dictionary<Protein, Dictionary<string, List<InSilicoPep>>>();
-            ProteinCoverageResults = new Dictionary<Protein, ProteinCoverageResult>();
+            PeptideByProteaseAndProtein = new Dictionary<IBioPolymer, Dictionary<string, List<InSilicoPep>>>();
+            ProteinCoverageResults = new Dictionary<IBioPolymer, ProteinCoverageResult>();
             ProteinAccessions = new List<string>();
             Proteases = new List<string>();
 
@@ -85,7 +86,7 @@ namespace Tasks.CoverageMapConfiguration
         private void OrganizePeptideData()
         {
             // Use HashSet to avoid duplicate protein accessions
-            HashSet<string> proteinAccessionSet = new HashSet<string>();
+            HashSet<string> proteinAccessionSet = new();
 
             // Iterate through all databases, proteases, and proteins
             foreach (var db in PeptideByFile)
@@ -168,7 +169,7 @@ namespace Tasks.CoverageMapConfiguration
         /// </summary>
         /// <param name="protein">The protein to calculate coverage for</param>
         /// <returns>Enumerable of (protease name, coverage fraction) tuples where fraction is 0.0-1.0 (unrounded)</returns>
-        public IEnumerable<(string ProteaseName, double CoverageFraction)> CalculateSequenceCoverageUnique(Protein protein)
+        public IEnumerable<(string ProteaseName, double CoverageFraction)> CalculateSequenceCoverageUnique(IBioPolymer protein)
         {
             if (!PeptideByProteaseAndProtein.ContainsKey(protein))
             {
@@ -216,7 +217,7 @@ namespace Tasks.CoverageMapConfiguration
         /// <param name="protein">The protein</param>
         /// <param name="proteaseName">The protease name</param>
         /// <returns>List of peptides or empty list if not found</returns>
-        public List<InSilicoPep> GetPeptidesForProteinAndProtease(Protein protein, string proteaseName)
+        public List<InSilicoPep> GetPeptidesForProteinAndProtease(IBioPolymer protein, string proteaseName)
         {
             if (PeptideByProteaseAndProtein.TryGetValue(protein, out var proteaseDict))
             {
@@ -233,7 +234,7 @@ namespace Tasks.CoverageMapConfiguration
         /// </summary>
         /// <param name="protein">The protein</param>
         /// <returns>List of all peptides for the protein</returns>
-        public List<InSilicoPep> GetAllPeptidesForProtein(Protein protein)
+        public List<InSilicoPep> GetAllPeptidesForProtein(IBioPolymer protein)
         {
             if (PeptideByProteaseAndProtein.TryGetValue(protein, out var proteaseDict))
             {
