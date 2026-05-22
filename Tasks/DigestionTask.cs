@@ -265,6 +265,7 @@ namespace Tasks
                 hydrophobicityValues = new double[allWithSetMods.Count];
                 mobilityValues = new double[allWithSetMods.Count];
                 retentionTimesChronologer = new double[allWithSetMods.Count];
+                pflyDetectabilities = new bool?[allWithSetMods.Count];
             }
 
             // Create a lookup from peptide to its calculated values
@@ -299,7 +300,7 @@ namespace Tasks
                         isUnique,
                         hydrophobicityValues[index],
                         mobilityValues[index],
-                        retentionTimesChronologer[index],  // Add this new parameter
+                        retentionTimesChronologer[index],
                         pflyDetectabilities[index],
                         peptide.Length,
                         peptide.MonoisotopicMass,
