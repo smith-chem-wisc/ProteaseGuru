@@ -32,6 +32,9 @@ namespace GUI
             .Select(c => char.ToUpperInvariant((char)c).ToString())
             .ToArray();
 
+        private static string GetUpperCharString(char c) =>
+            c < UpperCharStrings.Length ? UpperCharStrings[c] : char.ToUpperInvariant(c).ToString();
+
         // ── Bar geometry constants ────────────────────────────────────────────
         public const int SeqTextHeight = 20;
         public const int BarHeight = 6;
@@ -746,7 +749,7 @@ namespace GUI
 
                 for (int r = 0; r < line.Length; r++)
                 {
-                    string ch = UpperCharStrings[line[r]]; ;
+                    string ch = GetUpperCharString(line[r]);
                     txtDrawing(mapCanvas, new Point(r * residueSpacing + seqLeftOffset, height), ch, Brushes.Black);
                 }
 
@@ -945,7 +948,7 @@ namespace GUI
                 bool isCoveredByUnique = uniqueCovered.Contains(residuePosition);
                 bool isCoveredBySharedOnly = sharedOnlyCovered.Contains(residuePosition);
 
-                string character = UpperCharStrings[line[r]];
+                string character = GetUpperCharString(line[r]);
 
                 if (isCoveredByUnique)
                     txtDrawing(mapCanvas, new Point(r * spacing + seqLeftOffset, height), character, Brushes.Black);

@@ -80,6 +80,30 @@ namespace Tasks.CoverageMapConfiguration
                 .ToDictionary(g => g.Key, g => g.ToHashSet().Count);
         }
 
+        /// <summary>
+        /// Gets unique peptide count grouped by protease only for detectable peptides (PflyDetectability == true)
+        /// </summary>
+        /// <returns>A dictionary where each key is the name of a protease and each value is the count of unique peptides
+        /// associated with that protease that are marked as detectable.</returns>
+        public Dictionary<string, int> GetUniqueDetectablePeptideCountsByProtease()
+        {
+            return UniquePeptides
+                .GroupBy(p => p.Protease)
+                .ToDictionary(g => g.Key, g => g.Count(p => p.PflyDetectability == true));
+        }
+
+        /// <summary>
+        /// Gets shared peptide count grouped by protease only for detectable peptides (PflyDetectability == true)
+        /// </summary>
+        /// <returns>A dictionary where each key is the name of a protease and each value is the count of unique detectable
+        /// shared peptides associated with that protease.</returns>
+        public Dictionary<string, int> GetSharedDetectablePeptideCountsByProtease()
+        {
+            return SharedPeptides
+                .GroupBy(p => p.Protease)
+                .ToDictionary(g => g.Key, g => g.Where(p => p.PflyDetectability == true).ToHashSet().Count);
+        }
+
         #endregion
     }
 }

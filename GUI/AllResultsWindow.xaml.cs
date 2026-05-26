@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Windows.Controls;
 using Engine;
@@ -72,21 +71,28 @@ namespace GUI
                     {
                         peptidesToProteins = protease.Value.GroupBy(p => p.BaseSequence).ToDictionary(group => group.Key, group => group.ToList());
                     }
-                    var unique = peptidesToProteins.Where(p => p.Value.Select(p => p.Protein).Distinct().Count() == 1).ToList();
-                    var shared = peptidesToProteins.Where(p => p.Value.Select(p => p.Protein).Distinct().Count() > 1).ToList();
-                    var sharedPeptidesInOneDb = shared.Where(p => p.Value.Select(p => p.Database).Distinct().Count() == 1);
-                    var uniquePeptidesInOneDb = unique.Where(p => p.Value.Select(p => p.Database).Distinct().Count() == 1);
+                    var unique = peptidesToProteins.Where(p => p.Value.DistinctBy(p => p.Protein).Count() == 1).ToList();
+                    var shared = peptidesToProteins.Where(p => p.Value.DistinctBy(p => p.Protein).Count() > 1).ToList();
+                    var sharedPeptidesInOneDb = shared.Where(p => p.Value.DistinctBy(p => p.Database).Count() == 1);
+                    var uniquePeptidesInOneDb = unique.Where(p => p.Value.DistinctBy(p => p.Database).Count() == 1);
 
                     List<InSilicoPep> peptidesInOneDb = new();
                     int sharedCount = shared.Count;
                     int uniqueCount = unique.Count;
+                    int uniqueDetectableCount = unique.Count(p => p.Value.Any(pep => pep.PflyDetectability == true));
+                    int sharedDetectableCount = shared.Count(p => p.Value.Any(pep => pep.PflyDetectability == true));
 
                     foreach (var entry in unique)
                     {
-                        if (entry.Value.Select(p => p.Database).Distinct().ToList().Count > 1)
+                        if (entry.Value.DistinctBy(p => p.Database).Count() > 1)
                         {
                             uniqueCount = uniqueCount - 1;
                             sharedCount = sharedCount + 1;
+                            if (entry.Value.Any(p => p.PflyDetectability == true))
+                            {
+                                uniqueDetectableCount--;
+                                sharedDetectableCount++;
+                            }
                         }
 
                     }
@@ -106,33 +112,30 @@ namespace GUI
                     DigestionSummaryForTreeView thisDigestion = new DigestionSummaryForTreeView(prot + " Results:");
                     
                     List<InSilicoPep> allPeptides = peptidesToProteins.SelectMany(p => p.Value).ToList();
-                    thisDigestion.Summary.Add(new SummaryForTreeView($"Number of {GlobalVariables.AnalyteType.GetUniqueFormLabel()}: " + allPeptides.Count));
-                    thisDigestion.Summary.Add(new SummaryForTreeView($"     Number of Distinct {GlobalVariables.AnalyteType.GetUniqueFormLabel()} Sequences: " + peptidesToProteins.Count()));
+                    List<InSilicoPep> allDetectable = allPeptides.Where(p => p.PflyDetectability == true).ToList();
+                    thisDigestion.Summary.Add(new SummaryForTreeView($"Number of {GlobalVariables.AnalyteType.GetUniqueFormLabel()}: " + allPeptides.Count + $" ({allDetectable.Count})"));
+                    thisDigestion.Summary.Add(new SummaryForTreeView($"     Number of Distinct {GlobalVariables.AnalyteType.GetUniqueFormLabel()} Sequences: " + peptidesToProteins.Count + $" ({peptidesToProteins.Count(p => p.Value.Any(isp => isp.PflyDetectability == true))})"));
                     var peptidesForSingleDatabase = peptidesInOneDb.GroupBy(p => p.Database).ToDictionary(group => group.Key, group => group.ToList());
 
-
-                    thisDigestion.Summary.Add(new SummaryForTreeView($"Number of Unique {GlobalVariables.AnalyteType.GetUniqueFormLabel()} Sequences: " + uniqueCount));
-                    thisDigestion.Summary.Add(new SummaryForTreeView($"Number of Shared {GlobalVariables.AnalyteType.GetUniqueFormLabel()} Sequences: " + sharedCount));
+                    thisDigestion.Summary.Add(new SummaryForTreeView($"Number of Unique {GlobalVariables.AnalyteType.GetUniqueFormLabel()} Sequences: " + uniqueCount + $" ({uniqueDetectableCount})"));
+                    thisDigestion.Summary.Add(new SummaryForTreeView($"Number of Shared {GlobalVariables.AnalyteType.GetUniqueFormLabel()} Sequences: " + sharedCount + $" ({sharedDetectableCount})"));
 
                     foreach (var db in peptidesForSingleDatabase)
                     {
                         if (UserParams.TreatModifiedPeptidesAsDifferent)
                         {
-                            thisDigestion.Summary.Add(new SummaryForTreeView($"Number of {GlobalVariables.AnalyteType.GetUniqueFormLabel()} Sequences Found Only in " + db.Key + ": " + db.Value.Select(p => p.FullSequence).Distinct().Count()));
+                            thisDigestion.Summary.Add(new SummaryForTreeView($"Number of {GlobalVariables.AnalyteType.GetUniqueFormLabel()} Sequences Found Only in " + db.Key + ": " + db.Value.DistinctBy(p => p.FullSequence).Count() + $" ({db.Value.Where(p=>p.PflyDetectability == true).DistinctBy(p => p.FullSequence).Count()})"));
                         }
                         else
                         {
-                            thisDigestion.Summary.Add(new SummaryForTreeView($"Number of {GlobalVariables.AnalyteType.GetUniqueFormLabel()} Sequences Found Only in " + db.Key + ": " + db.Value.Select(p => p.BaseSequence).Distinct().Count()));
+                            thisDigestion.Summary.Add(new SummaryForTreeView($"Number of {GlobalVariables.AnalyteType.GetUniqueFormLabel()} Sequences Found Only in " + db.Key + ": " + db.Value.DistinctBy(p => p.BaseSequence).Count() + $" ({db.Value.Where(p => p.PflyDetectability == true).DistinctBy(p => p.BaseSequence).Count()})"));
                         }
                         
                     }
 
-
                     allDatabases.Summary.Add(thisDigestion);
                 }
 
-                    
-                     
                 //put the results summary in the GUI for users to view
                 SummaryForTreeViewObservableCollection.Add(allDatabases);
                 //Now do a similar results summary for each individual database on its own
@@ -143,22 +146,23 @@ namespace GUI
                     {
                         string prot = protease.Key;
                         DigestionSummaryForTreeView thisDigestion = new DigestionSummaryForTreeView(prot + " Results:");
-                        var allPeptides = protease.Value.SelectMany(p => p.Value);
+                        var allPeptides = protease.Value.SelectMany(p => p.Value).ToList();
+                        var allDetectable = allPeptides.Where(p => p.PflyDetectability == true).ToList();
                         if (UserParams.TreatModifiedPeptidesAsDifferent)
                         {
-                            thisDigestion.Summary.Add(new SummaryForTreeView($"Number of {GlobalVariables.AnalyteType.GetUniqueFormLabel()}s: " + allPeptides.Count()));
-                            thisDigestion.Summary.Add(new SummaryForTreeView($"     Number of Distinct {GlobalVariables.AnalyteType.GetUniqueFormLabel()} Sequences: " + allPeptides.Select(p => p.FullSequence).Distinct().Count()));
-                            thisDigestion.Summary.Add(new SummaryForTreeView($"Number of Unique {GlobalVariables.AnalyteType.GetUniqueFormLabel()}s: " + allPeptides.Where(pep => pep.Unique == true).Select(p => p.FullSequence).Distinct().Count()));
-                            thisDigestion.Summary.Add(new SummaryForTreeView($"Number of Shared {GlobalVariables.AnalyteType.GetUniqueFormLabel()}s: " + allPeptides.Where(pep => pep.Unique == false).Select(p => p.FullSequence).Distinct().Count()));
+                            thisDigestion.Summary.Add(new SummaryForTreeView($"Number of {GlobalVariables.AnalyteType.GetUniqueFormLabel()}s: " + allPeptides.Count + $" ({allDetectable.Count})"));
+                            thisDigestion.Summary.Add(new SummaryForTreeView($"     Number of Distinct {GlobalVariables.AnalyteType.GetUniqueFormLabel()} Sequences: " + allPeptides.DistinctBy(p => p.FullSequence).Count() + $" ({allDetectable.DistinctBy(p => p.FullSequence).Count()})"));
+                            thisDigestion.Summary.Add(new SummaryForTreeView($"Number of Unique {GlobalVariables.AnalyteType.GetUniqueFormLabel()}s: " + allPeptides.Where(pep => pep.Unique == true).DistinctBy(p => p.FullSequence).Count() + $" ({allDetectable.Where(pep => pep.Unique == true).DistinctBy(p => p.FullSequence).Count()})"));
+                            thisDigestion.Summary.Add(new SummaryForTreeView($"Number of Shared {GlobalVariables.AnalyteType.GetUniqueFormLabel()}s: " + allPeptides.Where(pep => pep.Unique == false).DistinctBy(p => p.FullSequence).Count() + $" ({allDetectable.Where(pep => pep.Unique == false).DistinctBy(p => p.FullSequence).Count()})"));
                         }
                         else 
                         {
-                            thisDigestion.Summary.Add(new SummaryForTreeView($"Number of {GlobalVariables.AnalyteType.GetUniqueFormLabel()}s: " + allPeptides.Count()));
-                            thisDigestion.Summary.Add(new SummaryForTreeView($"     Number of Distinct {GlobalVariables.AnalyteType.GetUniqueFormLabel()} Sequences: " + allPeptides.Select(p => p.BaseSequence).Distinct().Count()));
-                            thisDigestion.Summary.Add(new SummaryForTreeView($"Number of Unique {GlobalVariables.AnalyteType.GetUniqueFormLabel()}s: " + allPeptides.Where(pep => pep.Unique == true).Select(p => p.BaseSequence).Distinct().Count()));
-                            thisDigestion.Summary.Add(new SummaryForTreeView($"Number of Shared {GlobalVariables.AnalyteType.GetUniqueFormLabel()}s: " + allPeptides.Where(pep => pep.Unique == false).Select(p => p.BaseSequence).Distinct().Count()));
+                            thisDigestion.Summary.Add(new SummaryForTreeView($"Number of {GlobalVariables.AnalyteType.GetUniqueFormLabel()}s: " + allPeptides.Count + $" ({allDetectable.Count})"));
+                            thisDigestion.Summary.Add(new SummaryForTreeView($"     Number of Distinct {GlobalVariables.AnalyteType.GetUniqueFormLabel()} Sequences: " + allPeptides.DistinctBy(p => p.BaseSequence).Count() + $" ({allDetectable.DistinctBy(p => p.BaseSequence).Count()})"));
+                            thisDigestion.Summary.Add(new SummaryForTreeView($"Number of Unique {GlobalVariables.AnalyteType.GetUniqueFormLabel()}s: " + allPeptides.Where(pep => pep.Unique == true).DistinctBy(p => p.BaseSequence).Count() + $" ({allDetectable.Where(pep => pep.Unique == true).DistinctBy(p => p.BaseSequence).Count()})"));
+                            thisDigestion.Summary.Add(new SummaryForTreeView($"Number of Shared {GlobalVariables.AnalyteType.GetUniqueFormLabel()}s: " + allPeptides.Where(pep => pep.Unique == false).DistinctBy(p => p.BaseSequence).Count() + $" ({allDetectable.Where(pep => pep.Unique == false).DistinctBy(p => p.BaseSequence).Count()})"));
                         }                       
-                        
+
                         thisProtease.Summary.Add(thisDigestion);
                     }
                     //Put the database specific results summary in the GUI
@@ -175,20 +179,21 @@ namespace GUI
                     {
                         string prot = protease.Key;
                         DigestionSummaryForTreeView thisDigestion = new DigestionSummaryForTreeView( prot + " Results:");                        
-                        var  allPeptides = protease.Value.SelectMany(p => p.Value);
+                        var allPeptides = protease.Value.SelectMany(p => p.Value).ToList();
+                        var allDetectable = allPeptides.Where(p => p.PflyDetectability == true).ToList();
                         if (UserParams.TreatModifiedPeptidesAsDifferent)
                         {
-                            thisDigestion.Summary.Add(new SummaryForTreeView($"Number of {GlobalVariables.AnalyteType.GetUniqueFormLabel()}s: " + allPeptides.Count()));
-                            thisDigestion.Summary.Add(new SummaryForTreeView($"     Number of Distinct {GlobalVariables.AnalyteType.GetUniqueFormLabel()} Sequences: " + allPeptides.Select(p => p.FullSequence).Distinct().Count()));
-                            thisDigestion.Summary.Add(new SummaryForTreeView($"Number of Unique {GlobalVariables.AnalyteType.GetUniqueFormLabel()}s: " + allPeptides.Where(pep => pep.Unique == true).Select(p => p.FullSequence).Distinct().Count()));
-                            thisDigestion.Summary.Add(new SummaryForTreeView($"Number of Shared {GlobalVariables.AnalyteType.GetUniqueFormLabel()}s: " + allPeptides.Where(pep => pep.Unique == false).Select(p => p.FullSequence).Distinct().Count()));
+                            thisDigestion.Summary.Add(new SummaryForTreeView($"Number of {GlobalVariables.AnalyteType.GetUniqueFormLabel()}s: " + allPeptides.Count + $" ({allDetectable.Count})"));
+                            thisDigestion.Summary.Add(new SummaryForTreeView($"     Number of Distinct {GlobalVariables.AnalyteType.GetUniqueFormLabel()} Sequences: " + allPeptides.DistinctBy(p => p.FullSequence).Count() + $" ({allDetectable.DistinctBy(p => p.FullSequence).Count()})"));
+                            thisDigestion.Summary.Add(new SummaryForTreeView($"Number of Unique {GlobalVariables.AnalyteType.GetUniqueFormLabel()}s: " + allPeptides.Where(pep => pep.Unique == true).DistinctBy(p => p.FullSequence).Count() + $" ({allDetectable.Where(pep => pep.Unique == true).DistinctBy(p => p.FullSequence).Count()})"));
+                            thisDigestion.Summary.Add(new SummaryForTreeView($"Number of Shared {GlobalVariables.AnalyteType.GetUniqueFormLabel()}s: " + allPeptides.Where(pep => pep.Unique == false).DistinctBy(p => p.FullSequence).Count() + $" ({allDetectable.Where(pep => pep.Unique == false).DistinctBy(p => p.FullSequence).Count()})"));
                         }
-                        else 
+                        else
                         {
-                            thisDigestion.Summary.Add(new SummaryForTreeView($"Number of {GlobalVariables.AnalyteType.GetUniqueFormLabel()}s: " + allPeptides.Count()));
-                            thisDigestion.Summary.Add(new SummaryForTreeView($"     Number of Distinct {GlobalVariables.AnalyteType.GetUniqueFormLabel()} Sequences: " + allPeptides.Select(p => p.BaseSequence).Distinct().Count()));
-                            thisDigestion.Summary.Add(new SummaryForTreeView($"Number of Unique {GlobalVariables.AnalyteType.GetUniqueFormLabel()}s: " + allPeptides.Where(pep => pep.Unique == true).Select(p => p.BaseSequence).Distinct().Count()));
-                            thisDigestion.Summary.Add(new SummaryForTreeView($"Number of Shared {GlobalVariables.AnalyteType.GetUniqueFormLabel()}s: " + allPeptides.Where(pep => pep.Unique == false).Select(p => p.BaseSequence).Distinct().Count()));
+                            thisDigestion.Summary.Add(new SummaryForTreeView($"Number of {GlobalVariables.AnalyteType.GetUniqueFormLabel()}s: " + allPeptides.Count + $" ({allDetectable.Count})"));
+                            thisDigestion.Summary.Add(new SummaryForTreeView($"     Number of Distinct {GlobalVariables.AnalyteType.GetUniqueFormLabel()} Sequences: " + allPeptides.DistinctBy(p => p.BaseSequence).Count() + $" ({allDetectable.DistinctBy(p => p.BaseSequence).Count()})"));
+                            thisDigestion.Summary.Add(new SummaryForTreeView($"Number of Unique {GlobalVariables.AnalyteType.GetUniqueFormLabel()}s: " + allPeptides.Where(pep => pep.Unique == true).DistinctBy(p => p.BaseSequence).Count() + $" ({allDetectable.Where(pep => pep.Unique == true).DistinctBy(p => p.BaseSequence).Count()})"));
+                            thisDigestion.Summary.Add(new SummaryForTreeView($"Number of Shared {GlobalVariables.AnalyteType.GetUniqueFormLabel()}s: " + allPeptides.Where(pep => pep.Unique == false).DistinctBy(p => p.BaseSequence).Count() + $" ({allDetectable.Where(pep => pep.Unique == false).DistinctBy(p => p.BaseSequence).Count()})"));
                         }
                                      
                         thisProtease.Summary.Add(thisDigestion);

@@ -6,9 +6,6 @@ using PredictionClients.Koina.SupportedModels.RetentionTimeModels;
 using Proteomics;
 using Proteomics.ProteolyticDigestion;
 using PredictionClients.Koina.AbstractClasses;
-using PredictionClients.Koina.SupportedModels.RetentionTimeModels;
-using PredictionClients.Koina.SupportedModels.FragmentIntensityModels;
-using System.Text.RegularExpressions;
 
 namespace Tasks;
 
@@ -45,14 +42,15 @@ public static class SpectrumLibraryExporter
     private static readonly Regex ModPattern = new(@"\[[^\]]+\]", RegexOptions.Compiled);
 
     /// <summary>
-    /// Main entry point. Runs asynchronously; <paramref name="progress"/> receives
-    /// human-readable status strings throughout execution.
+    /// Main entry point. <paramref name="progress"/> receives human-readable status
+    /// strings throughout execution. Await this method from the UI thread to avoid
+    /// blocking; network calls are dispatched to thread-pool threads internally.
     /// </summary>
     /// <param name="protein">The protein to export.</param>
     /// <param name="proteaseParams">Currently-checked protease-specific parameters.</param>
     /// <param name="chargeStates">
     ///     Precursor charges to generate. Values outside 1-6 are silently dropped
-    ///     because Prosit_2020_intensity_HCD does not support charge 7.
+    ///     because Prosit_2020_intensity_HCD does not support charge state 7.
     /// </param>
     /// <param name="nce">Normalised collision energy (recommend 20-45, ideally 25/28/30/35).</param>
     /// <param name="fastaPath">

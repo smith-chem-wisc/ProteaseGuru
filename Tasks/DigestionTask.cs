@@ -9,6 +9,7 @@ using Proteomics.ProteolyticDigestion;
 using Proteomics.RetentionTimePrediction;
 using Transcriptomics;
 using UsefulProteomicsDatabases;
+using PredictionClients.Koina.SupportedModels.FlyabilityModels;
 using UsefulProteomicsDatabases.Transcriptomics;
 
 namespace Tasks
@@ -36,6 +37,8 @@ namespace Tasks
         // Instance-scoped predictor pool to avoid cross-instance race conditions
         private readonly object _predictorLock = new();
         private ConcurrentBag<ChronologerRetentionTimePredictor>? _predictorPool;
+        private readonly object _pflyLock = new();
+        private ConcurrentBag<PFly2024FineTuned>? _pflyPool;
         private bool _disposed;
 
         #endregion
@@ -65,8 +68,9 @@ namespace Tasks
 
         public override MyTaskResults RunSpecific(string OutputFolder, List<DbForDigestion> dbFileList)
         {
-            // Initialize predictor pool for this run
+            // Initialize predictor pools for this run
             InitializePredictorPool();
+            InitializePflyPool();
 
             try
             {
@@ -123,8 +127,9 @@ namespace Tasks
             }
             finally
             {
-                // Clean up predictor pool after run completes
+                // Clean up predictor pools after run completes
                 DisposePredictorPool();
+                DisposePflyPool();
             }
         }
 
@@ -154,6 +159,11 @@ namespace Tasks
             return bioPolymerList;
         }
 
+        // Lock for thread-safe modification of the shared static Mods dictionary.
+        // LoadOligoDb and LoadProteinDb are called from inside Parallel.ForEach,
+        // so concurrent calls to Mods.AddOrUpdateModification must be synchronized.
+        private static readonly object ModsLock = new();
+
         public static IEnumerable<RNA> LoadOligoDb(string fileName, out Dictionary<string, Modification> unknownMods, int maxThreads = 1, string? decoyIdentifier = null)
         {
             unknownMods = null;
@@ -171,8 +181,11 @@ namespace Tasks
             else
             {
                 var headerMods = ProteinDbLoader.GetPtmListFromProteinXml(fileName);
-                foreach (var mod in headerMods)
-                    Mods.AddOrUpdateModification(mod, true);
+                lock (ModsLock)
+                {
+                    foreach (var mod in headerMods)
+                        Mods.AddOrUpdateModification(mod, true);
+                }
                 // TODO: Add in variant params when fixed in MzLib. 
                 rnaList = RnaDbLoader.LoadRnaXML(fileName, true, DecoyType.None, false, Mods.AllRnaModsList, [], out unknownMods, maxThreads, decoyIdentifier: decoyIdentifier);
             }
@@ -198,8 +211,11 @@ namespace Tasks
             else
             {
                 var headerMods = ProteinDbLoader.GetPtmListFromProteinXml(fileName);
-                foreach (var mod in headerMods)
-                    Mods.AddOrUpdateModification(mod, false);
+                lock (ModsLock)
+                {
+                    foreach (var mod in headerMods)
+                        Mods.AddOrUpdateModification(mod, false);
+                }
 
                 proteinList = ProteinDbLoader.LoadProteinXML(fileName, true, DecoyType.None, Mods.AllProteinModsList, false, [], out um, maxThreads, 4, 1, addTruncations: false, decoyIdentifier: decoyIdentifier);
             }
@@ -241,7 +257,8 @@ namespace Tasks
             );
 
             // ============================================================================
-            // PHASE 2: Batch calculate hydrophobicity and electrophoretic mobility
+            // PHASE 2: Batch calculate hydrophobicity, electrophoretic mobility,
+            //          retention times, and detectabilities.
             // ============================================================================
 
             var allPeptides = allWithSetMods.Where(p => p is PeptideWithSetModifications).Cast<PeptideWithSetModifications>().ToList();
@@ -249,18 +266,24 @@ namespace Tasks
             double[] hydrophobicityValues = new double[allPeptides.Count];
             double[] mobilityValues = new double[allPeptides.Count];
             double[] retentionTimesChronologer = new double[allPeptides.Count];
+            bool?[] pflyDetectabilities = new bool?[allPeptides.Count];
 
             if (allPeptides.Count == allWithSetMods.Count)
             {
                 hydrophobicityValues = BatchCalculateHydrophobicity(allPeptides);
                 mobilityValues = BatchCalculateElectrophoreticMobility(allPeptides);
                 retentionTimesChronologer = BatchCalculateRetentionTimesChronologer(allPeptides);
+                pflyDetectabilities = BatchCalculateDetectabilitiesPfly(allPeptides);
             }
             else
             {
-                hydrophobicityValues = new double[allWithSetMods.Count];
-                mobilityValues = new double[allWithSetMods.Count];
-                retentionTimesChronologer = new double[allWithSetMods.Count];
+                // Non-peptide analytes (e.g., oligos) get sentinel NaN/null values
+                // instead of zeroed defaults so downstream code can distinguish
+                // "not calculated" from "calculated as zero".
+                hydrophobicityValues = Enumerable.Repeat(double.NaN, allWithSetMods.Count).ToArray();
+                mobilityValues = Enumerable.Repeat(double.NaN, allWithSetMods.Count).ToArray();
+                retentionTimesChronologer = Enumerable.Repeat(double.NaN, allWithSetMods.Count).ToArray();
+                pflyDetectabilities = new bool?[allWithSetMods.Count];
             }
 
             // Create a lookup from peptide to its calculated values
@@ -296,6 +319,7 @@ namespace Tasks
                         hydrophobicityValues[index],
                         mobilityValues[index],
                         retentionTimesChronologer[index],
+                        pflyDetectabilities[index],
                         peptide.Length,
                         peptide.MonoisotopicMass,
                         databaseName,
@@ -394,6 +418,70 @@ namespace Tasks
             _predictorPool?.Add(predictor);
         }
 
+        /// <summary>
+        /// Initializes the PFly detectability model pool with a fixed size based on InnerParallelism.
+        /// </summary>
+        private void InitializePflyPool()
+        {
+            lock (_pflyLock)
+            {
+                if (_pflyPool != null)
+                    return;
+
+                _pflyPool = new ConcurrentBag<PFly2024FineTuned>();
+
+                for (int i = 0; i < InnerParallelism; i++)
+                {
+                    _pflyPool.Add(new PFly2024FineTuned());
+                }
+            }
+        }
+
+        /// <summary>
+        /// Disposes all models in the PFly pool.
+        /// </summary>
+        private void DisposePflyPool()
+        {
+            lock (_pflyLock)
+            {
+                if (_pflyPool == null)
+                    return;
+
+                while (_pflyPool.TryTake(out _))
+                {
+                    // PFly2024FineTuned does not implement IDisposable
+                }
+
+                _pflyPool = null;
+            }
+        }
+
+        /// <summary>
+        /// Checks out a PFly model from the pool. Blocks if none available.
+        /// </summary>
+        private PFly2024FineTuned CheckoutPfly()
+        {
+            if (_pflyPool == null)
+                throw new InvalidOperationException("PFly pool not initialized.");
+
+            SpinWait spinner = default;
+            PFly2024FineTuned? model;
+            while (!_pflyPool.TryTake(out model))
+            {
+                spinner.SpinOnce();
+            }
+
+            return model;
+        }
+
+        /// <summary>
+        /// Returns a PFly model to the pool for reuse.
+        /// </summary>
+        private void ReturnPfly(PFly2024FineTuned model)
+        {
+            _pflyPool?.Add(model);
+        }
+
         #endregion
 
         #region Batch Calculations
@@ -426,6 +514,36 @@ namespace Tasks
             );
 
             return results;
+        }
+
+        private bool?[] BatchCalculateDetectabilitiesPfly(List<PeptideWithSetModifications> peptides)
+        {
+            if (peptides.Count == 0) return new bool?[0];
+
+            var model = CheckoutPfly();
+            try
+            {
+                var inputs = peptides.Select(p => new DetectabilityPredictionInput(p.FullSequence)).ToList();
+                List<PeptideDetectabilityPrediction> results = model.Predict(inputs);
+
+                if (results.Count != peptides.Count)
+                {
+                    Warn($"PFly detectability prediction returned {results.Count} results for {peptides.Count} peptides. Falling back to null values.");
+                    return new bool?[peptides.Count];
+                }
+
+                var predictedDetectability = results.Select(r => r.DetectabilityProbabilities.HasValue ? r.DetectabilityProbabilities.Value.NotDetectable < 0.5 : (bool?)null).ToArray();
+                return predictedDetectability;
+            }
+            catch (Exception ex)
+            {
+                Warn($"PFly detectability prediction failed: {ex.Message}. Falling back to null values for all peptides.");
+                return new bool?[peptides.Count];
+            }
+            finally
+            {
+                ReturnPfly(model);
+            }
         }
 
         /// <summary>
@@ -528,25 +646,16 @@ namespace Tasks
                 {
                     string proteaseName = protease.Key;
 
-                    if (allDatabasePeptidesByProtease.ContainsKey(proteaseName))
+                    if (!allDatabasePeptidesByProtease.TryGetValue(proteaseName, out var peptideList))
                     {
-                        foreach (var proteinEntry in protease.Value)
-                        {
-                            allDatabasePeptidesByProtease[proteaseName].AddRange(proteinEntry.Value);
-                            accessionToProtein[proteinEntry.Key.Accession] = proteinEntry.Key;
-                        }
+                        peptideList = new List<InSilicoPep>();
+                        allDatabasePeptidesByProtease[proteaseName] = peptideList;
                     }
-                    else
-                    {
-                        allDatabasePeptidesByProtease.Add(
-                            proteaseName,
-                            protease.Value.SelectMany(p => p.Value).ToList()
-                        );
 
-                        foreach (var proteinEntry in protease.Value)
-                        {
-                            accessionToProtein[proteinEntry.Key.Accession] = proteinEntry.Key;
-                        }
+                    foreach (var proteinEntry in protease.Value)
+                    {
+                        peptideList.AddRange(proteinEntry.Value);
+                        accessionToProtein[proteinEntry.Key.Accession] = proteinEntry.Key;
                     }
                 }
             }
@@ -619,15 +728,15 @@ namespace Tasks
                 List<IBioPolymerWithSetMods> peptides = protein.Digest(proteaseSpecificParameters.DigestionParams, proteaseSpecificParameters.FixedMods, proteaseSpecificParameters.VariableMods).ToList();
                 if (globalDigestionParams.MaxPeptideMassAllowed != -1 && globalDigestionParams.MinPeptideMassAllowed != -1)
                 {
-                    peptides = peptides.Where(p => p.MonoisotopicMass > globalDigestionParams.MinPeptideMassAllowed && p.MonoisotopicMass < globalDigestionParams.MaxPeptideMassAllowed).ToList();
+                    peptides = peptides.Where(p => p.MonoisotopicMass >= globalDigestionParams.MinPeptideMassAllowed && p.MonoisotopicMass <= globalDigestionParams.MaxPeptideMassAllowed).ToList();
                 }
                 else if (globalDigestionParams.MaxPeptideMassAllowed == -1 && globalDigestionParams.MinPeptideMassAllowed != -1)
                 {
-                    peptides = peptides.Where(p => p.MonoisotopicMass > globalDigestionParams.MinPeptideMassAllowed).ToList();
+                    peptides = peptides.Where(p => p.MonoisotopicMass >= globalDigestionParams.MinPeptideMassAllowed).ToList();
                 }
                 else if (globalDigestionParams.MaxPeptideMassAllowed != -1 && globalDigestionParams.MinPeptideMassAllowed == -1)
                 {
-                    peptides = peptides.Where(p => p.MonoisotopicMass < globalDigestionParams.MaxPeptideMassAllowed).ToList();
+                    peptides = peptides.Where(p => p.MonoisotopicMass <= globalDigestionParams.MaxPeptideMassAllowed).ToList();
                 }
                 peptidesForProtein.Add(protein, peptides);
             }
@@ -653,7 +762,7 @@ namespace Tasks
                 "Next Amino Acid", "Start Residue", "End Residue", "Length", "Molecular Weight",
                 "Protein Accession", "Protein Name", "Unique Peptide (in this database)",
                 "Unique Peptide (in all databases)", "Peptide sequence exclusive to this Database",
-                "Hydrophobicity", "Electrophoretic Mobility", "Chronologer Retention Time");
+                "Hydrophobicity", "Electrophoretic Mobility", "Chronologer Retention Time", "Pfly Detectability (>=0.5)");
 
             var allPeptides = new List<InSilicoPep>();
 
@@ -787,6 +896,7 @@ namespace Tasks
             if (disposing)
             {
                 DisposePredictorPool();
+                DisposePflyPool();
             }
 
             _disposed = true;

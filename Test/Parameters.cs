@@ -8,6 +8,7 @@ using Tasks;
 namespace Test.GuiTests
 {
     [TestFixture]
+    [NonParallelizable]
     public class GuiGlobalParamsTests
     {
         private static string SettingsPath => GlobalParameters.DefaultGlobalParametersFilePath;
@@ -31,6 +32,9 @@ namespace Test.GuiTests
                 }
             }
             catch { }
+
+            // Reset global analyte type so parallel digestion tests are not affected
+            GlobalVariables.AnalyteType = AnalyteType.Peptide;
 
             ResetSingleton();
         }

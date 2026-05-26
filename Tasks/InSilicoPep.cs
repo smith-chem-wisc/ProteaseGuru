@@ -15,6 +15,7 @@ namespace Tasks
         public double Hydrophobicity;
         public double ElectrophoreticMobility;
         public double ChronologerRetentionTime;
+        public bool? PflyDetectability;
         public int Length;
         public double MolecularWeight;
         public string Database;
@@ -25,7 +26,7 @@ namespace Tasks
         public string Protease;
 
         public InSilicoPep(string baseSequence, string fullSequence, char previousAA, char nextAA, bool unique, double hydrophobicity, double electrophoreticMobility,
-            double chronologerRetentionTime, int length, double molecularWeight, string database, string protein, string proteinName, int start, int end, string protease)
+            double chronologerRetentionTime, bool? pflyDetectability, int length, double molecularWeight, string database, string protein, string proteinName, int start, int end, string protease)
         {
             BaseSequence = baseSequence;
             FullSequence = fullSequence;
@@ -35,6 +36,7 @@ namespace Tasks
             Hydrophobicity = hydrophobicity;
             ElectrophoreticMobility = electrophoreticMobility;
             ChronologerRetentionTime = chronologerRetentionTime;
+            PflyDetectability = pflyDetectability;
             Length = length;
             MolecularWeight = molecularWeight;
             Database = database;
@@ -86,6 +88,8 @@ namespace Tasks
             sb.Append(ElectrophoreticMobility);
             sb.Append(tab);
             sb.Append(ChronologerRetentionTime);
+            sb.Append(tab);
+            sb.Append(PflyDetectability);
             return sb.ToString();
         }
         public override bool Equals(object? obj)
@@ -93,14 +97,15 @@ namespace Tasks
             if (obj is not InSilicoPep q)
                 return false;
 
-            return BaseSequence == q.BaseSequence && Protease == q.Protease;
+            return BaseSequence == q.BaseSequence
+                && Protease == q.Protease
+                && StartResidue == q.StartResidue
+                && EndResidue == q.EndResidue;
         }
-
 
         public override int GetHashCode()
         {
-            return BaseSequence.GetHashCode() + Protease.GetHashCode();
-
+            return HashCode.Combine(BaseSequence, Protease, StartResidue, EndResidue);
         }
     }
 }
