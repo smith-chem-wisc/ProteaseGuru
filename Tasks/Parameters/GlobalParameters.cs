@@ -14,6 +14,8 @@ public class GlobalParameters : ParameterBaseClass<GlobalParameters>, IEquatable
         return new GlobalParameters
         {
             IsRnaMode = this.IsRnaMode,
+            AskAboutSettingsChangeOnClose = this.AskAboutSettingsChangeOnClose,
+            OverwriteSettingsWithoutAsking = this.OverwriteSettingsWithoutAsking,
             DefaultParameters = this.DefaultParameters?.Clone()
         };
     }
@@ -22,7 +24,10 @@ public class GlobalParameters : ParameterBaseClass<GlobalParameters>, IEquatable
     {
         if (other is null) return false;
         if (ReferenceEquals(this, other)) return true;
-        return IsRnaMode == other.IsRnaMode && Equals(DefaultParameters, other.DefaultParameters);
+        return IsRnaMode == other.IsRnaMode
+               && AskAboutSettingsChangeOnClose == other.AskAboutSettingsChangeOnClose
+               && OverwriteSettingsWithoutAsking == other.OverwriteSettingsWithoutAsking
+               && Equals(DefaultParameters, other.DefaultParameters);
     }
 
     public override bool Equals(object? obj)
@@ -35,6 +40,6 @@ public class GlobalParameters : ParameterBaseClass<GlobalParameters>, IEquatable
 
     public override int GetHashCode()
     {
-        return HashCode.Combine(IsRnaMode, DefaultParameters);
+        return HashCode.Combine(IsRnaMode, AskAboutSettingsChangeOnClose, OverwriteSettingsWithoutAsking, DefaultParameters);
     }
 }

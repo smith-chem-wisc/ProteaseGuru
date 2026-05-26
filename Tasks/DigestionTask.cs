@@ -37,6 +37,8 @@ namespace Tasks
         // Instance-scoped predictor pool to avoid cross-instance race conditions
         private readonly object _predictorLock = new();
         private ConcurrentBag<ChronologerRetentionTimePredictor>? _predictorPool;
+        private readonly object _pflyLock = new();
+        private ConcurrentBag<PFly2024FineTuned>? _pflyPool;
         private bool _disposed;
 
         #endregion
@@ -66,8 +68,9 @@ namespace Tasks
 
         public override MyTaskResults RunSpecific(string OutputFolder, List<DbForDigestion> dbFileList)
         {
-            // Initialize predictor pool for this run
+            // Initialize predictor pools for this run
             InitializePredictorPool();
+            InitializePflyPool();
 
             try
             {
@@ -124,8 +127,9 @@ namespace Tasks
             }
             finally
             {
-                // Clean up predictor pool after run completes
+                // Clean up predictor pools after run completes
                 DisposePredictorPool();
+                DisposePflyPool();
             }
         }
 
@@ -414,6 +418,70 @@ namespace Tasks
             _predictorPool?.Add(predictor);
         }
 
+        /// <summary>
+        /// Initializes the PFly detectability model pool with a fixed size based on InnerParallelism.
+        /// </summary>
+        private void InitializePflyPool()
+        {
+            lock (_pflyLock)
+            {
+                if (_pflyPool != null)
+                    return;
+
+                _pflyPool = new ConcurrentBag<PFly2024FineTuned>();
+
+                for (int i = 0; i < InnerParallelism; i++)
+                {
+                    _pflyPool.Add(new PFly2024FineTuned());
+                }
+            }
+        }
+
+        /// <summary>
+        /// Disposes all models in the PFly pool.
+        /// </summary>
+        private void DisposePflyPool()
+        {
+            lock (_pflyLock)
+            {
+                if (_pflyPool == null)
+                    return;
+
+                while (_pflyPool.TryTake(out _))
+                {
+                    // PFly2024FineTuned does not implement IDisposable
+                }
+
+                _pflyPool = null;
+            }
+        }
+
+        /// <summary>
+        /// Checks out a PFly model from the pool. Blocks if none available.
+        /// </summary>
+        private PFly2024FineTuned CheckoutPfly()
+        {
+            if (_pflyPool == null)
+                throw new InvalidOperationException("PFly pool not initialized.");
+
+            SpinWait spinner = default;
+            PFly2024FineTuned? model;
+            while (!_pflyPool.TryTake(out model))
+            {
+                spinner.SpinOnce();
+            }
+
+            return model;
+        }
+
+        /// <summary>
+        /// Returns a PFly model to the pool for reuse.
+        /// </summary>
+        private void ReturnPfly(PFly2024FineTuned model)
+        {
+            _pflyPool?.Add(model);
+        }
+
         #endregion
 
         #region Batch Calculations
@@ -452,10 +520,10 @@ namespace Tasks
         {
             if (peptides.Count == 0) return new bool?[0];
 
+            var model = CheckoutPfly();
             try
             {
                 var inputs = peptides.Select(p => new DetectabilityPredictionInput(p.FullSequence)).ToList();
-                var model = new PFly2024FineTuned();
                 List<PeptideDetectabilityPrediction> results = model.Predict(inputs);
 
                 if (results.Count != peptides.Count)
@@ -471,6 +539,10 @@ namespace Tasks
             {
                 Warn($"PFly detectability prediction failed: {ex.Message}. Falling back to null values for all peptides.");
                 return new bool?[peptides.Count];
+            }
+            finally
+            {
+                ReturnPfly(model);
             }
         }
 
@@ -824,6 +896,7 @@ namespace Tasks
             if (disposing)
             {
                 DisposePredictorPool();
+                DisposePflyPool();
             }
 
             _disposed = true;

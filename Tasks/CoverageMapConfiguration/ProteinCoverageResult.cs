@@ -88,9 +88,8 @@ namespace Tasks.CoverageMapConfiguration
         public Dictionary<string, int> GetUniqueDetectablePeptideCountsByProtease()
         {
             return UniquePeptides
-                .Where(p => p.PflyDetectability == true)
                 .GroupBy(p => p.Protease)
-                .ToDictionary(g => g.Key, g => g.Count());
+                .ToDictionary(g => g.Key, g => g.Count(p => p.PflyDetectability == true));
         }
 
         /// <summary>
@@ -101,9 +100,8 @@ namespace Tasks.CoverageMapConfiguration
         public Dictionary<string, int> GetSharedDetectablePeptideCountsByProtease()
         {
             return SharedPeptides
-                .Where(p => p.PflyDetectability == true)
                 .GroupBy(p => p.Protease)
-                .ToDictionary(g => g.Key, g => g.ToHashSet().Count);
+                .ToDictionary(g => g.Key, g => g.Where(p => p.PflyDetectability == true).ToHashSet().Count);
         }
 
         #endregion

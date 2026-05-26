@@ -202,14 +202,14 @@ public class DigestionConditionsSetupViewModel : BaseViewModel
             {
                 foreach (var specificParams in ProteaseSpecificParameters.Where(p => p.IsVisible && !p.ProteaseSpecificParams.VariableMods.Contains(variableMod)))
                 {
-                    specificParams.ProteaseSpecificParams.VariableMods.Add(OxidativeMethionine);
+                    specificParams.ProteaseSpecificParams.VariableMods.Add(variableMod);
                 }
             }
             else
             {
                 foreach (var specificParams in ProteaseSpecificParameters.Where(p => p.IsVisible && p.ProteaseSpecificParams.VariableMods.Contains(variableMod)))
                 {
-                    specificParams.ProteaseSpecificParams.VariableMods.Remove(OxidativeMethionine);
+                    specificParams.ProteaseSpecificParams.VariableMods.Remove(variableMod);
                 }
             }
 
