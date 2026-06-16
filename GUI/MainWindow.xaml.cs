@@ -1,7 +1,10 @@
-using Proteomics;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.ComponentModel;
+using System.Diagnostics;
+using System.Globalization;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -15,18 +18,18 @@ using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
 using Engine;
-using Tasks;
-using Proteomics.ProteolyticDigestion;
-using System.IO;
-using System.Globalization;
-using static Tasks.ProteaseGuruTask;
+using GuiFunctions;
 using MzLibUtil;
-using System.Diagnostics;
+using Omics;
 using Omics.Digestion;
 using Omics.Modifications;
+using Proteomics;
+using Proteomics.ProteolyticDigestion;
+using Tasks;
+using Transcriptomics.Digestion;
 using UsefulProteomicsDatabases;
 using GuiFunctions;
-using Easy.Common.Extensions;
+using static Tasks.ProteaseGuruTask;
 
 namespace GUI
 {
@@ -35,10 +38,10 @@ namespace GUI
     /// </summary>
     public partial class MainWindow : Window
     {
-        private readonly ObservableCollection<ProteinDbForDataGrid> ProteinDbObservableCollection = new ObservableCollection<ProteinDbForDataGrid>();
-        private readonly ObservableCollection<ProteinDbForDataGrid> ReloadProteinDbObservableCollection = new ObservableCollection<ProteinDbForDataGrid>();
-        private readonly ObservableCollection<ResultsForDataGrid> ResultsObservableCollection = new ObservableCollection<ResultsForDataGrid>();
-        private readonly ObservableCollection<ParametersForDataGrid> ParametersObservableCollection = new ObservableCollection<ParametersForDataGrid>();
+        private readonly ObservableCollection<ProteinDbForDataGrid> ProteinDbObservableCollection = new();
+        private readonly ObservableCollection<ProteinDbForDataGrid> ReloadProteinDbObservableCollection = new();
+        private readonly ObservableCollection<ResultsForDataGrid> ResultsObservableCollection = new();
+        private readonly ObservableCollection<ParametersForDataGrid> ParametersObservableCollection = new();
         private readonly ObservableCollection<RunSummaryForTreeView> SummaryForTreeViewObservableCollection;
 
         private readonly DigestionConditionsSetupViewModel ParametersViewModel;
@@ -47,7 +50,6 @@ namespace GUI
         public MainWindow()
         {
             InitializeComponent();
-            Title = "ProteaseGuru: Version " + GlobalVariables.ProteaseGuruVersion;
 
             // TODO: Set up default parameters to check for
             ParametersViewModel = new(new RunParameters());
@@ -160,15 +162,14 @@ namespace GUI
                             }
                             catch (Exception ee)
                             {
-                                MessageBox.Show(ee.ToString());
-                                GuiWarnHandler(null, new StringEventArgs("Cannot parse modification info from: " + draggedFilePath, null));
+                                NotificationService.Instance.AddNotification($"Cannot parse modification info from: {draggedFilePath}. Error: {ee.Message}", NotificationType.Error);
                                 ProteinDbObservableCollection.Remove(uu);
                             }
                         }
                     }
                     break;
                 default:
-                    GuiWarnHandler(null, new StringEventArgs("Unrecognized file type: " + theExtension, null));
+                    GuiWarnHandler(null, new Engine.StringEventArgs("Unrecognized file type: " + theExtension, null));
                     break;
             }
         }
@@ -205,8 +206,7 @@ namespace GUI
                             }
                             catch (Exception ee)
                             {
-                                MessageBox.Show(ee.ToString());
-                                GuiWarnHandler(null, new StringEventArgs("Cannot parse modification info from: " + draggedFilePath, null));
+                                NotificationService.Instance.AddNotification($"Cannot parse modification info from: {draggedFilePath}. Error: {ee.Message}", NotificationType.Error);
                                 ReloadProteinDbObservableCollection.Remove(uu);
                             }
                         }
@@ -227,7 +227,7 @@ namespace GUI
                     }
                     break;
                 default:
-                    GuiWarnHandler(null, new StringEventArgs("Unrecognized file type: " + theExtension, null));
+                    GuiWarnHandler(null, new Engine.StringEventArgs("Unrecognized file type: " + theExtension, null));
                     break;
             }
         }
@@ -270,16 +270,20 @@ namespace GUI
             // print any error messages reading the mods to the notifications area
             foreach (var error in GlobalVariables.ErrorsReadingMods)
             {
-                GuiWarnHandler(null, new StringEventArgs(error, null));
+                GuiWarnHandler(null, new Engine.StringEventArgs(error, null));
             }
             GlobalVariables.ErrorsReadingMods.Clear();
         }
 
-        private void GuiWarnHandler(object sender, StringEventArgs e)
+        private void GuiWarnHandler(object sender, Engine.StringEventArgs e)
         {
             if (!Dispatcher.CheckAccess())
             {
                 Dispatcher.BeginInvoke(new Action(() => GuiWarnHandler(sender, e)));
+            }
+            else
+            {
+                NotificationService.Instance.AddNotification(e.S, NotificationType.Warning);
             }
         }
 
@@ -321,7 +325,7 @@ namespace GUI
                 }
                 catch (Exception ex)
                 {
-                    GuiWarnHandler(null, new StringEventArgs("Error opening directory: " + ex.Message, null));
+                    GuiWarnHandler(null, new Engine.StringEventArgs("Error opening directory: " + ex.Message, null));
                 }
             }
 
@@ -338,7 +342,7 @@ namespace GUI
             else
             {
                 // this should only happen if the file path is empty or something unexpected happened
-                GuiWarnHandler(null, new StringEventArgs("Output folder does not exist", null));
+                GuiWarnHandler(null, new Engine.StringEventArgs("Output folder does not exist", null));
             }
         }
 
@@ -573,8 +577,8 @@ namespace GUI
             stopwatch.Start();
             RunStatus.Items.Add(runProgressBar);
             var results = await Task.Run(() => a.Run());
-            Dictionary<string, Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>> peptidesByFile = results.PeptideByFile;
-            Dictionary<string, Dictionary<Protein, (double, double)>> sequenceCoverageByProtease = results.SequenceCoverageByProtease;
+            Dictionary<string, Dictionary<string, Dictionary<IBioPolymer, List<InSilicoPep>>>> peptidesByFile = results.PeptideByFile;
+            Dictionary<string, Dictionary<IBioPolymer, (double, double)>> sequenceCoverageByProtease = results.SequenceCoverageByProtease;
             stopwatch.Stop();
 
             runProgressBar.IsIndeterminate = false;
@@ -593,8 +597,8 @@ namespace GUI
         //logic for loading in results from previous runs and opening up the results windows
         private void LoadResults_Click(object sender, RoutedEventArgs e)
         {
-            Dictionary<string, Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>> PeptidesByFileSetUp = new Dictionary<string, Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>>();
-            Dictionary<string, Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>> PeptidesByFile = new Dictionary<string, Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>>();
+            Dictionary<string, Dictionary<string, Dictionary<IBioPolymer, List<InSilicoPep>>>> PeptidesByFileSetUp = new();
+            Dictionary<string, Dictionary<string, Dictionary<IBioPolymer, List<InSilicoPep>>>> PeptidesByFile = new();
 
             RunParameters loadedParams = new RunParameters();
 
@@ -605,7 +609,7 @@ namespace GUI
             foreach (var parameterFile in ParametersObservableCollection)
             {
                 var fileData = File.ReadAllLines(parameterFile.FilePath);
-                List<string> proteaseNames = new List<string>();
+                List<string> proteaseNames = new();
                 int missedCleavages = 0;
                 int minPeptideLength = 0;
                 int maxPeptideLength = 0;
@@ -655,11 +659,19 @@ namespace GUI
                 {
                     if (dict.ContainsKey(proteaseName))
                     {
-                        DigestionParams digestionParams = new DigestionParams(
-                            protease: proteaseName,
-                            maxMissedCleavages: missedCleavages,
-                            minPeptideLength: minPeptideLength,
-                            maxPeptideLength: maxPeptideLength);
+                        IDigestionParams digestionParams;
+                        if (GuiGlobalParamsViewModel.Instance.IsRnaMode)
+                            digestionParams = new RnaDigestionParams(
+                                rnase: proteaseName,
+                                maxMissedCleavages: missedCleavages,
+                                minLength: minPeptideLength,
+                                maxLength: maxPeptideLength);
+                        else
+                            digestionParams = new DigestionParams(
+                                protease: proteaseName,
+                                maxMissedCleavages: missedCleavages,
+                                minPeptideLength: minPeptideLength,
+                                maxPeptideLength: maxPeptideLength);
 
                         loadedParams.ProteaseSpecificParameters.Add(
                             new ProteaseSpecificParameters(digestionParams));
@@ -671,7 +683,7 @@ namespace GUI
                 loadedParams.MaxPeptideMassAllowed = maxPeptideMass;
             }
 
-            List<InSilicoPep> allpeptides = new List<InSilicoPep>();
+            List<InSilicoPep> allpeptides = new();
             foreach (var resultFile in ResultsObservableCollection)
             {
                 var fileData = File.ReadAllLines(resultFile.FilePath);
@@ -724,9 +736,9 @@ namespace GUI
                         {
                             chronologerRetentionTime = Convert.ToDouble(info[17]);
                         }
-                        if (info.Length > 18 && info[18].IsNotNullOrEmpty())
+                        if (info.Length > 18 && bool.TryParse(info[18], out bool parsedDetectability))
                         {
-                            pflyDetectability = Convert.ToBoolean(info[18]);
+                            pflyDetectability = parsedDetectability;
                         }
 
                         InSilicoPep pep = new InSilicoPep(baseSeq, fullSeq, previousAA, nextAA, unique, hydrophobicity, electrophoreticMobility,
@@ -741,10 +753,10 @@ namespace GUI
                 foreach (var db in ReloadProteinDbObservableCollection)
                 {
                     var dbName = db.FileName;
-                    var proteinsFromDb = LoadProteins(new DbForDigestion(db.FilePath));
+                    var proteinsFromDb = new DigestionTask().LoadBioPolymers(db.FilePath);
                     var proteaseParams = loadedParams.ProteaseSpecificParameters;
 
-                    Dictionary<Protein, List<InSilicoPep>> proteinDic = new Dictionary<Protein, List<InSilicoPep>>();
+                    Dictionary<IBioPolymer, List<InSilicoPep>> proteinDic = new();
 
                     foreach (var protein in proteinsFromDb)
                     {
@@ -753,7 +765,7 @@ namespace GUI
                             proteinDic.Add(protein, new List<InSilicoPep>() { });
                         }
                     }
-                    Dictionary<string, Dictionary<Protein, List<InSilicoPep>>> proteaseDic = new Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>();
+                    Dictionary<string, Dictionary<IBioPolymer, List<InSilicoPep>>> proteaseDic = new();
                     foreach (var proteaseParam in proteaseParams)
                     {
                         if (!proteaseDic.ContainsKey(proteaseParam.DigestionAgentName))
@@ -770,12 +782,12 @@ namespace GUI
                 foreach (var entry in PeptidesByFileSetUp)
                 {
                     var pepByDb = allpeptides.Where(p => p.Database == entry.Key).ToList();
-                    Dictionary<string, Dictionary<Protein, List<InSilicoPep>>> proteaseComplete = new Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>();
+                    Dictionary<string, Dictionary<IBioPolymer, List<InSilicoPep>>> proteaseComplete = new();
                     foreach (var protease in entry.Value)
                     {
                         var pepByProtease = pepByDb.Where(p => p.Protease == protease.Key).ToList();
 
-                        Dictionary<Protein, List<InSilicoPep>> proteinComplete = new Dictionary<Protein, List<InSilicoPep>>();
+                        Dictionary<IBioPolymer, List<InSilicoPep>> proteinComplete = new();
 
                         foreach (var protein in protease.Value)
                         {
@@ -847,8 +859,8 @@ namespace GUI
                 databases.Summary.Add(new FeatureForTreeView(db.FileName));
             }
             runSummary.Summary.Add(databases);
-
-            CategorySummaryForTreeView proteases = new CategorySummaryForTreeView("Proteases:");
+            
+            CategorySummaryForTreeView proteases = new CategorySummaryForTreeView($"{GlobalVariables.AnalyteType.GetDigestionAgentLabel()}s:");
             foreach (var proteaseParam in ParametersViewModel.ProteaseSpecificParameters.Where(p => p.IsSelected))
             {
                 proteases.Summary.Add(new FeatureForTreeView(proteaseParam.DigestionAgentName));
@@ -872,34 +884,34 @@ namespace GUI
                 }
                 else
                 {
-                    parameters.Summary.Add(new FeatureForTreeView("Number of Missed Cleavages: Varies by protease"));
+                    parameters.Summary.Add(new FeatureForTreeView($"Number of Missed Cleavages: Varies by {GlobalVariables.AnalyteType.GetDigestionAgentLabel()}"));
                 }
 
                 if (allSameMinLength)
                 {
-                    FeatureForTreeView minPep = new FeatureForTreeView("Minimum Peptide Length: " + firstParams.MinLength);
+                    FeatureForTreeView minPep = new FeatureForTreeView($"Minimum {GlobalVariables.AnalyteType.GetUniqueFormLabel()} Length: " + firstParams.MinLength);
                     parameters.Summary.Add(minPep);
                 }
                 else
                 {
-                    parameters.Summary.Add(new FeatureForTreeView("Minimum Peptide Length: Varies by protease"));
+                    parameters.Summary.Add(new FeatureForTreeView($"Minimum {GlobalVariables.AnalyteType.GetUniqueFormLabel()} Length: Varies by {GlobalVariables.AnalyteType.GetDigestionAgentLabel()}"));
                 }
 
                 if (allSameMaxLength)
                 {
-                    FeatureForTreeView maxPep = new FeatureForTreeView("Maximum Peptide Length: " + firstParams.MaxLength);
+                    FeatureForTreeView maxPep = new FeatureForTreeView($"Maximum {GlobalVariables.AnalyteType.GetUniqueFormLabel()} Length: " + firstParams.MaxLength);
                     parameters.Summary.Add(maxPep);
                 }
                 else
                 {
-                    parameters.Summary.Add(new FeatureForTreeView("Maximum Peptide Length: Varies by protease"));
+                    parameters.Summary.Add(new FeatureForTreeView($"Maximum {GlobalVariables.AnalyteType.GetUniqueFormLabel()} Length: Varies by {GlobalVariables.AnalyteType.GetDigestionAgentLabel()}"));
                 }
             }
 
-            FeatureForTreeView modPep = new FeatureForTreeView("Treat Modified Peptides as Different Peptides: " + ParametersViewModel.TreatModifiedPeptidesAsDifferent);
-            FeatureForTreeView minMass = new FeatureForTreeView("Minimum Peptide Mass: " + ParametersViewModel.MinPeptideMass);
-            FeatureForTreeView maxMass = new FeatureForTreeView("Maximum Peptide Mass: " + ParametersViewModel.MaxPeptideMass);
-
+            FeatureForTreeView modPep = new FeatureForTreeView($"Treat Modified {GlobalVariables.AnalyteType.GetUniqueFormLabel()}s as Different {GlobalVariables.AnalyteType.GetUniqueFormLabel()}s: " + ParametersViewModel.TreatModifiedPeptidesAsDifferent);           
+            FeatureForTreeView minMass = new FeatureForTreeView($"Minimum {GlobalVariables.AnalyteType.GetUniqueFormLabel()} Mass: " + ParametersViewModel.MinPeptideMass);                    
+            FeatureForTreeView maxMass = new FeatureForTreeView($"Maximum {GlobalVariables.AnalyteType.GetUniqueFormLabel()} Mass: " + ParametersViewModel.MaxPeptideMass);
+            
             parameters.Summary.Add(modPep);
             parameters.Summary.Add(minMass);
             parameters.Summary.Add(maxMass);
@@ -931,16 +943,16 @@ namespace GUI
                 return;
             }
 
-            var allProteins = new List<Protein>();
+            var allProteins = new List<IBioPolymer>();
             foreach (var db in ProteinDbObservableCollection)
             {
                 try
                 {
-                    allProteins.AddRange(LoadProteins(new DbForDigestion(db.FilePath)));
+                    allProteins.AddRange(new DigestionTask().LoadBioPolymers(db.FilePath));
                 }
                 catch (Exception ex)
                 {
-                    GuiWarnHandler(null, new StringEventArgs($"Error loading proteins from {db.FilePath}: {ex.Message}", null));
+                    GuiWarnHandler(null, new Engine.StringEventArgs($"Error loading proteins from {db.FilePath}: {ex.Message}", null));
                 }
             }
 
@@ -949,39 +961,7 @@ namespace GUI
                 fastaPath: ProteinDbObservableCollection.First().FilePath);
         }
 
-        protected List<Protein> LoadProteins(DbForDigestion database)
-        {
-            List<string> dbErrors = new List<string>();
-            List<Protein> proteinList = new List<Protein>();
-
-            string theExtension = System.IO.Path.GetExtension(database.FilePath).ToLowerInvariant();
-            bool compressed = theExtension.EndsWith("gz"); // allows for .bgz and .tgz, too which are used on occasion
-            theExtension = compressed ? System.IO.Path.GetExtension(System.IO.Path.GetFileNameWithoutExtension(database.FilePath)).ToLowerInvariant() : theExtension;
-
-            if (theExtension.Equals(".fasta") || theExtension.Equals(".fa"))
-            {
-                proteinList = ProteinDbLoader.LoadProteinFasta(database.FilePath, true, DecoyType.None, false, out dbErrors, ProteinDbLoader.UniprotAccessionRegex,
-                    ProteinDbLoader.UniprotFullNameRegex, ProteinDbLoader.UniprotFullNameRegex, ProteinDbLoader.UniprotGeneNameRegex,
-                    ProteinDbLoader.UniprotOrganismRegex, -1);
-
-                return proteinList;
-
-
-            }
-            else
-            {
-                List<string> modTypesToExclude = new List<string> { };
-                proteinList = ProteinDbLoader.LoadProteinXML(database.FilePath, true, DecoyType.None, GlobalVariables.AllModsKnown, false, modTypesToExclude,
-                    out Dictionary<string, Modification> um, -1, 4, 1);
-
-                return proteinList;
-
-            }
-
-
-        }
-
-        private void NewoutLabelStatus(object sender, StringEventArgs s)
+        private void NewoutLabelStatus(object sender, Engine.StringEventArgs s)
         {
             if (!Dispatcher.CheckAccess())
             {
@@ -993,10 +973,10 @@ namespace GUI
             }
         }
 
-        private Dictionary<string, Dictionary<Protein, (double, double)>> CalculateProteinSequenceCoverage(Dictionary<string, Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>> peptideByFile)
+        private Dictionary<string, Dictionary<IBioPolymer, (double, double)>> CalculateProteinSequenceCoverage(Dictionary<string, Dictionary<string, Dictionary<IBioPolymer, List<InSilicoPep>>>> peptideByFile)
         {
-            Dictionary<string, List<InSilicoPep>> allDatabasePeptidesByProtease = new Dictionary<string, List<InSilicoPep>>();
-            HashSet<Protein> proteins = new HashSet<Protein>();
+            Dictionary<string, List<InSilicoPep>> allDatabasePeptidesByProtease = new();
+            HashSet<IBioPolymer> proteins = new();
             foreach (var database in peptideByFile)
             {
                 foreach (var protease in database.Value)
@@ -1020,11 +1000,11 @@ namespace GUI
                 }
             }
 
-            Dictionary<string, Dictionary<Protein, (double, double)>> proteinSequenceCoverageByProtease = new Dictionary<string, Dictionary<Protein, (double, double)>>();
+            Dictionary<string, Dictionary<IBioPolymer, (double, double)>> proteinSequenceCoverageByProtease = new();
             foreach (var protease in allDatabasePeptidesByProtease)
             {
                 var proteinForProtease = protease.Value.GroupBy(p => p.Protein).ToDictionary(group => group.Key, group => group.ToList());
-                Dictionary<Protein, (double, double)> sequenceCoverages = new Dictionary<Protein, (double, double)>();
+                Dictionary<IBioPolymer, (double, double)> sequenceCoverages = new();
                 foreach (var protein in proteinForProtease)
                 {
                     //count which residues are covered at least one time by a peptide
@@ -1077,5 +1057,10 @@ namespace GUI
         //{
         //    GlobalVariables.StartProcess(@"https://www.youtube.com/channel/UCwPeeXcYSQBdbfXt-SdYhEg");
         //}
+        private void MainWindow_Closing(object? sender, CancelEventArgs e)
+        {
+            if (GuiGlobalParamsViewModel.Instance.IsDirty())
+                GuiGlobalParamsViewModel.Instance.Save();
+        }
     }
 }

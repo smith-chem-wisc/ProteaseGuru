@@ -14,6 +14,11 @@
         <SolidColorBrush x:Key="TextColor1" Color="#131313" />
         <SolidColorBrush x:Key="BorderColor" Color="#444449" />
         <SolidColorBrush x:Key="AccentColor" Color="#F9690E" />
+
+        <local:ProteinRnaTerminologyConverter x:Key="ProtTermConverter" />
+        <local:CollapseOnRnaModeConverter x:Key="CollapseOnRna" />
+        <local:CollapseOnProteinModeConverter x:Key="CollapseOnProtein" />
+
         <Style x:Key="SmallHeaderLabelStyle" TargetType="Label">
             <Setter Property="HorizontalAlignment" Value="Left"/>
             <Setter Property="FontSize" Value="15"/>
@@ -117,11 +122,23 @@
         <StackPanel Grid.Column="0" Grid.Row="0" Grid.ColumnSpan="3">
 
             <!--Header label-->
-            <Label Content="Digestion Conditions" Grid.Row="0" Style="{StaticResource HeaderLabelStyle}" />
+            <Label Grid.Row="0" Style="{StaticResource HeaderLabelStyle}">
+                <Label.Content>
+                    <Binding Converter="{StaticResource ProtTermConverter}"  Source="{x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}" Path ="IsRnaMode"
+                             ConverterParameter="Digestion Conditions"/>
+                </Label.Content>
+            </Label>
 
             <!--Detail text-->
             <TextBlock Grid.Row="1" Style="{StaticResource TextBlockStyle}">
-                Set the proteases and digestion parameters to use for the in silico analysis.
+                <Run>
+                    <Run.Text>
+                        <Binding Path="IsRnaMode"
+                                 Source="{x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}"
+                                 Converter="{StaticResource ProtTermConverter}"
+                                 ConverterParameter="Set the proteases and digestion parameters to use for the in silico analysis." />
+                    </Run.Text>
+                </Run>
             </TextBlock>
         </StackPanel>
 
@@ -136,7 +153,12 @@
             </Grid.RowDefinitions>
 
             <!--SubHeader label-->
-            <Label Content="Proteases" Grid.Row="0"  Style="{StaticResource SubHeaderLabelStyle}" />
+            <Label Grid.Row="0" Style="{StaticResource SubHeaderLabelStyle}">
+                <Label.Content>
+                    <Binding Converter="{StaticResource ProtTermConverter}"  Source="{x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}" Path ="IsRnaMode"
+                             ConverterParameter="Proteases"/>
+                </Label.Content>
+            </Label>
 
             <!-- Protease Selection ListBox with ItemsControl showing ProteaseSpecificDigestionControl -->
             <ScrollViewer VerticalScrollBarVisibility="Visible" HorizontalScrollBarVisibility="Auto" Grid.Row="1" Margin="2 0 2 8">
@@ -159,12 +181,28 @@
                     <ColumnDefinition Width="2" />
                     <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
-                <Button Grid.Column="0" x:Name="defaultProteasesButton" Content="Default Proteases" Width="130"
-                            Command="{Binding SetDefaultProteasesCommand}"  Style="{StaticResource ImportantButtonStyle}" />
-                <Button Grid.Column="2" x:Name="clearProteasesButton" Content="Clear Protease Selection" Width="150"
-                            Command="{Binding ClearProteasesCommand}"  Style="{StaticResource ImportantButtonStyle}" />
-                <Button Grid.Column="4" x:Name="addCustomProteasesButton" Content="Add Custom Protease" Width="130"
-                        Click="AddCustomProtease_Click"  Style="{StaticResource ImportantButtonStyle}" />
+                <Button Grid.Column="0" x:Name="defaultProteasesButton" Width="130"
+                            Command="{Binding SetDefaultProteasesCommand}"  Style="{StaticResource ImportantButtonStyle}">
+                    <Button.Content>
+                        <Binding Converter="{StaticResource ProtTermConverter}" Source="{x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}" Path ="IsRnaMode"
+                                 ConverterParameter="Default Proteases"/>
+                    </Button.Content>
+                </Button>
+                <Button Grid.Column="2" x:Name="clearProteasesButton" Width="150"
+                            Command="{Binding ClearProteasesCommand}"  Style="{StaticResource ImportantButtonStyle}">
+                    <Button.Content>
+                        <Binding Converter="{StaticResource ProtTermConverter}" Source="{x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}" Path ="IsRnaMode"
+                                 ConverterParameter="Clear Protease Selection"/>
+                    </Button.Content>
+                </Button>
+                <Button Grid.Column="4" x:Name="addCustomProteasesButton" Width="130"
+                        Visibility="{Binding Converter={StaticResource CollapseOnRna}, Source={x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}, Path=IsRnaMode}"
+                        Click="AddCustomProtease_Click"  Style="{StaticResource ImportantButtonStyle}">
+                    <Button.Content>
+                        <Binding Converter="{StaticResource ProtTermConverter}" Source="{x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}" Path ="IsRnaMode"
+                                 ConverterParameter="Add Custom Protease"/>
+                    </Button.Content>
+                </Button>
             </Grid>
         </Grid>
 
@@ -176,11 +214,14 @@
               Background="{StaticResource DataGridBackgroundColor}">
             <DockPanel
                 Background="{StaticResource DataGridBackgroundColor}">
-                <GroupBox Header="Apply To All Proteases"
-                          DockPanel.Dock="Top"
+                <GroupBox DockPanel.Dock="Top"
                           BorderThickness="2"
                           Foreground="{StaticResource TextColor1}"
                           BorderBrush="{StaticResource BorderColor}">
+                    <GroupBox.Header>
+                        <Binding Converter="{StaticResource ProtTermConverter}"  Source="{x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}" Path ="IsRnaMode"
+                                 ConverterParameter="Apply To All Proteases"/>
+                    </GroupBox.Header>
                     <Grid
                         Background="{StaticResource DataGridBackgroundColor}">
                         <Grid.RowDefinitions>
@@ -191,15 +232,27 @@
 
                         <!-- Max missed cleavages -->
                         <StackPanel Orientation="Horizontal" Margin="5 5 5 0" Grid.Row="0">
-                            <Label x:Name="maxMissedCleavagesLabel" Content="Max Missed Cleavages:" Width="150" />
+                            <Label x:Name="maxMissedCleavagesLabel" Width="150">
+                                <Label.Content>
+                                    <Binding Converter="{StaticResource ProtTermConverter}"  Source="{x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}" Path ="IsRnaMode"
+                                             ConverterParameter="Max Missed Cleavages:"/>
+                                </Label.Content>
+                            </Label>
                             <local:IntegerTextBoxControl x:Name="MissedCleavagesTextBox" 
                                                      Text="{Binding MaxMissedCleavages, UpdateSourceTrigger=PropertyChanged, Mode=TwoWay}"
                                                      AllowNegative="False" Width="45">
                                 <TextBox.ToolTip>
                                     <TextBlock>
-                                    Maximum number of missed proteolytic cleavages allowed.
-                                    <LineBreak />
-                                    Semi-specific cleavages do not count toward this.
+                                        <Run>
+                                            <Run.Text>
+                                                <Binding Path="IsRnaMode"
+                                                         Source="{x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}"
+                                                         Converter="{StaticResource ProtTermConverter}"
+                                                         ConverterParameter="Maximum number of missed proteolytic cleavages allowed." />
+                                            </Run.Text>
+                                        </Run>
+                                        <LineBreak />
+                                        Semi-specific cleavages do not count toward this.
                                     </TextBlock>
                                 </TextBox.ToolTip>
                             </local:IntegerTextBoxControl>
@@ -208,7 +261,12 @@
                         <!-- Min peptide lengths -->
                         <StackPanel Orientation="Horizontal" Margin="5 5 5 0" Grid.Row="1"
                                 Background="{StaticResource DataGridBackgroundColor}">
-                            <Label x:Name="lblMinPeptideLength" Content="Min Peptide Length:" Width="150" />
+                            <Label x:Name="lblMinPeptideLength" Width="150">
+                                <Label.Content>
+                                    <Binding Converter="{StaticResource ProtTermConverter}"  Source="{x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}" Path ="IsRnaMode"
+                                             ConverterParameter="Min Peptide Length:"/>
+                                </Label.Content>
+                            </Label>
                             <local:IntegerTextBoxControl x:Name="MinPeptideLengthTextBox" 
                                                      Text="{Binding MinLength, UpdateSourceTrigger=PropertyChanged, Mode=TwoWay}"
                                                      AllowNegative="False" Width="45" 
@@ -216,7 +274,14 @@
                                                      ToolTipService.InitialShowDelay="500">
                                 <TextBox.ToolTip>
                                     <TextBlock>
-                                    The minimum allowed peptide length. Must be a positive, non-zero integer.
+                                        <Run>
+                                            <Run.Text>
+                                                <Binding Path="IsRnaMode"
+                                                         Source="{x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}"
+                                                         Converter="{StaticResource ProtTermConverter}"
+                                                         ConverterParameter="The minimum allowed peptide length. Must be a positive, non-zero integer." />
+                                            </Run.Text>
+                                        </Run>
                                     </TextBlock>
                                 </TextBox.ToolTip>
                             </local:IntegerTextBoxControl>
@@ -225,13 +290,25 @@
                         <!-- Max peptide lengths -->
                         <StackPanel Orientation="Horizontal" Margin="5 5 5 0" Grid.Row="2"
                                 Background="{StaticResource DataGridBackgroundColor}">
-                            <Label x:Name="lblMaxPeptideLength" Content="Max Peptide Length:" Width="150" />
+                            <Label x:Name="lblMaxPeptideLength" Width="150">
+                                <Label.Content>
+                                    <Binding Converter="{StaticResource ProtTermConverter}"  Source="{x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}" Path ="IsRnaMode"
+                                             ConverterParameter="Max Peptide Length:"/>
+                                </Label.Content>
+                            </Label>
                             <local:IntegerTextBoxControl x:Name="MaxPeptideLengthTextBox" 
                                                      Text="{Binding MaxLength, UpdateSourceTrigger=PropertyChanged, Mode=TwoWay}"
                                                      AllowNegative="False" Width="45">
                                 <TextBox.ToolTip>
                                     <TextBlock>
-                                    The maximum allowed peptide length. Leave empty for no limitation.
+                                        <Run>
+                                            <Run.Text>
+                                                <Binding Path="IsRnaMode"
+                                                         Source="{x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}"
+                                                         Converter="{StaticResource ProtTermConverter}"
+                                                         ConverterParameter="The maximum allowed peptide length. Leave empty for no limitation." />
+                                            </Run.Text>
+                                        </Run>
                                     </TextBlock>
                                 </TextBox.ToolTip>
                             </local:IntegerTextBoxControl>
@@ -254,11 +331,25 @@
                         <StackPanel Orientation="Horizontal" Margin="5 5 5 0"  Grid.Row="0"
                                 Background="{StaticResource DataGridBackgroundColor}">
                             <CheckBox x:Name="ModPepsAreUnique" 
-                                  IsChecked="{Binding TreatModifiedPeptidesAsDifferent, Mode=TwoWay}"
-                                  Content="Treat modified peptides as different peptides">
+                                  IsChecked="{Binding TreatModifiedPeptidesAsDifferent, Mode=TwoWay}">
+                                <CheckBox.Content>
+                                    <Binding Source="{x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}" Path ="IsRnaMode"
+                                             Converter="{StaticResource ProtTermConverter}" 
+                                             ConverterParameter="Treat modified peptides as different peptides"/>
+                                </CheckBox.Content>
                                 <ToolTipService.ToolTip>
-                                    <ToolTip Content="Modified forms of a peptide base sequence are treated as different"
-                                         ToolTipService.ShowDuration="999999" ToolTipService.InitialShowDelay="500" />
+                                    <ToolTip ToolTipService.ShowDuration="999999" ToolTipService.InitialShowDelay="500">
+                                        <TextBlock>
+                                            <Run>
+                                                <Run.Text>
+                                                    <Binding Path="IsRnaMode"
+                                                             Source="{x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}"
+                                                             Converter="{StaticResource ProtTermConverter}"
+                                                             ConverterParameter="Modified forms of a peptide base sequence are treated as different" />
+                                                </Run.Text>
+                                            </Run>
+                                        </TextBlock>
+                                    </ToolTip>
                                 </ToolTipService.ToolTip>
                             </CheckBox>
                         </StackPanel>
@@ -266,6 +357,7 @@
                         <StackPanel Orientation="Horizontal" Margin="5 5 5 0" Grid.Row="1"
                                     Background="{StaticResource DataGridBackgroundColor}">
                             <CheckBox x:Name="FixedCarbamido" 
+                                      Visibility="{Binding Source={x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}, Path=IsRnaMode, Converter={StaticResource CollapseOnRna}}"
                                       IsChecked="{Binding ApplyFixedCarbamidomethylation, Mode=TwoWay}"
                                       Content="Apply Fixed Carbamidomethylation of C">
                                 <ToolTipService.ToolTip>
@@ -278,12 +370,44 @@
                         <StackPanel Orientation="Horizontal" Margin="5 5 5 0" Grid.Row="2"
                                     Background="{StaticResource DataGridBackgroundColor}">
                             <CheckBox x:Name="VariableOx" 
+                                      Visibility="{Binding Source={x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}, Path=IsRnaMode, Converter={StaticResource CollapseOnRna}}"
                                       IsChecked="{Binding ApplyVariableOxidation, Mode=TwoWay}"
                                       Content="Apply Variable Oxidation of M">
                                 <ToolTipService.ToolTip>
-                                    <ToolTip
-                                        Content="All Methionines will be treated as oxidized and un-oxidized generating two peptides with differing base sequences"
-                                        ToolTipService.ShowDuration="999999" ToolTipService.InitialShowDelay="500" />
+                                    <ToolTip ToolTipService.ShowDuration="999999" ToolTipService.InitialShowDelay="500">
+                                        <TextBlock>
+                                            <Run>
+                                                <Run.Text>
+                                                    <Binding Path="IsRnaMode"
+                                                             Source="{x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}"
+                                                             Converter="{StaticResource ProtTermConverter}"
+                                                             ConverterParameter="All Methionines will be treated as oxidized and un-oxidized generating two peptides with differing base sequences" />
+                                                </Run.Text>
+                                            </Run>
+                                        </TextBlock>
+                                    </ToolTip>
+                                </ToolTipService.ToolTip>
+                            </CheckBox>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="5 5 5 0" Grid.Row="2"
+                                    Background="{StaticResource DataGridBackgroundColor}">
+                            <CheckBox x:Name="VariableCyclicP" 
+                                      Visibility="{Binding Source={x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}, Path=IsRnaMode, Converter={StaticResource CollapseOnProtein}}"
+                                      IsChecked="{Binding ApplyVariableOxidation, Mode=TwoWay}"
+                                      Content="Apply Variable Phosphate Cyclization of 3'-Term">
+                                <ToolTipService.ToolTip>
+                                    <ToolTip ToolTipService.ShowDuration="999999" ToolTipService.InitialShowDelay="500">
+                                        <TextBlock>
+                                            <Run>
+                                                <Run.Text>
+                                                    <Binding Path="IsRnaMode"
+                                                             Source="{x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}"
+                                                             Converter="{StaticResource ProtTermConverter}"
+                                                             ConverterParameter="All 3' termini will be treated as oxidized and un-oxidized generating two peptides with differing base sequences" />
+                                                </Run.Text>
+                                            </Run>
+                                        </TextBlock>
+                                    </ToolTip>
                                 </ToolTipService.ToolTip>
                             </CheckBox>
                         </StackPanel>
@@ -291,13 +415,25 @@
                         <!-- Min peptide mass -->
                         <StackPanel Orientation="Horizontal" Margin="5 5 5 0" Grid.Row="3"
                                 Background="{StaticResource DataGridBackgroundColor}">
-                            <Label x:Name="lblMinPeptideMass" Content="Min Peptide Mass:" Width="150" />
+                            <Label x:Name="lblMinPeptideMass" Width="150">
+                                <Label.Content>
+                                    <Binding Converter="{StaticResource ProtTermConverter}"  Source="{x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}" Path ="IsRnaMode"
+                                             ConverterParameter="Min Peptide Mass:"/>
+                                </Label.Content>
+                            </Label>
                             <local:IntegerTextBoxControl x:Name="MinPeptideMassTextBox" 
                                                      Text="{Binding MinPeptideMass, Mode=TwoWay}"
                                                      Width="45">
                                 <TextBox.ToolTip>
                                     <TextBlock>
-                                    Optional: The minimum allowed peptide mass. Leave empty for no limitation.
+                                        <Run>
+                                            <Run.Text>
+                                                <Binding Path="IsRnaMode"
+                                                         Source="{x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}"
+                                                         Converter="{StaticResource ProtTermConverter}"
+                                                         ConverterParameter="Optional: The minimum allowed peptide mass. Leave empty for no limitation." />
+                                            </Run.Text>
+                                        </Run>
                                     </TextBlock>
                                 </TextBox.ToolTip>
                             </local:IntegerTextBoxControl>
@@ -306,13 +442,25 @@
                         <!-- Max peptide mass -->
                         <StackPanel Orientation="Horizontal" Margin="5 5 5 0" Grid.Row="4"
                                 Background="{StaticResource DataGridBackgroundColor}">
-                            <Label x:Name="lblMaxPeptideMass" Content="Max Peptide Mass:" Width="150" />
+                            <Label x:Name="lblMaxPeptideMass" Width="150">
+                                <Label.Content>
+                                    <Binding Converter="{StaticResource ProtTermConverter}"  Source="{x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}" Path ="IsRnaMode"
+                                             ConverterParameter="Max Peptide Mass:"/>
+                                </Label.Content>
+                            </Label>
                             <local:IntegerTextBoxControl x:Name="MaxPeptideMassTextBox" 
                                                      Text="{Binding MaxPeptideMass, Mode=TwoWay}"
                                                      Width="45">
                                 <TextBox.ToolTip>
                                     <TextBlock>
-                                    Optional: The maximum allowed peptide mass. Leave empty for no limitation.
+                                        <Run>
+                                            <Run.Text>
+                                                <Binding Path="IsRnaMode"
+                                                         Source="{x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}"
+                                                         Converter="{StaticResource ProtTermConverter}"
+                                                         ConverterParameter="Optional: The maximum allowed peptide mass. Leave empty for no limitation." />
+                                            </Run.Text>
+                                        </Run>
                                     </TextBlock>
                                 </TextBox.ToolTip>
                             </local:IntegerTextBoxControl>
@@ -320,10 +468,15 @@
                     </Grid>
                 </GroupBox>
 
-                <Button DockPanel.Dock="Bottom"  x:Name="ResetDigestionTask" Content="Reset Digestion Conditions" MinHeight="34" Margin=" 4 0"
+                <Button DockPanel.Dock="Bottom"  x:Name="ResetDigestionTask" MinHeight="34" Margin=" 4 0"
                         VerticalAlignment="Bottom" HorizontalAlignment="Center"
                         Command="{Binding ResetDigestionConditionsCommand}"
-                        Style="{StaticResource ImportantButtonStyle}"/>
+                        Style="{StaticResource ImportantButtonStyle}">
+                    <Button.Content>
+                        <Binding Converter="{StaticResource ProtTermConverter}"  Source="{x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}" Path ="IsRnaMode"
+                                 ConverterParameter="Reset Digestion Conditions"/>
+                    </Button.Content>
+                </Button>
             </DockPanel>
         </Grid>
     </Grid>

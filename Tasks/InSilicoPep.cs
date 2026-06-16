@@ -97,14 +97,15 @@ namespace Tasks
             if (obj is not InSilicoPep q)
                 return false;
 
-            return BaseSequence == q.BaseSequence && Protease == q.Protease;
+            return BaseSequence == q.BaseSequence
+                && Protease == q.Protease
+                && StartResidue == q.StartResidue
+                && EndResidue == q.EndResidue;
         }
-
 
         public override int GetHashCode()
         {
-            return BaseSequence.GetHashCode() + Protease.GetHashCode();
-
+            return HashCode.Combine(BaseSequence, Protease, StartResidue, EndResidue);
         }
     }
 }

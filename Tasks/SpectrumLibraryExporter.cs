@@ -1,10 +1,11 @@
+using System.Text.RegularExpressions;
+using Omics;
 using Omics.Modifications;
+using PredictionClients.Koina.SupportedModels.FragmentIntensityModels;
+using PredictionClients.Koina.SupportedModels.RetentionTimeModels;
 using Proteomics;
 using Proteomics.ProteolyticDigestion;
 using PredictionClients.Koina.AbstractClasses;
-using PredictionClients.Koina.SupportedModels.RetentionTimeModels;
-using PredictionClients.Koina.SupportedModels.FragmentIntensityModels;
-using System.Text.RegularExpressions;
 
 namespace Tasks;
 
@@ -41,14 +42,15 @@ public static class SpectrumLibraryExporter
     private static readonly Regex ModPattern = new(@"\[[^\]]+\]", RegexOptions.Compiled);
 
     /// <summary>
-    /// Main entry point. Runs asynchronously; <paramref name="progress"/> receives
-    /// human-readable status strings throughout execution.
+    /// Main entry point. <paramref name="progress"/> receives human-readable status
+    /// strings throughout execution. Await this method from the UI thread to avoid
+    /// blocking; network calls are dispatched to thread-pool threads internally.
     /// </summary>
     /// <param name="protein">The protein to export.</param>
     /// <param name="proteaseParams">Currently-checked protease-specific parameters.</param>
     /// <param name="chargeStates">
     ///     Precursor charges to generate. Values outside 1-6 are silently dropped
-    ///     because Prosit_2020_intensity_HCD does not support charge 7.
+    ///     because Prosit_2020_intensity_HCD does not support charge state 7.
     /// </param>
     /// <param name="nce">Normalised collision energy (recommend 20-45, ideally 25/28/30/35).</param>
     /// <param name="fastaPath">
@@ -59,7 +61,7 @@ public static class SpectrumLibraryExporter
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>Full path of the written .msp file.</returns>
     public static async Task<string> ExportAsync(
-        Protein protein,
+        IBioPolymer protein,
         IEnumerable<ProteaseSpecificParameters> proteaseParams,
         IReadOnlyList<int> chargeStates,
         int nce,
@@ -215,7 +217,7 @@ public static class SpectrumLibraryExporter
     /// Prosit2019iRT and Prosit2020IntensityHCD constructors.
     /// </summary>
     private static List<string> DigestToUniqueMzLibSequences(
-        Protein protein,
+        IBioPolymer protein,
         IEnumerable<ProteaseSpecificParameters> proteaseParams)
     {
         var seen = new HashSet<string>(StringComparer.Ordinal);
@@ -261,7 +263,7 @@ public static class SpectrumLibraryExporter
     // Output-path helper
     // ═════════════════════════════════════════════════════════════════════════
 
-    private static string BuildOutputPath(Protein protein, string? fastaPath)
+    private static string BuildOutputPath(IBioPolymer protein, string? fastaPath)
     {
         string dir;
         if (!string.IsNullOrWhiteSpace(fastaPath) && File.Exists(fastaPath))

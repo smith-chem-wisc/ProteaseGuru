@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using Chemistry;
 using Omics.Fragmentation;
+using Omics.SequenceConversion;
 using Omics.SpectrumMatch;
 using PredictionClients.Koina.AbstractClasses;
 using PredictionClients.Koina.Interfaces;
@@ -65,7 +66,7 @@ namespace Tasks
             {
                 case "Prosit2020IntensityHCD":
                      model = new Prosit2020IntensityHCD(
-                        modHandlingMode: _options.ExcludeIncompatiblePeptides ? IncompatibleModHandlingMode.ReturnNull : IncompatibleModHandlingMode.RemoveIncompatibleMods,
+                        modHandlingMode: _options.ExcludeIncompatiblePeptides ? SequenceConversionHandlingMode.ReturnNull : SequenceConversionHandlingMode.RemoveIncompatibleElements,
                         parameterHandlingMode: IncompatibleParameterHandlingMode.ReturnNull,
                         fragmentIonMappingMode: FragmentIonMappingMode.MapToValidatedFullSequence
                         );

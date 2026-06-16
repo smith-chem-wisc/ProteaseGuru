@@ -9,10 +9,13 @@
         Drop="Window_Drop" AllowDrop="true" 
         WindowStartupLocation="CenterScreen"
         Icon="proteaseGuru.ico"
-        Title="Protease Guru"
+        Title="{Binding Source={x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}, Path=MainWindowTitle}"
+        Closing="MainWindow_Closing"
         Height="600" Width="1300">
     <Window.Resources>
         <ResourceDictionary>
+
+            <local:ProteinRnaTerminologyConverter x:Key="ProtTermConverter" />
 
             <Style x:Key="DataGridCellStyle" TargetType="DataGridCell">
             </Style>
@@ -202,20 +205,70 @@
                 <Setter Property="AutoGenerateColumns" Value="False"/>
             </Style>
 
+            <Style TargetType="TabControl" x:Key="TabControlStyle">
+                <Setter Property="Background" Value="{StaticResource SideBarMainColor}" />
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="TabControl">
+                            <Grid ClipToBounds="true">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <!-- For tab headers -->
+                                    <ColumnDefinition Width="*"/>
+                                    <!-- For content -->
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="*"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+
+                                <!-- Actual Tab Headers -->
+                                <TabPanel Grid.Row="0" Grid.Column="0"
+                                    Name="HeaderPanel"
+                                    IsItemsHost="True"
+                                    Margin="0 0 0 400"
+                                    KeyboardNavigation.TabIndex="1"
+                                    Panel.ZIndex="1"
+                                    Background="Transparent"/>
+
+                                <!-- Protein/RNA Toggle Control -->
+                                <local:ProteinRnaImageToggle Grid.Row="1" Grid.Column="0" Width="100" />
+
+                                <!-- Content Panel -->
+                                <ContentPresenter
+                                    Name="PART_SelectedContentHost"
+                                    Margin="4 0 0 0 "
+                                    Grid.Row="0"
+                                    Grid.RowSpan="2"
+                                    Grid.Column="1"
+                                    ContentSource="SelectedContent"/>
+                            </Grid>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+                <Style.Triggers>
+                    <DataTrigger Binding="{Binding Source={x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}, Path=IsRnaMode}" Value="True">
+                        <Setter Property="Background" Value="{StaticResource RnaSideBarMainColor}"/>
+                        <Setter Property="BorderBrush" Value="{StaticResource RnaSideBarMainColor}"/>
+                    </DataTrigger>
+                </Style.Triggers>
+            </Style>
             <!--Styling for the tab items on the left side-->
-            <!--CHANGED: Width 165->220 (no clipping), FontSize 14->15, FontWeight Bold always (not just selected), left margin 5->10-->
             <Style x:Key="TabItemStyle" TargetType="TabItem">
+                <Setter Property="Background" Value="{StaticResource SideBarMainColor}"/>
+                <Setter Property="BorderBrush" Value="{StaticResource AccentColor}"/>
                 <Setter Property="Template">
                     <Setter.Value>
                         <ControlTemplate TargetType="TabItem">
-                            <Grid Height="50" Width="220" Background="{StaticResource SideBarMainColor}">
+                            <Grid Height="45" Width="210" Background="{TemplateBinding Background}">
                                 <Border Name="Border" Margin="0,0,0,0" Background="Transparent"
-                                        BorderThickness="{TemplateBinding BorderThickness}" BorderBrush="{TemplateBinding BorderBrush}">
+                                        BorderThickness="{TemplateBinding BorderThickness}"
+                                        BorderBrush="{Binding BorderBrush, RelativeSource={RelativeSource TemplatedParent}}">
                                     <ContentPresenter 
                                         x:Name="ContentSite" 
                                         VerticalAlignment="Center"
                                         HorizontalAlignment="Left"
-                                        ContentSource="Header" Margin="10,2,10,2"
+                                        ContentSource="Header" Margin="5,2,0,2"
                                         RecognizesAccessKey="True">
                                     </ContentPresenter>
                                 </Border>
@@ -224,13 +277,13 @@
                             <ControlTemplate.Triggers>
                                 <Trigger Property="IsSelected" Value="True">
                                     <Setter Property="BorderThickness" Value="0,0,7,0"/>
+                                    <Setter Property="FontWeight" Value="Bold"/>
                                     <!--Color of tab item text (when selected)-->
                                     <Setter Property="Foreground" Value="{StaticResource TextColor2}"/>
                                     <!--Color of tab item right side accent bar (when selected)-->
                                     <Setter Property="BorderBrush" Value="{StaticResource AccentColor}"/>
                                 </Trigger>
                                 <Trigger Property="IsSelected" Value="False">
-                                    <!--Color of tab item text (when deselected)-->
                                     <Setter Property="Foreground" Value="{StaticResource TextColor2}"/>
                                 </Trigger>
                             </ControlTemplate.Triggers>
@@ -242,15 +295,22 @@
                 <Setter Property="BorderThickness" Value="0" />
                 <Setter Property="Margin" Value="0,0,2,0" />
                 <Setter Property="Padding" Value="0" />
+                <Style.Triggers>
+                    <DataTrigger Binding="{Binding Source={x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}, Path=IsRnaMode}" Value="True">
+                        <Setter Property="Background" Value="{DynamicResource RnaSideBarMainColor}"/>
+                        <Setter Property="BorderBrush" Value="{DynamicResource RnaAccentColor}"/>
+                    </DataTrigger>
+                </Style.Triggers>
             </Style>
 
             <!--Wide gap spacer between Individual Protein Analysis and Load Previous Results-->
-            <!--CHANGED: Width 125->220, Height 10->40-->
             <Style x:Key="SpacerTabItemStyle" TargetType="TabItem">
+                <Setter Property="Background" Value="{StaticResource SideBarMainColor}"/>
+                <Setter Property="BorderBrush" Value="{StaticResource AccentColor}"/>
                 <Setter Property="Template">
                     <Setter.Value>
                         <ControlTemplate TargetType="TabItem">
-                            <Grid Height="40" Width="220" Background="{StaticResource SideBarMainColor}">
+                            <Grid Height="40" Width="210" >
                                 <Border Name="Border" Margin="0,0,0,0" Background="Transparent"
                                         BorderThickness="{TemplateBinding BorderThickness}" BorderBrush="{TemplateBinding BorderBrush}">
                                     <ContentPresenter 
@@ -268,6 +328,12 @@
                 <Setter Property="BorderThickness" Value="0" />
                 <Setter Property="Margin" Value="0,0,2,0" />
                 <Setter Property="Padding" Value="0" />
+                <Style.Triggers>
+                    <DataTrigger Binding="{Binding Source={x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}, Path=IsRnaMode}" Value="True">
+                        <Setter Property="Background" Value="{StaticResource RnaSideBarMainColor}"/>
+                        <Setter Property="BorderBrush" Value="{StaticResource RnaSideBarMainColor}"/>
+                    </DataTrigger>
+                </Style.Triggers>
             </Style>
 
             <!--Notification Styles-->
@@ -281,7 +347,7 @@
             </Style>
         </ResourceDictionary>
     </Window.Resources>
-    <Grid Background="{StaticResource SideBarMainColor}">
+    <Grid >
         <Grid.RowDefinitions>
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
@@ -289,12 +355,17 @@
 
         <!--Tab Control with all pages-->
         <TabControl Grid.Row="0" Grid.RowSpan="2" TabStripPlacement="Left"
-                    BorderThickness="0">
+                    BorderThickness="0" BorderBrush="{StaticResource BorderColor}" Style="{StaticResource TabControlStyle}">
             <TabControl.Resources>
                 <Style TargetType="Grid">
                     <!--This defines the *default* style for *all grids in the entire tab control*-->
                     <!--This is not great but seems necessary to have a proper background on the tab items...-->
                     <Setter Property="Background" Value="{StaticResource SideBarMainColor}" />
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding Source={x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}, Path=IsRnaMode}" Value="True">
+                            <Setter Property="Background" Value="{StaticResource RnaSideBarMainColor}"/>
+                        </DataTrigger>
+                    </Style.Triggers>
                 </Style>
             </TabControl.Resources>
 
@@ -328,48 +399,108 @@
 
                     <!--Text content-->
                     <TextBlock Grid.Row="2" Grid.RowSpan="2" Style="{StaticResource TextBlockStyle}"> 
-                   
-                        ProteaseGuru is a in silico digestion program facilitating the comparison of proteolytic digests. It accepts protein databases (.xml or .fasta) as input and allows
+                        <Run>
+                            <Run.Text>
+                                <Binding Path="IsRnaMode"
+                                         Source="{x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}"
+                                         Converter="{StaticResource ProtTermConverter}"
+                                         ConverterParameter="ProteaseGuru is a in silico digestion program facilitating the comparison of proteolytic digests. It accepts protein databases (.xml or .fasta) as input and allows users to set digestion conditions and proteases for digestion. ProteaseGuru is designed to help users determine which protease or combination of proteases would yield the best experimental results." />
+                            </Run.Text>
+                        </Run>
+                        
                         <LineBreak />
-                         users to set digestion conditions and proteases for digestion. ProteaseGuru is designed to help users determine which protease or combination of proteases would yield the best experimental results.
-                    
-                    
                         <LineBreak />
                         <LineBreak />
-                        <LineBreak />
-                        ProteaseGuru is especially helpful for the planning of the following experiment types:
+                        
+                        <Run>
+                            <Run.Text>
+                                <Binding Path="IsRnaMode"
+                                         Source="{x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}"
+                                         Converter="{StaticResource ProtTermConverter}"
+                                         ConverterParameter="ProteaseGuru is especially helpful for the planning of the following experiment types:" />
+                            </Run.Text>
+                        </Run>
+                        
                         <LineBreak />                        
                         <LineBreak />
-                        ● Experiments targeting specific proteins.
+                        
+                        <Run>
+                            <Run.Text>
+                                <Binding Path="IsRnaMode"
+                                         Source="{x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}"
+                                         Converter="{StaticResource ProtTermConverter}"
+                                         ConverterParameter="● Experiments targeting specific proteins." />
+                            </Run.Text>
+                        </Run>
+                        
                         <LineBreak />                        
                         <LineBreak />
-                        ● Experiments focusing on the discovery of PTMs and/or sequence variants.
+                        
+                        <Run>
+                            <Run.Text>
+                                <Binding Path="IsRnaMode"
+                                         Source="{x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}"
+                                         Converter="{StaticResource ProtTermConverter}"
+                                         ConverterParameter="● Experiments focusing on the discovery of PTMs and/or sequence variants." />
+                            </Run.Text>
+                        </Run>
+                        
                         <LineBreak />                        
                         <LineBreak />
+                        
                         ● Experiments where the sample is composed of more than one species with sequence homology (e.g. xenografts).
-                    
-                    
+                        
                         <LineBreak/>
                         <LineBreak />
                         <LineBreak />
+                        
                         ProteaseGuru provides:
+                        
                         <LineBreak />                        
                         <LineBreak />
+                        
                         ● The ability to analyze more than one database enabling its use with samples containing multiple species .
+                        
                         <LineBreak />                        
                         <LineBreak />
-                        ● Result files containing various biophysical properties of theoretical peptides such as their molecular weight,
+                        
+                        <Run>
+                            <Run.Text>
+                                <Binding Path="IsRnaMode"
+                                         Source="{x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}"
+                                         Converter="{StaticResource ProtTermConverter}"
+                                         ConverterParameter="● Result files containing various biophysical properties of theoretical peptides such as their molecular weight, hydrophobicity and electrophoretic mobility." />
+                            </Run.Text>
+                        </Run>
+                        
                         <LineBreak />
-                        hydrophobicity and electrophoretic mobility.
                         <LineBreak />
-                        <LineBreak />
+                        
                         ● Determination of the uniqueness of a theoretical sequence (both in a single database and all databases used for analysis).
+                        
                         <LineBreak /> 
                         <LineBreak />
-                        ● Histograms of whole proteome proteolytic digests for the direct comparison of proteases.
+                        
+                        <Run>
+                            <Run.Text>
+                                <Binding Path="IsRnaMode"
+                                         Source="{x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}"
+                                         Converter="{StaticResource ProtTermConverter}"
+                                         ConverterParameter="● Histograms of whole proteome proteolytic digests for the direct comparison of proteases." />
+                            </Run.Text>
+                        </Run>
+                        
                         <LineBreak /> 
                         <LineBreak />
-                        ● Protein sequence coverage maps for visualization of the in silico digestion of targeted proteins.
+                        
+                        <Run>
+                            <Run.Text>
+                                <Binding Path="IsRnaMode"
+                                         Source="{x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}"
+                                         Converter="{StaticResource ProtTermConverter}"
+                                         ConverterParameter="● Protein sequence coverage maps for visualization of the in silico digestion of targeted proteins." />
+                            </Run.Text>
+                        </Run>
                     </TextBlock>
                 </Grid>
             </TabItem>
@@ -385,18 +516,36 @@
                     </Grid.RowDefinitions>
 
                     <!--Header label-->
-                    <Label Content="Protein Databases" Grid.Row="0" Style="{StaticResource HeaderLabelStyle}" />
+                    <Label Grid.Row="0" Style="{StaticResource HeaderLabelStyle}">
+                        <Label.Content>
+                            <Binding Converter="{StaticResource ProtTermConverter}"  Source="{x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}" Path ="IsRnaMode"
+                                     ConverterParameter="Protein Databases"/>
+                        </Label.Content>
+                    </Label>
 
                     <!--Detail text-->
                     <TextBlock Grid.Row="1" Style="{StaticResource TextBlockStyle}">
-                    Add 
-                    
-                    <Hyperlink NavigateUri="https://www.uniprot.org/" RequestNavigate="Hyperlink_RequestNavigate">
-                        protein database(s)
-                    </Hyperlink> 
-                    
-                    in .xml or .fasta format. Databases in .xml format can contain post-translational modification (PTM) locations,
-                    whereas .fasta format only contains amino acid sequences.
+                        <Run Text="Add " />
+                        
+                        <Hyperlink NavigateUri="https://www.uniprot.org/" RequestNavigate="Hyperlink_RequestNavigate">
+                            <Run>
+                                <Run.Text>
+                                    <Binding Path="IsRnaMode"
+                                             Source="{x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}"
+                                             Converter="{StaticResource ProtTermConverter}"
+                                             ConverterParameter="protein database(s)" />
+                                </Run.Text>
+                            </Run>
+                        </Hyperlink> 
+                        
+                        <Run>
+                            <Run.Text>
+                                <Binding Path="IsRnaMode"
+                                         Source="{x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}"
+                                         Converter="{StaticResource ProtTermConverter}"
+                                         ConverterParameter=" in .xml or .fasta format. Databases in .xml format can contain post-translational modification (PTM) locations, whereas .fasta format only contains amino acid sequences." />
+                            </Run.Text>
+                        </Run>
                     </TextBlock>
 
                     <DataGrid Grid.Row="2" x:Name="dataGridProteinDatabases"  Style="{StaticResource x:DataGridStyle}" ColumnHeaderStyle="{StaticResource DataGridColumnHeaderStyle}" ItemsSource="{Binding}">
@@ -427,7 +576,11 @@
             </TabItem>
 
             <!-- 3. Individual Protein Analysis -->
-            <TabItem Header="Individual Protein Analysis" Style="{StaticResource TabItemStyle}" Name="IndividualProteinAnalyzerTab">
+            <TabItem Style="{StaticResource TabItemStyle}" Name="IndividualProteinAnalyzerTab">
+                <TabItem.Header>
+                    <Binding Converter="{StaticResource ProtTermConverter}"  Source="{x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}" Path ="IsRnaMode"
+                             ConverterParameter="Individual Protein Analysis"/>
+                </TabItem.Header>
             </TabItem>
 
             <!-- Wide gap between Individual Protein Analysis and Load Previous Results -->
@@ -572,7 +725,11 @@
             </TabItem>
 
             <!-- 5. Digestion Conditions -->
-            <TabItem Header="Digestion Conditions" Style="{StaticResource TabItemStyle}">
+            <TabItem Style="{StaticResource TabItemStyle}">
+                <TabItem.Header>
+                    <Binding Converter="{StaticResource ProtTermConverter}"  Source="{x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}" Path ="IsRnaMode"
+                             ConverterParameter="Digestion Conditions"/>
+                </TabItem.Header>
                 <local:DigestionConditions x:Name="digestionConditionsControl" />
             </TabItem>
 
@@ -593,7 +750,14 @@
 
                     <!--Detail text-->
                     <TextBlock Grid.Row="1" Style="{StaticResource TextBlockStyle}">
-                       Summary of the databases, proteases and conditions that will be used for analysis.
+                        <Run>
+                            <Run.Text>
+                                <Binding Path="IsRnaMode"
+                                         Source="{x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}"
+                                         Converter="{StaticResource ProtTermConverter}"
+                                         ConverterParameter="Summary of the databases, proteases and conditions that will be used for analysis." />
+                            </Run.Text>
+                        </Run>
                         <LineBreak/>
                         If everything looks good, hit RUN!
                     </TextBlock>
@@ -662,24 +826,34 @@
                         </DockPanel>
 
                     </Grid>
-
-
                 </Grid>
             </TabItem>
 
             <!-- 7. Results Summary -->
-            <TabItem Header="Results Summary" Style="{StaticResource TabItemStyle}" Name="AllResultsTab">
-                <local:AllResultsWindow />
+            <TabItem Style="{StaticResource TabItemStyle}" Name="AllResultsTab">
+                <TabItem.Header>
+                    <Binding Converter="{StaticResource ProtTermConverter}"  Source="{x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}" Path ="IsRnaMode"
+                        ConverterParameter="Results Summary"/>
+                </TabItem.Header>
+                <local:AllResultsWindow/>
             </TabItem>
 
             <!-- 8. Protein Search -->
-            <TabItem Header="Protein Search" Style="{StaticResource TabItemStyle}" Name="ProteinCovMap">
+            <TabItem Name="ProteinCovMap" Style="{StaticResource TabItemStyle}">
+                <TabItem.Header>
+                    <Binding Converter="{StaticResource ProtTermConverter}"  Source="{x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}" Path ="IsRnaMode"
+                        ConverterParameter="Protein Search"/>
+                </TabItem.Header>
                 <local:ProteinResultsWindow/>
             </TabItem>
 
             <!-- 9. Histograms -->
-            <TabItem Header="Histograms" Style="{StaticResource TabItemStyle}" Name="AllHistogramsTab">
-                <local:HistogramWindow />
+            <TabItem Style="{StaticResource TabItemStyle}" Name="AllHistogramsTab">
+                <TabItem.Header>
+                    <Binding Converter="{StaticResource ProtTermConverter}"  Source="{x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}" Path ="IsRnaMode"
+                             ConverterParameter="Histograms"/>
+                </TabItem.Header>
+                <local:HistogramWindow/>
             </TabItem>
 
             <!-- 10. Help -->
@@ -758,7 +932,16 @@
                         <Button Grid.Row="2" Grid.Column="1" HorizontalContentAlignment="Left" BorderThickness="0" Click="MenuItem_MetaMorpheus_Click">
                             <StackPanel Orientation="Horizontal">
                                 <Image Source="Icons/MMnice.bmp" Width="20" Height="20" Margin="0,0,5,0"/>
-                                <TextBlock Text="Search proteomic data with MetaMorpheus" VerticalAlignment="Center" />
+                                <TextBlock VerticalAlignment="Center">
+                                    <Run>
+                                        <Run.Text>
+                                            <Binding Path="IsRnaMode"
+                                                     Source="{x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}"
+                                                     Converter="{StaticResource ProtTermConverter}"
+                                                     ConverterParameter="Search proteomic data with MetaMorpheus" />
+                                        </Run.Text>
+                                    </Run>
+                                </TextBlock>
                             </StackPanel>
                         </Button>
 
@@ -772,7 +955,16 @@
                         <Button Grid.Row="4" Grid.Column="1" HorizontalContentAlignment="Left" BorderThickness="0" Click="MenuItem_ProteomicsNewsBlog_Click">
                             <StackPanel Orientation="Horizontal">
                                 <Image Source="Icons/Blogger_20.bmp" Width="20" Height="20" Margin="0,0,5,0"/>
-                                <TextBlock Text="Read News in Proteomics Research" VerticalAlignment="Center" />
+                                <TextBlock VerticalAlignment="Center">
+                                    <Run>
+                                        <Run.Text>
+                                            <Binding Path="IsRnaMode"
+                                                     Source="{x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}"
+                                                     Converter="{StaticResource ProtTermConverter}"
+                                                     ConverterParameter="Read News in Proteomics Research" />
+                                        </Run.Text>
+                                    </Run>
+                                </TextBlock>
                             </StackPanel>
                         </Button>
                     </Grid>
@@ -782,10 +974,9 @@
         </TabControl>
 
         <!--Notifications - separate grid with column definitions to skip tab sidebar-->
-        <!--CHANGED: ColumnDefinition Width 165->220 to match updated tab width-->
         <Grid Grid.Row="1" Margin="1,-10,0,0">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="220" />
+                <ColumnDefinition Width="210" />
                 <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
 

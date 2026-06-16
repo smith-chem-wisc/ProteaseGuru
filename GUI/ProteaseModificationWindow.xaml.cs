@@ -63,7 +63,7 @@ namespace GUI
         {
             string proteaseModDirectory = System.IO.Path.Combine(GlobalVariables.DataDir, @"Mods");
             string proteaseModFilePath = System.IO.Path.Combine(proteaseModDirectory, @"ProteaseMods.txt");
-            List<string> customModsText = new List<string>();
+            List<string> customModsText = new();
             customModsText = File.ReadAllLines(proteaseModFilePath).ToList();
             //all of the protease properties that the user provided
             string idText = proteaseModIDTextBox.Text;
@@ -124,7 +124,7 @@ namespace GUI
             string tempPath = System.IO.Path.Combine(proteaseModDirectory, @"temp.txt");
             try
             {
-                List<string> temp = new List<string> { modification.ToString(), @"//" };
+                List<string> temp = new() { modification.ToString(), @"//" };
                 File.WriteAllLines(tempPath, temp);
                 var parsedMods = Omics.Modifications.IO.ModificationLoader.ReadModsFromFile(tempPath, out var errors);
 

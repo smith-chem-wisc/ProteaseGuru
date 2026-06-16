@@ -3,10 +3,15 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:oxy ="http://oxyplot.org/wpf"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
-             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:local="clr-namespace:GUI"
+             xmlns:guiFunctions="clr-namespace:GuiFunctions;assembly=GuiFunctions"
              mc:Ignorable="d"
              d:DesignHeight="600" d:DesignWidth="1200">
     <UserControl.Resources>
+        <local:ProteinRnaTerminologyConverter x:Key="ProtTermConverter" />
+        <local:CollapseOnRnaModeConverter x:Key="CollapseOnRnaMode" />
+        
         <SolidColorBrush x:Key="DataGridHeaderColor" Color="#F9690E" />
         <SolidColorBrush x:Key="DataGridBackgroundColor" Color="#D5D5D5" />
         <SolidColorBrush x:Key="BackgroundColor" Color="#D5D5D5" />
@@ -89,12 +94,23 @@
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
         <!--Header label-->
-        <Label Content="Histograms" Grid.Row="0" Style="{StaticResource HeaderLabelStyle}" />
+        <Label Grid.Row="0" Style="{StaticResource HeaderLabelStyle}">
+            <Label.Content>
+                <Binding Converter="{StaticResource ProtTermConverter}" 
+                         ConverterParameter="Histograms"/>
+            </Label.Content>
+        </Label>
 
         <!--Detail text-->
         <TextBlock Grid.Row="1" Style="{StaticResource TextBlockStyle}">
-          Explore proteome-wide digestion trends using histograms. Select a database and a histogram type to visualize the data.
-
+            <Run>
+                <Run.Text>
+                    <Binding Path="IsRnaMode"
+                             Source="{x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}"
+                             Converter="{StaticResource ProtTermConverter}"
+                             ConverterParameter="Explore proteome-wide digestion trends using histograms. Select a database and a histogram type to visualize the data." />
+                </Run.Text>
+            </Run>
         </TextBlock>
 
         <GroupBox Grid.Row="2" Grid.Column="2" Name="gbResults" ScrollViewer.VerticalScrollBarVisibility="Hidden" Background="{StaticResource BackgroundColor}">
@@ -132,10 +148,20 @@
                                                         IsReadOnly="True" ScrollViewer.CanContentScroll="True" Margin="0,0,0,0" 
                                                         CanUserDeleteRows="false" CanUserAddRows="false" Style="{StaticResource x:DataGridStyle}" ColumnHeaderStyle="{StaticResource DataGridColumnHeaderStyle}" SelectedCellsChanged="DatabaseSelectionChanged">
                             <DataGrid.Columns>
-                                <DataGridTextColumn Header="File" Binding="{Binding}" Width="450" />
+                                <DataGridTextColumn Binding="{Binding}" Width="450">
+                                    <DataGridTextColumn.Header>
+                                        <Binding Converter="{StaticResource ProtTermConverter}" 
+                                                 ConverterParameter="File"/>
+                                    </DataGridTextColumn.Header>
+                                </DataGridTextColumn>
                             </DataGrid.Columns>
                         </DataGrid>
-                        <Button Grid.Row="2" Content="Use Selected Databases" Width="150" Click="ProteinDBSelected_Click" HorizontalAlignment="Center" Style="{StaticResource ImportantButtonStyle}"></Button>
+                        <Button Grid.Row="2" Width="150" Click="ProteinDBSelected_Click" HorizontalAlignment="Center" Style="{StaticResource ImportantButtonStyle}">
+                            <Button.Content>
+                                <Binding Converter="{StaticResource ProtTermConverter}" 
+                                         ConverterParameter="Use Selected Databases"/>
+                            </Button.Content>
+                        </Button>
                     </Grid>
                     <GridSplitter Grid.Column="1" HorizontalAlignment="Center" VerticalAlignment="Stretch" Background="Silver" Width="3"/>
                     <Grid Grid.Column="2" Background="{StaticResource DataGridBackgroundColor}" Margin="0 0 5 0">
@@ -154,72 +180,195 @@
                                 <Label x:Name="HistogramType" Content="Histogram Type:" Width="125" Style="{StaticResource SmallHeaderLabelStyle}"/>
                                 <ComboBox x:Name="HistogramComboBox" SelectionChanged="PlotSelected" Background="{StaticResource DataGridBackgroundColor}" Width="300">
 
-                                    <ComboBoxItem Content="Amino Acid Distribution">
-                                        <ComboBoxItem.ToolTip >
+                                    <ComboBoxItem>
+                                        <ComboBoxItem.Content>
+                                            <Binding Converter="{StaticResource ProtTermConverter}" 
+                                                     ConverterParameter="Amino Acid Distribution"/>
+                                        </ComboBoxItem.Content>
+                                        <ComboBoxItem.ToolTip>
                                             <TextBlock>
-                                                                    Distribution of amino acids for all in silico digested peptides.
+                                                <Run>
+                                                    <Run.Text>
+                                                        <Binding Path="IsRnaMode"
+                                                                 Source="{x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}"
+                                                                 Converter="{StaticResource ProtTermConverter}"
+                                                                 ConverterParameter="Distribution of amino acids for all in silico digested peptides." />
+                                                    </Run.Text>
+                                                </Run>
                                             </TextBlock>
                                         </ComboBoxItem.ToolTip>
                                     </ComboBoxItem>
-                                    <ComboBoxItem Content="Peptide Length">
-                                        <ComboBoxItem.ToolTip >
+                                    <ComboBoxItem>
+                                        <ComboBoxItem.Content>
+                                            <Binding Converter="{StaticResource ProtTermConverter}" 
+                                                     ConverterParameter="Peptide Length"/>
+                                        </ComboBoxItem.Content>
+                                        <ComboBoxItem.ToolTip>
                                             <TextBlock>
-                                                                    Histogram representing the length distribution of all in silico digested peptides.
+                                                <Run>
+                                                    <Run.Text>
+                                                        <Binding Path="IsRnaMode"
+                                                                 Source="{x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}"
+                                                                 Converter="{StaticResource ProtTermConverter}"
+                                                                 ConverterParameter="Histogram representing the length distribution of all in silico digested peptides." />
+                                                    </Run.Text>
+                                                </Run>
                                             </TextBlock>
                                         </ComboBoxItem.ToolTip>
                                     </ComboBoxItem>
-                                    <ComboBoxItem Content="Protein Sequence Coverage">
-                                        <ComboBoxItem.ToolTip >
+                                    <ComboBoxItem>
+                                        <ComboBoxItem.Content>
+                                            <Binding Converter="{StaticResource ProtTermConverter}" 
+                                                     ConverterParameter="Protein Sequence Coverage"/>
+                                        </ComboBoxItem.Content>
+                                        <ComboBoxItem.ToolTip>
                                             <TextBlock>
-                                                                    Histogram representing the distribution of protein seqeunce coverage for all selected proteases.
-                                                                    <LineBreak/>
-                                                                    Protein sequence coverage is calculated by dividing the number of amino acids belonging to peptide sequences by the length of the protein.
+                                                <Run>
+                                                    <Run.Text>
+                                                        <Binding Path="IsRnaMode"
+                                                                 Source="{x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}"
+                                                                 Converter="{StaticResource ProtTermConverter}"
+                                                                 ConverterParameter="Histogram representing the distribution of protein sequence coverage for all selected proteases." />
+                                                    </Run.Text>
+                                                </Run>
+                                                <LineBreak/>
+                                                <Run>
+                                                    <Run.Text>
+                                                        <Binding Path="IsRnaMode"
+                                                                 Source="{x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}"
+                                                                 Converter="{StaticResource ProtTermConverter}"
+                                                                 ConverterParameter="Protein sequence coverage is calculated by dividing the number of amino acids belonging to peptide sequences by the length of the protein." />
+                                                    </Run.Text>
+                                                </Run>
                                             </TextBlock>
                                         </ComboBoxItem.ToolTip>
                                     </ComboBoxItem>
 
-                                    <ComboBoxItem Content="Protein Sequence Coverage (Unique Peptides Only)">
-                                        <ComboBoxItem.ToolTip >
+                                    <ComboBoxItem>
+                                        <ComboBoxItem.Content>
+                                            <Binding Converter="{StaticResource ProtTermConverter}" 
+                                                     ConverterParameter="Protein Sequence Coverage (Unique Peptides Only)"/>
+                                        </ComboBoxItem.Content>
+                                        <ComboBoxItem.ToolTip>
                                             <TextBlock>
-                                                                    Histogram representing the distribution of protein seqeunce coverage values when only unique peptides are used. 
-                                                                    <LineBreak/>
-                                                                    Protein sequence coverage is calculated by dividing the number of amino acids belonging to unique peptide sequences by the length of the protein.
+                                                <Run>
+                                                    <Run.Text>
+                                                        <Binding Path="IsRnaMode"
+                                                                 Source="{x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}"
+                                                                 Converter="{StaticResource ProtTermConverter}"
+                                                                 ConverterParameter="Histogram representing the distribution of protein sequence coverage values when only unique peptides are used." />
+                                                    </Run.Text>
+                                                </Run>
+                                                <LineBreak/>
+                                                <Run>
+                                                    <Run.Text>
+                                                        <Binding Path="IsRnaMode"
+                                                                 Source="{x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}"
+                                                                 Converter="{StaticResource ProtTermConverter}"
+                                                                 ConverterParameter="Protein sequence coverage is calculated by dividing the number of amino acids belonging to unique peptide sequences by the length of the protein." />
+                                                    </Run.Text>
+                                                </Run>
                                             </TextBlock>
                                         </ComboBoxItem.ToolTip>
                                     </ComboBoxItem>
-                                    <ComboBoxItem Content="Number of Unique Peptides per Protein">
-                                        <ComboBoxItem.ToolTip >
+                                    <ComboBoxItem>
+                                        <ComboBoxItem.Content>
+                                            <Binding Converter="{StaticResource ProtTermConverter}" 
+                                                     ConverterParameter="Number of Unique Peptides per Protein"/>
+                                        </ComboBoxItem.Content>
+                                        <ComboBoxItem.ToolTip>
                                             <TextBlock>
-                                                                    Histogram representing the distribution of unique peptides across the proteins present in the selected database.
+                                                <Run>
+                                                    <Run.Text>
+                                                        <Binding Path="IsRnaMode"
+                                                                 Source="{x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}"
+                                                                 Converter="{StaticResource ProtTermConverter}"
+                                                                 ConverterParameter="Histogram representing the distribution of unique peptides across the proteins present in the selected database." />
+                                                    </Run.Text>
+                                                </Run>
                                             </TextBlock>
                                         </ComboBoxItem.ToolTip>
                                     </ComboBoxItem>
-                                    <ComboBoxItem Content="Predicted Peptide Hydrophobicity">
-                                        <ComboBoxItem.ToolTip >
+                                    <ComboBoxItem>
+                                        <ComboBoxItem.Visibility>
+                                            <Binding Path="IsRnaMode"
+                                                     Source="{x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}"
+                                                     Converter="{StaticResource CollapseOnRnaMode}" />
+                                        </ComboBoxItem.Visibility>
+                                        <ComboBoxItem.Content>
+                                            <Binding Converter="{StaticResource ProtTermConverter}" 
+                                                     ConverterParameter="Predicted Peptide Hydrophobicity"/>
+                                        </ComboBoxItem.Content>
+                                        <ComboBoxItem.ToolTip>
                                             <TextBlock>
-                                                                    Histogram representing the distribution of predicted peptide hydrophobicity values.
-                                                                    
+                                                <Run>
+                                                    <Run.Text>
+                                                        <Binding Path="IsRnaMode"
+                                                                 Source="{x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}"
+                                                                 Converter="{StaticResource ProtTermConverter}"
+                                                                 ConverterParameter="Histogram representing the distribution of predicted peptide hydrophobicity values." />
+                                                    </Run.Text>
+                                                </Run>
                                             </TextBlock>
                                         </ComboBoxItem.ToolTip>
                                     </ComboBoxItem>
-                                    <ComboBoxItem Content="Predicted Peptide Electrophoretic Mobility">
-                                        <ComboBoxItem.ToolTip >
+                                    <ComboBoxItem>
+                                        <ComboBoxItem.Visibility>
+                                            <Binding Path="IsRnaMode"
+                                                     Source="{x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}"
+                                                     Converter="{StaticResource CollapseOnRnaMode}" />
+                                        </ComboBoxItem.Visibility>
+                                        <ComboBoxItem.Content>
+                                            <Binding Converter="{StaticResource ProtTermConverter}" 
+                                                     ConverterParameter="Predicted Peptide Electrophoretic Mobility"/>
+                                        </ComboBoxItem.Content>
+                                        <ComboBoxItem.ToolTip>
                                             <TextBlock>
-                                                                    Histogram representing the distribution of predicted peptide electrophoretic mobility values.
-                                                                    
+                                                <Run>
+                                                    <Run.Text>
+                                                        <Binding Path="IsRnaMode"
+                                                                 Source="{x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}"
+                                                                 Converter="{StaticResource ProtTermConverter}"
+                                                                 ConverterParameter="Histogram representing the distribution of predicted peptide electrophoretic mobility values." />
+                                                    </Run.Text>
+                                                </Run>
                                             </TextBlock>
                                         </ComboBoxItem.ToolTip>
                                     </ComboBoxItem>
-                                    <ComboBoxItem Content="Chronologer Predicted Retention Time">
-                                        <ComboBoxItem.ToolTip >
+                                    <ComboBoxItem>
+                                        <ComboBoxItem.Visibility>
+                                            <Binding Path="IsRnaMode"
+                                                     Source="{x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}"
+                                                     Converter="{StaticResource CollapseOnRnaMode}" />
+                                        </ComboBoxItem.Visibility>
+                                        <ComboBoxItem.Content>
+                                            <Binding Converter="{StaticResource ProtTermConverter}" 
+                                                     ConverterParameter="Chronologer Predicted Retention Time"/>
+                                        </ComboBoxItem.Content>
+                                        <ComboBoxItem.ToolTip>
                                             <TextBlock>
-                                                                    Histogram representing the distribution of Chronologer-predicted retention time values.
-                                                                    <LineBreak/>
-                                                                    Chronologer uses a deep learning model to predict peptide retention times.
+                                                <Run>
+                                                    <Run.Text>
+                                                        <Binding Path="IsRnaMode"
+                                                                 Source="{x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}"
+                                                                 Converter="{StaticResource ProtTermConverter}"
+                                                                 ConverterParameter="Histogram representing the distribution of Chronologer-predicted retention time values." />
+                                                    </Run.Text>
+                                                </Run>
+                                                <LineBreak/>
+                                                <Run>
+                                                    <Run.Text>
+                                                        <Binding Path="IsRnaMode"
+                                                                 Source="{x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}"
+                                                                 Converter="{StaticResource ProtTermConverter}"
+                                                                 ConverterParameter="Chronologer uses a deep learning model to predict peptide retention times." />
+                                                    </Run.Text>
+                                                </Run>
                                             </TextBlock>
                                         </ComboBoxItem.ToolTip>
                                     </ComboBoxItem>
                                 </ComboBox>
+
                             </StackPanel>
 
                             <StackPanel Orientation="Horizontal" Grid.Column="1" Background="{StaticResource DataGridBackgroundColor}">

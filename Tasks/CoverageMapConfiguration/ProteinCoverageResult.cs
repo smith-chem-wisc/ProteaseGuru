@@ -1,3 +1,4 @@
+using Omics;
 using Proteomics;
 using Tasks;
 
@@ -14,7 +15,7 @@ namespace Tasks.CoverageMapConfiguration
         /// <summary>
         /// The protein being analyzed
         /// </summary>
-        public Protein Protein { get; }
+        public IBioPolymer Protein { get; }
 
         /// <summary>
         /// Display name for the protein (accession or name)
@@ -44,7 +45,7 @@ namespace Tasks.CoverageMapConfiguration
         /// Creates a new ProteinCoverageResult for the specified protein
         /// </summary>
         /// <param name="protein">The protein to create results for</param>
-        public ProteinCoverageResult(Protein protein)
+        public ProteinCoverageResult(IBioPolymer protein)
         {
             Protein = protein ?? throw new ArgumentNullException(nameof(protein));
             DisplayName = protein.Accession ?? protein.Name;
@@ -87,9 +88,8 @@ namespace Tasks.CoverageMapConfiguration
         public Dictionary<string, int> GetUniqueDetectablePeptideCountsByProtease()
         {
             return UniquePeptides
-                .Where(p => p.PflyDetectability == true)
                 .GroupBy(p => p.Protease)
-                .ToDictionary(g => g.Key, g => g.ToHashSet().Count);
+                .ToDictionary(g => g.Key, g => g.Count(p => p.PflyDetectability == true));
         }
 
         /// <summary>
@@ -100,9 +100,8 @@ namespace Tasks.CoverageMapConfiguration
         public Dictionary<string, int> GetSharedDetectablePeptideCountsByProtease()
         {
             return SharedPeptides
-                .Where(p => p.PflyDetectability == true)
                 .GroupBy(p => p.Protease)
-                .ToDictionary(g => g.Key, g => g.ToHashSet().Count);
+                .ToDictionary(g => g.Key, g => g.Where(p => p.PflyDetectability == true).ToHashSet().Count);
         }
 
         #endregion

@@ -5,6 +5,9 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using Engine;
+using Omics;
+using Omics.BioPolymer;
 using Omics.Modifications;
 using Proteomics;
 using Proteomics.ProteolyticDigestion;
@@ -34,8 +37,10 @@ namespace GUI
         /// <summary>Filtered list of proteins based on user search input</summary>
         private ObservableCollection<string> filteredList;
 
-        /// <summary>Maps Protein objects to their tree view representation (GUI-specific)</summary>
-        private Dictionary<Protein, ProteinForTreeView> ProteinsForTreeView;
+        /// <summary>
+        /// Maps Protein objects to their tree view representation (GUI-specific)
+        /// </summary>
+        private Dictionary<IBioPolymer, ProteinForTreeView> ProteinsForTreeView;
 
         /// <summary>Currently selected proteases for coverage map display</summary>
         private List<string> SelectedProteases;
@@ -75,9 +80,9 @@ namespace GUI
         /// Main constructor that initializes the protein results view with digestion data
         /// </summary>
         public ProteinResultsWindow(
-            Dictionary<string, Dictionary<string, Dictionary<Protein, List<InSilicoPep>>>> peptideByFile,
+            Dictionary<string, Dictionary<string, Dictionary<IBioPolymer, List<InSilicoPep>>>> peptideByFile,
             RunParameters userParams,
-            Dictionary<string, Dictionary<Protein, (double, double)>> sequenceCoverageByProtease)
+            Dictionary<string, Dictionary<IBioPolymer, (double, double)>> sequenceCoverageByProtease)
         {
             InitializeComponent();
 
@@ -89,7 +94,7 @@ namespace GUI
 
             proteinList = new ObservableCollection<string>();
             filteredList = new ObservableCollection<string>();
-            ProteinsForTreeView = new Dictionary<Protein, ProteinForTreeView>();
+            ProteinsForTreeView = new Dictionary<IBioPolymer, ProteinForTreeView>();
 
             SetUpProteinsForTreeView();
             PopulateProteinList();
@@ -292,9 +297,6 @@ namespace GUI
             var uniquePepCounts = coverageResult.GetUniquePeptideCountsByProtease();
             var sharedPepCounts = coverageResult.GetSharedPeptideCountsByProtease();
 
-            // Update the header label
-            proteinSummaryHeader.Content = $"Digestion Results for {coverageResult.DisplayName}";
-
             // Pre-compute unique coverage for multi-database scenario (once, not per-protease)
             Dictionary<string, double>? uniqueCoverageByProtease = null;
             if (_analyzer.IsMultiDatabase)
@@ -440,7 +442,7 @@ namespace GUI
             }
             else
             {
-                coverageViewToggleButton.Content = "Peptide View";
+                coverageViewToggleButton.Content = $"{GlobalVariables.AnalyteType.GetUniqueFormLabel()} View";
             }
         }
 
@@ -561,7 +563,7 @@ namespace GUI
             NotificationService.Instance.AddNotification("File paths copied to clipboard.", NotificationType.Information);
         }
 
-        private void SaveMetadata(string subFolder, string proteinName, Protein protein, List<InSilicoPep> allPeptides)
+        private void SaveMetadata(string subFolder, string proteinName, IBioPolymer protein, List<InSilicoPep> allPeptides)
         {
             const string tab = "\t";
             var metaData = new List<string>

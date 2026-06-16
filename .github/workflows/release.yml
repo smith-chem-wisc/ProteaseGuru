@@ -27,18 +27,20 @@ jobs:
           RELEASE_BRANCH: master
       - name: Restore dependencies
         run: |
-          cd ProteaseGuru
           dotnet restore
       - name: Build
         run: |
           $version= &git describe --tags
-          cd ProteaseGuru
           dotnet build --no-restore --configuration Release /p:Version=${version}
       - name: Test
         run: |
           $version= &git describe --tags
-          cd ProteaseGuru
           dotnet test --configuration Release /p:Version=${version} --no-build
+      - name: Pack and Push NuGet Package
+        run: |
+          $version= &git describe --tags
+          nuget pack ProteaseGuru.nuspec -Version ${version} -Properties Configuration=Release
+          dotnet nuget push ProteaseGuru.${version}.nupkg --source https://api.nuget.org/v3/index.json --api-key ${env:GITHUB_TOKEN}
       - name: Pack and Push NuGet Package
         run: |
           $version= &git describe --tags
