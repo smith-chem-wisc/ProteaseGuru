@@ -5,8 +5,8 @@
 		<id>ProteaseGuru</id>
 		<version>0.1.1</version>
 		<title>ProteaseGuru</title>
-		<authors>Rachel M.</authors>
-		<owners>Rachel M.</owners>
+		<authors>Rachel Miller, Nic Bollis, Peter Cruz Parrilla, Michael Shortreed</authors>
+		<owners>Rachel Miller, Nic Bollis, Peter Cruz Parrilla, Michael Shortreed</owners>
 		<license type="expression">LGPL-3.0-or-later</license>
 		<projectUrl>https://github.com/smith-chem-wisc/ProteaseGuru</projectUrl>
 		<icon>GUI/icons/proteaseGuru.png</icon>
