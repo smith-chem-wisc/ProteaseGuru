@@ -99,7 +99,8 @@ namespace GUI
                 MaximumMZThreshold = double.TryParse(tbMaxMzThreshold.Text, out double maxMZ) ? maxMZ : 2000,
 
                 FilterByRelativeIntensity = cbEnableIntensityThresholdFiltering.IsChecked == true,
-                RelativeIntensityThreshold = double.TryParse(tbRelIntThreshold.Text, out double intensityThreshold) ? intensityThreshold : 0,
+                // UI collects a percentage (0-100); convert to a fraction of the max intensity for filtering.
+                RelativeIntensityThreshold = double.TryParse(tbRelIntThreshold.Text, out double intensityThreshold) ? intensityThreshold / 100.0 : 0,
                 FilterByIntensityRank = cbEnableIntensityRankFiltering.IsChecked == true,
                 IntensityRankThreshold = int.TryParse(tbRankThreshold.Text, out int rankThreshold) ? rankThreshold : -1, // -1 indicates keep all
 

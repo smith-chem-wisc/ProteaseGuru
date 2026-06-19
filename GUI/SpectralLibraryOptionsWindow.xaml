@@ -249,12 +249,12 @@
                                           FontWeight="Bold" IsChecked="True" Margin="15,0"/>
                                 <StackPanel Orientation="Horizontal" Margin="15,5" Visibility="{Binding ElementName=cbEnableIntensityThresholdFiltering, Path=IsChecked, Converter={StaticResource BooleanToVisibilityConverter}}">
                                     <Label Content="Minimum Intensity Threshold (%):" Margin="15,0" VerticalAlignment="Center" HorizontalAlignment="Center"/>
-                                    <gui:DoubleTextBoxControl x:Name="tbRelIntThreshold" Width="60" Text="0.01" LowerBound="0" UpperBound="100" Margin="5,5"/>
+                                    <gui:DoubleTextBoxControl x:Name="tbRelIntThreshold" Width="60" Text="1" LowerBound="0" UpperBound="100" Margin="5,5"/>
                                 </StackPanel>
 
                                 <CheckBox x:Name="cbEnableIntensityRankFiltering" Content="Keep Only the N Most Intense Fragment Ions"
                                           FontWeight="Bold" IsChecked="{Binding ElementName=cbEnableIntensityThresholdFiltering, Path=IsChecked, Converter={StaticResource NOTConverter}}" Margin="15,0"/>
-                                <StackPanel Orientation="Horizontal" Margin="15,5" Visibility="{Binding ElementName=cbTopNIntensityFiltering, Path=IsChecked, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                <StackPanel Orientation="Horizontal" Margin="15,5" Visibility="{Binding ElementName=cbEnableIntensityRankFiltering, Path=IsChecked, Converter={StaticResource BooleanToVisibilityConverter}}">
                                     <Label Content="Top" Margin="15,0,0,0" VerticalAlignment="Center" HorizontalAlignment="Center"/>
                                     <gui:IntegerTextBoxControl x:Name="tbRankThreshold" Width="30" Text="12" AllowNegative="False" Margin="0,5"/>
                                     <Label Content="Most Intense Fragment Ions" Margin="0,5,0,5" VerticalAlignment="Center" HorizontalAlignment="Center"/>

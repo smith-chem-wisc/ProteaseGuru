@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Diagnostics;
 using Chemistry;
 using Omics.Fragmentation;
 using Omics.SequenceConversion;
@@ -90,7 +91,7 @@ namespace Tasks
                 rts.AddRange(_peptides.Select(p => p.ChronologerRetentionTime));
             }
 
-            var predictions = model.Predict(inputs);
+            model.Predict(inputs);
 
             // Write to file based on format
             var library = PredictionsToLibrarySpectra(model, rts);
@@ -98,8 +99,20 @@ namespace Tasks
 
             return library;
         }
+
+        /// <summary>
+        /// Mirrors mzLib's FragmentIntensityModel.GenerateLibrarySpectraFromPredictions, but adds the m/z range,
+        /// relative-intensity, and top-N rank filters that the upstream method does not currently support. If those
+        /// filters are added upstream, this method can be replaced with a direct call to the library method.
+        /// </summary>
         private List<LibrarySpectrum> PredictionsToLibrarySpectra(FragmentIntensityModel model, List<double> retentionTimes)
         {
+            // FragmentIntensityModel.Predict realigns Predictions to the full input length, inserting placeholder
+            // predictions for inputs that failed validation. Predictions is therefore parallel to ValidInputsMask,
+            // so indexing it by the absolute input index is correct.
+            Debug.Assert(model.Predictions.Count == model.ValidInputsMask.Length,
+                "Predictions are expected to be realigned to the full input length (one entry per input, including invalid inputs).");
+
             var predictionRTs = model.ValidInputsMask.Select((isValid, index) => (isValid, index))
                 .Where(x => x.isValid)
                 .ToDictionary(x => model.Predictions[x.index], x => retentionTimes[x.index]);
@@ -119,17 +132,17 @@ namespace Tasks
 
                 for (int i = 0; i < prediction.FragmentAnnotations.Count; i++)
                 {
-                    if (prediction.FragmentIntensities[i] == -1 ||
-                        prediction.FragmentAnnotations[i] == null ||
+                    // Skip misannotated fragments and apply the user's m/z range and relative-intensity filters.
+                    // The m/z gate compares against the fragment m/z (FragmentMZs), not the predicted intensity.
+                    // Impossible ions (intensity -1) are already removed upstream in ResponseToPredictions.
+                    if (prediction.FragmentAnnotations[i] == null ||
                         !prediction.FragmentAnnotations[i].Contains("+") ||
-                        prediction.FragmentIntensities[i] < _options.MinimumMZThreshold ||
-                        prediction.FragmentIntensities[i] > _options.MaximumMZThreshold ||
+                        prediction.FragmentMZs[i] < _options.MinimumMZThreshold ||
+                        prediction.FragmentMZs[i] > _options.MaximumMZThreshold ||
                         (_options.FilterByRelativeIntensity &&
                          prediction.FragmentIntensities[i] < maxFragmentIntensity * _options.RelativeIntensityThreshold)
                     )
                     {
-                        // Skip impossible ions, peaks with near zero intensity, or misannotated fragments to be safe.
-                        // The model uses -1 to indicate impossible ions.
                         continue;
                     }
                     predictionAnnotationIntensityLookup[prediction.FragmentAnnotations[i]] = prediction.FragmentIntensities[i];
