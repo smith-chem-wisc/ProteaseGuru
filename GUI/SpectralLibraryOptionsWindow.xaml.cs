@@ -167,6 +167,16 @@ namespace GUI
                 return false;
             }
 
+            // Validate minimum m/z does not exceed maximum m/z (otherwise every fragment is filtered out)
+            if (double.TryParse(tbMinMzThreshold.Text, out double minMz) &&
+                double.TryParse(tbMaxMzThreshold.Text, out double maxMz) &&
+                minMz > maxMz)
+            {
+                MessageBox.Show("The minimum m/z threshold cannot be greater than the maximum m/z threshold.", "Invalid Input",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+                return false;
+            }
+
             // NOTConverter ensures only one of the two intensity filtering options can be checked, so just check if either is checked and validate corresponding input
 
             // Validate intensity threshold if checked (DoubleTextBoxControl handles bounds, just check if empty)

@@ -113,13 +113,17 @@ namespace Tasks
             Debug.Assert(model.Predictions.Count == model.ValidInputsMask.Length,
                 "Predictions are expected to be realigned to the full input length (one entry per input, including invalid inputs).");
 
-            var predictionRTs = model.ValidInputsMask.Select((isValid, index) => (isValid, index))
+            // Pair each valid prediction with its retention time positionally rather than keying a
+            // dictionary on the prediction. Keying by prediction relies on the record's list members
+            // comparing by reference, which is fragile and would break if two equal predictions collided.
+            var validPredictions = model.ValidInputsMask.Select((isValid, index) => (isValid, index))
                 .Where(x => x.isValid)
-                .ToDictionary(x => model.Predictions[x.index], x => retentionTimes[x.index]);
+                .Select(x => (Prediction: model.Predictions[x.index], RetentionTime: retentionTimes[x.index]))
+                .ToList();
 
             var predictedSpectra = new List<LibrarySpectrum>();
 
-            foreach (var prediction in predictionRTs.Keys)
+            foreach (var (prediction, retentionTime) in validPredictions)
             {
                 var peptide = new PeptideWithSetModifications(prediction.ValidatedFullSequence);
                 List<MatchedFragmentIon> fragmentIons = new();
@@ -128,7 +132,9 @@ namespace Tasks
                 peptide.Fragment(MassSpectrometry.DissociationType.HCD, FragmentationTerminus.Both, theoreticalProducts); 
                 Dictionary<string, double> predictionAnnotationIntensityLookup = new();
                 Dictionary<string, Product> tpLookup = theoreticalProducts.ToDictionary(tp => tp.Annotation);
-                var maxFragmentIntensity = prediction.FragmentIntensities.Max();
+                // DefaultIfEmpty guards against predictions whose fragments were all stripped upstream;
+                // Max() throws on an empty sequence. Only consumed when relative-intensity filtering is on.
+                var maxFragmentIntensity = prediction.FragmentIntensities.DefaultIfEmpty(0).Max();
 
                 for (int i = 0; i < prediction.FragmentAnnotations.Count; i++)
                 {
@@ -180,12 +186,15 @@ namespace Tasks
                     precursorMz: peptide.ToMz(prediction.PrecursorCharge),
                     chargeState: prediction.PrecursorCharge,
                     peaks: fragmentIons,
-                    rt: predictionRTs[prediction]
+                    rt: retentionTime
                 );
 
                 predictedSpectra.Add(spectrum);
             }
 
+            // LibrarySpectrum.Name is "Sequence/ChargeState", so this only collapses genuine duplicates
+            // (same peptide at the same charge, e.g. shared across proteins/proteases); distinct charge
+            // states of the same peptide are preserved.
             var unique = predictedSpectra.DistinctBy(p => p.Name).ToList();
             return unique;
         }
