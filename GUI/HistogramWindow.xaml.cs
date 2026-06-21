@@ -121,6 +121,25 @@ namespace GUI
             };
         }
 
+        //rebuild DBSelected from the current grid selection. Done on every render so repeated
+        //actions don't accumulate duplicate database entries, which would push PlotModelStat into
+        //the multi-database merge and inflate the peptide collections over time.
+        private void SyncSelectedDatabases()
+        {
+            DBSelected.Clear();
+            if (dataGridProteinDBs.SelectedItems.Count == 0)
+            {
+                DBSelected.Add(listOfProteinDbs.First());
+            }
+            else
+            {
+                foreach (var db in dataGridProteinDBs.SelectedItems)
+                {
+                    DBSelected.Add(db.ToString());
+                }
+            }
+        }
+
         //determine which histogram the user wants to make and what peptides should be used to make it
         private async void PlotSelected(object sender, SelectionChangedEventArgs e)
         {
@@ -132,10 +151,7 @@ namespace GUI
             Dictionary<string, Dictionary<IBioPolymer, (double, double)>> sequenceCoverageByProtease =
                 detectableOnly ? new Dictionary<string, Dictionary<IBioPolymer, (double, double)>>() : SequenceCoverageByProtease;
             //figure out which proteases should be used to make the plot
-            if (dataGridProteinDBs.SelectedItems.Count == 0)
-            {
-                DBSelected.Add(listOfProteinDbs.First());
-            }
+            SyncSelectedDatabases();
 
             //parse the GUI selection for interpretation here
             var selectedPlot = HistogramComboBox.SelectedItem;
@@ -183,10 +199,7 @@ namespace GUI
             bool detectableOnly = DetectableOnlyCheckBox?.IsChecked == true;
             Dictionary<string, Dictionary<IBioPolymer, (double, double)>> sequenceCoverageByProtease =
                 detectableOnly ? new Dictionary<string, Dictionary<IBioPolymer, (double, double)>>() : SequenceCoverageByProtease;
-            if (dataGridProteinDBs.SelectedItems == null)
-            {
-                DBSelected.Add(listOfProteinDbs.First());
-            }
+            SyncSelectedDatabases();
             ProgressBar progressBar = new ProgressBar();
             progressBar.Orientation = Orientation.Horizontal;
             progressBar.Width = 200;

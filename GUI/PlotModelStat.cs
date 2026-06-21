@@ -240,7 +240,9 @@ namespace GUI
                                     }
                                     else
                                     {
-                                        databasePeptides[entry.Key].Add(prot.Key, prot.Value);
+                                        // Copy the source list rather than aliasing it, so a later
+                                        // AddRange can never mutate the shared peptideByFile data.
+                                        databasePeptides[entry.Key].Add(prot.Key, new List<InSilicoPep>(prot.Value));
                                     }
                                 }
                             }
@@ -249,8 +251,9 @@ namespace GUI
                                 Dictionary<IBioPolymer, List<InSilicoPep>> proteinDic = new();
                                 foreach (var prot in entry.Value)
                                 {
-                                    List<InSilicoPep> proteinSpecificPeptides = new();
-                                    proteinDic.Add(prot.Key, prot.Value);
+                                    // Copy the source list rather than aliasing it, so a later
+                                    // AddRange can never mutate the shared peptideByFile data.
+                                    proteinDic.Add(prot.Key, new List<InSilicoPep>(prot.Value));
                                 }
                                 databasePeptides.Add(entry.Key, proteinDic);
                             }
