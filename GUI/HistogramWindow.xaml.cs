@@ -125,8 +125,12 @@ namespace GUI
         private async void PlotSelected(object sender, SelectionChangedEventArgs e)
         {
             //clear the exportable data table when a new plot is selected
-            HistogramDataTable.Clear();            
-            Dictionary<string, Dictionary<IBioPolymer, (double, double)>> sequenceCoverageByProtease = SequenceCoverageByProtease;
+            HistogramDataTable.Clear();
+            // When the detectable-only filter is active, force PlotModelStat to recompute coverage
+            // from the detectable subset rather than reusing the cached all-peptides coverage.
+            bool detectableOnly = DetectableOnlyCheckBox?.IsChecked == true;
+            Dictionary<string, Dictionary<IBioPolymer, (double, double)>> sequenceCoverageByProtease =
+                detectableOnly ? new Dictionary<string, Dictionary<IBioPolymer, (double, double)>>() : SequenceCoverageByProtease;
             //figure out which proteases should be used to make the plot
             if (dataGridProteinDBs.SelectedItems.Count == 0)
             {
@@ -145,11 +149,15 @@ namespace GUI
             progressBar.IsIndeterminate = true;
             HistogramLoading.Items.Add(progressBar);            
            
-            //make the plot       
-            PlotModelStat plot = await Task.Run(() => new PlotModelStat(plotName, DBSelected, PeptideByFile, UserParams, sequenceCoverageByProtease));
+            //make the plot
+            PlotModelStat plot = await Task.Run(() => new PlotModelStat(plotName, DBSelected, PeptideByFile, UserParams, sequenceCoverageByProtease, detectableOnly));
             SelectedPlot = plotName;
             PeptidesByProtease = plot.PeptidesByProtease;
-            SequenceCoverageByProtease = plot.SequenceCoverageByProtease_Return;
+            // Only cache the all-peptides coverage; detectable-only coverage must not be reused for the full view.
+            if (!detectableOnly)
+            {
+                SequenceCoverageByProtease = plot.SequenceCoverageByProtease_Return;
+            }
             progressBar.IsIndeterminate = false;
             //send the plot to GUI            
             plotViewStat.DataContext = plot;
@@ -171,22 +179,28 @@ namespace GUI
             HistogramDataTable.Clear();
             var selectedPlot = HistogramComboBox.SelectedItem;
             var objectName = selectedPlot.ToString().Split(':');
-            var plotName = objectName[1];            
-            Dictionary<string, Dictionary<IBioPolymer, (double, double)>> sequenceCoverageByProtease = SequenceCoverageByProtease;
+            var plotName = objectName[1];
+            bool detectableOnly = DetectableOnlyCheckBox?.IsChecked == true;
+            Dictionary<string, Dictionary<IBioPolymer, (double, double)>> sequenceCoverageByProtease =
+                detectableOnly ? new Dictionary<string, Dictionary<IBioPolymer, (double, double)>>() : SequenceCoverageByProtease;
             if (dataGridProteinDBs.SelectedItems == null)
             {
                 DBSelected.Add(listOfProteinDbs.First());
-            }  
+            }
             ProgressBar progressBar = new ProgressBar();
             progressBar.Orientation = Orientation.Horizontal;
             progressBar.Width = 200;
             progressBar.Height = 30;
             progressBar.IsIndeterminate = true;
             HistogramLoading.Items.Add(progressBar);
-            //make the plot       
-            PlotModelStat plot = await Task.Run(() => new PlotModelStat(plotName, DBSelected, PeptideByFile, UserParams, sequenceCoverageByProtease));
+            //make the plot
+            PlotModelStat plot = await Task.Run(() => new PlotModelStat(plotName, DBSelected, PeptideByFile, UserParams, sequenceCoverageByProtease, detectableOnly));
             PeptidesByProtease = plot.PeptidesByProtease;
-            SequenceCoverageByProtease = plot.SequenceCoverageByProtease_Return;
+            // Only cache the all-peptides coverage; detectable-only coverage must not be reused for the full view.
+            if (!detectableOnly)
+            {
+                SequenceCoverageByProtease = plot.SequenceCoverageByProtease_Return;
+            }
             SelectedPlot = plotName;
             progressBar.IsIndeterminate = false;
             //send the plot to GUI
@@ -194,6 +208,15 @@ namespace GUI
             //send the data table with plot info to GUI for export if desired
             HistogramDataTable = plot.DataTable;
             HistogramLoading.Items.Clear();
+        }
+
+        //re-render the currently selected histogram when the detectable-only toggle changes
+        private void DetectableOnlyChanged(object sender, RoutedEventArgs e)
+        {
+            if (HistogramComboBox?.SelectedItem != null)
+            {
+                RefreshPlot();
+            }
         }
         //create a data table with all of the information from the histogram so useres can make their own plots using proteaseguru calculaitons
         private void CreateTable_Click(object sender, RoutedEventArgs e)
