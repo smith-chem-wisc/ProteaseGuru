@@ -104,7 +104,7 @@ namespace GUI
         {
             Microsoft.Win32.OpenFileDialog openPicker = new Microsoft.Win32.OpenFileDialog()
             {
-                Filter = "Results Files|*.txt",
+                Filter = "Digestion Parameters|*.toml;*.txt",
                 FilterIndex = 1,
                 RestoreDirectory = true,
                 Multiselect = true
@@ -113,9 +113,10 @@ namespace GUI
             {
                 foreach (var filepath in openPicker.FileNames.OrderBy(p => p))
                 {
-                    if (System.IO.Path.GetExtension(filepath) != ".txt")
+                    var paramExtension = System.IO.Path.GetExtension(filepath).ToLowerInvariant();
+                    if (paramExtension != ".toml" && paramExtension != ".txt")
                     {
-                        MessageBox.Show("Error: Only ProteaseGuru digestion parameters in .txt format should be loaded here. Please remove '" + filepath + "' before proceeding with analysis");
+                        MessageBox.Show("Error: Only ProteaseGuru digestion parameters (.toml, or legacy .txt) should be loaded here. Please remove '" + filepath + "' before proceeding with analysis");
                         return;
                     }
                     else
@@ -219,6 +220,7 @@ namespace GUI
                         ResultsObservableCollection.Add(file);
                     }
                     break;
+                case ".toml":
                 case ".txt":
                     ParametersForDataGrid parameters = new ParametersForDataGrid(draggedFilePath);
                     if (!ParametersFileExists(ParametersObservableCollection, parameters))
@@ -608,6 +610,14 @@ namespace GUI
 
             foreach (var parameterFile in ParametersObservableCollection)
             {
+                // Current runs save digestion parameters as structured TOML; deserialize directly.
+                if (System.IO.Path.GetExtension(parameterFile.FilePath).ToLowerInvariant() == ".toml")
+                {
+                    loadedParams = RunParameters.FromToml(parameterFile.FilePath);
+                    continue;
+                }
+
+                // Legacy fallback: parse the older human-readable ".txt" parameters summary.
                 var fileData = File.ReadAllLines(parameterFile.FilePath);
                 List<string> proteaseNames = new();
                 int missedCleavages = 0;
