@@ -10,42 +10,43 @@ jobs:
     runs-on: windows-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
       - name: Setup .NET
-        uses: actions/setup-dotnet@v1
+        uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 8.0.x
+
       - name: Set up NuGet
-        uses: nuget/setup-nuget@v1
+        uses: nuget/setup-nuget@v2
         with:
           nuget-version: '6.x'
+
       - name: Verify commit exists in origin/master
         run: |
-          git fetch --no-tags --prune --depth=1 origin +refs/heads/*:refs/remotes/origin/*
-          git branch --remote --contains | grep origin/${env:RELEASE_BRANCH}
-        env:
-          RELEASE_BRANCH: master
+          git fetch --no-tags origin +refs/heads/master:refs/remotes/origin/master
+          git merge-base --is-ancestor origin/master HEAD
+
       - name: Restore dependencies
-        run: |
-          dotnet restore
+        run: dotnet restore
+
       - name: Build
         run: |
-          $version= &git describe --tags
+          $version = &git describe --tags
           dotnet build --no-restore --configuration Release /p:Version=${version}
+          
       - name: Test
         run: |
-          $version= &git describe --tags
+          $version = &git describe --tags
           dotnet test --configuration Release /p:Version=${version} --no-build
+          
       - name: Pack and Push NuGet Package
         run: |
-          $version= &git describe --tags
-          nuget pack ProteaseGuru.nuspec -Version ${version} -Properties Configuration=Release
-          dotnet nuget push ProteaseGuru.${version}.nupkg --source https://api.nuget.org/v3/index.json --api-key ${env:GITHUB_TOKEN}
-      - name: Pack and Push NuGet Package
-        run: |
-          $version= &git describe --tags
+          $version = &git describe --tags
           cd ProteaseGuru
           nuget pack ProteaseGuru.nuspec -Version ${version} -Properties Configuration=Release
-          dotnet nuget push ProteaseGuru.${version}.nupkg --source https://api.nuget.org/v3/index.json --api-key ${env:GITHUB_TOKEN}
+          dotnet nuget push ProteaseGuru.${version}.nupkg --source https://api.nuget.org/v3/index.json --api-key ${env:NUGET_API_KEY}
         env:
-          GITHUB_TOKEN: ${{ secrets.NUGET_KEY }}
+          NUGET_API_KEY: ${{ secrets.NUGET_KEY }}
