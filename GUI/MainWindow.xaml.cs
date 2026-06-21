@@ -130,8 +130,20 @@ namespace GUI
 
         }
 
+        // Window_Drop routes each dropped file through both AddAFile and ReloadAFile; warn only
+        // when neither handler recognized the file, so valid results/parameter drops don't error.
+        private void WarnUnrecognizedDrop(string filePath)
+        {
+            var filename = System.IO.Path.GetFileName(filePath);
+            var theExtension = System.IO.Path.GetExtension(filename).ToLowerInvariant();
+            bool compressed = theExtension.EndsWith("gz");
+            theExtension = compressed ? System.IO.Path.GetExtension(System.IO.Path.GetFileNameWithoutExtension(filename)).ToLowerInvariant() : theExtension;
+            GuiWarnHandler(null, new Engine.StringEventArgs("Unrecognized file type: " + theExtension, null));
+        }
+
         //add a protein database file
-        private void AddAFile(string draggedFilePath)
+        //returns true if the file was recognized as a protein database, false otherwise
+        private bool AddAFile(string draggedFilePath)
         {
             // this line is NOT used because .xml.gz (extensions with two dots) mess up with Path.GetExtension
             //var theExtension = Path.GetExtension(draggedFilePath).ToLowerInvariant();
@@ -168,14 +180,16 @@ namespace GUI
                             }
                         }
                     }
-                    break;
+                    return true;
                 default:
-                    GuiWarnHandler(null, new Engine.StringEventArgs("Unrecognized file type: " + theExtension, null));
-                    break;
+                    // Not a database file. Don't warn here: Window_Drop also tries ReloadAFile and
+                    // decides "unrecognized" once, so results/parameter drops aren't falsely rejected.
+                    return false;
             }
         }
         // add a previous results, prarmeters or database file
-        private void ReloadAFile(string draggedFilePath)
+        //returns true if the file was recognized as a results, parameters, or database file, false otherwise
+        private bool ReloadAFile(string draggedFilePath)
         {
             // this line is NOT used because .xml.gz (extensions with two dots) mess up with Path.GetExtension
             //var theExtension = Path.GetExtension(draggedFilePath).ToLowerInvariant();
@@ -212,14 +226,14 @@ namespace GUI
                             }
                         }
                     }
-                    break;
+                    return true;
                 case ".tsv":
                     ResultsForDataGrid file = new ResultsForDataGrid(draggedFilePath);
                     if (!ResultsFileExists(ResultsObservableCollection, file))
                     {
                         ResultsObservableCollection.Add(file);
                     }
-                    break;
+                    return true;
                 case ".toml":
                 case ".txt":
                     ParametersForDataGrid parameters = new ParametersForDataGrid(draggedFilePath);
@@ -227,10 +241,10 @@ namespace GUI
                     {
                         ParametersObservableCollection.Add(parameters);
                     }
-                    break;
+                    return true;
                 default:
-                    GuiWarnHandler(null, new Engine.StringEventArgs("Unrecognized file type: " + theExtension, null));
-                    break;
+                    // Not a reload file. Don't warn here; Window_Drop decides "unrecognized" once.
+                    return false;
             }
         }
 
@@ -507,14 +521,22 @@ namespace GUI
                     {
                         foreach (string file in Directory.EnumerateFiles(draggedFilePath, "*.*", SearchOption.AllDirectories))
                         {
-                            AddAFile(file);
-                            ReloadAFile(file);
+                            bool handledAsDatabase = AddAFile(file);
+                            bool handledAsReload = ReloadAFile(file);
+                            if (!handledAsDatabase && !handledAsReload)
+                            {
+                                WarnUnrecognizedDrop(file);
+                            }
                         }
                     }
                     else
                     {
-                        AddAFile(draggedFilePath);
-                        ReloadAFile(draggedFilePath);
+                        bool handledAsDatabase = AddAFile(draggedFilePath);
+                        bool handledAsReload = ReloadAFile(draggedFilePath);
+                        if (!handledAsDatabase && !handledAsReload)
+                        {
+                            WarnUnrecognizedDrop(draggedFilePath);
+                        }
                     }
                     dataGridProteinDatabases.CommitEdit(DataGridEditingUnit.Row, true);
                     dataGridProteinDatabases.Items.Refresh();
