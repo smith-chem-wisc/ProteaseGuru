@@ -259,39 +259,47 @@ namespace Tasks
             // ============================================================================
             // PHASE 2: Batch calculate hydrophobicity, electrophoretic mobility,
             //          retention times, and detectabilities.
+            //
+            // All four are pure functions of a peptide's full sequence, so we compute them
+            // once per DISTINCT full sequence and fan the results back out in PHASE 3. On
+            // typical proteomes ~2-3x of peptides are duplicate sequences (the same sequence
+            // digested from multiple proteins or overlapping missed-cleavage windows), so
+            // deduplicating avoids that much redundant work in the expensive predictors.
             // ============================================================================
 
             var allPeptides = allWithSetMods.Where(p => p is PeptideWithSetModifications).Cast<PeptideWithSetModifications>().ToList();
 
-            double[] hydrophobicityValues = new double[allPeptides.Count];
-            double[] mobilityValues = new double[allPeptides.Count];
-            double[] retentionTimesChronologer = new double[allPeptides.Count];
-            bool?[] pflyDetectabilities = new bool?[allPeptides.Count];
+            var hydrophobicityBySequence = new Dictionary<string, double>();
+            var mobilityBySequence = new Dictionary<string, double>();
+            var retentionTimeBySequence = new Dictionary<string, double>();
+            var detectabilityBySequence = new Dictionary<string, bool?>();
 
-            if (allPeptides.Count == allWithSetMods.Count)
+            // These properties only apply to peptides. If any analyte is a non-peptide
+            // (e.g. an oligo), leave the maps empty so PHASE 3 falls back to NaN/null sentinels
+            // (so downstream code can distinguish "not calculated" from "calculated as zero").
+            if (allPeptides.Count == allWithSetMods.Count && allPeptides.Count > 0)
             {
-                hydrophobicityValues = BatchCalculateHydrophobicity(allPeptides);
-                mobilityValues = BatchCalculateElectrophoreticMobility(allPeptides);
-                retentionTimesChronologer = BatchCalculateRetentionTimesChronologer(allPeptides);
-                pflyDetectabilities = BatchCalculateDetectabilitiesPfly(allPeptides);
-            }
-            else
-            {
-                // Non-peptide analytes (e.g., oligos) get sentinel NaN/null values
-                // instead of zeroed defaults so downstream code can distinguish
-                // "not calculated" from "calculated as zero".
-                hydrophobicityValues = Enumerable.Repeat(double.NaN, allWithSetMods.Count).ToArray();
-                mobilityValues = Enumerable.Repeat(double.NaN, allWithSetMods.Count).ToArray();
-                retentionTimesChronologer = Enumerable.Repeat(double.NaN, allWithSetMods.Count).ToArray();
-                pflyDetectabilities = new bool?[allWithSetMods.Count];
-            }
+                var distinctPeptides = new List<PeptideWithSetModifications>();
+                var seenSequences = new HashSet<string>();
+                foreach (var peptide in allPeptides)
+                {
+                    if (seenSequences.Add(peptide.FullSequence))
+                        distinctPeptides.Add(peptide);
+                }
 
-            // Create a lookup from peptide to its calculated values
-            var peptideToIndex = new Dictionary<IBioPolymerWithSetMods, int>();
+                double[] hydrophobicityValues = BatchCalculateHydrophobicity(distinctPeptides);
+                double[] mobilityValues = BatchCalculateElectrophoreticMobility(distinctPeptides);
+                double[] retentionTimesChronologer = BatchCalculateRetentionTimesChronologer(distinctPeptides);
+                bool?[] pflyDetectabilities = BatchCalculateDetectabilitiesPfly(distinctPeptides);
 
-            for (int i = 0; i < allWithSetMods.Count; i++)
-            {
-                peptideToIndex[allWithSetMods[i]] = i;
+                for (int i = 0; i < distinctPeptides.Count; i++)
+                {
+                    string sequence = distinctPeptides[i].FullSequence;
+                    hydrophobicityBySequence[sequence] = hydrophobicityValues[i];
+                    mobilityBySequence[sequence] = mobilityValues[i];
+                    retentionTimeBySequence[sequence] = retentionTimesChronologer[i];
+                    detectabilityBySequence[sequence] = pflyDetectabilities[i];
+                }
             }
 
             // PHASE 3: Build InSilicoPep objects
@@ -308,7 +316,14 @@ namespace Tasks
                         ? peptide.FullSequence
                         : peptide.BaseSequence;
                     bool isUnique = uniquenessLookup[sequenceKey];
-                    int index = peptideToIndex[peptide];
+
+                    // Properties were computed once per distinct full sequence in PHASE 2.
+                    // Non-peptide analytes aren't in the maps and fall back to NaN/null.
+                    string fullSequence = peptide.FullSequence;
+                    double hydrophobicity = hydrophobicityBySequence.TryGetValue(fullSequence, out var hydro) ? hydro : double.NaN;
+                    double mobility = mobilityBySequence.TryGetValue(fullSequence, out var mob) ? mob : double.NaN;
+                    double retentionTime = retentionTimeBySequence.TryGetValue(fullSequence, out var rt) ? rt : double.NaN;
+                    bool? detectability = detectabilityBySequence.TryGetValue(fullSequence, out var det) ? det : null;
 
                     var inSilicoPep = new InSilicoPep(
                         peptide.BaseSequence,
@@ -316,10 +331,10 @@ namespace Tasks
                         peptide.PreviousResidue,
                         peptide.NextResidue,
                         isUnique,
-                        hydrophobicityValues[index],
-                        mobilityValues[index],
-                        retentionTimesChronologer[index],
-                        pflyDetectabilities[index],
+                        hydrophobicity,
+                        mobility,
+                        retentionTime,
+                        detectability,
                         peptide.Length,
                         peptide.MonoisotopicMass,
                         databaseName,
