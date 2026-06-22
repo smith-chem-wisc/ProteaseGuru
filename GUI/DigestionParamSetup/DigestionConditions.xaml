@@ -327,6 +327,7 @@
                             <RowDefinition Height="*" />
                             <RowDefinition Height="*" />
                             <RowDefinition Height="*" />
+                            <RowDefinition Height="*" />
                         </Grid.RowDefinitions>
                         <StackPanel Orientation="Horizontal" Margin="5 5 5 0"  Grid.Row="0"
                                 Background="{StaticResource DataGridBackgroundColor}">
@@ -462,6 +463,20 @@
                                             </Run.Text>
                                         </Run>
                                     </TextBlock>
+                                </TextBox.ToolTip>
+                            </local:IntegerTextBoxControl>
+                        </StackPanel>
+
+                        <!-- Max threads (machine setting; applies to the whole digestion run) -->
+                        <StackPanel Orientation="Horizontal" Margin="5 5 5 0" Grid.Row="5"
+                                Background="{StaticResource DataGridBackgroundColor}">
+                            <Label x:Name="lblMaxThreads" Width="150" Content="Max Threads:" />
+                            <local:IntegerTextBoxControl x:Name="MaxThreadsTextBox"
+                                                     Text="{Binding Source={x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}, Path=MaxThreads, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                     AllowNegative="False" Width="45">
+                                <TextBox.ToolTip>
+                                    <TextBlock Text="Maximum CPU threads used during in silico digestion. Defaults to all available cores."
+                                               ToolTipService.ShowDuration="999999" ToolTipService.InitialShowDelay="500" />
                                 </TextBox.ToolTip>
                             </local:IntegerTextBoxControl>
                         </StackPanel>

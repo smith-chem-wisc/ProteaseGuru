@@ -231,16 +231,8 @@
                                     Panel.ZIndex="1"
                                     Background="Transparent"/>
 
-                                <!-- Protein/RNA Toggle Control + thread-count setting -->
-                                <StackPanel Grid.Row="1" Grid.Column="0">
-                                    <local:ProteinRnaImageToggle Width="100" />
-                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,6,0,0"
-                                                ToolTip="Maximum CPU threads used during digestion.">
-                                        <TextBlock Text="Threads:" VerticalAlignment="Center" FontSize="11" Margin="0,0,4,0"/>
-                                        <TextBox Width="44" FontSize="11" VerticalContentAlignment="Center"
-                                                 Text="{Binding Source={x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}, Path=MaxThreads, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
-                                    </StackPanel>
-                                </StackPanel>
+                                <!-- Protein/RNA Toggle Control -->
+                                <local:ProteinRnaImageToggle Grid.Row="1" Grid.Column="0" Width="100" />
 
                                 <!-- Content Panel -->
                                 <ContentPresenter
