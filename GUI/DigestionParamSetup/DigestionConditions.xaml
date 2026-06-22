@@ -473,8 +473,8 @@
                             <Label x:Name="lblMaxThreads" Width="150" Content="Max Threads:" />
                             <local:IntegerTextBoxControl x:Name="MaxThreadsTextBox"
                                                      Text="{Binding Source={x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}, Path=MaxThreads, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
-                                                     AllowNegative="False" Minimum="1"
-                                                     Maximum="{Binding Source={x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}, Path=MaxAvailableThreads, Mode=OneWay}"
+                                                     AllowNegative="False" LowerBound="1"
+                                                     UpperBound="{Binding Source={x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}, Path=MaxAvailableThreads, Mode=OneWay}"
                                                      Width="45">
                                 <TextBox.ToolTip>
                                     <TextBlock Text="Maximum CPU threads used during in silico digestion. Defaults to all available cores."
