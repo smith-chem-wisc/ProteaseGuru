@@ -509,24 +509,23 @@ namespace Tasks
             var results = new double[peptides.Count];
             if (peptides.Count == 0) return results;
 
-            int threadCount = Math.Min(InnerParallelism, peptides.Count);
-
-            Parallel.For(0, peptides.Count,
-                new ParallelOptions { MaxDegreeOfParallelism = threadCount },
-                i =>
+            // Use Chronologer's batched API: it encodes the peptides in parallel and runs the
+            // Torch model in large batched forward passes (one model lock per chunk) rather than
+            // a locked batch-of-1 call per peptide. This is dramatically faster for many peptides.
+            // Results come back in input order; -1 is the sentinel for peptides it couldn't predict.
+            var predictor = CheckoutPredictor();
+            try
+            {
+                var predictions = predictor.PredictRetentionTimeEquivalents(peptides, maxThreads: MaxConcurrency);
+                for (int i = 0; i < results.Length; i++)
                 {
-                    var predictor = CheckoutPredictor();
-                    try
-                    {
-                        var result = predictor.PredictRetentionTimeEquivalent(peptides[i], out _);
-                        results[i] = result ?? -1;
-                    }
-                    finally
-                    {
-                        ReturnPredictor(predictor);
-                    }
+                    results[i] = predictions[i].PredictedValue ?? -1;
                 }
-            );
+            }
+            finally
+            {
+                ReturnPredictor(predictor);
+            }
 
             return results;
         }
