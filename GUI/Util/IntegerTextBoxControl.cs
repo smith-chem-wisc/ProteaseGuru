@@ -22,6 +22,34 @@ namespace GUI
             set => SetValue(AllowNegativeProperty, value);
         }
 
+        // Optional inclusive value bounds. Null (the default) means unbounded, so existing
+        // text boxes that don't set these keep their current behavior.
+        public static readonly DependencyProperty MinimumProperty =
+            DependencyProperty.Register(
+                nameof(Minimum),
+                typeof(int?),
+                typeof(IntegerTextBoxControl),
+                new PropertyMetadata(null));
+
+        public int? Minimum
+        {
+            get => (int?)GetValue(MinimumProperty);
+            set => SetValue(MinimumProperty, value);
+        }
+
+        public static readonly DependencyProperty MaximumProperty =
+            DependencyProperty.Register(
+                nameof(Maximum),
+                typeof(int?),
+                typeof(IntegerTextBoxControl),
+                new PropertyMetadata(null));
+
+        public int? Maximum
+        {
+            get => (int?)GetValue(MaximumProperty);
+            set => SetValue(MaximumProperty, value);
+        }
+
         public IntegerTextBoxControl()
         {
             HorizontalContentAlignment = HorizontalAlignment.Center;
@@ -62,6 +90,31 @@ namespace GUI
             base.OnKeyDown(e);
             if (e.Key == Key.Return || e.Key == Key.Enter)
                 Keyboard.ClearFocus();
+        }
+
+        /// <summary>
+        /// Clamps the entered value into [Minimum, Maximum] (when set) once editing finishes.
+        /// </summary>
+        protected override void OnLostFocus(RoutedEventArgs e)
+        {
+            ClampToBounds();
+            base.OnLostFocus(e);
+        }
+
+        private void ClampToBounds()
+        {
+            if ((Minimum is null && Maximum is null) || !int.TryParse(Text, out int value))
+                return;
+
+            int clamped = value;
+            if (Minimum.HasValue && clamped < Minimum.Value) clamped = Minimum.Value;
+            if (Maximum.HasValue && clamped > Maximum.Value) clamped = Maximum.Value;
+
+            if (clamped != value)
+            {
+                Text = clamped.ToString();
+                CaretIndex = Text.Length;
+            }
         }
     }
 }
