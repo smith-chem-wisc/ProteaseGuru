@@ -22,13 +22,11 @@ namespace Tasks
     {
         #region Parallelism Configuration
 
-        // Maximum concurrency for parallel operations
+        // Databases are processed sequentially and each stage within a database (digestion and the
+        // per-peptide property calculations) parallelizes across all cores, so exactly one parallel
+        // region is active at a time. A single database therefore saturates the machine, without the
+        // nested oversubscription the old outer-by-database / inner=2 scheme caused on many-core hosts.
         private static readonly int MaxConcurrency = Environment.ProcessorCount;
-
-        // Calculated parallelism limits to avoid oversubscription
-        // With 8 cores: OuterParallelism = 4, InnerParallelism = 2, total max = 4 * 2 = 8 threads
-        private static readonly int OuterParallelism = Math.Max(1, MaxConcurrency / 2);
-        private static readonly int InnerParallelism = Math.Max(1, MaxConcurrency / OuterParallelism);
 
         #endregion
 
@@ -77,44 +75,31 @@ namespace Tasks
                 AllPeptidesByProtease = new Dictionary<string, Dictionary<IBioPolymer, List<InSilicoPep>>>();
                 PeptideByFile = new Dictionary<string, Dictionary<string, Dictionary<IBioPolymer, List<InSilicoPep>>>>(dbFileList.Count);
 
-                // Use a thread-safe dictionary for parallel writes
-                var concurrentPeptideByFile = new ConcurrentDictionary<string, ConcurrentDictionary<string, Dictionary<IBioPolymer, List<InSilicoPep>>>>();
-                // Outer parallelism: limited to avoid oversubscription with inner parallel loops
-                var outerParallelOptions = new ParallelOptions
-                {
-                    MaxDegreeOfParallelism = OuterParallelism
-                };
-
-                // Process each database in parallel (limited)
-                Parallel.ForEach(dbFileList, outerParallelOptions, database =>
+                // Process databases sequentially. The work inside each database (digestion and the
+                // property calculations) parallelizes across all cores, so one database already
+                // saturates the machine. Sequential databases also avoid running multiple batched
+                // libtorch (Chronologer) passes concurrently, which would oversubscribe Torch's
+                // own intra-op thread pool.
+                foreach (var database in dbFileList)
                 {
                     Status("Loading Protein Database(s)...", "loadDbs");
                     List<IBioPolymer> proteins = LoadBioPolymers(database.FilePath);
 
-                    // Initialize the entry for this database
-                    var proteaseResults = new ConcurrentDictionary<string, Dictionary<IBioPolymer, List<InSilicoPep>>>();
-                    concurrentPeptideByFile[database.FileName] = proteaseResults;
+                    var proteaseResults = new Dictionary<string, Dictionary<IBioPolymer, List<InSilicoPep>>>();
 
-                    string databaseFileName = database.FileName;
-                    List<IBioPolymer> proteinsForDigestion = proteins;
-
-                    // Process each protease sequentially within each database
-                    // (inner batch methods handle parallelism)
+                    // Each protease is processed sequentially; DigestDatabase and the batch property
+                    // calculations each parallelize internally across all cores.
                     foreach (var protease in DigestionParameters.ProteaseSpecificParameters)
                     {
                         Status("Digesting Proteins...", "digestDbs");
 
-                        var peptides = DigestDatabase(proteinsForDigestion, protease, DigestionParameters);
-                        var peptidesFormatted = DeterminePeptideStatus(databaseFileName, peptides, DigestionParameters);
+                        var peptides = DigestDatabase(proteins, protease, DigestionParameters);
+                        var peptidesFormatted = DeterminePeptideStatus(database.FileName, peptides, DigestionParameters);
 
                         proteaseResults[protease.DigestionAgentName] = peptidesFormatted;
                     }
-                });
 
-                // Convert concurrent dictionary back to regular dictionary
-                foreach (var dbEntry in concurrentPeptideByFile)
-                {
-                    PeptideByFile[dbEntry.Key] = new Dictionary<string, Dictionary<IBioPolymer, List<InSilicoPep>>>(dbEntry.Value);
+                    PeptideByFile[database.FileName] = proteaseResults;
                 }
 
                 Status("Writing Peptide Output...", "peptides");
@@ -365,7 +350,7 @@ namespace Tasks
         #region Chronologer Predictor Pool Management
 
         /// <summary>
-        /// Initializes the predictor pool with a fixed size based on InnerParallelism.
+        /// Initializes the predictor pool with a single predictor (work is sequential per protease).
         /// Called once per run, not resizable to avoid race conditions.
         /// </summary>
         private void InitializePredictorPool()
@@ -377,11 +362,9 @@ namespace Tasks
 
                 _predictorPool = new ConcurrentBag<ChronologerRetentionTimePredictor>();
 
-                // Pre-create predictors sequentially to avoid file access conflicts
-                for (int i = 0; i < InnerParallelism; i++)
-                {
-                    _predictorPool.Add(new ChronologerRetentionTimePredictor());
-                }
+                // One predictor suffices: databases and proteases run sequentially, and the batched
+                // Chronologer call uses a single instance (it parallelizes encoding internally).
+                _predictorPool.Add(new ChronologerRetentionTimePredictor());
             }
         }
 
@@ -434,7 +417,7 @@ namespace Tasks
         }
 
         /// <summary>
-        /// Initializes the PFly detectability model pool with a fixed size based on InnerParallelism.
+        /// Initializes the PFly detectability model pool with a single model (work is sequential per protease).
         /// </summary>
         private void InitializePflyPool()
         {
@@ -445,10 +428,8 @@ namespace Tasks
 
                 _pflyPool = new ConcurrentBag<PFly2024FineTuned>();
 
-                for (int i = 0; i < InnerParallelism; i++)
-                {
-                    _pflyPool.Add(new PFly2024FineTuned());
-                }
+                // One model suffices: detectability is requested once per protease, sequentially.
+                _pflyPool.Add(new PFly2024FineTuned());
             }
         }
 
@@ -568,7 +549,7 @@ namespace Tasks
             var results = new double[peptides.Count];
             if (peptides.Count == 0) return results;
 
-            var options = new ParallelOptions { MaxDegreeOfParallelism = InnerParallelism };
+            var options = new ParallelOptions { MaxDegreeOfParallelism = MaxConcurrency };
 
             Parallel.For(0, peptides.Count,
                 options,
@@ -592,7 +573,7 @@ namespace Tasks
             var results = new double[peptides.Count];
             if (peptides.Count == 0) return results;
 
-            var options = new ParallelOptions { MaxDegreeOfParallelism = InnerParallelism };
+            var options = new ParallelOptions { MaxDegreeOfParallelism = MaxConcurrency };
 
             Parallel.For(0, peptides.Count, options, i =>
             {
@@ -736,8 +717,9 @@ namespace Tasks
         protected Dictionary<IBioPolymer, List<IBioPolymerWithSetMods>> DigestDatabase(List<IBioPolymer> proteinsFromDatabase,
             ProteaseSpecificParameters proteaseSpecificParameters, RunParameters globalDigestionParams)
         {
-            Dictionary<IBioPolymer, List<IBioPolymerWithSetMods>> peptidesForProtein = new(proteinsFromDatabase.Count);
-            foreach (var protein in proteinsFromDatabase)
+            // Each protein digests independently, so fan the proteins across all cores.
+            var digestedByProtein = new ConcurrentDictionary<IBioPolymer, List<IBioPolymerWithSetMods>>();
+            Parallel.ForEach(proteinsFromDatabase, new ParallelOptions { MaxDegreeOfParallelism = MaxConcurrency }, protein =>
             {
                 List<IBioPolymerWithSetMods> peptides = protein.Digest(proteaseSpecificParameters.DigestionParams, proteaseSpecificParameters.FixedMods, proteaseSpecificParameters.VariableMods).ToList();
                 if (globalDigestionParams.MaxPeptideMassAllowed != -1 && globalDigestionParams.MinPeptideMassAllowed != -1)
@@ -752,7 +734,14 @@ namespace Tasks
                 {
                     peptides = peptides.Where(p => p.MonoisotopicMass <= globalDigestionParams.MaxPeptideMassAllowed).ToList();
                 }
-                peptidesForProtein.Add(protein, peptides);
+                digestedByProtein[protein] = peptides;
+            });
+
+            // Rebuild in the original protein order so output stays deterministic.
+            Dictionary<IBioPolymer, List<IBioPolymerWithSetMods>> peptidesForProtein = new(proteinsFromDatabase.Count);
+            foreach (var protein in proteinsFromDatabase)
+            {
+                peptidesForProtein.Add(protein, digestedByProtein[protein]);
             }
 
             return peptidesForProtein;
