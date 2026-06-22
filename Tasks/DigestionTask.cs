@@ -131,11 +131,13 @@ namespace Tasks
         {
             List<IBioPolymer> bioPolymerList;
 
+            // Parse the database with all available threads (databases load sequentially now, so the
+            // loader gets the full core budget instead of the previous single thread).
             if (GlobalVariables.AnalyteType == AnalyteType.Oligo)
-                bioPolymerList = LoadOligoDb(dbPath, out Dictionary<string, Modification> unknownModification)
+                bioPolymerList = LoadOligoDb(dbPath, out Dictionary<string, Modification> unknownModification, MaxConcurrency)
                     .Cast<IBioPolymer>().ToList();
             else
-                bioPolymerList = LoadProteinDb(dbPath, out Dictionary<string, Modification> unknownModifications)
+                bioPolymerList = LoadProteinDb(dbPath, out Dictionary<string, Modification> unknownModifications, MaxConcurrency)
                     .Cast<IBioPolymer>().ToList();
 
             if (!bioPolymerList.Any())
@@ -855,7 +857,9 @@ namespace Tasks
             for (int fileCount = 1; fileCount <= numberOfFiles; fileCount++)
             {
                 string outputPath = Path.Combine(filePath, $"ProteaseGuruPeptides_{fileCount}.tsv");
-                using var output = new StreamWriter(outputPath);
+                // Large write buffer (UTF-8 without BOM, matching the default so the reload parser's
+                // header check still passes) to cut flush overhead when writing many peptides.
+                using var output = new StreamWriter(outputPath, false, new System.Text.UTF8Encoding(false), 1 << 20);
                 output.WriteLine(header);
 
                 int peptidesWrittenToThisFile = 0;
