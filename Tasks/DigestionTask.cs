@@ -272,10 +272,14 @@ namespace Tasks
                         distinctPeptides.Add(peptide);
                 }
 
+                // PFly detectability is a remote Koina (network) call; start it concurrently so its
+                // latency overlaps the CPU-bound local property calculations below.
+                var pflyTask = Task.Run(() => BatchCalculateDetectabilitiesPfly(distinctPeptides));
+
                 double[] hydrophobicityValues = BatchCalculateHydrophobicity(distinctPeptides);
                 double[] mobilityValues = BatchCalculateElectrophoreticMobility(distinctPeptides);
                 double[] retentionTimesChronologer = BatchCalculateRetentionTimesChronologer(distinctPeptides);
-                bool?[] pflyDetectabilities = BatchCalculateDetectabilitiesPfly(distinctPeptides);
+                bool?[] pflyDetectabilities = pflyTask.GetAwaiter().GetResult();
 
                 for (int i = 0; i < distinctPeptides.Count; i++)
                 {
