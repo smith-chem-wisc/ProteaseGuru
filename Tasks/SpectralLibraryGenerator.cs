@@ -182,7 +182,13 @@ namespace Tasks
 
                 var spectrum = new LibrarySpectrum
                 (
-                    sequence: prediction.FullSequence,
+                    // Label the spectrum with the sequence the masses were actually built from
+                    // (peptide), so the library identity stays consistent with its peaks. Under
+                    // MapToValidatedFullSequence this is the cleaned sequence, which can differ
+                    // chemically from the requested prediction.FullSequence when mod handling
+                    // rewrote an incompatible modification. Mirrors mzLib's
+                    // GenerateLibrarySpectraFromPredictions (smith-chem-wisc/mzLib#1073).
+                    sequence: peptide.FullSequence,
                     precursorMz: peptide.ToMz(prediction.PrecursorCharge),
                     chargeState: prediction.PrecursorCharge,
                     peaks: fragmentIons,
