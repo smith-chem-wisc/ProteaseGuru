@@ -44,6 +44,24 @@ public class GuiGlobalParamsViewModel : BaseViewModel
 
     #endregion
 
+    #region Threads
+
+    // Maximum CPU threads used during digestion. Bridges the persisted setting to the runtime
+    // budget read by DigestionTask (GlobalVariables.MaxThreads).
+    public int MaxThreads
+    {
+        get => _current.MaxThreads;
+        set
+        {
+            int clamped = Math.Max(1, value);
+            _current.MaxThreads = clamped;
+            GlobalVariables.MaxThreads = clamped;
+            OnPropertyChanged(nameof(MaxThreads));
+        }
+    }
+
+    #endregion
+
     #region IO
 
     // Load from disk
@@ -68,6 +86,7 @@ public class GuiGlobalParamsViewModel : BaseViewModel
         }
 
         IsRnaMode = _current.IsRnaMode;
+        MaxThreads = _current.MaxThreads;
         _loaded = _current.Clone();
     }
 

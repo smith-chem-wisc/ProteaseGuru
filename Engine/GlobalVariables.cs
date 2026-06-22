@@ -20,6 +20,10 @@ namespace Engine
         // this affects output labels, etc. and can be changed to "Proteoform" for top-down searches
         public static AnalyteType AnalyteType;
 
+        // Maximum threads used by the parallel digestion stages. User-configurable; defaults to all
+        // cores. Set from GlobalParameters.MaxThreads via the settings view model.
+        public static int MaxThreads = Environment.ProcessorCount;
+
         public static string DecoyIdentifier = "DECOY";
         static GlobalVariables()
         {

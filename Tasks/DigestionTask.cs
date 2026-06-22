@@ -26,7 +26,10 @@ namespace Tasks
         // per-peptide property calculations) parallelizes across all cores, so exactly one parallel
         // region is active at a time. A single database therefore saturates the machine, without the
         // nested oversubscription the old outer-by-database / inner=2 scheme caused on many-core hosts.
-        private static readonly int MaxConcurrency = Environment.ProcessorCount;
+        //
+        // Defaults to all cores, but is overridden by the user-configurable GlobalVariables.MaxThreads
+        // setting (persisted via GlobalParameters.MaxThreads / the GUI thread-count control).
+        private static int MaxConcurrency => Math.Max(1, GlobalVariables.MaxThreads);
 
         #endregion
 
