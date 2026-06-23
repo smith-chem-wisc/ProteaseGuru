@@ -31,7 +31,11 @@ namespace GUI
         public Dictionary<string, Dictionary<string, string>> HistogramDataTable = new();
         public string SelectedPlot;
         private Dictionary<string, List<InSilicoPep>> PeptidesByProtease;
+        // All-peptides coverage cache, reused by PlotModelStat for the full (non-detectable) view.
         private Dictionary<string, Dictionary<IBioPolymer, (double,double)>> SequenceCoverageByProtease = new();
+        // Coverage actually used by the most recent render (detectable-aware). Drives the CSV MetaData
+        // export so it matches the plot on screen regardless of the detectable-only toggle or db selection.
+        private Dictionary<string, Dictionary<IBioPolymer, (double,double)>> CurrentPlotCoverageByProtease = new();
         
         public HistogramWindow()
         {
@@ -169,6 +173,8 @@ namespace GUI
             PlotModelStat plot = await Task.Run(() => new PlotModelStat(plotName, DBSelected, PeptideByFile, UserParams, sequenceCoverageByProtease, detectableOnly));
             SelectedPlot = plotName;
             PeptidesByProtease = plot.PeptidesByProtease;
+            // Coverage used by this render (detectable-aware) — drives the CSV MetaData export.
+            CurrentPlotCoverageByProtease = plot.SequenceCoverageByProtease_Return;
             // Only cache the all-peptides coverage; detectable-only coverage must not be reused for the full view.
             if (!detectableOnly)
             {
@@ -209,6 +215,8 @@ namespace GUI
             //make the plot
             PlotModelStat plot = await Task.Run(() => new PlotModelStat(plotName, DBSelected, PeptideByFile, UserParams, sequenceCoverageByProtease, detectableOnly));
             PeptidesByProtease = plot.PeptidesByProtease;
+            // Coverage used by this render (detectable-aware) — drives the CSV MetaData export.
+            CurrentPlotCoverageByProtease = plot.SequenceCoverageByProtease_Return;
             // Only cache the all-peptides coverage; detectable-only coverage must not be reused for the full view.
             if (!detectableOnly)
             {
@@ -311,7 +319,7 @@ namespace GUI
                 case " Protein Sequence Coverage": // Protein Sequence Coverage                    
                     binSize = 0.01;
                     Dictionary<string, List<double>> sequenceCoverageByProtease = new();
-                    foreach (var protease in SequenceCoverageByProtease)
+                    foreach (var protease in CurrentPlotCoverageByProtease)
                     {
                             List<double> coverages = new List<double>();
                             List<double> uniqueCoverages = new List<double>();
@@ -334,7 +342,7 @@ namespace GUI
                 case " Protein Sequence Coverage (Unique Peptides Only)": // Protein Sequence Coverage (unique peptides)                    
                     binSize = 0.01;
                     Dictionary<string, List<double>> sequenceCoverageUniqueByProtease = new();
-                    foreach (var protease in SequenceCoverageByProtease)
+                    foreach (var protease in CurrentPlotCoverageByProtease)
                     {
                             List<double> coverages = new List<double>();
                             List<double> uniqueCoverages = new List<double>();
