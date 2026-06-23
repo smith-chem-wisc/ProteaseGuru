@@ -507,6 +507,12 @@ namespace Tasks
             try
             {
                 var predictions = predictor.PredictRetentionTimeEquivalents(peptides, maxThreads: MaxConcurrency);
+                if (predictions.Count != peptides.Count)
+                {
+                    Warn($"Chronologer returned {predictions.Count} retention times for {peptides.Count} peptides. Falling back to -1.");
+                    Array.Fill(results, -1.0);
+                    return results;
+                }
                 for (int i = 0; i < results.Length; i++)
                 {
                     results[i] = predictions[i].PredictedValue ?? -1;
