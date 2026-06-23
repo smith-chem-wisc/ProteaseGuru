@@ -142,7 +142,6 @@ namespace GUI
         }
 
         //add a protein database file
-        //returns true if the file was recognized as a protein database, false otherwise
         private bool AddAFile(string draggedFilePath)
         {
             // this line is NOT used because .xml.gz (extensions with two dots) mess up with Path.GetExtension
@@ -188,7 +187,6 @@ namespace GUI
             }
         }
         // add a previous results, prarmeters or database file
-        //returns true if the file was recognized as a results, parameters, or database file, false otherwise
         private bool ReloadAFile(string draggedFilePath)
         {
             // this line is NOT used because .xml.gz (extensions with two dots) mess up with Path.GetExtension

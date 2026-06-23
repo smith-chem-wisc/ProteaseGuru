@@ -147,14 +147,12 @@ namespace GUI
         //determine which histogram the user wants to make and what peptides should be used to make it
         private async void PlotSelected(object sender, SelectionChangedEventArgs e)
         {
-            //clear the exportable data table when a new plot is selected
             HistogramDataTable.Clear();
             // When the detectable-only filter is active, force PlotModelStat to recompute coverage
             // from the detectable subset rather than reusing the cached all-peptides coverage.
             bool detectableOnly = DetectableOnlyCheckBox?.IsChecked == true;
             Dictionary<string, Dictionary<IBioPolymer, (double, double)>> sequenceCoverageByProtease =
                 detectableOnly ? new Dictionary<string, Dictionary<IBioPolymer, (double, double)>>() : SequenceCoverageByProtease;
-            //figure out which proteases should be used to make the plot
             SyncSelectedDatabases();
 
             //parse the GUI selection for interpretation here
@@ -169,7 +167,6 @@ namespace GUI
             progressBar.IsIndeterminate = true;
             HistogramLoading.Items.Add(progressBar);            
            
-            //make the plot
             PlotModelStat plot = await Task.Run(() => new PlotModelStat(plotName, DBSelected, PeptideByFile, UserParams, sequenceCoverageByProtease, detectableOnly));
             SelectedPlot = plotName;
             PeptidesByProtease = plot.PeptidesByProtease;
@@ -212,7 +209,6 @@ namespace GUI
             progressBar.Height = 30;
             progressBar.IsIndeterminate = true;
             HistogramLoading.Items.Add(progressBar);
-            //make the plot
             PlotModelStat plot = await Task.Run(() => new PlotModelStat(plotName, DBSelected, PeptideByFile, UserParams, sequenceCoverageByProtease, detectableOnly));
             PeptidesByProtease = plot.PeptidesByProtease;
             // Coverage used by this render (detectable-aware) — drives the CSV MetaData export.
@@ -231,7 +227,6 @@ namespace GUI
             HistogramLoading.Items.Clear();
         }
 
-        //re-render the currently selected histogram when the detectable-only toggle changes
         private void DetectableOnlyChanged(object sender, RoutedEventArgs e)
         {
             if (HistogramComboBox?.SelectedItem != null)
