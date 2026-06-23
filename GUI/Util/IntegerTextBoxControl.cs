@@ -106,13 +106,33 @@ namespace GUI
 
         private void ClampToBounds()
         {
+            if (string.IsNullOrEmpty(Text))
+                return;
+
             if (int.TryParse(Text, out int value))
             {
                 if (value < LowerBound)
                     Text = LowerBound.ToString();
                 else if (value > UpperBound)
                     Text = UpperBound.ToString();
+                return;
             }
+
+            string trimmed = Text.Trim();
+            bool negative = trimmed.StartsWith("-");
+            string digits = negative ? trimmed.Substring(1) : trimmed;
+            if (IsAllDigits(digits))
+                Text = negative ? LowerBound.ToString() : UpperBound.ToString();
+        }
+
+        private static bool IsAllDigits(string s)
+        {
+            if (s.Length == 0)
+                return false;
+            foreach (char c in s)
+                if (!char.IsDigit(c))
+                    return false;
+            return true;
         }
 
         /// <summary>
