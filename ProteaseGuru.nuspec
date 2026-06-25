@@ -42,7 +42,6 @@
 		<file src="Engine\Mods\substitutions.txt" target="lib\net8.0\Mods" />
 		<file src="Engine\Mods\surfactants.txt" target="lib\net8.0\Mods" />
 		<file src="Engine\Mods\tmt.txt" target="lib\net8.0\Mods" />
-		<file src="Engine\ProteolyticDigestion\proteases.tsv" target="lib\net8.0\ProteolyticDigestion" />
 
 		<!-- Tasks project files -->
 		<file src="Tasks\bin\x64\Release\net8.0\Tasks.dll" target="lib\net8.0" />
