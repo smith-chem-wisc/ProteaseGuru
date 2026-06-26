@@ -1,8 +1,10 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using System.Windows.Threading;
 using Engine;
 using GuiFunctions;
 using Omics;
@@ -38,6 +40,21 @@ namespace GUI
         // ── Display mode toggle ──────────────────────────────────────────────
         private CoverageMapDisplayMode _displayMode = CoverageMapDisplayMode.ProteaseLane;
         private CoverageMapDisplayMode _lastCoverageMode = CoverageMapDisplayMode.ProteaseLane;
+
+        // ── Per-protease digest cache ────────────────────────────────────────
+        // Caches (coverage, intervals) for each protease keyed on a value snapshot of its
+        // digestion settings, scoped to the selected protein. Algorithm- and view-toggle
+        // refreshes reuse this instead of re-digesting; only proteases whose settings
+        // actually changed are recomputed.
+        private readonly record struct DigestCacheKey(
+            string Agent, int MinLength, int MaxLength, int MaxMissedCleavages, string ModsSignature);
+
+        private readonly Dictionary<DigestCacheKey, (HashSet<int> Coverage, List<(int Start, int End)> Intervals)> _digestCache = new();
+        private IBioPolymer? _cacheProtein;
+
+        // Coalesces bursts of refresh triggers (checkbox/param spam, mode/view toggles,
+        // selection changes) into a single recompute.
+        private DispatcherTimer? _refreshTimer;
 
         #endregion
 
@@ -145,7 +162,7 @@ namespace GUI
                 if (e.PropertyName != nameof(GuiGlobalParamsViewModel.IsRnaMode)) return;
                 foreach (var vm in _allProteaseVm.ProteaseSpecificParameters.Where(p => !p.IsVisible))
                     vm.IsSelected = false;
-                RefreshMaxCoverage();
+                ScheduleRefresh();
             };
         }
 
@@ -219,7 +236,7 @@ namespace GUI
             if (match.Value == null) return;
 
             SelectedProtein = match.Value;
-            RefreshMaxCoverage();
+            ScheduleRefresh();
         }
 
         #endregion
@@ -227,7 +244,7 @@ namespace GUI
         #region Reactive Digestion
 
         private void OnProteaseParameterChanged(object sender, PropertyChangedEventArgs e)
-            => RefreshMaxCoverage();
+            => ScheduleRefresh();
 
         private void RefreshMaxCoverage()
         {
@@ -245,9 +262,10 @@ namespace GUI
 
             var proteaseParams = checkedProteases.Select(vm => vm.ProteaseSpecificParams).ToList();
 
-            // Single digest pass per protease produces both coverage sets and interval lists,
-            // avoiding the previous double-digest (CalculateCoverageByProtease + GetDetectablePeptideIntervals).
-            var (coverageDict, allIntervalsDict) = _seeker.CalculateCoverageAndIntervals(SelectedProtein.Protein, proteaseParams);
+            // Pull coverage/intervals from the per-protease cache, digesting only the
+            // proteases whose settings changed. Algorithm- and view-toggle refreshes hit
+            // the cache entirely and skip digestion.
+            var (coverageDict, allIntervalsDict) = GetCoverageAndIntervals(SelectedProtein.Protein, proteaseParams);
 
             SeekMaximumCoverage.CombinationResult result;
             if (greedyToggle.IsChecked == true)
@@ -289,11 +307,83 @@ namespace GUI
             DrawMaxCoverageMap(SelectedProtein.Protein, result, pepsByProtease, orderedChecked);
         }
 
-        private Dictionary<string, List<(int Start, int End)>> BuildPeptidesByProtease(
-            IBioPolymer protein,
-            IEnumerable<ProteaseSpecificParameters> allParams)
+        /// <summary>
+        /// Returns coverage sets and peptide intervals for the given proteases, serving cached
+        /// results where possible and digesting only the proteases whose settings aren't cached.
+        /// The cache is scoped to a single protein and reset when the selection changes.
+        /// </summary>
+        private (Dictionary<string, HashSet<int>> Coverage,
+                 Dictionary<string, List<(int Start, int End)>> Intervals)
+            GetCoverageAndIntervals(IBioPolymer protein, List<ProteaseSpecificParameters> proteaseParams)
         {
-            return _seeker.GetDetectablePeptideIntervals(protein, allParams);
+            if (!ReferenceEquals(protein, _cacheProtein))
+            {
+                _digestCache.Clear();
+                _cacheProtein = protein;
+            }
+
+            var keys = new DigestCacheKey[proteaseParams.Count];
+            for (int i = 0; i < proteaseParams.Count; i++)
+                keys[i] = BuildDigestCacheKey(proteaseParams[i]);
+
+            var misses = new List<int>();
+            for (int i = 0; i < proteaseParams.Count; i++)
+                if (!_digestCache.ContainsKey(keys[i]))
+                    misses.Add(i);
+
+            if (misses.Count > 0)
+            {
+                int degree = Math.Max(1, GlobalVariables.MaxThreads);
+                var computed = new (HashSet<int> Coverage, List<(int Start, int End)> Intervals)[misses.Count];
+
+                // DigestSingle only reads the protein and writes to its own locals, so the
+                // cache-miss proteases can be digested concurrently for the same protein.
+                Parallel.For(0, misses.Count,
+                    new ParallelOptions { MaxDegreeOfParallelism = degree },
+                    m => computed[m] = _seeker.DigestSingle(protein, proteaseParams[misses[m]]));
+
+                for (int m = 0; m < misses.Count; m++)
+                    _digestCache[keys[misses[m]]] = computed[m];
+            }
+
+            var coverage = new Dictionary<string, HashSet<int>>(proteaseParams.Count);
+            var intervals = new Dictionary<string, List<(int Start, int End)>>(proteaseParams.Count);
+            for (int i = 0; i < proteaseParams.Count; i++)
+            {
+                var entry = _digestCache[keys[i]];
+                string name = proteaseParams[i].DigestionAgentName;
+                coverage[name] = entry.Coverage;
+                intervals[name] = entry.Intervals;
+            }
+            return (coverage, intervals);
+        }
+
+        private static DigestCacheKey BuildDigestCacheKey(ProteaseSpecificParameters p)
+        {
+            var dp = p.DigestionParams;
+            string mods = string.Join(",", p.FixedMods.Select(m => m.IdWithMotif))
+                          + "|" + string.Join(",", p.VariableMods.Select(m => m.IdWithMotif));
+            return new DigestCacheKey(
+                dp.DigestionAgent.Name, dp.MinLength, dp.MaxLength, dp.MaxMissedCleavages, mods);
+        }
+
+        /// <summary>
+        /// Restarts the debounce timer so a burst of triggers collapses into one recompute.
+        /// </summary>
+        private void ScheduleRefresh()
+        {
+            if (_refreshTimer == null)
+            {
+                _refreshTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(120) };
+                _refreshTimer.Tick += (s, e) =>
+                {
+                    _refreshTimer!.Stop();
+                    RefreshMaxCoverage();
+                };
+            }
+
+            _refreshTimer.Stop();
+            _refreshTimer.Start();
         }
 
         #endregion
@@ -393,7 +483,7 @@ namespace GUI
             => OnSelectionChanged();
 
         private void MaxCoverageMode_Changed(object sender, RoutedEventArgs e)
-            => RefreshMaxCoverage();
+            => ScheduleRefresh();
 
         private void maxCoverageGrid_SizeChanged(object sender, SizeChangedEventArgs e)
         {
@@ -493,7 +583,7 @@ namespace GUI
 
             _lastCoverageMode = _displayMode;
             UpdateToggleButtonStyle();
-            RefreshMaxCoverage();
+            ScheduleRefresh();
         }
 
         private void UpdateToggleButtonStyle()
@@ -536,6 +626,7 @@ namespace GUI
 
         void window_Closing(object sender, global::System.ComponentModel.CancelEventArgs e)
         {
+            _refreshTimer?.Stop();
             SearchModifications.Timer.Tick -= searchBox_TextChangedHandler;
             if (_allProteaseVm != null)
                 foreach (var vm in _allProteaseVm.ProteaseSpecificParameters)

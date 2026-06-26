@@ -140,6 +140,32 @@ public class MaxCoverageTests
     }
 
     [Test]
+    public void TestDigestSingleParallelMatchesSerial()
+    {
+        // The analyzer window digests cache-miss proteases concurrently for the same
+        // protein instance. Verify that path produces the same per-protease coverage and
+        // intervals as a serial digest, and that repeated parallel runs stay consistent.
+        var serial = _analyzer.CalculateCoverageByProtease(_testProtein, _proteaseParams);
+        var serialIntervals = _analyzer.GetDetectablePeptideIntervals(_testProtein, _proteaseParams);
+
+        for (int iteration = 0; iteration < 25; iteration++)
+        {
+            var results = new (HashSet<int> Coverage, List<(int Start, int End)> Intervals)[_proteaseParams.Count];
+            Parallel.For(0, _proteaseParams.Count,
+                i => results[i] = _analyzer.DigestSingle(_testProtein, _proteaseParams[i]));
+
+            for (int i = 0; i < _proteaseParams.Count; i++)
+            {
+                string name = _proteaseParams[i].DigestionAgentName;
+                Assert.That(results[i].Coverage, Is.EquivalentTo(serial[name]),
+                    $"Parallel coverage diverged for {name} on iteration {iteration}");
+                Assert.That(results[i].Intervals, Is.EqualTo(serialIntervals[name]),
+                    $"Parallel intervals diverged for {name} on iteration {iteration}");
+            }
+        }
+    }
+
+    [Test]
     public void TestCoverageFraction()
     {
         var coverageSet = new HashSet<int> { 0, 1, 2, 3, 4 };
