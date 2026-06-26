@@ -64,7 +64,7 @@ namespace GUI
                 handler(this, new PropertyChangedEventArgs(propertyName));
             }
         }
-        public PlotModelStat(string plotName, List<string> dbSelected, Dictionary<string, Dictionary<string, Dictionary<IBioPolymer, List<InSilicoPep>>>> peptideByFile, RunParameters userParams, Dictionary<string, Dictionary<IBioPolymer, (double, double)>> sequenceCoverageByProtease)
+        public PlotModelStat(string plotName, List<string> dbSelected, Dictionary<string, Dictionary<string, Dictionary<IBioPolymer, List<InSilicoPep>>>> peptideByFile, RunParameters userParams, Dictionary<string, Dictionary<IBioPolymer, (double, double)>> sequenceCoverageByProtease, bool detectableOnly = false)
         {
             privateModel = new PlotModel { Title = (string)ProteinRnaTerminologyConverter.Instance.Convert(plotName, GetType(), null, CultureInfo.InvariantCulture), DefaultFontSize = 12 };
 
@@ -220,7 +220,10 @@ namespace GUI
                         }
 
                     }
-                    SequenceCoverageByProtease_Return = CalculateProteinSequenceCoverage(databasePeptides);
+                    if (!detectableOnly)
+                    {
+                        SequenceCoverageByProtease_Return = CalculateProteinSequenceCoverage(databasePeptides);
+                    }
                 }
                 else
                 {
@@ -240,7 +243,9 @@ namespace GUI
                                     }
                                     else
                                     {
-                                        databasePeptides[entry.Key].Add(prot.Key, prot.Value);
+                                        // Copy the source list rather than aliasing it, so a later
+                                        // AddRange can never mutate the shared peptideByFile data.
+                                        databasePeptides[entry.Key].Add(prot.Key, new List<InSilicoPep>(prot.Value));
                                     }
                                 }
                             }
@@ -249,8 +254,9 @@ namespace GUI
                                 Dictionary<IBioPolymer, List<InSilicoPep>> proteinDic = new();
                                 foreach (var prot in entry.Value)
                                 {
-                                    List<InSilicoPep> proteinSpecificPeptides = new();
-                                    proteinDic.Add(prot.Key, prot.Value);
+                                    // Copy the source list rather than aliasing it, so a later
+                                    // AddRange can never mutate the shared peptideByFile data.
+                                    proteinDic.Add(prot.Key, new List<InSilicoPep>(prot.Value));
                                 }
                                 databasePeptides.Add(entry.Key, proteinDic);
                             }
@@ -258,7 +264,10 @@ namespace GUI
 
                     }
                 }
-                SequenceCoverageByProtease_Return = CalculateProteinSequenceCoverage(databasePeptides);
+                if (!detectableOnly)
+                {
+                    SequenceCoverageByProtease_Return = CalculateProteinSequenceCoverage(databasePeptides);
+                }
             }
             else
             {
@@ -266,9 +275,25 @@ namespace GUI
                 databasePeptides = peptideByFile[dbSelected.FirstOrDefault()];
                 // Reuse the pre-computed coverage result when available; only recalculate if the
                 // caller did not supply one (e.g. first run before any coverage has been computed).
-                SequenceCoverageByProtease_Return = sequenceCoverageByProtease.Count > 0
-                    ? sequenceCoverageByProtease
-                    : CalculateProteinSequenceCoverage(databasePeptides);
+                if (!detectableOnly)
+                {
+                    SequenceCoverageByProtease_Return = sequenceCoverageByProtease.Count > 0
+                        ? sequenceCoverageByProtease
+                        : CalculateProteinSequenceCoverage(databasePeptides);
+                }
+            }
+
+            // Detectable-only toggle: restrict every protein's peptide list to PFly-detectable
+            // peptides, then recompute coverage from that filtered set so every downstream
+            // histogram (counts, coverage, unique-per-protein, etc.) reflects detectable counts.
+            if (detectableOnly)
+            {
+                databasePeptides = databasePeptides.ToDictionary(
+                    protease => protease.Key,
+                    protease => protease.Value.ToDictionary(
+                        protein => protein.Key,
+                        protein => protein.Value.Where(p => p.PflyDetectability == true).ToList()));
+                SequenceCoverageByProtease_Return = CalculateProteinSequenceCoverage(databasePeptides);
             }
 
             List<InSilicoPep> peptides = new();
@@ -582,13 +607,16 @@ namespace GUI
                     double minValue = 0;
                     foreach (string key in UniquePeptidesPerProtein.Keys)
                     {
-                        if (maxValue < UniquePeptidesPerProtein[key].Max())
+                        // DefaultIfEmpty guards against a protease with no (detectable) peptides.
+                        double proteaseMax = UniquePeptidesPerProtein[key].DefaultIfEmpty(0).Max();
+                        double proteaseMin = UniquePeptidesPerProtein[key].DefaultIfEmpty(0).Min();
+                        if (maxValue < proteaseMax)
                         {
-                            maxValue = UniquePeptidesPerProtein[key].Max();
+                            maxValue = proteaseMax;
                         }
-                        if (minValue > UniquePeptidesPerProtein[key].Min())
+                        if (minValue > proteaseMin)
                         {
-                            minValue = UniquePeptidesPerProtein[key].Min();
+                            minValue = proteaseMin;
                         }
                     }
                     binSize = Math.Max(1, Math.Round((maxValue - minValue) / 50, 0));
@@ -644,6 +672,16 @@ namespace GUI
             int[] totalCounts;
 
             IEnumerable<double> allNumbers = numbersByProtease.Values.SelectMany(x => x);
+
+            // Filtering (e.g. the detectable-only toggle) can leave nothing to plot; bail out
+            // gracefully instead of throwing on Max()/Min() over an empty sequence.
+            if (!allNumbers.Any())
+            {
+                NotificationService.Instance.AddNotification(
+                    "No peptides match the current selection (the detectable-only filter removed all peptides).",
+                    NotificationType.Information);
+                return;
+            }
 
             int end = roundToBin(allNumbers.Max(), binSize);
             int start = roundToBin(allNumbers.Min(), binSize);
