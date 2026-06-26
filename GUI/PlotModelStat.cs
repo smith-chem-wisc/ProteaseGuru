@@ -220,7 +220,10 @@ namespace GUI
                         }
 
                     }
-                    SequenceCoverageByProtease_Return = CalculateProteinSequenceCoverage(databasePeptides);
+                    if (!detectableOnly)
+                    {
+                        SequenceCoverageByProtease_Return = CalculateProteinSequenceCoverage(databasePeptides);
+                    }
                 }
                 else
                 {
@@ -261,7 +264,10 @@ namespace GUI
 
                     }
                 }
-                SequenceCoverageByProtease_Return = CalculateProteinSequenceCoverage(databasePeptides);
+                if (!detectableOnly)
+                {
+                    SequenceCoverageByProtease_Return = CalculateProteinSequenceCoverage(databasePeptides);
+                }
             }
             else
             {
@@ -269,9 +275,12 @@ namespace GUI
                 databasePeptides = peptideByFile[dbSelected.FirstOrDefault()];
                 // Reuse the pre-computed coverage result when available; only recalculate if the
                 // caller did not supply one (e.g. first run before any coverage has been computed).
-                SequenceCoverageByProtease_Return = sequenceCoverageByProtease.Count > 0
-                    ? sequenceCoverageByProtease
-                    : CalculateProteinSequenceCoverage(databasePeptides);
+                if (!detectableOnly)
+                {
+                    SequenceCoverageByProtease_Return = sequenceCoverageByProtease.Count > 0
+                        ? sequenceCoverageByProtease
+                        : CalculateProteinSequenceCoverage(databasePeptides);
+                }
             }
 
             // Detectable-only toggle: restrict every protein's peptide list to PFly-detectable

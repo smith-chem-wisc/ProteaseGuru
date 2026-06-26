@@ -167,7 +167,7 @@
                     <Grid Grid.Column="2" Background="{StaticResource DataGridBackgroundColor}" Margin="0 0 5 0">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="35"/>
-                            <RowDefinition Height="30"/>
+                            <RowDefinition Height="Auto"/>
                             <RowDefinition Height="1*"/>
                             <RowDefinition Height="25"/>
                         </Grid.RowDefinitions>
@@ -379,6 +379,11 @@
                                 
                         </Grid>
                         <StackPanel Grid.Row="1" Orientation="Horizontal" Background="{StaticResource DataGridBackgroundColor}" Margin="5,0,0,0">
+                            <StackPanel.Visibility>
+                                <Binding Path="IsRnaMode"
+                                         Source="{x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}"
+                                         Converter="{StaticResource CollapseOnRnaMode}" />
+                            </StackPanel.Visibility>
                             <CheckBox x:Name="DetectableOnlyCheckBox" Content="Detectable peptides only" FontSize="13"
                                       VerticalAlignment="Center" Foreground="{StaticResource TextColor1}"
                                       Checked="DetectableOnlyChanged" Unchecked="DetectableOnlyChanged">

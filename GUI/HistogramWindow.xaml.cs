@@ -237,6 +237,14 @@ namespace GUI
         //create a data table with all of the information from the histogram so useres can make their own plots using proteaseguru calculaitons
         private void CreateTable_Click(object sender, RoutedEventArgs e)
         {
+            if (HistogramDataTable == null || HistogramDataTable.Count == 0)
+            {
+                NotificationService.Instance.AddNotification(
+                    "No peptides match the current selection (the detectable-only filter removed all peptides).",
+                    NotificationType.Information);
+                return;
+            }
+
             DataTable table = new DataTable();
             table.Columns.Add("Bin Value", typeof(string));
             var proteaseList = HistogramDataTable.First().Value.Keys.ToList();
