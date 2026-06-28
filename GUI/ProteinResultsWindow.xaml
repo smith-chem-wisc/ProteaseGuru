@@ -315,12 +315,15 @@
                         </Grid>
                     </ScrollViewer>
 
-                    <Button x:Name="exportPngButton" Click="exportCoverageMap" Grid.Row="3" Width="250" Style="{StaticResource ImportantButtonStyle}">
+                    <Button x:Name="exportPngButton" Click="exportCoverageMap" Grid.Row="3" Width="250" HorizontalAlignment="Left" Margin="20,0,0,0" Style="{StaticResource ImportantButtonStyle}">
                         <Button.Content>
                             <Binding Converter="{StaticResource ProtTermConverter}"  Source="{x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}" Path ="IsRnaMode"
                                      ConverterParameter="Export Protein Digestion Results"/>
                         </Button.Content>
                     </Button>
+                    <Button x:Name="exportSpectralLibraryButton" Content="Export Spectral Library" Click="ExportSpectralLibrary" Grid.Row="3" Width="200"  HorizontalAlignment="Right" Margin="0,0,20,0"
+                            Style="{StaticResource ImportantButtonStyle}"
+                            ToolTip="Generate in silico spectral library from digestion results"/>
 
                 </Grid>
             </Grid>

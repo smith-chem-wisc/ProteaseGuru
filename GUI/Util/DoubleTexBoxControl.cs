@@ -60,10 +60,32 @@ namespace GUI
             e.Handled = false;
         }
 
+        /// <summary>
+        /// Clamps value changes that do not originate from the user actively typing — i.e. initial XAML
+        /// values, programmatic assignments, and binding-driven updates. While the control has keyboard
+        /// focus, clamping is deferred to commit time (OnLostKeyboardFocus) so partially-typed values
+        /// are not rewritten mid-edit.
+        /// </summary>
         protected override void OnTextChanged(TextChangedEventArgs e)
         {
             base.OnTextChanged(e);
+            if (!IsKeyboardFocused)
+                ClampToBounds();
+        }
 
+        /// <summary>
+        /// Clamps the committed value to [LowerBound, UpperBound] when the control loses focus.
+        /// Clamping happens on commit rather than on every keystroke so that partially-typed values
+        /// are not rewritten mid-edit.
+        /// </summary>
+        protected override void OnLostKeyboardFocus(KeyboardFocusChangedEventArgs e)
+        {
+            base.OnLostKeyboardFocus(e);
+            ClampToBounds();
+        }
+
+        private void ClampToBounds()
+        {
             if (double.TryParse(Text, out double value))
             {
                 if (value < LowerBound)
@@ -74,7 +96,7 @@ namespace GUI
         }
 
         /// <summary>
-        /// Cursor is removed from text box on pressing Return
+        /// Cursor is removed from text box on pressing Return (which triggers clamping via lost focus)
         /// </summary>
         /// <param name="e"></param>
         protected override void OnKeyDown(KeyEventArgs e)
