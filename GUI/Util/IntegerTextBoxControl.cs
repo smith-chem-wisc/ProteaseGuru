@@ -28,14 +28,14 @@ namespace GUI
                 nameof(LowerBound),
                 typeof(int),
                 typeof(IntegerTextBoxControl),
-                new PropertyMetadata(int.MinValue));
+                new PropertyMetadata(int.MinValue, OnBoundChanged));
 
         public static readonly DependencyProperty UpperBoundProperty =
             DependencyProperty.Register(
                 nameof(UpperBound),
                 typeof(int),
                 typeof(IntegerTextBoxControl),
-                new PropertyMetadata(int.MaxValue));
+                new PropertyMetadata(int.MaxValue, OnBoundChanged));
 
         public bool AllowNegative
         {
@@ -53,6 +53,20 @@ namespace GUI
         {
             get => (int)GetValue(UpperBoundProperty);
             set => SetValue(UpperBoundProperty, value);
+        }
+
+        /// <summary>
+        /// Re-clamps the current text when either bound changes, so a value that was in range
+        /// under the old limits doesn't survive unclamped when the limits shrink. The
+        /// IsKeyboardFocused guard preserves partially-typed values while the user is editing.
+        /// </summary>
+        private static void OnBoundChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+        {
+            if (d is IntegerTextBoxControl control && !control.IsKeyboardFocused)
+            {
+                control.ClampToBounds();
+                control.GetBindingExpression(TextProperty)?.UpdateSource();
+            }
         }
 
         /// <summary>
@@ -100,8 +114,8 @@ namespace GUI
         /// </summary>
         protected override void OnLostKeyboardFocus(KeyboardFocusChangedEventArgs e)
         {
-            base.OnLostKeyboardFocus(e);
             ClampToBounds();
+            base.OnLostKeyboardFocus(e);
         }
 
         private void ClampToBounds()
@@ -109,20 +123,28 @@ namespace GUI
             if (string.IsNullOrEmpty(Text))
                 return;
 
+            string target = Text;
+
             if (int.TryParse(Text, out int value))
             {
                 if (value < LowerBound)
-                    Text = LowerBound.ToString();
+                    target = LowerBound.ToString();
                 else if (value > UpperBound)
-                    Text = UpperBound.ToString();
-                return;
+                    target = UpperBound.ToString();
+            }
+            else
+            {
+                string trimmed = Text.Trim();
+                bool negative = trimmed.StartsWith("-");
+                string digits = negative ? trimmed.Substring(1) : trimmed;
+                if (IsAllDigits(digits))
+                    target = negative ? LowerBound.ToString() : UpperBound.ToString();
             }
 
-            string trimmed = Text.Trim();
-            bool negative = trimmed.StartsWith("-");
-            string digits = negative ? trimmed.Substring(1) : trimmed;
-            if (IsAllDigits(digits))
-                Text = negative ? LowerBound.ToString() : UpperBound.ToString();
+            // Only assign if the value changed to avoid redundant TextChanged events
+            // (e.g. when this is called from the bound-change callback).
+            if (target != Text)
+                Text = target;
         }
 
         private static bool IsAllDigits(string s)
