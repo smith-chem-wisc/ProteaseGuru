@@ -10,6 +10,10 @@ using Proteomics.RetentionTimePrediction;
 using Transcriptomics;
 using UsefulProteomicsDatabases;
 using PredictionClients.Koina.SupportedModels.FlyabilityModels;
+using PredictionClients.Koina.SupportedModels.FragmentIntensityModels;
+using PredictionClients.Koina.Util;
+using BayesianEstimation;
+using PredictionClients.Koina.AbstractClasses;
 using UsefulProteomicsDatabases.Transcriptomics;
 
 namespace Tasks
@@ -53,6 +57,7 @@ namespace Tasks
         public Dictionary<string, Dictionary<string, Dictionary<IBioPolymer, List<InSilicoPep>>>>? PeptideByFile;
         public static Dictionary<string, Dictionary<IBioPolymer, List<InSilicoPep>>>? AllPeptidesByProtease;
         public Dictionary<string, Dictionary<IBioPolymer, (double, double)>> SequenceCoverageByProtease = new();
+        public Dictionary<string, Dictionary<IBioPolymer, (double, double)>> SequenceCoverageByProteaseFromDetectablePeptides = new();
 
         #endregion
 
@@ -108,6 +113,18 @@ namespace Tasks
                 Status("Writing Peptide Output...", "peptides");
                 WritePeptidesToTsv(PeptideByFile, OutputFolder, DigestionParameters);
                 SequenceCoverageByProtease = CalculateProteinSequenceCoverage(PeptideByFile);
+                SequenceCoverageByProteaseFromDetectablePeptides = CalculateProteinSequenceCoverage(
+                    PeptideByFile.ToDictionary(
+                        db => db.Key,
+                        db => db.Value.ToDictionary(
+                            protease => protease.Key,
+                            protease => protease.Value.ToDictionary(
+                                protein => protein.Key,
+                                protein => protein.Value.Where(peptide => peptide.PflyDetectability == true).ToList()
+                            )
+                        )
+                    )
+                );
                 MyTaskResults myRunResults = new MyTaskResults(this);
                 Status("Writing Results Summary...", "summary");
 

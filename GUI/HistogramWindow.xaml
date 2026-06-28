@@ -167,7 +167,7 @@
                     <Grid Grid.Column="2" Background="{StaticResource DataGridBackgroundColor}" Margin="0 0 5 0">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="35"/>
-                            <RowDefinition Height="10"/>
+                            <RowDefinition Height="Auto"/>
                             <RowDefinition Height="1*"/>
                             <RowDefinition Height="25"/>
                         </Grid.RowDefinitions>
@@ -378,7 +378,26 @@
                             </StackPanel>
                                 
                         </Grid>
-                        <Grid Grid.Row=" 2" Style="{StaticResource PageGridStyle}" Height="440" Width="850" Margin="0 -5 5 5"> 
+                        <StackPanel Grid.Row="1" Orientation="Horizontal" Background="{StaticResource DataGridBackgroundColor}" Margin="5,0,0,0">
+                            <StackPanel.Visibility>
+                                <Binding Path="IsRnaMode"
+                                         Source="{x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}"
+                                         Converter="{StaticResource CollapseOnRnaMode}" />
+                            </StackPanel.Visibility>
+                            <CheckBox x:Name="DetectableOnlyCheckBox" Content="Detectable peptides only" FontSize="13"
+                                      VerticalAlignment="Center" Foreground="{StaticResource TextColor1}"
+                                      Checked="DetectableOnlyChanged" Unchecked="DetectableOnlyChanged">
+                                <CheckBox.Visibility>
+                                    <Binding Path="IsRnaMode"
+                                             Source="{x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}"
+                                             Converter="{StaticResource CollapseOnRnaMode}" />
+                                </CheckBox.Visibility>
+                                <CheckBox.ToolTip>
+                                    <TextBlock Text="When checked, histograms count only peptides predicted to be detectable by PFly (detectability &#8805; 0.5)." />
+                                </CheckBox.ToolTip>
+                            </CheckBox>
+                        </StackPanel>
+                        <Grid Grid.Row=" 2" Style="{StaticResource PageGridStyle}" Height="440" Width="850" Margin="0 -5 5 5">
                             
                             <oxy:PlotView  x:Name="plotViewStat" Model="{Binding Model}" FontSize="16" FontStretch="Expanded" BorderBrush="LightGray" Height="400" Width="850" HorizontalAlignment="Center" VerticalAlignment="Top" ></oxy:PlotView>
                         </Grid>

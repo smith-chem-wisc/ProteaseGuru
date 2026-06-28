@@ -104,7 +104,7 @@ namespace GUI
         {
             Microsoft.Win32.OpenFileDialog openPicker = new Microsoft.Win32.OpenFileDialog()
             {
-                Filter = "Results Files|*.txt",
+                Filter = "Digestion Parameters|*.toml;*.txt",
                 FilterIndex = 1,
                 RestoreDirectory = true,
                 Multiselect = true
@@ -113,9 +113,10 @@ namespace GUI
             {
                 foreach (var filepath in openPicker.FileNames.OrderBy(p => p))
                 {
-                    if (System.IO.Path.GetExtension(filepath) != ".txt")
+                    var paramExtension = System.IO.Path.GetExtension(filepath).ToLowerInvariant();
+                    if (paramExtension != ".toml" && paramExtension != ".txt")
                     {
-                        MessageBox.Show("Error: Only ProteaseGuru digestion parameters in .txt format should be loaded here. Please remove '" + filepath + "' before proceeding with analysis");
+                        MessageBox.Show("Error: Only ProteaseGuru digestion parameters (.toml, or legacy .txt) should be loaded here. Please remove '" + filepath + "' before proceeding with analysis");
                         return;
                     }
                     else
@@ -129,8 +130,19 @@ namespace GUI
 
         }
 
+        // Window_Drop routes each dropped file through both AddAFile and ReloadAFile; warn only
+        // when neither handler recognized the file, so valid results/parameter drops don't error.
+        private void WarnUnrecognizedDrop(string filePath)
+        {
+            var filename = System.IO.Path.GetFileName(filePath);
+            var theExtension = System.IO.Path.GetExtension(filename).ToLowerInvariant();
+            bool compressed = theExtension.EndsWith("gz");
+            theExtension = compressed ? System.IO.Path.GetExtension(System.IO.Path.GetFileNameWithoutExtension(filename)).ToLowerInvariant() : theExtension;
+            GuiWarnHandler(null, new Engine.StringEventArgs("Unrecognized file type: " + theExtension, null));
+        }
+
         //add a protein database file
-        private void AddAFile(string draggedFilePath)
+        private bool AddAFile(string draggedFilePath)
         {
             // this line is NOT used because .xml.gz (extensions with two dots) mess up with Path.GetExtension
             //var theExtension = Path.GetExtension(draggedFilePath).ToLowerInvariant();
@@ -167,14 +179,15 @@ namespace GUI
                             }
                         }
                     }
-                    break;
+                    return true;
                 default:
-                    GuiWarnHandler(null, new Engine.StringEventArgs("Unrecognized file type: " + theExtension, null));
-                    break;
+                    // Not a database file. Don't warn here: Window_Drop also tries ReloadAFile and
+                    // decides "unrecognized" once, so results/parameter drops aren't falsely rejected.
+                    return false;
             }
         }
         // add a previous results, prarmeters or database file
-        private void ReloadAFile(string draggedFilePath)
+        private bool ReloadAFile(string draggedFilePath)
         {
             // this line is NOT used because .xml.gz (extensions with two dots) mess up with Path.GetExtension
             //var theExtension = Path.GetExtension(draggedFilePath).ToLowerInvariant();
@@ -211,24 +224,25 @@ namespace GUI
                             }
                         }
                     }
-                    break;
+                    return true;
                 case ".tsv":
                     ResultsForDataGrid file = new ResultsForDataGrid(draggedFilePath);
                     if (!ResultsFileExists(ResultsObservableCollection, file))
                     {
                         ResultsObservableCollection.Add(file);
                     }
-                    break;
+                    return true;
+                case ".toml":
                 case ".txt":
                     ParametersForDataGrid parameters = new ParametersForDataGrid(draggedFilePath);
                     if (!ParametersFileExists(ParametersObservableCollection, parameters))
                     {
                         ParametersObservableCollection.Add(parameters);
                     }
-                    break;
+                    return true;
                 default:
-                    GuiWarnHandler(null, new Engine.StringEventArgs("Unrecognized file type: " + theExtension, null));
-                    break;
+                    // Not a reload file. Don't warn here; Window_Drop decides "unrecognized" once.
+                    return false;
             }
         }
 
@@ -505,14 +519,22 @@ namespace GUI
                     {
                         foreach (string file in Directory.EnumerateFiles(draggedFilePath, "*.*", SearchOption.AllDirectories))
                         {
-                            AddAFile(file);
-                            ReloadAFile(file);
+                            bool handledAsDatabase = AddAFile(file);
+                            bool handledAsReload = ReloadAFile(file);
+                            if (!handledAsDatabase && !handledAsReload)
+                            {
+                                WarnUnrecognizedDrop(file);
+                            }
                         }
                     }
                     else
                     {
-                        AddAFile(draggedFilePath);
-                        ReloadAFile(draggedFilePath);
+                        bool handledAsDatabase = AddAFile(draggedFilePath);
+                        bool handledAsReload = ReloadAFile(draggedFilePath);
+                        if (!handledAsDatabase && !handledAsReload)
+                        {
+                            WarnUnrecognizedDrop(draggedFilePath);
+                        }
                     }
                     dataGridProteinDatabases.CommitEdit(DataGridEditingUnit.Row, true);
                     dataGridProteinDatabases.Items.Refresh();
@@ -608,6 +630,14 @@ namespace GUI
 
             foreach (var parameterFile in ParametersObservableCollection)
             {
+                // Current runs save digestion parameters as structured TOML; deserialize directly.
+                if (System.IO.Path.GetExtension(parameterFile.FilePath).ToLowerInvariant() == ".toml")
+                {
+                    loadedParams = RunParameters.FromToml(parameterFile.FilePath);
+                    continue;
+                }
+
+                // Legacy fallback: parse the older human-readable ".txt" parameters summary.
                 var fileData = File.ReadAllLines(parameterFile.FilePath);
                 List<string> proteaseNames = new();
                 int missedCleavages = 0;
