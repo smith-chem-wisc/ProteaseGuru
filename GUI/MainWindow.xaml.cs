@@ -771,8 +771,20 @@ namespace GUI
                             pflyDetectability = parsedDetectability;
                         }
 
+                        // Handle PFly probabilities - columns 19-22 (may be missing in older files)
+                        (double NotDetectable, double LowDetectability, double IntermediateDetectability, double HighDetectability)? pflyProbabilities = null;
+                        if (info.Length > 22)
+                        {
+                            pflyProbabilities = (
+                                Convert.ToDouble(info[19]),
+                                Convert.ToDouble(info[20]),
+                                Convert.ToDouble(info[21]),
+                                Convert.ToDouble(info[22])
+                            );
+                        }
+
                         InSilicoPep pep = new InSilicoPep(baseSeq, fullSeq, previousAA, nextAA, unique, hydrophobicity, electrophoreticMobility,
-                            chronologerRetentionTime, pflyDetectability, length, molecularWeight, database, protein, proteinName, start, end, protease);
+                            chronologerRetentionTime, pflyDetectability, length, molecularWeight, database, protein, proteinName, start, end, protease, pflyProbabilities);
                         pep.UniqueAllDbs = uniqueAll;
                         pep.SeqOnlyInThisDb = oneDb;
                         allpeptides.Add(pep);
