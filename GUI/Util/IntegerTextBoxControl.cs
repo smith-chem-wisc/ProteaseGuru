@@ -6,9 +6,16 @@ namespace GUI
 {
     /// <summary>
     /// This text box requires input text to be integer only.
+    /// Supports LowerBound and UpperBound with automatic clamping.
     /// </summary>
     public class IntegerTextBoxControl : TextBox
     {
+        public IntegerTextBoxControl()
+        {
+            HorizontalContentAlignment = HorizontalAlignment.Center;
+            VerticalContentAlignment = VerticalAlignment.Center;
+        }
+
         public static readonly DependencyProperty AllowNegativeProperty =
             DependencyProperty.Register(
                 nameof(AllowNegative),
@@ -16,16 +23,36 @@ namespace GUI
                 typeof(IntegerTextBoxControl),
                 new PropertyMetadata(false));
 
+        public static readonly DependencyProperty LowerBoundProperty =
+            DependencyProperty.Register(
+                nameof(LowerBound),
+                typeof(int),
+                typeof(IntegerTextBoxControl),
+                new PropertyMetadata(int.MinValue));
+
+        public static readonly DependencyProperty UpperBoundProperty =
+            DependencyProperty.Register(
+                nameof(UpperBound),
+                typeof(int),
+                typeof(IntegerTextBoxControl),
+                new PropertyMetadata(int.MaxValue));
+
         public bool AllowNegative
         {
             get => (bool)GetValue(AllowNegativeProperty);
             set => SetValue(AllowNegativeProperty, value);
         }
 
-        public IntegerTextBoxControl()
+        public int LowerBound
         {
-            HorizontalContentAlignment = HorizontalAlignment.Center;
-            VerticalContentAlignment = VerticalAlignment.Center;
+            get => (int)GetValue(LowerBoundProperty);
+            set => SetValue(LowerBoundProperty, value);
+        }
+
+        public int UpperBound
+        {
+            get => (int)GetValue(UpperBoundProperty);
+            set => SetValue(UpperBoundProperty, value);
         }
 
         /// <summary>
@@ -54,7 +81,62 @@ namespace GUI
         }
 
         /// <summary>
-        /// Cursor is removed from text box on pressing Return
+        /// Clamps value changes that do not originate from the user actively typing — i.e. initial XAML
+        /// values, programmatic assignments, and binding-driven updates. While the control has keyboard
+        /// focus, clamping is deferred to commit time (OnLostKeyboardFocus) so partially-typed values
+        /// (e.g. "5" while typing "50" with LowerBound=10) are not rewritten mid-edit.
+        /// </summary>
+        protected override void OnTextChanged(TextChangedEventArgs e)
+        {
+            base.OnTextChanged(e);
+            if (!IsKeyboardFocused)
+                ClampToBounds();
+        }
+
+        /// <summary>
+        /// Clamps the committed value to [LowerBound, UpperBound] when the control loses focus.
+        /// Clamping happens on commit rather than on every keystroke so that partially-typed values
+        /// (e.g. "5" while typing "50" with LowerBound=10) are not rewritten mid-edit.
+        /// </summary>
+        protected override void OnLostKeyboardFocus(KeyboardFocusChangedEventArgs e)
+        {
+            base.OnLostKeyboardFocus(e);
+            ClampToBounds();
+        }
+
+        private void ClampToBounds()
+        {
+            if (string.IsNullOrEmpty(Text))
+                return;
+
+            if (int.TryParse(Text, out int value))
+            {
+                if (value < LowerBound)
+                    Text = LowerBound.ToString();
+                else if (value > UpperBound)
+                    Text = UpperBound.ToString();
+                return;
+            }
+
+            string trimmed = Text.Trim();
+            bool negative = trimmed.StartsWith("-");
+            string digits = negative ? trimmed.Substring(1) : trimmed;
+            if (IsAllDigits(digits))
+                Text = negative ? LowerBound.ToString() : UpperBound.ToString();
+        }
+
+        private static bool IsAllDigits(string s)
+        {
+            if (s.Length == 0)
+                return false;
+            foreach (char c in s)
+                if (!char.IsDigit(c))
+                    return false;
+            return true;
+        }
+
+        /// <summary>
+        /// Cursor is removed from text box on pressing Return (which triggers clamping via lost focus)
         /// </summary>
         /// <param name="e"></param>
         protected override void OnKeyDown(KeyEventArgs e)

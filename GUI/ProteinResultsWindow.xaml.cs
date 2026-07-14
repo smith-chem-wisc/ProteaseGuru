@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using Engine;
@@ -631,6 +632,136 @@ namespace GUI
                 }
                 fileCount++;
             }
+        }
+
+        #endregion
+
+        #region Spectral Library Export
+
+        /// <summary>
+        /// Opens the spectral library export options dialog
+        /// </summary>
+        private async void ExportSpectralLibrary(object sender, RoutedEventArgs e)
+        {
+            // Gather available proteases and proteins from the analyzer
+            var availableProteases = _analyzer.Proteases.ToList();
+            var availableProteins = _analyzer.ProteinAccessions.ToList();
+
+            // Get current selections to pre-populate the dialog
+            List<string>? currentProteases = SelectedProteases.Any() ? SelectedProteases : null;
+            string? currentProtein = SelectedProtein?.Protein.Accession;
+
+            // Show the options dialog with available data
+            var optionsWindow = new SpectralLibraryOptionsWindow(
+                availableProteases,
+                availableProteins,
+                currentProteases,
+                currentProtein
+            );
+
+            optionsWindow.Owner = Window.GetWindow(this);
+            optionsWindow.ShowDialog();
+
+            if (optionsWindow.DialogResultOk)
+            {
+                await ExecuteSpectralLibraryExportAsync(optionsWindow.ExportOptions);
+            }
+        }
+
+        /// <summary>
+        /// Executes the spectral library export based on user options
+        /// </summary>
+        private async Task ExecuteSpectralLibraryExportAsync(SpectralLibraryExportOptions options)
+        {
+            NotificationService.Instance.AddNotification("Starting spectral library export...", NotificationType.Information);
+            try
+            {
+                var saveDialog = new Microsoft.Win32.SaveFileDialog
+                {
+                    Filter = GetFileFilterForSpectralLibrary(options.OutputFormat),
+                    DefaultExt = GetDefaultExtensionForSpectralLibrary(options.OutputFormat),
+                    FileName = $"SpectralLibrary_{DateTime.Now:yyyyMMdd_HHmmss}"
+                };
+
+                if (saveDialog.ShowDialog() != true)
+                {
+                    return;
+                }
+
+                var peptidesToExport = GetPeptidesForSpectralLibraryExport(options);
+
+                if (!peptidesToExport.Any())
+                {
+                    NotificationService.Instance.AddNotification("No peptides found for the selected proteases and proteins. Export cancelled.", NotificationType.Error);
+                    return;
+                }
+
+                NotificationService.Instance.AddNotification($"Generating spectral library for {peptidesToExport.Count} peptides. This may take several minutes...", NotificationType.Information);
+
+                var generator = new SpectralLibraryGenerator(
+                    peptidesToExport,
+                    options,
+                    saveDialog.FileName);
+
+                Mouse.OverrideCursor = Cursors.Wait;
+                var result = await Task.Run(() => generator.GenerateLibrary());
+                Mouse.OverrideCursor = null;
+
+                NotificationService.Instance.AddNotification($"Spectral library generated with {result.Count} spectra. File saved to: {saveDialog.FileName}", NotificationType.Success);
+            }
+            catch (Exception ex)
+            {
+                Mouse.OverrideCursor = null;
+                NotificationService.Instance.AddNotification($"Error generating spectral library: {ex.Message}\n\n{ex.StackTrace}", NotificationType.Error);
+            }
+        }
+
+        /// <summary>
+        /// Gathers peptides for export based on user selections
+        /// </summary>
+        private List<InSilicoPep> GetPeptidesForSpectralLibraryExport(SpectralLibraryExportOptions options)
+        {
+            var peptides = new HashSet<InSilicoPep>(); 
+
+            // Get Protein objects from selected protein accessions
+            var selectedProteins = _analyzer.ProteinCoverageResults.Keys
+                .Where(p => options.SelectedProteins.Contains(p.Accession))
+                .ToList();
+
+            // Gather peptides for each protein-protease combination
+            foreach (var protein in selectedProteins)
+            {
+                foreach (var proteaseName in options.SelectedProteases)
+                {
+                    var proteinPeptides = _analyzer.GetPeptidesForProteinAndProtease(protein, proteaseName);
+                    peptides.UnionWith(proteinPeptides);
+                }
+            }
+            peptides = options.ExcludeUndetectablePeptides ? peptides.Where(p => p.PflyDetectability == true).ToHashSet()
+                : peptides;
+            return peptides.DistinctBy(p => p.FullSequence).ToList();
+        }
+
+        private string GetFileFilterForSpectralLibrary(string format)
+        {
+            return format switch
+            {
+                "SpectraST" => "SpectraST Files (*.sptxt)|*.sptxt",
+                "BiblioSpec" => "BiblioSpec Files (*.blib)|*.blib",
+                "MSP" => "MSP Files (*.msp)|*.msp",
+                "NIST" => "NIST MSP Files (*.msp)|*.msp",
+                _ => "All Files (*.*)|*.*"
+            };
+        }
+
+        private string GetDefaultExtensionForSpectralLibrary(string format)
+        {
+            return format switch
+            {
+                "SpectraST" => ".sptxt",
+                "BiblioSpec" => ".blib",
+                _ => ".msp"
+            };
         }
 
         #endregion
