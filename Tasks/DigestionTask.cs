@@ -273,7 +273,7 @@ namespace Tasks
                 hydrophobicityValues = BatchCalculateHydrophobicity(allPeptides);
                 mobilityValues = BatchCalculateElectrophoreticMobility(allPeptides);
                 retentionTimesChronologer = BatchCalculateRetentionTimesChronologer(allPeptides);
-                pflyDetectabilities = BatchCalculateDetectabilitiesPfly(allPeptides);
+                pflyDetectabilities = BatchCalculateDetectabilitiesPfly(allPeptides, userParams.DetectabilityThreshold);
             }
             else
             {
@@ -516,7 +516,7 @@ namespace Tasks
             return results;
         }
 
-        private bool?[] BatchCalculateDetectabilitiesPfly(List<PeptideWithSetModifications> peptides)
+        private bool?[] BatchCalculateDetectabilitiesPfly(List<PeptideWithSetModifications> peptides, double detectabilityThreshold)
         {
             if (peptides.Count == 0) return new bool?[0];
 
@@ -532,7 +532,7 @@ namespace Tasks
                     return new bool?[peptides.Count];
                 }
 
-                var predictedDetectability = results.Select(r => r.DetectabilityProbabilities.HasValue ? r.DetectabilityProbabilities.Value.NotDetectable < 0.5 : (bool?)null).ToArray();
+                var predictedDetectability = results.Select(r => r.DetectabilityProbabilities.HasValue ? (1.0 - r.DetectabilityProbabilities.Value.NotDetectable) >= detectabilityThreshold : (bool?)null).ToArray();
                 return predictedDetectability;
             }
             catch (Exception ex)
@@ -762,7 +762,7 @@ namespace Tasks
                 "Next Amino Acid", "Start Residue", "End Residue", "Length", "Molecular Weight",
                 "Protein Accession", "Protein Name", "Unique Peptide (in this database)",
                 "Unique Peptide (in all databases)", "Peptide sequence exclusive to this Database",
-                "Hydrophobicity", "Electrophoretic Mobility", "Chronologer Retention Time", "Pfly Detectability (>=0.5)");
+                "Hydrophobicity", "Electrophoretic Mobility", "Chronologer Retention Time", $"Pfly Detectability (>={userParams.DetectabilityThreshold})");
 
             var allPeptides = new List<InSilicoPep>();
 

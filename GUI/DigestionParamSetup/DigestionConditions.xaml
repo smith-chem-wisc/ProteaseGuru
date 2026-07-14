@@ -232,7 +232,7 @@
 
                         <!-- Max missed cleavages -->
                         <StackPanel Orientation="Horizontal" Margin="5 5 5 0" Grid.Row="0">
-                            <Label x:Name="maxMissedCleavagesLabel" Width="150">
+                            <Label x:Name="maxMissedCleavagesLabel" Width="185">
                                 <Label.Content>
                                     <Binding Converter="{StaticResource ProtTermConverter}"  Source="{x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}" Path ="IsRnaMode"
                                              ConverterParameter="Max Missed Cleavages:"/>
@@ -261,7 +261,7 @@
                         <!-- Min peptide lengths -->
                         <StackPanel Orientation="Horizontal" Margin="5 5 5 0" Grid.Row="1"
                                 Background="{StaticResource DataGridBackgroundColor}">
-                            <Label x:Name="lblMinPeptideLength" Width="150">
+                            <Label x:Name="lblMinPeptideLength" Width="185">
                                 <Label.Content>
                                     <Binding Converter="{StaticResource ProtTermConverter}"  Source="{x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}" Path ="IsRnaMode"
                                              ConverterParameter="Min Peptide Length:"/>
@@ -290,7 +290,7 @@
                         <!-- Max peptide lengths -->
                         <StackPanel Orientation="Horizontal" Margin="5 5 5 0" Grid.Row="2"
                                 Background="{StaticResource DataGridBackgroundColor}">
-                            <Label x:Name="lblMaxPeptideLength" Width="150">
+                            <Label x:Name="lblMaxPeptideLength" Width="185">
                                 <Label.Content>
                                     <Binding Converter="{StaticResource ProtTermConverter}"  Source="{x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}" Path ="IsRnaMode"
                                              ConverterParameter="Max Peptide Length:"/>
@@ -322,6 +322,7 @@
                           BorderBrush="{StaticResource BorderColor}">
                     <Grid Background="{StaticResource DataGridBackgroundColor}">
                         <Grid.RowDefinitions>
+                            <RowDefinition Height="*" />
                             <RowDefinition Height="*" />
                             <RowDefinition Height="*" />
                             <RowDefinition Height="*" />
@@ -415,7 +416,7 @@
                         <!-- Min peptide mass -->
                         <StackPanel Orientation="Horizontal" Margin="5 5 5 0" Grid.Row="3"
                                 Background="{StaticResource DataGridBackgroundColor}">
-                            <Label x:Name="lblMinPeptideMass" Width="150">
+                            <Label x:Name="lblMinPeptideMass" Width="185">
                                 <Label.Content>
                                     <Binding Converter="{StaticResource ProtTermConverter}"  Source="{x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}" Path ="IsRnaMode"
                                              ConverterParameter="Min Peptide Mass:"/>
@@ -442,7 +443,7 @@
                         <!-- Max peptide mass -->
                         <StackPanel Orientation="Horizontal" Margin="5 5 5 0" Grid.Row="4"
                                 Background="{StaticResource DataGridBackgroundColor}">
-                            <Label x:Name="lblMaxPeptideMass" Width="150">
+                            <Label x:Name="lblMaxPeptideMass" Width="185">
                                 <Label.Content>
                                     <Binding Converter="{StaticResource ProtTermConverter}"  Source="{x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}" Path ="IsRnaMode"
                                              ConverterParameter="Max Peptide Mass:"/>
@@ -464,6 +465,34 @@
                                     </TextBlock>
                                 </TextBox.ToolTip>
                             </local:IntegerTextBoxControl>
+                        </StackPanel>
+
+                        <!-- Detectability threshold -->
+                        <StackPanel Orientation="Horizontal" Margin="5 5 5 0" Grid.Row="5"
+                                Visibility="{Binding Source={x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}, Path=IsRnaMode, Converter={StaticResource CollapseOnRna}}"
+                                Background="{StaticResource DataGridBackgroundColor}">
+                            <Label x:Name="lblDetectabilityThreshold" Width="185">
+                                <Label.Content>
+                                    <Binding Converter="{StaticResource ProtTermConverter}"  Source="{x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}" Path ="IsRnaMode"
+                                             ConverterParameter="Detectability Threshold:"/>
+                                </Label.Content>
+                            </Label>
+                            <local:DoubleTextBoxControl x:Name="DetectabilityThresholdTextBox" 
+                                                     Text="{Binding DetectabilityThreshold, Mode=TwoWay}"
+                                                     Width="45" LowerBound="0" UpperBound="1">
+                                <TextBox.ToolTip>
+                                    <TextBlock>
+                                        <Run>
+                                            <Run.Text>
+                                                <Binding Path="IsRnaMode"
+                                                         Source="{x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}"
+                                                         Converter="{StaticResource ProtTermConverter}"
+                                                         ConverterParameter="Minimum PFly detectability probability (0-1) for a peptide to count as detectable. Default 0.5." />
+                                            </Run.Text>
+                                        </Run>
+                                    </TextBlock>
+                                </TextBox.ToolTip>
+                            </local:DoubleTextBoxControl>
                         </StackPanel>
                     </Grid>
                 </GroupBox>
