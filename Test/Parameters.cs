@@ -3,8 +3,8 @@ using System.ComponentModel;
 using System.IO;
 using System.Reflection;
 using Engine;
-using GuiFunctions;
 using NUnit.Framework;
+using ProteaseGuruGuiFunctions;
 using Tasks;
 
 namespace Test.GuiTests

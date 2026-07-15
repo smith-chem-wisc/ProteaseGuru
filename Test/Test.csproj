@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>Library</OutputType>
@@ -24,7 +24,7 @@
   
   <ItemGroup>
     <ProjectReference Include="..\Engine\Engine.csproj" />
-    <ProjectReference Include="..\GuiFunctions\GuiFunctions.csproj" />
+    <ProjectReference Include="..\ProteaseGuruGuiFunctions\ProteaseGuruGuiFunctions.csproj" />
     <ProjectReference Include="..\Tasks\Tasks.csproj" />
   </ItemGroup>
   

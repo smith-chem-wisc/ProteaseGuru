@@ -9,7 +9,7 @@
 		<owners>Rachel Miller, Nic Bollis, Peter Cruz Parrilla, Michael Shortreed</owners>
 		<license type="expression">LGPL-3.0-or-later</license>
 		<projectUrl>https://github.com/smith-chem-wisc/ProteaseGuru</projectUrl>
-		<icon>GUI/icons/proteaseGuru.png</icon>
+		<icon>ProteaseGuruGui/icons/proteaseGuru.png</icon>
 		<description>An in silico digestion tool for the planning of bottom-up proteomic experiments.</description>
 		<tags>Chemistry Spectrometry Proteomics</tags>
 		<dependencies>
@@ -47,19 +47,19 @@
 		<file src="Tasks\bin\x64\Release\net8.0\Tasks.dll" target="lib\net8.0" />
 
 		<!-- GuiFunctions project files -->
-		<file src="GuiFunctions\bin\x64\Release\net8.0\GuiFunctions.dll" target="lib\net8.0" />
-		<file src="GuiFunctions\bin\x64\Release\net8.0\GuiFunctions.dll" target="lib\net8.0-windows7.0" />
+		<file src="ProteaseGuruGuiFunctions\bin\x64\Release\net8.0\ProteaseGuruGuiFunctions.dll" target="lib\net8.0" />
+		<file src="ProteaseGuruGuiFunctions\bin\x64\Release\net8.0\ProteaseGuruGuiFunctions.dll" target="lib\net8.0-windows7.0" />
 
 		<!-- GUI project files -->
 		<file src="Tasks\bin\x64\Release\net8.0\Tasks.dll" target="lib\net8.0-windows7.0" />
 		<file src="Engine\bin\x64\Release\net8.0\Engine.dll" target="lib\net8.0-windows7.0" />
-		<file src="GUI\bin\x64\Release\net8.0-windows\GUI.dll" target="lib\net8.0-windows7.0" />
-		<file src="GUI\Icons\proteaseGuru.ico" target="lib\net8.0-windows7.0\Icons" />
-		<file src="GUI\Icons\proteaseGuru.png" target="GUI/icons/" />
+		<file src="ProteaseGuruGui\bin\x64\Release\net8.0-windows\ProteaseGuruGui.dll" target="lib\net8.0-windows7.0" />
+		<file src="ProteaseGuruGui\Icons\proteaseGuru.ico" target="lib\net8.0-windows7.0\Icons" />
+		<file src="ProteaseGuruGui\Icons\proteaseGuru.png" target="ProteaseGuruGui/icons/" />
 
-		<file src="GUI\Icons\MMnice.bmp" target="lib\net8.0-windows7.0\Icons" />
-		<file src="GUI\Twitter_Logo_Blue.bmp" target="lib\net8.0-windows7.0" />
-		<file src="GUI\youtube_20.bmp" target="lib\net8.0-windows7.0" />
+		<file src="ProteaseGuruGui\Icons\MMnice.bmp" target="lib\net8.0-windows7.0\Icons" />
+		<file src="ProteaseGuruGui\Twitter_Logo_Blue.bmp" target="lib\net8.0-windows7.0" />
+		<file src="ProteaseGuruGui\youtube_20.bmp" target="lib\net8.0-windows7.0" />
 
 		<!-- Example: add other output DLLs/resources as needed -->
 		<!-- <file src="OtherProject\bin\x64\Release\net8.0\OtherProject.dll" target="lib\net8.0" /> -->

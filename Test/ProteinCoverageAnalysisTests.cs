@@ -225,7 +225,7 @@ KEFTPPVQAAYQKVVAGVANALAHKYH";
                 }
             }
         }
-        
+
         [Test]
         public void IntegrationTest_HBB_HUMAN_VerifyPeptidePositions()
         {
