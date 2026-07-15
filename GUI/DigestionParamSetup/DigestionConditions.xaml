@@ -232,7 +232,7 @@
 
                         <!-- Max missed cleavages -->
                         <StackPanel Orientation="Horizontal" Margin="5 5 5 0" Grid.Row="0">
-                            <Label x:Name="maxMissedCleavagesLabel" Width="150">
+                            <Label x:Name="maxMissedCleavagesLabel" Width="185">
                                 <Label.Content>
                                     <Binding Converter="{StaticResource ProtTermConverter}"  Source="{x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}" Path ="IsRnaMode"
                                              ConverterParameter="Max Missed Cleavages:"/>
@@ -261,7 +261,7 @@
                         <!-- Min peptide lengths -->
                         <StackPanel Orientation="Horizontal" Margin="5 5 5 0" Grid.Row="1"
                                 Background="{StaticResource DataGridBackgroundColor}">
-                            <Label x:Name="lblMinPeptideLength" Width="150">
+                            <Label x:Name="lblMinPeptideLength" Width="185">
                                 <Label.Content>
                                     <Binding Converter="{StaticResource ProtTermConverter}"  Source="{x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}" Path ="IsRnaMode"
                                              ConverterParameter="Min Peptide Length:"/>
@@ -290,7 +290,7 @@
                         <!-- Max peptide lengths -->
                         <StackPanel Orientation="Horizontal" Margin="5 5 5 0" Grid.Row="2"
                                 Background="{StaticResource DataGridBackgroundColor}">
-                            <Label x:Name="lblMaxPeptideLength" Width="150">
+                            <Label x:Name="lblMaxPeptideLength" Width="185">
                                 <Label.Content>
                                     <Binding Converter="{StaticResource ProtTermConverter}"  Source="{x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}" Path ="IsRnaMode"
                                              ConverterParameter="Max Peptide Length:"/>
@@ -322,6 +322,7 @@
                           BorderBrush="{StaticResource BorderColor}">
                     <Grid Background="{StaticResource DataGridBackgroundColor}">
                         <Grid.RowDefinitions>
+                            <RowDefinition Height="*" />
                             <RowDefinition Height="*" />
                             <RowDefinition Height="*" />
                             <RowDefinition Height="*" />
@@ -416,7 +417,7 @@
                         <!-- Min peptide mass -->
                         <StackPanel Orientation="Horizontal" Margin="5 5 5 0" Grid.Row="3"
                                 Background="{StaticResource DataGridBackgroundColor}">
-                            <Label x:Name="lblMinPeptideMass" Width="150">
+                            <Label x:Name="lblMinPeptideMass" Width="185">
                                 <Label.Content>
                                     <Binding Converter="{StaticResource ProtTermConverter}"  Source="{x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}" Path ="IsRnaMode"
                                              ConverterParameter="Min Peptide Mass:"/>
@@ -443,7 +444,7 @@
                         <!-- Max peptide mass -->
                         <StackPanel Orientation="Horizontal" Margin="5 5 5 0" Grid.Row="4"
                                 Background="{StaticResource DataGridBackgroundColor}">
-                            <Label x:Name="lblMaxPeptideMass" Width="150">
+                            <Label x:Name="lblMaxPeptideMass" Width="185">
                                 <Label.Content>
                                     <Binding Converter="{StaticResource ProtTermConverter}"  Source="{x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}" Path ="IsRnaMode"
                                              ConverterParameter="Max Peptide Mass:"/>
@@ -467,23 +468,58 @@
                             </local:IntegerTextBoxControl>
                         </StackPanel>
 
-                        <!-- Max threads (machine setting; applies to the whole digestion run) -->
+                        <!-- Detectability threshold -->
                         <StackPanel Orientation="Horizontal" Margin="5 5 5 0" Grid.Row="5"
+                                Visibility="{Binding Source={x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}, Path=IsRnaMode, Converter={StaticResource CollapseOnRna}}"
                                 Background="{StaticResource DataGridBackgroundColor}">
-                            <Label x:Name="lblMaxThreads" Width="150" Content="Max Threads:" />
+                            <Label x:Name="lblDetectabilityThreshold" Width="185">
+                                <Label.Content>
+                                    <Binding Converter="{StaticResource ProtTermConverter}"  Source="{x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}" Path ="IsRnaMode"
+                                             ConverterParameter="Detectability Threshold:"/>
+                                </Label.Content>
+                            </Label>
+                            <local:DoubleTextBoxControl x:Name="DetectabilityThresholdTextBox"
+                                                     Text="{Binding DetectabilityThreshold, Mode=TwoWay}"
+                                                     Width="45" LowerBound="0" UpperBound="1">
+                                <TextBox.ToolTip>
+                                    <TextBlock>
+                                        <Run>
+                                            <Run.Text>
+                                                <Binding Path="IsRnaMode"
+                                                         Source="{x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}"
+                                                         Converter="{StaticResource ProtTermConverter}"
+                                                         ConverterParameter="Minimum PFly detectability probability (0-1) for a peptide to count as detectable. Default 0.5." />
+                                            </Run.Text>
+                                        </Run>
+                                    </TextBlock>
+                                </TextBox.ToolTip>
+                            </local:DoubleTextBoxControl>
+                        </StackPanel>
+
+                        <!-- Max threads (machine setting; applies to the whole digestion run) -->
+                        <StackPanel Orientation="Horizontal" Margin="5 5 5 0" Grid.Row="6"
+                                Background="{StaticResource DataGridBackgroundColor}">
+
+                            <!-- Label and TextBlock Stack -->
+                            <StackPanel Orientation="Horizontal" Width="185"
+                                Background="{StaticResource DataGridBackgroundColor}">
+                                <Label x:Name="lblMaxThreads" Content="Max Threads:" />
+                                <TextBlock VerticalAlignment="Center" FontSize="12"
+                                            Foreground="{StaticResource TextColor1}"
+                                            Text="{Binding Source={x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}, Path=MaxAvailableThreads, Mode=OneWay, StringFormat='({0} Max)'}" />
+                            </StackPanel>
+
+                            <!-- TextBox Input -->
                             <local:IntegerTextBoxControl x:Name="MaxThreadsTextBox"
-                                                     Text="{Binding Source={x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}, Path=MaxThreads, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
-                                                     AllowNegative="False" LowerBound="1"
-                                                     UpperBound="{Binding Source={x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}, Path=MaxAvailableThreads, Mode=OneWay}"
-                                                     Width="45">
+                                                    Text="{Binding Source={x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}, Path=MaxThreads, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
+                                                    AllowNegative="False" LowerBound="1"
+                                                    UpperBound="{Binding Source={x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}, Path=MaxAvailableThreads, Mode=OneWay}"
+                                                    Width="45">
                                 <TextBox.ToolTip>
                                     <TextBlock Text="Maximum CPU threads used during in silico digestion. Defaults to all available cores."
-                                               ToolTipService.ShowDuration="999999" ToolTipService.InitialShowDelay="500" />
+                                            ToolTipService.ShowDuration="999999" ToolTipService.InitialShowDelay="500" />
                                 </TextBox.ToolTip>
                             </local:IntegerTextBoxControl>
-                            <TextBlock VerticalAlignment="Center" Margin="6,0,0,0" FontSize="12"
-                                       Foreground="{StaticResource TextColor1}"
-                                       Text="{Binding Source={x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}, Path=MaxAvailableThreads, Mode=OneWay, StringFormat='Max: {0}'}" />
                         </StackPanel>
                     </Grid>
                 </GroupBox>

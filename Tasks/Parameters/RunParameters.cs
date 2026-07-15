@@ -7,6 +7,7 @@ public class RunParameters : ParameterBaseClass<RunParameters>, IEquatable<RunPa
     public bool TreatModifiedPeptidesAsDifferent { get; set; } = false;
     public int MinPeptideMassAllowed { get; set; } = -1;
     public int MaxPeptideMassAllowed { get; set; } = -1;
+    public double DetectabilityThreshold { get; set; } = 0.5;
     public List<ProteaseSpecificParameters> ProteaseSpecificParameters { get; set; } = new();
 
     public RunParameters Clone()
@@ -17,6 +18,7 @@ public class RunParameters : ParameterBaseClass<RunParameters>, IEquatable<RunPa
             TreatModifiedPeptidesAsDifferent = this.TreatModifiedPeptidesAsDifferent,
             MinPeptideMassAllowed = this.MinPeptideMassAllowed,
             MaxPeptideMassAllowed = this.MaxPeptideMassAllowed,
+            DetectabilityThreshold = this.DetectabilityThreshold,
             ProteaseSpecificParameters = this.ProteaseSpecificParameters.Select(p => p.Clone()).ToList()
         };
     }
@@ -25,7 +27,7 @@ public class RunParameters : ParameterBaseClass<RunParameters>, IEquatable<RunPa
     {
         if (other is null) return false;
         if (ReferenceEquals(this, other)) return true;
-        return TreatModifiedPeptidesAsDifferent == other.TreatModifiedPeptidesAsDifferent && MinPeptideMassAllowed == other.MinPeptideMassAllowed && MaxPeptideMassAllowed == other.MaxPeptideMassAllowed && ProteaseSpecificParameters.SequenceEqual(other.ProteaseSpecificParameters);
+        return TreatModifiedPeptidesAsDifferent == other.TreatModifiedPeptidesAsDifferent && MinPeptideMassAllowed == other.MinPeptideMassAllowed && MaxPeptideMassAllowed == other.MaxPeptideMassAllowed && DetectabilityThreshold == other.DetectabilityThreshold && ProteaseSpecificParameters.SequenceEqual(other.ProteaseSpecificParameters);
     }
 
     public override bool Equals(object? obj)
@@ -38,6 +40,6 @@ public class RunParameters : ParameterBaseClass<RunParameters>, IEquatable<RunPa
 
     public override int GetHashCode()
     {
-        return HashCode.Combine(TreatModifiedPeptidesAsDifferent, MinPeptideMassAllowed, MaxPeptideMassAllowed, ProteaseSpecificParameters);
+        return HashCode.Combine(TreatModifiedPeptidesAsDifferent, MinPeptideMassAllowed, MaxPeptideMassAllowed, DetectabilityThreshold, ProteaseSpecificParameters);
     }
 }

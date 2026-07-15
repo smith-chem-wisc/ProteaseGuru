@@ -93,6 +93,7 @@ public class DigestionConditionsSetupViewModel : BaseViewModel
         OnPropertyChanged(nameof(MaxLength));
         OnPropertyChanged(nameof(MinPeptideMass));
         OnPropertyChanged(nameof(MaxPeptideMass));
+        OnPropertyChanged(nameof(DetectabilityThreshold));
         OnPropertyChanged(nameof(TreatModifiedPeptidesAsDifferent));
     }
 
@@ -159,6 +160,16 @@ public class DigestionConditionsSetupViewModel : BaseViewModel
         {
             Parameters.MaxPeptideMassAllowed = value;
             OnPropertyChanged(nameof(MaxPeptideMass));
+        }
+    }
+
+    public double DetectabilityThreshold
+    {
+        get => Parameters.DetectabilityThreshold;
+        set
+        {
+            Parameters.DetectabilityThreshold = value;
+            OnPropertyChanged(nameof(DetectabilityThreshold));
         }
     }
 
@@ -264,6 +275,7 @@ public class DigestionConditionsSetupViewModel : BaseViewModel
         MaxLength = 50;
         MinPeptideMass = -1;
         MaxPeptideMass = -1;
+        DetectabilityThreshold = 0.5;
         TreatModifiedPeptidesAsDifferent = false;
         ApplyFixedCarbamidomethylation = false;
         ApplyVariableOxidation = false;
