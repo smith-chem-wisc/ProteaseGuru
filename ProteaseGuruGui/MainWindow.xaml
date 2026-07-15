@@ -11,7 +11,7 @@
         Icon="proteaseGuru.ico"
         Title="{Binding Source={x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}, Path=MainWindowTitle}"
         Closing="MainWindow_Closing"
-        Height="600" Width="1300">
+        Height="650" Width="1300">
     <Window.Resources>
         <ResourceDictionary>
 
@@ -303,24 +303,24 @@
                 </Style.Triggers>
             </Style>
 
-            <!--Wide gap spacer between Individual Protein Analysis and Load Previous Results-->
-            <Style x:Key="SpacerTabItemStyle" TargetType="TabItem">
+            <!--Non-interactive section label that groups the sidebar tabs (e.g. "Set up", "Results")-->
+            <Style x:Key="GroupHeaderTabItemStyle" TargetType="TabItem">
                 <Setter Property="Background" Value="{StaticResource SideBarMainColor}"/>
-                <Setter Property="BorderBrush" Value="{StaticResource AccentColor}"/>
+                <Setter Property="Focusable" Value="False"/>
+                <Setter Property="IsHitTestVisible" Value="False"/>
+                <Setter Property="Foreground" Value="#B7BBC2"/>
+                <Setter Property="FontSize" Value="14"/>
                 <Setter Property="Template">
                     <Setter.Value>
                         <ControlTemplate TargetType="TabItem">
-                            <Grid Height="40" Width="210" >
-                                <Border Name="Border" Margin="0,0,0,0" Background="Transparent"
-                                        BorderThickness="{TemplateBinding BorderThickness}" BorderBrush="{TemplateBinding BorderBrush}">
-                                    <ContentPresenter 
-                                        x:Name="ContentSite" 
-                                        VerticalAlignment="Center"
-                                        HorizontalAlignment="Left"
-                                        ContentSource="Header" Margin="10,2,10,2"
-                                        RecognizesAccessKey="True">
-                                    </ContentPresenter>
-                                </Border>
+                            <Grid Height="30" Width="210" Background="{TemplateBinding Background}">
+                                <StackPanel Orientation="Vertical" VerticalAlignment="Bottom" Margin="5,0,10,0">
+                                    <TextBlock Text="{TemplateBinding Header}"
+                                               Foreground="{TemplateBinding Foreground}"
+                                               FontSize="{TemplateBinding FontSize}"
+                                               FontWeight="Normal"/>
+                                    <Border Height="1" Background="#57575D" Margin="0,2,0,0"/>
+                                </StackPanel>
                             </Grid>
                         </ControlTemplate>
                     </Setter.Value>
@@ -331,7 +331,6 @@
                 <Style.Triggers>
                     <DataTrigger Binding="{Binding Source={x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}, Path=IsRnaMode}" Value="True">
                         <Setter Property="Background" Value="{StaticResource RnaSideBarMainColor}"/>
-                        <Setter Property="BorderBrush" Value="{StaticResource RnaSideBarMainColor}"/>
                     </DataTrigger>
                 </Style.Triggers>
             </Style>
@@ -371,20 +370,21 @@
 
             <!-- ═══════════════════════════════════════
                  SIDEBAR ORDER:
-                  1.  About
-                  2.  Databases
-                  3.  Individual Protein Analysis
-                      [wide gap]
-                  4.  Load Previous Results
-                  5.  Digestion Conditions
-                  6.  Run
-                  7.  Results Summary
-                  8.  Protein Search
-                  9.  Histograms
-                  10. Help
+                  About
+                  ── Set up ──
+                  Databases
+                  Digestion Conditions
+                  Run
+                  ── Results ──
+                  Load Previous Results
+                  Results Summary
+                  Protein Search
+                  Histograms
+                  Individual Protein Analysis
+                  Help
                  ═══════════════════════════════════════ -->
 
-            <!-- 1. About -->
+            <!-- About -->
             <TabItem Header="About" Style="{StaticResource TabItemStyle}">
                 <Grid  Background="{StaticResource DataGridBackgroundColor}" Margin="-2 -5 0 16">
                     <Grid.RowDefinitions>
@@ -505,7 +505,10 @@
                 </Grid>
             </TabItem>
 
-            <!-- 2. Databases -->
+            <!-- Set up (group header) -->
+            <TabItem Header="Set up" Style="{StaticResource GroupHeaderTabItemStyle}" />
+
+            <!-- Databases -->
             <TabItem Header="Databases" Style="{StaticResource TabItemStyle}">
                 <Grid Style="{StaticResource PageGridStyle}" Margin="-2 -5 0 16">
                     <Grid.RowDefinitions>
@@ -575,19 +578,115 @@
 
             </TabItem>
 
-            <!-- 3. Individual Protein Analysis -->
-            <TabItem Style="{StaticResource TabItemStyle}" Name="IndividualProteinAnalyzerTab">
+            <!-- Digestion Conditions -->
+            <TabItem Style="{StaticResource TabItemStyle}">
                 <TabItem.Header>
                     <Binding Converter="{StaticResource ProtTermConverter}"  Source="{x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}" Path ="IsRnaMode"
-                             ConverterParameter="Individual Protein Analysis"/>
+                             ConverterParameter="Digestion Conditions"/>
                 </TabItem.Header>
+                <local:DigestionConditions x:Name="digestionConditionsControl" />
             </TabItem>
 
-            <!-- Wide gap between Individual Protein Analysis and Load Previous Results -->
-            <TabItem IsHitTestVisible="False" Style="{StaticResource SpacerTabItemStyle}">
+            <!-- Run -->
+            <TabItem Header="Run" Style="{StaticResource TabItemStyle}" Selector.Selected="OnRunTabSelection">
+                <Grid Style="{StaticResource PageGridStyle}"  Margin="-2 -5 0 16">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="50"/>
+                        <RowDefinition Height=" 50"/>
+                        <RowDefinition Height="2.7*" />
+                        <RowDefinition Height="1*" />
+                        <RowDefinition Height="2"/>
+                        <RowDefinition Height="50"/>
+                    </Grid.RowDefinitions>
+
+                    <!--Header label-->
+                    <Label Content="Run Summary" Grid.Row="0" Style="{StaticResource HeaderLabelStyle}" />
+
+                    <!--Detail text-->
+                    <TextBlock Grid.Row="1" Style="{StaticResource TextBlockStyle}">
+                        <Run>
+                            <Run.Text>
+                                <Binding Path="IsRnaMode"
+                                         Source="{x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}"
+                                         Converter="{StaticResource ProtTermConverter}"
+                                         ConverterParameter="Summary of the databases, proteases and conditions that will be used for analysis." />
+                            </Run.Text>
+                        </Run>
+                        <LineBreak/>
+                        If everything looks good, hit RUN!
+                    </TextBlock>
+
+
+                    <Grid Grid.Row="2" Background="{StaticResource BackgroundColor}" ScrollViewer.VerticalScrollBarVisibility="Auto">
+                        <TreeView BorderThickness="0" x:Name="RunSummaryTreeView" ItemsSource="{Binding}" DataContext="{x:Type local:RunSummaryForTreeView}" Grid.ColumnSpan="4">
+                            <TreeView.Resources>
+                                <HierarchicalDataTemplate DataType="{x:Type local:RunSummaryForTreeView}" ItemsSource="{Binding Summary}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="{Binding DisplayName}" />
+                                    </StackPanel>
+                                </HierarchicalDataTemplate>
+                                <HierarchicalDataTemplate DataType="{x:Type local:CategorySummaryForTreeView}" ItemsSource="{Binding Summary}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="{Binding DisplayName}"/>
+                                    </StackPanel>
+                                </HierarchicalDataTemplate>
+                                <DataTemplate DataType="{x:Type local:FeatureForTreeView}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="{Binding DisplayName}" />
+                                    </StackPanel>
+                                </DataTemplate>
+                            </TreeView.Resources>
+                            <TreeView.ItemContainerStyle>
+                                <Style TargetType="TreeViewItem">
+                                    <Setter Property="IsExpanded" Value="{Binding Expanded}"/>
+                                </Style>
+                            </TreeView.ItemContainerStyle>
+                        </TreeView>
+                    </Grid>
+
+                    <Grid Grid.Row="3" Background="{StaticResource DataGridBackgroundColor}" >
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="20"/>
+                            <RowDefinition Height="5"/>
+                            <RowDefinition Height="40"/>
+                            <RowDefinition Height="35"/>
+                        </Grid.RowDefinitions>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width=".75*"/>
+                            <ColumnDefinition Width=".25*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <DockPanel Margin="5" Grid.Row="2" LastChildFill="True" Grid.ColumnSpan="2">
+                            <Button x:Name="OpenOutputFolderButton" Content="Open" Width="40" DockPanel.Dock="Right" Click="OpenOutputFolder_Click" Style="{StaticResource ImportantButtonStyle}"></Button>
+                            <Label Content="Output Folder:"/>
+                            <TextBox x:Name="OutputFolderTextBox"/>
+                        </DockPanel>
+                        <Button x:Name="RunTaskButton" Content="Run!" Click="RunTaskButton_Click" FontSize="24" Grid.Row="3" Grid.ColumnSpan="2" Width="400" Style="{StaticResource ImportantButtonStyle}"/>
+
+                    </Grid>
+                    <Grid Grid.Row="5" Background="{StaticResource BackgroundColor}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition></ColumnDefinition>
+                            <ColumnDefinition></ColumnDefinition>
+                        </Grid.ColumnDefinitions>
+                        <StatusBar Name="RunStatus" Grid.Column="0" Background="{StaticResource BackgroundColor}">
+                            <StatusBarItem>
+                                <TextBlock Style="{StaticResource StatusBarTextStyle}">Running:</TextBlock>
+                            </StatusBarItem>
+                        </StatusBar>
+                        <DockPanel Margin="5" Grid.Column="1">
+                            <Label Content="Run Status:" Style="{StaticResource ProgressTextStyle}" VerticalContentAlignment="Center" />
+                            <TextBox x:Name="ProgressTextBox"  Background="{StaticResource BackgroundColor}" VerticalContentAlignment="Center" BorderThickness="0"/>
+                        </DockPanel>
+
+                    </Grid>
+                </Grid>
             </TabItem>
 
-            <!-- 4. Load Previous Results -->
+            <!-- Results (group header) -->
+            <TabItem Header="Results" Style="{StaticResource GroupHeaderTabItemStyle}" />
+
+            <!-- Load Previous Results -->
             <TabItem Header="Load Previous Results" Style="{StaticResource TabItemStyle}" Name="LoadTab" >
                 <Grid Style="{StaticResource PageGridStyle}" Margin="-2 -5 -2 16">
                     <Grid.RowDefinitions>
@@ -724,112 +823,7 @@
                 </Grid>
             </TabItem>
 
-            <!-- 5. Digestion Conditions -->
-            <TabItem Style="{StaticResource TabItemStyle}">
-                <TabItem.Header>
-                    <Binding Converter="{StaticResource ProtTermConverter}"  Source="{x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}" Path ="IsRnaMode"
-                             ConverterParameter="Digestion Conditions"/>
-                </TabItem.Header>
-                <local:DigestionConditions x:Name="digestionConditionsControl" />
-            </TabItem>
-
-            <!-- 6. Run -->
-            <TabItem Header="Run" Style="{StaticResource TabItemStyle}" Selector.Selected="OnRunTabSelection">
-                <Grid Style="{StaticResource PageGridStyle}"  Margin="-2 -5 0 16">
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="50"/>
-                        <RowDefinition Height=" 50"/>
-                        <RowDefinition Height="2.7*" />
-                        <RowDefinition Height="1*" />
-                        <RowDefinition Height="2"/>
-                        <RowDefinition Height="50"/>
-                    </Grid.RowDefinitions>
-
-                    <!--Header label-->
-                    <Label Content="Run Summary" Grid.Row="0" Style="{StaticResource HeaderLabelStyle}" />
-
-                    <!--Detail text-->
-                    <TextBlock Grid.Row="1" Style="{StaticResource TextBlockStyle}">
-                        <Run>
-                            <Run.Text>
-                                <Binding Path="IsRnaMode"
-                                         Source="{x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}"
-                                         Converter="{StaticResource ProtTermConverter}"
-                                         ConverterParameter="Summary of the databases, proteases and conditions that will be used for analysis." />
-                            </Run.Text>
-                        </Run>
-                        <LineBreak/>
-                        If everything looks good, hit RUN!
-                    </TextBlock>
-
-
-                    <Grid Grid.Row="2" Background="{StaticResource BackgroundColor}" ScrollViewer.VerticalScrollBarVisibility="Auto">
-                        <TreeView BorderThickness="0" x:Name="RunSummaryTreeView" ItemsSource="{Binding}" DataContext="{x:Type local:RunSummaryForTreeView}" Grid.ColumnSpan="4">
-                            <TreeView.Resources>
-                                <HierarchicalDataTemplate DataType="{x:Type local:RunSummaryForTreeView}" ItemsSource="{Binding Summary}">
-                                    <StackPanel Orientation="Horizontal">
-                                        <TextBlock Text="{Binding DisplayName}" />
-                                    </StackPanel>
-                                </HierarchicalDataTemplate>
-                                <HierarchicalDataTemplate DataType="{x:Type local:CategorySummaryForTreeView}" ItemsSource="{Binding Summary}">
-                                    <StackPanel Orientation="Horizontal">
-                                        <TextBlock Text="{Binding DisplayName}"/>
-                                    </StackPanel>
-                                </HierarchicalDataTemplate>
-                                <DataTemplate DataType="{x:Type local:FeatureForTreeView}">
-                                    <StackPanel Orientation="Horizontal">
-                                        <TextBlock Text="{Binding DisplayName}" />
-                                    </StackPanel>
-                                </DataTemplate>
-                            </TreeView.Resources>
-                            <TreeView.ItemContainerStyle>
-                                <Style TargetType="TreeViewItem">
-                                    <Setter Property="IsExpanded" Value="{Binding Expanded}"/>
-                                </Style>
-                            </TreeView.ItemContainerStyle>
-                        </TreeView>
-                    </Grid>
-
-                    <Grid Grid.Row="3" Background="{StaticResource DataGridBackgroundColor}" >
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="20"/>
-                            <RowDefinition Height="5"/>
-                            <RowDefinition Height="40"/>
-                            <RowDefinition Height="35"/>
-                        </Grid.RowDefinitions>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width=".75*"/>
-                            <ColumnDefinition Width=".25*"/>
-                        </Grid.ColumnDefinitions>
-
-                        <DockPanel Margin="5" Grid.Row="2" LastChildFill="True" Grid.ColumnSpan="2">
-                            <Button x:Name="OpenOutputFolderButton" Content="Open" Width="40" DockPanel.Dock="Right" Click="OpenOutputFolder_Click" Style="{StaticResource ImportantButtonStyle}"></Button>
-                            <Label Content="Output Folder:"/>
-                            <TextBox x:Name="OutputFolderTextBox"/>
-                        </DockPanel>
-                        <Button x:Name="RunTaskButton" Content="Run!" Click="RunTaskButton_Click" FontSize="24" Grid.Row="3" Grid.ColumnSpan="2" Width="400" Style="{StaticResource ImportantButtonStyle}"/>
-
-                    </Grid>
-                    <Grid Grid.Row="5" Background="{StaticResource BackgroundColor}">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition></ColumnDefinition>
-                            <ColumnDefinition></ColumnDefinition>
-                        </Grid.ColumnDefinitions>
-                        <StatusBar Name="RunStatus" Grid.Column="0" Background="{StaticResource BackgroundColor}">
-                            <StatusBarItem>
-                                <TextBlock Style="{StaticResource StatusBarTextStyle}">Running:</TextBlock>
-                            </StatusBarItem>
-                        </StatusBar>
-                        <DockPanel Margin="5" Grid.Column="1">
-                            <Label Content="Run Status:" Style="{StaticResource ProgressTextStyle}" VerticalContentAlignment="Center" />
-                            <TextBox x:Name="ProgressTextBox"  Background="{StaticResource BackgroundColor}" VerticalContentAlignment="Center" BorderThickness="0"/>
-                        </DockPanel>
-
-                    </Grid>
-                </Grid>
-            </TabItem>
-
-            <!-- 7. Results Summary -->
+            <!-- Results Summary -->
             <TabItem Style="{StaticResource TabItemStyle}" Name="AllResultsTab">
                 <TabItem.Header>
                     <Binding Converter="{StaticResource ProtTermConverter}"  Source="{x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}" Path ="IsRnaMode"
@@ -838,7 +832,7 @@
                 <local:AllResultsWindow/>
             </TabItem>
 
-            <!-- 8. Protein Search -->
+            <!-- Protein Search -->
             <TabItem Name="ProteinCovMap" Style="{StaticResource TabItemStyle}">
                 <TabItem.Header>
                     <Binding Converter="{StaticResource ProtTermConverter}"  Source="{x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}" Path ="IsRnaMode"
@@ -847,7 +841,7 @@
                 <local:ProteinResultsWindow/>
             </TabItem>
 
-            <!-- 9. Histograms -->
+            <!-- Histograms -->
             <TabItem Style="{StaticResource TabItemStyle}" Name="AllHistogramsTab">
                 <TabItem.Header>
                     <Binding Converter="{StaticResource ProtTermConverter}"  Source="{x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}" Path ="IsRnaMode"
@@ -856,7 +850,15 @@
                 <local:HistogramWindow/>
             </TabItem>
 
-            <!-- 10. Help -->
+            <!-- Individual Protein Analysis -->
+            <TabItem Style="{StaticResource TabItemStyle}" Name="IndividualProteinAnalyzerTab">
+                <TabItem.Header>
+                    <Binding Converter="{StaticResource ProtTermConverter}"  Source="{x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}" Path ="IsRnaMode"
+                             ConverterParameter="Individual Protein Analysis"/>
+                </TabItem.Header>
+            </TabItem>
+
+            <!-- Help -->
             <TabItem Header="Help" Style="{StaticResource TabItemStyle}">
                 <Grid Style="{StaticResource PageGridStyle}">
                     <Grid.RowDefinitions>
