@@ -496,7 +496,7 @@
                             </local:DoubleTextBoxControl>
                         </StackPanel>
 
-                        <!-- Max threads (machine setting; applies to the whole digestion run) -->
+                        <!-- Max threads for digestion -->
                         <StackPanel Orientation="Horizontal" Margin="5 5 5 0" Grid.Row="6"
                                 Background="{StaticResource DataGridBackgroundColor}">
 

@@ -953,10 +953,17 @@ namespace GUI
             FeatureForTreeView modPep = new FeatureForTreeView($"Treat Modified {GlobalVariables.AnalyteType.GetUniqueFormLabel()}s as Different {GlobalVariables.AnalyteType.GetUniqueFormLabel()}s: " + ParametersViewModel.TreatModifiedPeptidesAsDifferent);           
             FeatureForTreeView minMass = new FeatureForTreeView($"Minimum {GlobalVariables.AnalyteType.GetUniqueFormLabel()} Mass: " + ParametersViewModel.MinPeptideMass);                    
             FeatureForTreeView maxMass = new FeatureForTreeView($"Maximum {GlobalVariables.AnalyteType.GetUniqueFormLabel()} Mass: " + ParametersViewModel.MaxPeptideMass);
-            
+            FeatureForTreeView maxThreads = new FeatureForTreeView($"Number of Threads: " + GuiGlobalParamsViewModel.Instance.MaxThreads);
+            FeatureForTreeView detectabilityThreshold = new FeatureForTreeView($"Detectability Threshold: " + ParametersViewModel.DetectabilityThreshold);
+
             parameters.Summary.Add(modPep);
             parameters.Summary.Add(minMass);
             parameters.Summary.Add(maxMass);
+            parameters.Summary.Add(maxThreads);
+            if (!GuiGlobalParamsViewModel.Instance.IsRnaMode)
+            {
+                parameters.Summary.Add(detectabilityThreshold);
+            }
             runSummary.Summary.Add(parameters);
 
             SummaryForTreeViewObservableCollection.Add(runSummary);
