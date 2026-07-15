@@ -33,7 +33,7 @@ public class ProteaseSpecificParameters : IEquatable<ProteaseSpecificParameters>
     public List<Modification> FixedMods { get; set; }
     public List<Modification> VariableMods { get; set; }
 
-    public ProteaseSpecificParameters Clone() => new(DigestionParams.Clone(), [..FixedMods], [..VariableMods]);
+    public ProteaseSpecificParameters Clone() => new(DigestionParams.Clone(), [.. FixedMods], [.. VariableMods]);
 
     public bool Equals(ProteaseSpecificParameters? other)
     {

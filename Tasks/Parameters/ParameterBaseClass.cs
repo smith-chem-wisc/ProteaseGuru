@@ -13,7 +13,7 @@ public abstract class ParameterBaseClass<TParameters> where TParameters : Parame
         Toml.WriteFile(parameters, filePath, TomlConfig);
     }
 
-    public static TParameters FromToml(string filePath) 
+    public static TParameters FromToml(string filePath)
     {
         TParameters parametersFromFile = Toml.ReadFile<TParameters>(filePath, TomlConfig);
 

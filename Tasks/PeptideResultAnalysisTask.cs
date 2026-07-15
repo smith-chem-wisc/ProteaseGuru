@@ -1,14 +1,14 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Text;
 
 namespace Tasks
 {
-    public class PeptideResultAnalysisTask: ProteaseGuruTask
+    public class PeptideResultAnalysisTask : ProteaseGuruTask
     {
         public PeptideResultAnalysisTask() : base(MyTask.PeptideResultsAnalysis)
-        { 
-        
+        {
+
         }
 
         public override MyTaskResults RunSpecific(string OutputFolder, List<DbForDigestion> dbFileList)
