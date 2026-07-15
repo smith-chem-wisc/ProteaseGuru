@@ -44,6 +44,28 @@ public class GuiGlobalParamsViewModel : BaseViewModel
 
     #endregion
 
+    #region Threads
+
+    // Upper bound for the thread-count setting: the machine's logical processor count.
+    public int MaxAvailableThreads => Environment.ProcessorCount;
+
+    // Maximum CPU threads used during digestion. Bridges the persisted setting to the runtime
+    // budget read by DigestionTask (GlobalVariables.MaxThreads). Clamped to [1, MaxAvailableThreads]
+    // so a value saved on a higher-core machine is brought into range when loaded elsewhere.
+    public int MaxThreads
+    {
+        get => _current.MaxThreads;
+        set
+        {
+            int clamped = Math.Clamp(value, 1, MaxAvailableThreads);
+            _current.MaxThreads = clamped;
+            GlobalVariables.MaxThreads = clamped;
+            OnPropertyChanged(nameof(MaxThreads));
+        }
+    }
+
+    #endregion
+
     #region IO
 
     // Load from disk
@@ -68,6 +90,7 @@ public class GuiGlobalParamsViewModel : BaseViewModel
         }
 
         IsRnaMode = _current.IsRnaMode;
+        MaxThreads = _current.MaxThreads;
         _loaded = _current.Clone();
     }
 

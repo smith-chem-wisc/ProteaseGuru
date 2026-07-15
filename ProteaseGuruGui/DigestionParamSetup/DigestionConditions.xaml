@@ -328,6 +328,7 @@
                             <RowDefinition Height="*" />
                             <RowDefinition Height="*" />
                             <RowDefinition Height="*" />
+                            <RowDefinition Height="*" />
                         </Grid.RowDefinitions>
                         <StackPanel Orientation="Horizontal" Margin="5 5 5 0"  Grid.Row="0"
                                 Background="{StaticResource DataGridBackgroundColor}">
@@ -477,7 +478,7 @@
                                              ConverterParameter="Detectability Threshold:"/>
                                 </Label.Content>
                             </Label>
-                            <local:DoubleTextBoxControl x:Name="DetectabilityThresholdTextBox" 
+                            <local:DoubleTextBoxControl x:Name="DetectabilityThresholdTextBox"
                                                      Text="{Binding DetectabilityThreshold, Mode=TwoWay}"
                                                      Width="45" LowerBound="0" UpperBound="1">
                                 <TextBox.ToolTip>
@@ -493,6 +494,32 @@
                                     </TextBlock>
                                 </TextBox.ToolTip>
                             </local:DoubleTextBoxControl>
+                        </StackPanel>
+
+                        <!-- Max threads for digestion -->
+                        <StackPanel Orientation="Horizontal" Margin="5 5 5 0" Grid.Row="6"
+                                Background="{StaticResource DataGridBackgroundColor}">
+
+                            <!-- Label and TextBlock Stack -->
+                            <StackPanel Orientation="Horizontal" Width="185"
+                                Background="{StaticResource DataGridBackgroundColor}">
+                                <Label x:Name="lblMaxThreads" Content="Max Threads:" />
+                                <TextBlock VerticalAlignment="Center" FontSize="12"
+                                            Foreground="{StaticResource TextColor1}"
+                                            Text="{Binding Source={x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}, Path=MaxAvailableThreads, Mode=OneWay, StringFormat='({0} Max)'}" />
+                            </StackPanel>
+
+                            <!-- TextBox Input -->
+                            <local:IntegerTextBoxControl x:Name="MaxThreadsTextBox"
+                                                    Text="{Binding Source={x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}, Path=MaxThreads, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
+                                                    AllowNegative="False" LowerBound="1"
+                                                    UpperBound="{Binding Source={x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}, Path=MaxAvailableThreads, Mode=OneWay}"
+                                                    Width="45">
+                                <TextBox.ToolTip>
+                                    <TextBlock Text="Maximum CPU threads used during in silico digestion. Defaults to all available cores."
+                                            ToolTipService.ShowDuration="999999" ToolTipService.InitialShowDelay="500" />
+                                </TextBox.ToolTip>
+                            </local:IntegerTextBoxControl>
                         </StackPanel>
                     </Grid>
                 </GroupBox>

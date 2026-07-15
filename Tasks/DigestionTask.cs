@@ -26,13 +26,14 @@ namespace Tasks
     {
         #region Parallelism Configuration
 
-        // Maximum concurrency for parallel operations
-        private static readonly int MaxConcurrency = Environment.ProcessorCount;
-
-        // Calculated parallelism limits to avoid oversubscription
-        // With 8 cores: OuterParallelism = 4, InnerParallelism = 2, total max = 4 * 2 = 8 threads
-        private static readonly int OuterParallelism = Math.Max(1, MaxConcurrency / 2);
-        private static readonly int InnerParallelism = Math.Max(1, MaxConcurrency / OuterParallelism);
+        // Databases are processed sequentially and each stage within a database (digestion and the
+        // per-peptide property calculations) parallelizes across all cores, so exactly one parallel
+        // region is active at a time. A single database therefore saturates the machine, without the
+        // nested oversubscription the old outer-by-database / inner=2 scheme caused on many-core hosts.
+        //
+        // Defaults to all cores, but is overridden by the user-configurable GlobalVariables.MaxThreads
+        // setting (persisted via GlobalParameters.MaxThreads / the GUI thread-count control).
+        private static int MaxConcurrency => Math.Max(1, GlobalVariables.MaxThreads);
 
         #endregion
 
@@ -82,44 +83,31 @@ namespace Tasks
                 AllPeptidesByProtease = new Dictionary<string, Dictionary<IBioPolymer, List<InSilicoPep>>>();
                 PeptideByFile = new Dictionary<string, Dictionary<string, Dictionary<IBioPolymer, List<InSilicoPep>>>>(dbFileList.Count);
 
-                // Use a thread-safe dictionary for parallel writes
-                var concurrentPeptideByFile = new ConcurrentDictionary<string, ConcurrentDictionary<string, Dictionary<IBioPolymer, List<InSilicoPep>>>>();
-                // Outer parallelism: limited to avoid oversubscription with inner parallel loops
-                var outerParallelOptions = new ParallelOptions
-                {
-                    MaxDegreeOfParallelism = OuterParallelism
-                };
-
-                // Process each database in parallel (limited)
-                Parallel.ForEach(dbFileList, outerParallelOptions, database =>
+                // Process databases sequentially. The work inside each database (digestion and the
+                // property calculations) parallelizes across all cores, so one database already
+                // saturates the machine. Sequential databases also avoid running multiple batched
+                // libtorch (Chronologer) passes concurrently, which would oversubscribe Torch's
+                // own intra-op thread pool.
+                foreach (var database in dbFileList)
                 {
                     Status("Loading Protein Database(s)...", "loadDbs");
                     List<IBioPolymer> proteins = LoadBioPolymers(database.FilePath);
 
-                    // Initialize the entry for this database
-                    var proteaseResults = new ConcurrentDictionary<string, Dictionary<IBioPolymer, List<InSilicoPep>>>();
-                    concurrentPeptideByFile[database.FileName] = proteaseResults;
+                    var proteaseResults = new Dictionary<string, Dictionary<IBioPolymer, List<InSilicoPep>>>();
 
-                    string databaseFileName = database.FileName;
-                    List<IBioPolymer> proteinsForDigestion = proteins;
-
-                    // Process each protease sequentially within each database
-                    // (inner batch methods handle parallelism)
+                    // Each protease is processed sequentially; DigestDatabase and the batch property
+                    // calculations each parallelize internally across all cores.
                     foreach (var protease in DigestionParameters.ProteaseSpecificParameters)
                     {
                         Status("Digesting Proteins...", "digestDbs");
 
-                        var peptides = DigestDatabase(proteinsForDigestion, protease, DigestionParameters);
-                        var peptidesFormatted = DeterminePeptideStatus(databaseFileName, peptides, DigestionParameters);
+                        var peptides = DigestDatabase(proteins, protease, DigestionParameters);
+                        var peptidesFormatted = DeterminePeptideStatus(database.FileName, peptides, DigestionParameters);
 
                         proteaseResults[protease.DigestionAgentName] = peptidesFormatted;
                     }
-                });
 
-                // Convert concurrent dictionary back to regular dictionary
-                foreach (var dbEntry in concurrentPeptideByFile)
-                {
-                    PeptideByFile[dbEntry.Key] = new Dictionary<string, Dictionary<IBioPolymer, List<InSilicoPep>>>(dbEntry.Value);
+                    PeptideByFile[database.FileName] = proteaseResults;
                 }
 
                 Status("Writing Peptide Output...", "peptides");
@@ -163,11 +151,13 @@ namespace Tasks
         {
             List<IBioPolymer> bioPolymerList;
 
+            // Parse the database with all available threads (databases load sequentially now, so the
+            // loader gets the full core budget instead of the previous single thread).
             if (GlobalVariables.AnalyteType == AnalyteType.Oligo)
-                bioPolymerList = LoadOligoDb(dbPath, out Dictionary<string, Modification> unknownModification)
+                bioPolymerList = LoadOligoDb(dbPath, out Dictionary<string, Modification> unknownModification, MaxConcurrency)
                     .Cast<IBioPolymer>().ToList();
             else
-                bioPolymerList = LoadProteinDb(dbPath, out Dictionary<string, Modification> unknownModifications)
+                bioPolymerList = LoadProteinDb(dbPath, out Dictionary<string, Modification> unknownModifications, MaxConcurrency)
                     .Cast<IBioPolymer>().ToList();
 
             if (!bioPolymerList.Any())
@@ -276,41 +266,53 @@ namespace Tasks
             // ============================================================================
             // PHASE 2: Batch calculate hydrophobicity, electrophoretic mobility,
             //          retention times, and detectabilities.
+            //
+            // All four are pure functions of a peptide's full sequence, so we compute them
+            // once per DISTINCT full sequence and fan the results back out in PHASE 3. On
+            // typical proteomes ~2-3x of peptides are duplicate sequences (the same sequence
+            // digested from multiple proteins or overlapping missed-cleavage windows), so
+            // deduplicating avoids that much redundant work in the expensive predictors.
             // ============================================================================
 
             var allPeptides = allWithSetMods.Where(p => p is PeptideWithSetModifications).Cast<PeptideWithSetModifications>().ToList();
 
-            double[] hydrophobicityValues = new double[allPeptides.Count];
-            double[] mobilityValues = new double[allPeptides.Count];
-            double[] retentionTimesChronologer = new double[allPeptides.Count];
-            bool?[] pflyDetectabilities = new bool?[allPeptides.Count];
-            var pflyProbabilities = new (double NotDetectable, double LowDetectability, double IntermediateDetectability, double HighDetectability)?[allPeptides.Count];
+            var hydrophobicityBySequence = new Dictionary<string, double>();
+            var mobilityBySequence = new Dictionary<string, double>();
+            var retentionTimeBySequence = new Dictionary<string, double>();
+            var detectabilityBySequence = new Dictionary<string, bool?>();
+            var detectabilityProbabilityBySequence = new Dictionary<string, (double NotDetectable, double LowDetectability, double IntermediateDetectability, double HighDetectability)?>();
 
-            if (allPeptides.Count == allWithSetMods.Count)
+            // These properties only apply to peptides. If any analyte is a non-peptide
+            // (e.g. an oligo), leave the maps empty so PHASE 3 falls back to NaN/null sentinels
+            // (so downstream code can distinguish "not calculated" from "calculated as zero").
+            if (allPeptides.Count == allWithSetMods.Count && allPeptides.Count > 0)
             {
-                hydrophobicityValues = BatchCalculateHydrophobicity(allPeptides);
-                mobilityValues = BatchCalculateElectrophoreticMobility(allPeptides);
-                retentionTimesChronologer = BatchCalculateRetentionTimesChronologer(allPeptides);
-                (pflyDetectabilities, pflyProbabilities) = BatchCalculateDetectabilitiesPfly(allPeptides, userParams.DetectabilityThreshold);
-            }
-            else
-            {
-                // Non-peptide analytes (e.g., oligos) get sentinel NaN/null values
-                // instead of zeroed defaults so downstream code can distinguish
-                // "not calculated" from "calculated as zero".
-                hydrophobicityValues = Enumerable.Repeat(double.NaN, allWithSetMods.Count).ToArray();
-                mobilityValues = Enumerable.Repeat(double.NaN, allWithSetMods.Count).ToArray();
-                retentionTimesChronologer = Enumerable.Repeat(double.NaN, allWithSetMods.Count).ToArray();
-                pflyDetectabilities = new bool?[allWithSetMods.Count];
-                pflyProbabilities = new (double, double, double, double)?[allWithSetMods.Count];
-            }
+                var distinctPeptides = new List<PeptideWithSetModifications>();
+                var seenSequences = new HashSet<string>();
+                foreach (var peptide in allPeptides)
+                {
+                    if (seenSequences.Add(peptide.FullSequence))
+                        distinctPeptides.Add(peptide);
+                }
 
-            // Create a lookup from peptide to its calculated values
-            var peptideToIndex = new Dictionary<IBioPolymerWithSetMods, int>();
+                // PFly detectability is a remote Koina (network) call; start it concurrently so its
+                // latency overlaps the CPU-bound local property calculations below.
+                var pflyTask = Task.Run(() => BatchCalculateDetectabilitiesPfly(distinctPeptides, userParams.DetectabilityThreshold));
 
-            for (int i = 0; i < allWithSetMods.Count; i++)
-            {
-                peptideToIndex[allWithSetMods[i]] = i;
+                double[] hydrophobicityValues = BatchCalculateHydrophobicity(distinctPeptides);
+                double[] mobilityValues = BatchCalculateElectrophoreticMobility(distinctPeptides);
+                double[] retentionTimesChronologer = BatchCalculateRetentionTimesChronologer(distinctPeptides);
+                var (pflyDetectabilities, pflyProbabilities) = pflyTask.GetAwaiter().GetResult();
+
+                for (int i = 0; i < distinctPeptides.Count; i++)
+                {
+                    string sequence = distinctPeptides[i].FullSequence;
+                    hydrophobicityBySequence[sequence] = hydrophobicityValues[i];
+                    mobilityBySequence[sequence] = mobilityValues[i];
+                    retentionTimeBySequence[sequence] = retentionTimesChronologer[i];
+                    detectabilityBySequence[sequence] = pflyDetectabilities[i];
+                    detectabilityProbabilityBySequence[sequence] = pflyProbabilities[i];
+                }
             }
 
             // PHASE 3: Build InSilicoPep objects
@@ -327,7 +329,15 @@ namespace Tasks
                         ? peptide.FullSequence
                         : peptide.BaseSequence;
                     bool isUnique = uniquenessLookup[sequenceKey];
-                    int index = peptideToIndex[peptide];
+
+                    // Properties were computed once per distinct full sequence in PHASE 2.
+                    // Non-peptide analytes aren't in the maps and fall back to NaN/null.
+                    string fullSequence = peptide.FullSequence;
+                    double hydrophobicity = hydrophobicityBySequence.TryGetValue(fullSequence, out var hydro) ? hydro : double.NaN;
+                    double mobility = mobilityBySequence.TryGetValue(fullSequence, out var mob) ? mob : double.NaN;
+                    double retentionTime = retentionTimeBySequence.TryGetValue(fullSequence, out var rt) ? rt : double.NaN;
+                    bool? detectability = detectabilityBySequence.TryGetValue(fullSequence, out var det) ? det : null;
+                    var detectabilityProbability = detectabilityProbabilityBySequence.TryGetValue(fullSequence, out var prob) ? prob : null;
 
                     var inSilicoPep = new InSilicoPep(
                         peptide.BaseSequence,
@@ -335,10 +345,10 @@ namespace Tasks
                         peptide.PreviousResidue,
                         peptide.NextResidue,
                         isUnique,
-                        hydrophobicityValues[index],
-                        mobilityValues[index],
-                        retentionTimesChronologer[index],
-                        pflyDetectabilities[index],
+                        hydrophobicity,
+                        mobility,
+                        retentionTime,
+                        detectability,
                         peptide.Length,
                         peptide.MonoisotopicMass,
                         databaseName,
@@ -347,7 +357,7 @@ namespace Tasks
                         peptide.OneBasedStartResidue,
                         peptide.OneBasedEndResidue,
                         peptide.DigestionParams.DigestionAgent.Name,
-                        pflyProbabilities[index]
+                        detectabilityProbability
                     );
 
                     peptideList.Add(inSilicoPep);
@@ -370,7 +380,7 @@ namespace Tasks
         #region Chronologer Predictor Pool Management
 
         /// <summary>
-        /// Initializes the predictor pool with a fixed size based on InnerParallelism.
+        /// Initializes the predictor pool with a single predictor (work is sequential per protease).
         /// Called once per run, not resizable to avoid race conditions.
         /// </summary>
         private void InitializePredictorPool()
@@ -382,11 +392,9 @@ namespace Tasks
 
                 _predictorPool = new ConcurrentBag<ChronologerRetentionTimePredictor>();
 
-                // Pre-create predictors sequentially to avoid file access conflicts
-                for (int i = 0; i < InnerParallelism; i++)
-                {
-                    _predictorPool.Add(new ChronologerRetentionTimePredictor());
-                }
+                // One predictor suffices: databases and proteases run sequentially, and the batched
+                // Chronologer call uses a single instance (it parallelizes encoding internally).
+                _predictorPool.Add(new ChronologerRetentionTimePredictor());
             }
         }
 
@@ -439,7 +447,7 @@ namespace Tasks
         }
 
         /// <summary>
-        /// Initializes the PFly detectability model pool with a fixed size based on InnerParallelism.
+        /// Initializes the PFly detectability model pool with a single model (work is sequential per protease).
         /// </summary>
         private void InitializePflyPool()
         {
@@ -450,10 +458,8 @@ namespace Tasks
 
                 _pflyPool = new ConcurrentBag<PFly2024FineTuned>();
 
-                for (int i = 0; i < InnerParallelism; i++)
-                {
-                    _pflyPool.Add(new PFly2024FineTuned());
-                }
+                // One model suffices: detectability is requested once per protease, sequentially.
+                _pflyPool.Add(new PFly2024FineTuned());
             }
         }
 
@@ -514,24 +520,29 @@ namespace Tasks
             var results = new double[peptides.Count];
             if (peptides.Count == 0) return results;
 
-            int threadCount = Math.Min(InnerParallelism, peptides.Count);
-
-            Parallel.For(0, peptides.Count,
-                new ParallelOptions { MaxDegreeOfParallelism = threadCount },
-                i =>
+            // Use Chronologer's batched API: it encodes the peptides in parallel and runs the
+            // Torch model in large batched forward passes (one model lock per chunk) rather than
+            // a locked batch-of-1 call per peptide. This is dramatically faster for many peptides.
+            // Results come back in input order; -1 is the sentinel for peptides it couldn't predict.
+            var predictor = CheckoutPredictor();
+            try
+            {
+                var predictions = predictor.PredictRetentionTimeEquivalents(peptides, maxThreads: MaxConcurrency);
+                if (predictions.Count != peptides.Count)
                 {
-                    var predictor = CheckoutPredictor();
-                    try
-                    {
-                        var result = predictor.PredictRetentionTimeEquivalent(peptides[i], out _);
-                        results[i] = result ?? -1;
-                    }
-                    finally
-                    {
-                        ReturnPredictor(predictor);
-                    }
+                    Warn($"Chronologer returned {predictions.Count} retention times for {peptides.Count} peptides. Falling back to -1.");
+                    Array.Fill(results, -1.0);
+                    return results;
                 }
-            );
+                for (int i = 0; i < results.Length; i++)
+                {
+                    results[i] = predictions[i].PredictedValue ?? -1;
+                }
+            }
+            finally
+            {
+                ReturnPredictor(predictor);
+            }
 
             return results;
         }
@@ -575,7 +586,7 @@ namespace Tasks
             var results = new double[peptides.Count];
             if (peptides.Count == 0) return results;
 
-            var options = new ParallelOptions { MaxDegreeOfParallelism = InnerParallelism };
+            var options = new ParallelOptions { MaxDegreeOfParallelism = MaxConcurrency };
 
             Parallel.For(0, peptides.Count,
                 options,
@@ -599,7 +610,7 @@ namespace Tasks
             var results = new double[peptides.Count];
             if (peptides.Count == 0) return results;
 
-            var options = new ParallelOptions { MaxDegreeOfParallelism = InnerParallelism };
+            var options = new ParallelOptions { MaxDegreeOfParallelism = MaxConcurrency };
 
             Parallel.For(0, peptides.Count, options, i =>
             {
@@ -743,8 +754,9 @@ namespace Tasks
         protected Dictionary<IBioPolymer, List<IBioPolymerWithSetMods>> DigestDatabase(List<IBioPolymer> proteinsFromDatabase,
             ProteaseSpecificParameters proteaseSpecificParameters, RunParameters globalDigestionParams)
         {
-            Dictionary<IBioPolymer, List<IBioPolymerWithSetMods>> peptidesForProtein = new(proteinsFromDatabase.Count);
-            foreach (var protein in proteinsFromDatabase)
+            // Each protein digests independently, so fan the proteins across all cores.
+            var digestedByProtein = new ConcurrentDictionary<IBioPolymer, List<IBioPolymerWithSetMods>>();
+            Parallel.ForEach(proteinsFromDatabase, new ParallelOptions { MaxDegreeOfParallelism = MaxConcurrency }, protein =>
             {
                 List<IBioPolymerWithSetMods> peptides = protein.Digest(proteaseSpecificParameters.DigestionParams, proteaseSpecificParameters.FixedMods, proteaseSpecificParameters.VariableMods).ToList();
                 if (globalDigestionParams.MaxPeptideMassAllowed != -1 && globalDigestionParams.MinPeptideMassAllowed != -1)
@@ -759,7 +771,14 @@ namespace Tasks
                 {
                     peptides = peptides.Where(p => p.MonoisotopicMass <= globalDigestionParams.MaxPeptideMassAllowed).ToList();
                 }
-                peptidesForProtein.Add(protein, peptides);
+                digestedByProtein[protein] = peptides;
+            });
+
+            // Rebuild in the original protein order so output stays deterministic.
+            Dictionary<IBioPolymer, List<IBioPolymerWithSetMods>> peptidesForProtein = new(proteinsFromDatabase.Count);
+            foreach (var protein in proteinsFromDatabase)
+            {
+                peptidesForProtein.Add(protein, digestedByProtein[protein]);
             }
 
             return peptidesForProtein;
@@ -870,7 +889,9 @@ namespace Tasks
             for (int fileCount = 1; fileCount <= numberOfFiles; fileCount++)
             {
                 string outputPath = Path.Combine(filePath, $"ProteaseGuruPeptides_{fileCount}.tsv");
-                using var output = new StreamWriter(outputPath);
+                // Large write buffer (UTF-8 without BOM, matching the default so the reload parser's
+                // header check still passes) to cut flush overhead when writing many peptides.
+                using var output = new StreamWriter(outputPath, false, new System.Text.UTF8Encoding(false), 1 << 20);
                 output.WriteLine(header);
 
                 int peptidesWrittenToThisFile = 0;
