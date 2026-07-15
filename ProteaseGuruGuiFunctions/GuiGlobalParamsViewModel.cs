@@ -75,7 +75,10 @@ public class GuiGlobalParamsViewModel : BaseViewModel
         {
             try
             {
-                _current = Toml.ReadFile<GlobalParameters>(GlobalParameters.DefaultGlobalParametersFilePath);
+                // Read through the configured reader so it stays symmetric with the write path
+                // (ToToml), which uses TomlConfig; a bare read can't deserialize the custom-converted
+                // types and would silently reset settings via the catch below.
+                _current = GlobalParameters.FromToml(GlobalParameters.DefaultGlobalParametersFilePath);
             }
             catch
             {
