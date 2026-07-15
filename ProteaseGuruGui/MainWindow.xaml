@@ -11,7 +11,7 @@
         Icon="proteaseGuru.ico"
         Title="{Binding Source={x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}, Path=MainWindowTitle}"
         Closing="MainWindow_Closing"
-        Height="600" Width="1300">
+        Height="650" Width="1300">
     <Window.Resources>
         <ResourceDictionary>
 
