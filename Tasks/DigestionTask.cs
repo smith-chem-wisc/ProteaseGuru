@@ -291,7 +291,7 @@ namespace Tasks
                 hydrophobicityValues = BatchCalculateHydrophobicity(allPeptides);
                 mobilityValues = BatchCalculateElectrophoreticMobility(allPeptides);
                 retentionTimesChronologer = BatchCalculateRetentionTimesChronologer(allPeptides);
-                (pflyDetectabilities, pflyProbabilities) = BatchCalculateDetectabilitiesPfly(allPeptides);
+                (pflyDetectabilities, pflyProbabilities) = BatchCalculateDetectabilitiesPfly(allPeptides, userParams.DetectabilityThreshold);
             }
             else
             {
@@ -536,7 +536,7 @@ namespace Tasks
             return results;
         }
 
-        private (bool?[] Detectabilities, (double NotDetectable, double LowDetectability, double IntermediateDetectability, double HighDetectability)?[] Probabilities) BatchCalculateDetectabilitiesPfly(List<PeptideWithSetModifications> peptides)
+        private (bool?[] Detectabilities, (double NotDetectable, double LowDetectability, double IntermediateDetectability, double HighDetectability)?[] Probabilities) BatchCalculateDetectabilitiesPfly(List<PeptideWithSetModifications> peptides, double detectabilityThreshold)
         {
             if (peptides.Count == 0) return (Array.Empty<bool?>(), Array.Empty<(double, double, double, double)?>());
 
@@ -552,7 +552,7 @@ namespace Tasks
                     return (new bool?[peptides.Count], new (double, double, double, double)?[peptides.Count]);
                 }
 
-                var predictedDetectability = results.Select(r => r.DetectabilityProbabilities.HasValue ? r.DetectabilityProbabilities.Value.NotDetectable < 0.5 : (bool?)null).ToArray();
+                var predictedDetectability = results.Select(r => r.DetectabilityProbabilities.HasValue ? (1.0 - r.DetectabilityProbabilities.Value.NotDetectable) >= detectabilityThreshold : (bool?)null).ToArray();
                 var predictedProbabilities = results.Select(r => r.DetectabilityProbabilities).ToArray();
                 return (predictedDetectability, predictedProbabilities);
             }
@@ -783,7 +783,7 @@ namespace Tasks
                 "Next Amino Acid", "Start Residue", "End Residue", "Length", "Molecular Weight",
                 "Protein Accession", "Protein Name", "Unique Peptide (in this database)",
                 "Unique Peptide (in all databases)", "Peptide sequence exclusive to this Database",
-                "Hydrophobicity", "Electrophoretic Mobility", "Chronologer Retention Time", "Pfly Detectability (>=0.5)",
+                "Hydrophobicity", "Electrophoretic Mobility", "Chronologer Retention Time", $"Pfly Detectability (>={userParams.DetectabilityThreshold:0.0##})",
                 "PFly NotDetectable Prob", "PFly Low Detectability Prob", "PFly Intermediate Detectability Prob", "PFly High Detectability Prob");
 
             var allPeptides = new List<InSilicoPep>();
