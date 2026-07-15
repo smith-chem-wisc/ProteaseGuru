@@ -10,7 +10,7 @@ using Proteomics.ProteolyticDigestion;
 namespace Tasks
 {
     public class MyTaskResults
-    {        
+    {
         public TimeSpan Time;
 
         private readonly List<string> resultTexts;
@@ -55,7 +55,7 @@ namespace Tasks
                         }
                     }
                 }
-                
+
                 foreach (var protease in allDatabasePeptidesByProtease)
                 {
                     Dictionary<string, List<InSilicoPep>> peptidesToProteins = new();
@@ -93,10 +93,10 @@ namespace Tasks
                                 sharedDetectableCount = sharedDetectableCount + 1;
                             }
 
-                        }                       
+                        }
 
                     }
-                    
+
                     foreach (var pep in uniquePeptidesInOneDb)
                     {
                         peptidesInOneDb.AddRange(pep.Value);
@@ -130,7 +130,7 @@ namespace Tasks
                             var distinctByBaseSequence = db.Value.DistinctBy(p => p.BaseSequence);
                             summary.Add("Number of Peptide Sequences Found Only in " + db.Key + ": " + distinctByBaseSequence.Count() + $" ({distinctByBaseSequence.Count(p => p.PflyDetectability == true)})");
                         }
-                        
+
                     }
 
                     peptidesForSingleDatabase = null;
@@ -146,7 +146,7 @@ namespace Tasks
                     foreach (var protease in database.Value)
                     {
                         string prot = protease.Key;
-                       summary.Add("    "+prot + " Results:");
+                        summary.Add("    " + prot + " Results:");
                         var allPeptides = protease.Value.SelectMany(p => p.Value).ToList();
                         var allDetectable = allPeptides.Where(p => p.PflyDetectability == true).ToList();
                         if (parameters.TreatModifiedPeptidesAsDifferent)
@@ -175,7 +175,7 @@ namespace Tasks
                     foreach (var protease in database.Value)
                     {
                         string prot = protease.Key;
-                        summary.Add("   "+prot + " Results:");
+                        summary.Add("   " + prot + " Results:");
                         var allPeptides = protease.Value.SelectMany(p => p.Value).ToList();
                         var allDetectable = allPeptides.Where(p => p.PflyDetectability == true).ToList();
                         if (parameters.TreatModifiedPeptidesAsDifferent)
@@ -194,8 +194,8 @@ namespace Tasks
                         }
                         allPeptides = null;
                     }
-                }                
-            }            
+                }
+            }
             return summary;
         }
 
@@ -203,7 +203,7 @@ namespace Tasks
         {
             StringBuilder sb = new StringBuilder();
             sb.AppendLine("Digestion Task Summary: ");
-            sb.AppendLine();            
+            sb.AppendLine();
             sb.AppendLine("--------------------------------------------------");
             foreach (var line in writeSummary(PeptideByFile))
             {

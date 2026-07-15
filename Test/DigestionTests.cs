@@ -1,9 +1,9 @@
 using Engine;
 using NUnit.Framework;
+using Omics.Digestion;
 using Proteomics.ProteolyticDigestion;
 using Tasks;
 using UsefulProteomicsDatabases;
-using Omics.Digestion;
 
 namespace Test
 {

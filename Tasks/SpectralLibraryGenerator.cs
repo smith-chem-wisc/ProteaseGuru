@@ -66,11 +66,11 @@ namespace Tasks
             switch (_options.PredictionModel)
             {
                 case "Prosit2020IntensityHCD":
-                     model = new Prosit2020IntensityHCD(
-                        modHandlingMode: _options.ExcludeIncompatiblePeptides ? SequenceConversionHandlingMode.ReturnNull : SequenceConversionHandlingMode.RemoveIncompatibleElements,
-                        parameterHandlingMode: IncompatibleParameterHandlingMode.ReturnNull,
-                        fragmentIonMappingMode: FragmentIonMappingMode.MapToValidatedFullSequence
-                        );
+                    model = new Prosit2020IntensityHCD(
+                       modHandlingMode: _options.ExcludeIncompatiblePeptides ? SequenceConversionHandlingMode.ReturnNull : SequenceConversionHandlingMode.RemoveIncompatibleElements,
+                       parameterHandlingMode: IncompatibleParameterHandlingMode.ReturnNull,
+                       fragmentIonMappingMode: FragmentIonMappingMode.MapToValidatedFullSequence
+                       );
                     break;
                 default:
                     throw new NotSupportedException($"Prediction model {_options.PredictionModel} is not supported.");
@@ -129,7 +129,7 @@ namespace Tasks
                 List<MatchedFragmentIon> fragmentIons = new();
 
                 List<Product> theoreticalProducts = new();
-                peptide.Fragment(MassSpectrometry.DissociationType.HCD, FragmentationTerminus.Both, theoreticalProducts); 
+                peptide.Fragment(MassSpectrometry.DissociationType.HCD, FragmentationTerminus.Both, theoreticalProducts);
                 Dictionary<string, double> predictionAnnotationIntensityLookup = new();
                 Dictionary<string, Product> tpLookup = theoreticalProducts.ToDictionary(tp => tp.Annotation);
                 // DefaultIfEmpty guards against predictions whose fragments were all stripped upstream;

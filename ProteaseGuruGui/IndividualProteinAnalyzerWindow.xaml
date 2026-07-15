@@ -1,0 +1,345 @@
+<UserControl x:Class="ProteaseGuruGui.IndividualProteinAnalyzerWindow"
+xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             mc:Ignorable="d"
+             xmlns:gui="clr-namespace:ProteaseGuruGui"
+             xmlns:guiFunctions="clr-namespace:ProteaseGuruGuiFunctions;assembly=ProteaseGuruGuiFunctions"
+             d:DesignHeight="600" d:DesignWidth="1200">
+    <UserControl.Resources>
+
+        <gui:ProteinRnaTerminologyConverter x:Key="ProtTermConverter" />
+        <gui:CollapseOnRnaModeConverter x:Key="CollapseOnRna" />
+
+        <SolidColorBrush x:Key="BackgroundColor" Color="#D5D5D5" />
+        <SolidColorBrush x:Key="TextColor1" Color="#131313" />
+        <SolidColorBrush x:Key="AccentColor" Color="#F9690E" />
+        <SolidColorBrush x:Key="DataGridBackgroundColor" Color="#D5D5D5" />
+        <SolidColorBrush x:Key="BorderColor" Color="#444449" />
+
+        <Style x:Key="PageGridStyle" TargetType="Grid">
+            <Setter Property="Background" Value="{StaticResource BackgroundColor}"/>
+            <Setter Property="Margin" Value="-3,-2,-2,-2"/>
+        </Style>
+        <Style x:Key="ImportantButtonStyle" TargetType="Button">
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Width" Value="200"/>
+            <Setter Property="Background" Value="{StaticResource AccentColor}"/>
+            <Setter Property="Foreground" Value="{StaticResource TextColor1}"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}" BorderBrush="#131313" BorderThickness="1">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#f58c49"/>
+                    <Setter Property="BorderBrush" Value="#131313"/>
+                    <Setter Property="Foreground" Value="#131313"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="HeaderLabelStyle" TargetType="Label">
+            <Setter Property="HorizontalAlignment" Value="Left"/>
+            <Setter Property="FontSize" Value="26"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Foreground" Value="{StaticResource TextColor1}"/>
+            <Setter Property="Margin" Value="10,5,0,0"/>
+        </Style>
+        <Style x:Key="TextBlockStyle" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{StaticResource TextColor1}"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="TextWrapping" Value="WrapWithOverflow" />
+            <Setter Property="Margin" Value="15,0,10,0"/>
+        </Style>
+        <Style x:Key="InternalGridStyle" TargetType="Grid">
+            <Setter Property="Background" Value="{StaticResource BackgroundColor}"/>
+            <Setter Property="Margin" Value="0,0,0,0"/>
+        </Style>
+        <Style x:Key="ListBoxItem" TargetType="ListBoxItem">
+            <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ListBoxItem">
+                        <Border Name="Border" Padding="2" SnapsToDevicePixels="True">
+                            <ContentPresenter/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="Border" Property="Background" Value="#fdd8c1"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="SmallHeaderLabelStyle" TargetType="Label">
+            <Setter Property="HorizontalAlignment" Value="Left"/>
+            <Setter Property="FontSize" Value="15"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Foreground" Value="{StaticResource TextColor1}"/>
+            <Setter Property="Margin" Value="5,2,0,0"/>
+        </Style>
+        <Style x:Key="ModeToggleStyle" TargetType="RadioButton">
+            <Setter Property="Margin" Value="0,0,8,0"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="FontSize" Value="12"/>
+        </Style>
+    </UserControl.Resources>
+
+    <Grid Style="{StaticResource PageGridStyle}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="50"/>
+            <RowDefinition Height="30"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <Label Grid.Row="0" Style="{StaticResource HeaderLabelStyle}">
+            <Label.Content>
+                <Binding Converter="{StaticResource ProtTermConverter}" Source="{x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}" Path="IsRnaMode"
+                         ConverterParameter="Individual Protein Analyzer"/>
+            </Label.Content>
+        </Label>
+
+        <TextBlock Grid.Row="1" Style="{StaticResource TextBlockStyle}">
+            <Run>
+                <Run.Text>
+                    <Binding Path="IsRnaMode"
+                             Source="{x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}"
+                             Converter="{StaticResource ProtTermConverter}"
+                             ConverterParameter="Search for a specific protein accession to view its digestion results and sequence coverage map." />
+                </Run.Text>
+            </Run>
+        </TextBlock>
+
+        <Grid Grid.Row="2" Style="{StaticResource InternalGridStyle}">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="100"/>
+                <ColumnDefinition Width="3"/>
+                <ColumnDefinition Width="210"/>
+                <ColumnDefinition Width="3"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Column 0: Protein list -->
+            <Grid Grid.Column="0" Style="{StaticResource InternalGridStyle}">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <DockPanel Grid.Row="0" Background="{StaticResource DataGridBackgroundColor}">
+                    <Label Height="26" Padding="3,2,3,2" DockPanel.Dock="Left" FontSize="12">Search</Label>
+                    <TextBox Name="SearchTextBox" TextChanged="Search_TextChanged" DockPanel.Dock="Right"/>
+                </DockPanel>
+
+                <TextBlock Grid.Row="1"
+                           FontSize="13" FontWeight="Bold"
+                           Foreground="{StaticResource TextColor1}"
+                           Margin="5,3,0,2"
+                           LineHeight="16">
+                    <Run>
+                        <Run.Text>
+                            <Binding Path="IsRnaMode"
+                                     Source="{x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}"
+                                     Converter="{StaticResource ProtTermConverter}"
+                                     ConverterParameter="Protein&#x0a;Accessions" />
+                        </Run.Text>
+                    </Run>
+                </TextBlock>
+
+                <ListBox Grid.Row="2" Name="dataGridProteins" SelectionMode="Single"
+                         ItemContainerStyle="{StaticResource ListBoxItem}"
+                         SelectionChanged="proteins_SelectedCellsChanged"
+                         FontSize="12"/>
+            </Grid>
+
+            <GridSplitter Grid.Column="1" HorizontalAlignment="Center"
+                          Background="{StaticResource BackgroundColor}" Width="3"/>
+
+            <!-- Column 2: Protease Options -->
+            <DockPanel Grid.Column="2" Background="{StaticResource BackgroundColor}" LastChildFill="True">
+                <Label DockPanel.Dock="Top"
+                       Style="{StaticResource SmallHeaderLabelStyle}"
+                       HorizontalContentAlignment="Center">
+                    <Label.Content>
+                        <Binding Converter="{StaticResource ProtTermConverter}" Source="{x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}" Path="IsRnaMode"
+                                 ConverterParameter="Protease Options"/>
+                    </Label.Content>
+                </Label>
+                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                    <ItemsControl x:Name="ProteaseOptionsItemsControl">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <gui:ProteaseSpecificDigestionControl DisplayMode="{x:Static gui:ProteaseDisplayMode.Compact}"/>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+            </DockPanel>
+
+            <GridSplitter Grid.Column="3" HorizontalAlignment="Center"
+                          Background="{StaticResource BackgroundColor}" Width="3"/>
+
+            <!-- Column 4: Export panel + Coverage map -->
+            <Grid Grid.Column="4" Name="AllResultsGrid" Style="{StaticResource InternalGridStyle}">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="3"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <!-- Export Spectrum Library panel -->
+                <Border Grid.Row="0" BorderBrush="{StaticResource BorderColor}" BorderThickness="0,0,0,1"
+                        Background="{StaticResource BackgroundColor}" Padding="4,3,4,4"
+                        Visibility="{Binding Source={x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}, Path=IsRnaMode, Converter={StaticResource CollapseOnRna}}">
+                    
+                    <StackPanel Orientation="Vertical">
+
+                        <DockPanel LastChildFill="False">
+                            <Label DockPanel.Dock="Left"
+                                   Style="{StaticResource SmallHeaderLabelStyle}" Margin="0,0,0,0">
+                                <Label.Content>
+                                    <Binding Converter="{StaticResource ProtTermConverter}" Source="{x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}" Path="IsRnaMode"
+                                             ConverterParameter="Export Spectrum Library"/>
+                                </Label.Content>
+                            </Label>
+                            <Button x:Name="ExportSpectrumLibraryButton"
+                                    DockPanel.Dock="Right"
+                                    Style="{StaticResource ImportantButtonStyle}"
+                                    Width="170" Height="22"
+                                    Click="ExportSpectrumLibrary_Click">
+                                <Button.Content>
+                                    <Binding Converter="{StaticResource ProtTermConverter}" Source="{x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}" Path="IsRnaMode"
+                                             ConverterParameter="Export Spectrum Library"/>
+                                </Button.Content>
+                            </Button>
+                        </DockPanel>
+
+                        <StackPanel Orientation="Horizontal" Margin="4,2,0,0">
+                            <Label Content="NCE:" VerticalAlignment="Center" FontSize="12" Padding="0,0,3,0"/>
+                            <ComboBox x:Name="NceComboBox"
+                                      Width="48" Height="21" FontSize="12"
+                                      VerticalContentAlignment="Center"
+                                      ToolTip="Normalised Collision Energy — Prosit 2020 HCD calibrated values only."
+                                      Margin="0,0,10,0" SelectedIndex="3">
+                                <ComboBoxItem Content="20"/>
+                                <ComboBoxItem Content="23"/>
+                                <ComboBoxItem Content="25"/>
+                                <ComboBoxItem Content="28"/>
+                                <ComboBoxItem Content="30"/>
+                                <ComboBoxItem Content="35"/>
+                            </ComboBox>
+
+                            <Label Content="Charge states:" VerticalAlignment="Center" FontSize="12" Padding="0,0,4,0"/>
+                            <CheckBox x:Name="chk1" Content="1" VerticalAlignment="Center" Margin="0,0,5,0" FontSize="12"/>
+                            <CheckBox x:Name="chk2" Content="2" VerticalAlignment="Center" Margin="0,0,5,0" FontSize="12" IsChecked="True"/>
+                            <CheckBox x:Name="chk3" Content="3" VerticalAlignment="Center" Margin="0,0,5,0" FontSize="12" IsChecked="True"/>
+                            <CheckBox x:Name="chk4" Content="4" VerticalAlignment="Center" Margin="0,0,5,0" FontSize="12"/>
+                            <CheckBox x:Name="chk5" Content="5" VerticalAlignment="Center" Margin="0,0,5,0" FontSize="12"/>
+                            <CheckBox x:Name="chk6" Content="6" VerticalAlignment="Center" Margin="0,0,5,0" FontSize="12"/>
+                            <CheckBox x:Name="chk7" Content="7" VerticalAlignment="Center" Margin="0,0,5,0" FontSize="12"
+                                      ToolTip="Charge 7 is not supported by Prosit_2020_intensity_HCD and will be ignored."/>
+                        </StackPanel>
+
+                        <TextBlock x:Name="ExportStatusLabel"
+                                   Text="" FontSize="11" FontStyle="Italic"
+                                   Foreground="#555555" Margin="4,2,0,0" TextWrapping="NoWrap"/>
+                    </StackPanel>
+                </Border>
+
+                <GridSplitter Grid.Row="1" Height="3" HorizontalAlignment="Stretch"
+                              Background="{StaticResource BackgroundColor}" ResizeDirection="Rows"/>
+
+                <!-- Maximum Coverage Analysis -->
+                <Grid Grid.Row="2" Name="MaxCoverageGrid" SizeChanged="maxCoverageGrid_SizeChanged"
+                      Style="{StaticResource InternalGridStyle}">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="30"/>
+                        <RowDefinition Height="28"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <!--Header label with view toggle button-->
+                    <Grid Grid.Row="0" Style="{StaticResource InternalGridStyle}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Label Grid.Column="0"
+                               Style="{StaticResource SmallHeaderLabelStyle}" Padding="5,2,0,0">
+                            <Label.Content>
+                                <Binding Converter="{StaticResource ProtTermConverter}" Source="{x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}" Path="IsRnaMode"
+                                         ConverterParameter="Maximum Coverage Analysis"/>
+                            </Label.Content>
+                        </Label>
+                        <Button x:Name="coverageViewToggleButton" Grid.Column="1"
+                                Content="Lane View"
+                                Click="CoverageViewToggle_Click"
+                                Width="130" Height="24"
+                                HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,10,0"
+                                Style="{StaticResource ImportantButtonStyle}"
+                                FontSize="11" FontWeight="SemiBold"/>
+                    </Grid>
+
+                    <StackPanel Grid.Row="1" Orientation="Horizontal"
+                                VerticalAlignment="Center" Margin="4,0,0,0">
+                        <RadioButton x:Name="greedyToggle" Content="Greedy (Min Set)"
+                                     GroupName="MaxCovMode" Width="115"
+                                     IsChecked="True" Checked="MaxCoverageMode_Changed"
+                                     Style="{StaticResource ModeToggleStyle}"/>
+                        <RadioButton x:Name="singleToggle" Content="Best Single"
+                                     GroupName="MaxCovMode"
+                                     Checked="MaxCoverageMode_Changed"
+                                     Style="{StaticResource ModeToggleStyle}"/>
+                        <RadioButton x:Name="pairToggle" Content="Best Pair"
+                                     GroupName="MaxCovMode"
+                                     Checked="MaxCoverageMode_Changed"
+                                     Style="{StaticResource ModeToggleStyle}"/>
+                        <RadioButton x:Name="tripletToggle" Content="Best Triplet"
+                                     GroupName="MaxCovMode"
+                                     Checked="MaxCoverageMode_Changed"
+                                     Style="{StaticResource ModeToggleStyle}"/>
+                        <RadioButton x:Name="allToggle" Content="All"
+                                     GroupName="MaxCovMode"
+                                     Checked="MaxCoverageMode_Changed"
+                                     Style="{StaticResource ModeToggleStyle}"/>
+                        <TextBlock x:Name="computingLabel"
+                                   Text="  ⟳  Computing…"
+                                   FontStyle="Italic" FontSize="11"
+                                   VerticalAlignment="Center" Margin="6,0,0,0"
+                                   Foreground="#888888" Visibility="Collapsed"/>
+                    </StackPanel>
+
+                    <ScrollViewer Grid.Row="2" Name="maxCoverageMapViewer"
+                                  HorizontalAlignment="Stretch" VerticalAlignment="Top"
+                                  CanContentScroll="True"
+                                  HorizontalScrollBarVisibility="Auto"
+                                  VerticalScrollBarVisibility="Visible">
+                        <Grid Name="maxCoverageMapGrid" Background="White">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            <Canvas x:Name="maxCoverageMap" Grid.Row="0" Background="White"/>
+                            <Canvas x:Name="maxCoverageLegend" Grid.Row="1" Background="White"
+                                    VerticalAlignment="Top" HorizontalAlignment="Stretch">
+                                <Grid Name="maxCoverageLegendGrid" Background="White"
+                                      VerticalAlignment="Top" HorizontalAlignment="Center"/>
+                            </Canvas>
+                        </Grid>
+                    </ScrollViewer>
+                </Grid>
+
+            </Grid>
+
+        </Grid>
+    </Grid>
+</UserControl>

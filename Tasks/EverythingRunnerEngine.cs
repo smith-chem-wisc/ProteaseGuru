@@ -16,7 +16,7 @@ namespace Tasks
         public EverythingRunnerEngine(List<(string, ProteaseGuruTask)> runList, List<DbForDigestion> startingXmlDbFilenameList, string outputFolder)
         {
             RunList = runList;
-            OutputFolder = outputFolder.Trim('"');            
+            OutputFolder = outputFolder.Trim('"');
             CurrentXmlDbFilenameList = startingXmlDbFilenameList;
             PeptideByFile = new Dictionary<string, Dictionary<string, Dictionary<IBioPolymer, List<InSilicoPep>>>>();
         }
@@ -27,7 +27,7 @@ namespace Tasks
 
         public static event EventHandler<StringEventArgs>? FinishedAllTasksEngineHandler;
 
-        public static event EventHandler<XmlForTaskListEventArgs>? NewDbsHandler;        
+        public static event EventHandler<XmlForTaskListEventArgs>? NewDbsHandler;
 
         public static event EventHandler<StringEventArgs>? WarnHandler;
 
@@ -37,7 +37,7 @@ namespace Tasks
         {
             StartingAllTasks();
             var stopWatch = new Stopwatch();
-            stopWatch.Start();            
+            stopWatch.Start();
 
             var startTimeForAllFilenames = DateTime.Now.ToString("yyyy-MM-dd-HH-mm-ss", CultureInfo.InvariantCulture);
 
@@ -48,7 +48,7 @@ namespace Tasks
 
             for (int i = 0; i < RunList.Count; i++)
             {
-                
+
                 if (!CurrentXmlDbFilenameList.Any())
                 {
                     Warn("Cannot proceed. No protein database files selected.");
@@ -56,7 +56,7 @@ namespace Tasks
                     break;
                 }
                 var ok = RunList[i];
-                
+
                 var outputFolderForThisTask = Path.Combine(OutputFolder, "ProteaseGuruDigestionResults");
 
                 if (!Directory.Exists(outputFolderForThisTask))
@@ -96,6 +96,6 @@ namespace Tasks
         private void FinishedAllTasks(string rootOutputDir)
         {
             FinishedAllTasksEngineHandler?.Invoke(this, new StringEventArgs(rootOutputDir, null));
-        }   
+        }
     }
 }
