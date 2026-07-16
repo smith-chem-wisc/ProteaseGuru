@@ -719,7 +719,7 @@ namespace ProteaseGuruGui
                 var fileData = File.ReadAllLines(resultFile.FilePath);
                 int peptideCount = 0;
                 var header = fileData[0].Split('\t');
-                if (header[0] != "Database" && header[1] != "Protease" && header[2] != "Base Sequence" && header[3] != "Full Sequence")
+                if (header[0] != "Database" || header[1] != "Protease" || header[2] != "Base Sequence" || header[3] != "Full Sequence")
                 {
                     MessageBox.Show("Error: Results file provided is not from a previous ProteaseGuru run.");
                     return;
@@ -775,12 +775,13 @@ namespace ProteaseGuruGui
                         (double NotDetectable, double LowDetectability, double IntermediateDetectability, double HighDetectability)? pflyProbabilities = null;
                         if (info.Length > 22)
                         {
-                            pflyProbabilities = (
-                                Convert.ToDouble(info[19]),
-                                Convert.ToDouble(info[20]),
-                                Convert.ToDouble(info[21]),
-                                Convert.ToDouble(info[22])
-                            );
+                            if (double.TryParse(info[19], out double notDetectable) &&
+                                double.TryParse(info[20], out double lowDetectability) &&
+                                double.TryParse(info[21], out double intermediateDetectability) &&
+                                double.TryParse(info[22], out double highDetectability))
+                            {
+                                pflyProbabilities = (notDetectable, lowDetectability, intermediateDetectability, highDetectability);
+                            }
                         }
 
                         InSilicoPep pep = new InSilicoPep(baseSeq, fullSeq, previousAA, nextAA, unique, hydrophobicity, electrophoreticMobility,
