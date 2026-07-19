@@ -222,14 +222,24 @@
                                     <RowDefinition Height="Auto"/>
                                 </Grid.RowDefinitions>
 
-                                <!-- Actual Tab Headers -->
-                                <TabPanel Grid.Row="0" Grid.Column="0"
-                                    Name="HeaderPanel"
-                                    IsItemsHost="True"
-                                    Margin="0 0 0 400"
-                                    KeyboardNavigation.TabIndex="1"
-                                    Panel.ZIndex="1"
-                                    Background="Transparent"/>
+                                <!-- Actual Tab Headers (scrollable so all tabs stay reachable
+                                     regardless of window height or display scaling).
+                                     MaxHeight is bound to the TabControl's rendered height so the
+                                     ScrollViewer gets a bounded viewport: this TabControl spans a
+                                     star+Auto grid (Grid.RowSpan="2"), which measures with infinite
+                                     height, so without the cap the star row would size to content
+                                     (all tabs) and clip instead of scroll. -->
+                                <ScrollViewer Grid.Row="0" Grid.Column="0"
+                                    VerticalScrollBarVisibility="Auto"
+                                    HorizontalScrollBarVisibility="Disabled"
+                                    MaxHeight="{Binding ActualHeight, RelativeSource={RelativeSource AncestorType={x:Type TabControl}}}"
+                                    Panel.ZIndex="1">
+                                    <TabPanel
+                                        Name="HeaderPanel"
+                                        IsItemsHost="True"
+                                        KeyboardNavigation.TabIndex="1"
+                                        Background="Transparent"/>
+                                </ScrollViewer>
 
                                 <!-- Protein/RNA Toggle Control -->
                                 <local:ProteinRnaImageToggle Grid.Row="1" Grid.Column="0" Width="100" />
@@ -373,6 +383,7 @@
                   About
                   ── Set up ──
                   Databases
+                  Individual Protein Analysis
                   Digestion Conditions
                   Run
                   ── Results ──
@@ -380,7 +391,6 @@
                   Results Summary
                   Protein Search
                   Histograms
-                  Individual Protein Analysis
                   Help
                  ═══════════════════════════════════════ -->
 
@@ -576,6 +586,14 @@
                     </Grid>
                 </Grid>
 
+            </TabItem>
+
+            <!-- Individual Protein Analysis -->
+            <TabItem Style="{StaticResource TabItemStyle}" Name="IndividualProteinAnalyzerTab">
+                <TabItem.Header>
+                    <Binding Converter="{StaticResource ProtTermConverter}"  Source="{x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}" Path ="IsRnaMode"
+                             ConverterParameter="Individual Protein Analysis"/>
+                </TabItem.Header>
             </TabItem>
 
             <!-- Digestion Conditions -->
@@ -848,14 +866,6 @@
                              ConverterParameter="Histograms"/>
                 </TabItem.Header>
                 <local:HistogramWindow/>
-            </TabItem>
-
-            <!-- Individual Protein Analysis -->
-            <TabItem Style="{StaticResource TabItemStyle}" Name="IndividualProteinAnalyzerTab">
-                <TabItem.Header>
-                    <Binding Converter="{StaticResource ProtTermConverter}"  Source="{x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}" Path ="IsRnaMode"
-                             ConverterParameter="Individual Protein Analysis"/>
-                </TabItem.Header>
             </TabItem>
 
             <!-- Help -->
