@@ -10,6 +10,8 @@ jobs:
   build:
     runs-on: windows-latest
     timeout-minutes: 15
+    permissions:
+      contents: write   # required to attach the app zip to the GitHub Release
     steps:
       - uses: actions/checkout@v4
         with:
@@ -50,3 +52,18 @@ jobs:
           dotnet nuget push ProteaseGuru.${version}.nupkg --source https://api.nuget.org/v3/index.json --api-key ${env:NUGET_API_KEY}
         env:
           NUGET_API_KEY: ${{ secrets.NUGET_KEY }}
+
+      - name: Publish Windows app (framework-dependent)
+        run: |
+          $version = &git describe --tags
+          dotnet publish ProteaseGuruGui/ProteaseGuruGui.csproj --configuration Release --runtime win-x64 --self-contained false `
+            -p:PublishSingleFile=true -p:Version=${version} `
+            --output publish
+          Rename-Item -Path publish/ProteaseGuruGui.exe -NewName ProteaseGuru.exe
+          Compress-Archive -Path publish/* -DestinationPath ProteaseGuru.zip -Force
+
+      - name: Attach app to GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ProteaseGuru.zip
