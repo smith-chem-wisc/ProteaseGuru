@@ -370,9 +370,6 @@ namespace ProteaseGuruGui
                 intervalsByProtease[proteaseName] = peps;
             }
 
-            const double sequenceContentWidth = 25 * 25 + 45 + 20;
-            double availableWidth = ResultsGrid.ActualWidth > 0 ? ResultsGrid.ActualWidth - 20 : sequenceContentWidth;
-
             SequenceCoverageMap.DrawLaneViewMap(
                 map, legend, legendGrid,
                 protein.Protein.Accession,
@@ -380,8 +377,7 @@ namespace ProteaseGuruGui
                 protein.Protein.BaseSequence,
                 proteases,
                 intervalsByProtease,
-                name => SequenceCoverageMap.GetProteaseBrush(_stableProteaseBrushes, name),
-                Math.Min(availableWidth, sequenceContentWidth));
+                name => SequenceCoverageMap.GetProteaseBrush(_stableProteaseBrushes, name));
         }
 
         private void DrawPeptidePerBarCoverageMap(ProteinForTreeView protein, List<string> proteases)
@@ -396,10 +392,6 @@ namespace ProteaseGuruGui
             var (uniqueCovered, sharedOnlyCovered) = SequenceCoverageMap.CalculateCoveredResiduesByType(
                 allPeptidesForProtein, _analyzer.IsMultiDatabase);
 
-            const double sequenceContentWidth = 25 * 25 + 45 + 20;
-            double availableWidth = ResultsGrid.ActualWidth > 0 ? ResultsGrid.ActualWidth - 20 : sequenceContentWidth;
-            double canvasWidth = Math.Min(availableWidth, sequenceContentWidth);
-
             SequenceCoverageMap.DrawPeptidePerBarMap(
                 map, legend, legendGrid,
                 protein.Protein.Accession,
@@ -409,8 +401,7 @@ namespace ProteaseGuruGui
                 peptidesToDraw,
                 uniqueCovered,
                 sharedOnlyCovered,
-                _analyzer.IsMultiDatabase,
-                canvasWidth);
+                _analyzer.IsMultiDatabase);
         }
 
         #endregion
