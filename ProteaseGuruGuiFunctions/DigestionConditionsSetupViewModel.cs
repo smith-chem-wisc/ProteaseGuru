@@ -80,7 +80,7 @@ public class DigestionConditionsSetupViewModel : BaseViewModel
             }
             else
             {
-                specificParams.MaxMissedCleavages = _maxMissedCleavages;
+                specificParams.MaxMissedCleavages = DefaultMissedCleavagesFor(specificParams.DigestionAgentName);
                 specificParams.MinLength = _minLength;
                 specificParams.MaxLength = _maxLength;
                 specificParams.IsSelected = false;
@@ -282,7 +282,7 @@ public class DigestionConditionsSetupViewModel : BaseViewModel
 
         foreach (var specificParametersViewModel in ProteaseSpecificParameters.Where(p => p.IsVisible))
         {
-            specificParametersViewModel.MaxMissedCleavages = MaxMissedCleavages;
+            specificParametersViewModel.MaxMissedCleavages = DefaultMissedCleavagesFor(specificParametersViewModel.DigestionAgentName);
             specificParametersViewModel.MinLength = MinLength;
             specificParametersViewModel.MaxLength = MaxLength;
             specificParametersViewModel.IsSelected = false;
@@ -293,6 +293,25 @@ public class DigestionConditionsSetupViewModel : BaseViewModel
 
 
     #endregion
+
+    // Per-protease default missed cleavages. These highly specific proteases (including their
+    // no-proline / with-asp variants) default to 0; any protease not listed here falls back to
+    // the general MaxMissedCleavages default — which is now every other entry in mzLib's
+    // dictionary, since the UI no longer filters the list down to a curated set.
+    private static readonly Dictionary<string, int> _defaultMissedCleavagesByProtease = new(StringComparer.Ordinal)
+    {
+        ["Asp-N"] = 0,
+        ["Arg-C"] = 0,
+        ["Glu-C"] = 0,
+        ["Glu-C (with asp)"] = 0,
+        ["Lys-C|P"] = 0,
+        ["trypsin"] = 0,
+        ["trypsin|P"] = 0,
+    };
+
+    // The default missed cleavages to seed for a protease when the user has not set one.
+    private int DefaultMissedCleavagesFor(string proteaseName) =>
+        _defaultMissedCleavagesByProtease.TryGetValue(proteaseName, out var mc) ? mc : MaxMissedCleavages;
 
     public void PopulateProteaseCollection()
     {
@@ -310,7 +329,7 @@ public class DigestionConditionsSetupViewModel : BaseViewModel
 
             if (current == null)
             {
-                var newDig = new DigestionParams(protease.Key, MaxMissedCleavages, MinLength, MaxLength);
+                var newDig = new DigestionParams(protease.Key, DefaultMissedCleavagesFor(protease.Key), MinLength, MaxLength);
                 var newParams = new ProteaseSpecificParameters(newDig, null, null);
                 var newParamsVM = new ProteaseSpecificParametersViewModel(newParams, this)
                 {
