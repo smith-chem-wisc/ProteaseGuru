@@ -208,7 +208,7 @@ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                                    Style="{StaticResource SmallHeaderLabelStyle}" Margin="0,0,0,0">
                                 <Label.Content>
                                     <Binding Converter="{StaticResource ProtTermConverter}" Source="{x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}" Path="IsRnaMode"
-                                             ConverterParameter="Export Spectrum Library"/>
+                                             ConverterParameter="Export Spectrum Library with Indexed Retention Times"/>
                                 </Label.Content>
                             </Label>
                             <Button x:Name="ExportSpectrumLibraryButton"
@@ -218,7 +218,7 @@ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                                     Click="ExportSpectrumLibrary_Click">
                                 <Button.Content>
                                     <Binding Converter="{StaticResource ProtTermConverter}" Source="{x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}" Path="IsRnaMode"
-                                             ConverterParameter="Export Spectrum Library"/>
+                                             ConverterParameter="Export Library"/>
                                 </Button.Content>
                             </Button>
                         </DockPanel>
