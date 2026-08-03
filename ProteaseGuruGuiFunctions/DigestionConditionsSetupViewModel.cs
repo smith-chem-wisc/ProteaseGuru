@@ -294,29 +294,10 @@ public class DigestionConditionsSetupViewModel : BaseViewModel
 
     #endregion
 
-    // Proteases ProteaseGuru exposes in its UI — exactly the entries from mzLib's
-    // embedded ProteaseDictionary that represent real digestive enzymes.
-    // Utility/test entries (non-specific, top-down, singleN, singleC, peptidomics,
-    // tryptophan oxidation, CNBr_old, CNBr_N, StcE-trypsin, ProAlanase, elastase|P)
-    // are excluded.
-    private static readonly HashSet<string> _allowedProteases = new(StringComparer.Ordinal)
-    {
-        "Arg-C",
-        "Asp-N",
-        "chymotrypsin|P",
-        "CNBr",
-        "Glu-C",
-        "Glu-C (with asp)",
-        "Lys-C|P",
-        "Lys-N",
-        "trypsin",
-        "trypsin|P",
-        "collagenase",
-    };
-
     // Per-protease default missed cleavages. These highly specific proteases (including their
     // no-proline / with-asp variants) default to 0; any protease not listed here falls back to
-    // the general MaxMissedCleavages default.
+    // the general MaxMissedCleavages default — which is now every other entry in mzLib's
+    // dictionary, since the UI no longer filters the list down to a curated set.
     private static readonly Dictionary<string, int> _defaultMissedCleavagesByProtease = new(StringComparer.Ordinal)
     {
         ["Asp-N"] = 0,
@@ -335,10 +316,13 @@ public class DigestionConditionsSetupViewModel : BaseViewModel
     public void PopulateProteaseCollection()
     {
         var dict = ProteaseDictionary.Dictionary;
-        // Show the curated mzLib proteases plus any proteases the user has added at runtime.
-        foreach (var protease in dict.Where(kvp =>
-            _allowedProteases.Contains(kvp.Key) ||
-            GlobalVariables.UserAddedProteaseNames.Contains(kvp.Key)))
+        // Expose every digestion agent in mzLib's embedded ProteaseDictionary. mzLib's embedded
+        // definitions already win over any same-named custom protease — LoadAndMergeCustomProteases
+        // skips a custom entry whose name collides with an embedded one — and ProteaseGuru-only
+        // custom proteases merged at runtime remain in the dictionary. Iterating the whole
+        // dictionary therefore yields the intended union: the full mzLib protease list plus any
+        // extra ProteaseGuru additions, with mzLib winning on name collisions.
+        foreach (var protease in dict)
         {
             ProteaseSpecificParametersViewModel? current = ProteaseSpecificParameters.FirstOrDefault(p => p.DigestionAgentName == protease.Value.Name);
             bool shouldSelect = _parameters.ProteaseSpecificParameters.Any(p => p.DigestionParams.DigestionAgent.Name == protease.Value.Name);
