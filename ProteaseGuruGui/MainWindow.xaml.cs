@@ -765,8 +765,10 @@ namespace ProteaseGuruGui
             }
 
             // Collapse the many repeated metadata strings (Database, Protease, Protein, ProteinName,
-            // BaseSequence) into one instance each. Split() allocates a fresh string per cell, so without
-            // this a multi-GB reload holds tens of millions of duplicate strings and exhausts RAM.
+            // BaseSequence) into one *instance* each. This reduces memory usage and speeds up string comparisons,
+            // because a single internalized reference (the first instance added to the dictionary) is kept for each unique
+            // string rather than using many copies of the same string each holding a different reference. This is important
+            // for reading large results, because rows tend to have repeated values for these fields.
             var internCache = new Dictionary<string, string>();
             string Intern(string value) => internCache.TryGetValue(value, out var existing) ? existing : internCache[value] = value;
 
