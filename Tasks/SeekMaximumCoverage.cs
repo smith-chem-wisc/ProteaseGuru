@@ -222,9 +222,11 @@ public class SeekMaximumCoverage
     /// covered-residue set and the deduplicated, start-sorted 1-based peptide intervals
     /// from one digest pass.
     ///
-    /// This is the digestion primitive the batch methods below build on. It only reads the
-    /// protein and writes to local collections, so callers may invoke it concurrently for
-    /// different proteases on the same protein (each call uses its own parameters and output).
+    /// This is the digestion primitive the batch methods below build on. The protein is only read
+    /// and the results are local, so callers may invoke it concurrently for different proteases on
+    /// the same protein. Note that digestion does write to <paramref name="proteaseParam"/>: it
+    /// appends the agent's cleavage modification to <see cref="ProteaseSpecificParameters.FixedMods"/>.
+    /// That stays safe only while each concurrent call is given its own protease's parameters.
     /// </summary>
     public (HashSet<int> Coverage, List<(int Start, int End)> Intervals) DigestSingle(
         IBioPolymer protein,
