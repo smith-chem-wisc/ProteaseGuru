@@ -28,14 +28,26 @@ namespace GUI
                 nameof(LowerBound),
                 typeof(int),
                 typeof(IntegerTextBoxControl),
-                new PropertyMetadata(int.MinValue));
+                new PropertyMetadata(int.MinValue, OnBoundChanged));
 
         public static readonly DependencyProperty UpperBoundProperty =
             DependencyProperty.Register(
                 nameof(UpperBound),
                 typeof(int),
                 typeof(IntegerTextBoxControl),
-                new PropertyMetadata(int.MaxValue));
+                new PropertyMetadata(int.MaxValue, OnBoundChanged));
+
+        /// <summary>
+        /// Re-clamps when a bound changes. Without this the value is only validated on text change,
+        /// so a bound applied after Text — the usual case when Text is bound and the bound is too —
+        /// would never be enforced against the value already sitting in the box.
+        /// </summary>
+        private static void OnBoundChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+        {
+            // Defer while the user is typing, matching OnTextChanged.
+            if (d is IntegerTextBoxControl box && !box.IsKeyboardFocused)
+                box.ClampToBounds();
+        }
 
         public bool AllowNegative
         {
