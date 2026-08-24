@@ -1,0 +1,1069 @@
+<Window x:Class="ProteaseGuruGui.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:ProteaseGuruGui"
+        xmlns:guiFunctions="clr-namespace:ProteaseGuruGuiFunctions;assembly=ProteaseGuruGuiFunctions"
+        mc:Ignorable="d"
+        Drop="Window_Drop" AllowDrop="true" 
+        WindowStartupLocation="CenterScreen"
+        Icon="proteaseGuru.ico"
+        Title="{Binding Source={x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}, Path=MainWindowTitle}"
+        Closing="MainWindow_Closing"
+        Height="650" Width="1300">
+    <Window.Resources>
+        <ResourceDictionary>
+
+            <local:ProteinRnaTerminologyConverter x:Key="ProtTermConverter" />
+
+            <Style x:Key="DataGridCellStyle" TargetType="DataGridCell">
+            </Style>
+
+            <!--Styling for the context menu to add tasks-->
+            <Style x:Key="ContextMenuStyle" TargetType="ContextMenu">
+                <Setter Property="Background" Value="{StaticResource BackgroundColor}"/>
+                <Setter Property="Foreground" Value="{StaticResource TextColor1}"/>
+                <Setter Property="OverridesDefaultStyle" Value="True" />
+                <Setter Property="SnapsToDevicePixels" Value="True" />
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="{x:Type ContextMenu}">
+                            <Border BorderThickness="1" BorderBrush="{StaticResource BorderColor}" x:Name="Border" 
+                                    Background="{StaticResource BackgroundColor}">
+                                <StackPanel ClipToBounds="True" Orientation="Vertical" IsItemsHost="True" />
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="true">
+                                    <Setter TargetName="Border" Property="Background" Value="{StaticResource BackgroundColor}" />
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <!--Defines the context menu when a protein database is right-clicked-->
+            <ContextMenu x:Key="ProteinDatabaseContextMenu" Style="{StaticResource ContextMenuStyle}">
+
+            </ContextMenu>
+
+            <!--Styles the protein DB datagrid items-->
+            <Style x:Key="DatabaseDataGridItemStyle" TargetType="DataGridRow">
+                <Setter Property="ContextMenu" Value="{StaticResource ProteinDatabaseContextMenu}" />
+            </Style>
+
+
+            <SolidColorBrush x:Key="SideBarMainColor" Color="#444449" />
+            <SolidColorBrush x:Key="AccentColor" Color="#F9690E" />
+            <SolidColorBrush x:Key="SecondaryButtonColor" Color="#444449" />
+            <SolidColorBrush x:Key="BackgroundColor" Color="#D5D5D5" />
+            <SolidColorBrush x:Key="DataGridBackgroundColor" Color="#D5D5D5" />
+            <SolidColorBrush x:Key="DataGridHeaderColor" Color="#F9690E" />
+            <SolidColorBrush x:Key="BorderColor" Color="#444449" />
+            <SolidColorBrush x:Key="TextColor1" Color="#131313" />
+            <SolidColorBrush x:Key="TextColor2" Color="#EEEEEE" />
+            <SolidColorBrush x:Key="TextColorDelete" Color="#c23616" />
+
+            <!--Change ListBox Selection Style-->
+            <Style x:Key="ListBoxItem" TargetType="ListBoxItem">
+                <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="ListBoxItem">
+                            <Border Name="Border" Padding="2" SnapsToDevicePixels="True">
+                                <ContentPresenter/>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsSelected" Value="True">
+                                    <Setter TargetName="Border" Property="Background" Value="#fdd8c1"></Setter>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <!--Styling for the datagrid headers-->
+            <Style x:Key="DataGridColumnHeaderStyle" TargetType="DataGridColumnHeader">
+                <Setter Property="Background" Value="{StaticResource DataGridHeaderColor}"/>
+                <Setter Property="FontSize" Value="13" />
+            </Style>
+
+            <!--Styling for the big text header at the top of each page-->
+            <Style x:Key="HeaderLabelStyle" TargetType="Label">
+                <Setter Property="HorizontalAlignment" Value="Left"/>
+                <Setter Property="FontSize" Value="26"/>
+                <Setter Property="FontWeight" Value="Bold"/>
+                <Setter Property="Foreground" Value="{StaticResource TextColor1}"/>
+                <Setter Property="Margin" Value="10,5,0,0"/>
+            </Style>
+
+            <!--Styling for the "important" buttons like add task, add DB, etc.-->
+            <Style x:Key="ImportantButtonStyle" TargetType="Button">
+                <Setter Property="BorderThickness" Value="0"/>
+                <Setter Property="Width" Value="200"/>
+                <Setter Property="Background" Value="{StaticResource AccentColor}"/>
+                <Setter Property="Foreground" Value="{StaticResource TextColor1}"/>
+                <Setter Property="FontSize" Value="12"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="Button">
+                            <Border Background="{TemplateBinding Background}" BorderBrush="#131313" BorderThickness="1">
+                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+                <Style.Triggers>
+                    <Trigger Property="IsMouseOver" Value="True">
+                        <Setter Property="Background" Value="#f58c49"/>
+                        <Setter Property="BorderBrush" Value="#131313"/>
+                        <Setter Property="Foreground" Value="#131313"/>
+                    </Trigger>
+                </Style.Triggers>
+            </Style>
+
+            <!--Styling for the grid that defines each page-->
+            <Style x:Key="PageGridStyle" TargetType="Grid">
+                <Setter Property="Background" Value="{StaticResource BackgroundColor}"/>
+                <Setter Property="Margin" Value="-3,-2,-2,-2"/>
+            </Style>
+
+            <!--Styling for the grid that defines each page-->
+            <Style x:Key="InternalGridStyle" TargetType="Grid">
+                <Setter Property="Background" Value="{StaticResource BackgroundColor}"/>
+                <Setter Property="Margin" Value="0,0,0,0"/>
+            </Style>
+
+            <!--Styling for the big text header at the top of each page-->
+            <Style x:Key="SubHeaderLabelStyle" TargetType="Label">
+                <Setter Property="HorizontalAlignment" Value="Left"/>
+                <Setter Property="FontSize" Value="19"/>
+                <Setter Property="FontWeight" Value="Bold"/>
+                <Setter Property="Foreground" Value="{StaticResource TextColor1}"/>
+                <Setter Property="Margin" Value="10,5,0,0"/>
+            </Style>
+
+            <!--Styling for the big text header at the top of each page-->
+            <Style x:Key="SmallHeaderLabelStyle" TargetType="Label">
+                <Setter Property="HorizontalAlignment" Value="Left"/>
+                <Setter Property="FontSize" Value="15"/>
+                <Setter Property="FontWeight" Value="Bold"/>
+                <Setter Property="Foreground" Value="{StaticResource TextColor1}"/>
+                <Setter Property="Margin" Value="5,2,0,0"/>
+            </Style>
+
+            <!--Styling for the big text header at the top of each page-->
+            <Style x:Key="xSmallHeaderLabelStyle" TargetType="Label">
+                <Setter Property="HorizontalAlignment" Value="Left"/>
+                <Setter Property="FontSize" Value="11"/>
+                <Setter Property="FontWeight" Value="Bold"/>
+                <Setter Property="Foreground" Value="{StaticResource TextColor1}"/>
+                <Setter Property="Margin" Value="5,2,0,0"/>
+            </Style>
+
+            <!--Styling for the "main" text in the About + Help pages-->
+            <Style x:Key="TextBlockStyle" TargetType="TextBlock">
+                <Setter Property="Foreground" Value="{StaticResource TextColor1}"/>
+                <Setter Property="FontSize" Value="13"/>
+                <Setter Property="TextWrapping" Value="WrapWithOverflow" />
+                <Setter Property="Margin" Value="15,0,10,0"/>
+            </Style>
+
+            <!--Styling for the "main" text in the About + Help pages-->
+            <Style x:Key="StatusBarTextStyle" TargetType="TextBlock">
+                <Setter Property="Foreground" Value="{StaticResource TextColor1}"/>
+                <Setter Property="FontWeight" Value="Bold"/>
+                <Setter Property="FontSize" Value="15"/>
+                <Setter Property="TextWrapping" Value="WrapWithOverflow" />
+                <Setter Property="Margin" Value="5,0,5,0"/>
+            </Style>
+
+            <!--Styling for the "main" text in the About + Help pages-->
+            <Style x:Key="ProgressTextStyle" TargetType="Label">
+                <Setter Property="Foreground" Value="{StaticResource TextColor1}"/>
+                <Setter Property="FontWeight" Value="Bold"/>
+                <Setter Property="FontSize" Value="15"/>
+                <Setter Property="Margin" Value="5,0,5,0"/>
+            </Style>
+
+            <!--Styling for the datagrids that store spectra/databases-->
+            <Style x:Key="x:DataGridStyle" TargetType="DataGrid">
+                <Setter Property="Foreground" Value="{StaticResource TextColor1}"/>
+                <Setter Property="Background" Value="{StaticResource DataGridBackgroundColor}"/>
+                <Setter Property="Height" Value="Auto"/>
+                <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                <Setter Property="FontSize" Value="12"/>
+                <Setter Property="BorderThickness" Value="1"/>
+                <Setter Property="BorderBrush" Value="{StaticResource BorderColor}"/>
+                <Setter Property="Margin" Value="10,0,10,10"/>
+                <Setter Property="SelectedItem" Value="{Binding SelectedRow, Mode=TwoWay}"/>
+                <Setter Property="HeadersVisibility" Value="Column"/>
+                <Setter Property="HorizontalGridLinesBrush" Value="{StaticResource DataGridHeaderColor}"/>
+                <Setter Property="VerticalGridLinesBrush" Value="{StaticResource DataGridHeaderColor}"/>
+                <Setter Property="AutoGenerateColumns" Value="False"/>
+            </Style>
+
+            <Style TargetType="TabControl" x:Key="TabControlStyle">
+                <Setter Property="Background" Value="{StaticResource SideBarMainColor}" />
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="TabControl">
+                            <Grid ClipToBounds="true">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <!-- For tab headers -->
+                                    <ColumnDefinition Width="*"/>
+                                    <!-- For content -->
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="*"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+
+                                <!-- Actual Tab Headers (scrollable so all tabs stay reachable
+                                     regardless of window height or display scaling).
+                                     MaxHeight is bound to the TabControl's rendered height so the
+                                     ScrollViewer gets a bounded viewport: this TabControl spans a
+                                     star+Auto grid (Grid.RowSpan="2"), which measures with infinite
+                                     height, so without the cap the star row would size to content
+                                     (all tabs) and clip instead of scroll. -->
+                                <ScrollViewer Grid.Row="0" Grid.Column="0"
+                                    VerticalScrollBarVisibility="Auto"
+                                    HorizontalScrollBarVisibility="Disabled"
+                                    MaxHeight="{Binding ActualHeight, RelativeSource={RelativeSource AncestorType={x:Type TabControl}}}"
+                                    Panel.ZIndex="1">
+                                    <TabPanel
+                                        Name="HeaderPanel"
+                                        IsItemsHost="True"
+                                        KeyboardNavigation.TabIndex="1"
+                                        Background="Transparent"/>
+                                </ScrollViewer>
+
+                                <!-- Protein/RNA Toggle Control -->
+                                <local:ProteinRnaImageToggle Grid.Row="1" Grid.Column="0" Width="100" />
+
+                                <!-- Content Panel -->
+                                <ContentPresenter
+                                    Name="PART_SelectedContentHost"
+                                    Margin="4 0 0 0 "
+                                    Grid.Row="0"
+                                    Grid.RowSpan="2"
+                                    Grid.Column="1"
+                                    ContentSource="SelectedContent"/>
+                            </Grid>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+                <Style.Triggers>
+                    <DataTrigger Binding="{Binding Source={x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}, Path=IsRnaMode}" Value="True">
+                        <Setter Property="Background" Value="{StaticResource RnaSideBarMainColor}"/>
+                        <Setter Property="BorderBrush" Value="{StaticResource RnaSideBarMainColor}"/>
+                    </DataTrigger>
+                </Style.Triggers>
+            </Style>
+            <!--Styling for the tab items on the left side-->
+            <Style x:Key="TabItemStyle" TargetType="TabItem">
+                <Setter Property="Background" Value="{StaticResource SideBarMainColor}"/>
+                <Setter Property="BorderBrush" Value="{StaticResource AccentColor}"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="TabItem">
+                            <Grid Height="45" Width="210" Background="{TemplateBinding Background}">
+                                <Border Name="Border" Margin="0,0,0,0" Background="Transparent"
+                                        BorderThickness="{TemplateBinding BorderThickness}"
+                                        BorderBrush="{Binding BorderBrush, RelativeSource={RelativeSource TemplatedParent}}">
+                                    <ContentPresenter 
+                                        x:Name="ContentSite" 
+                                        VerticalAlignment="Center"
+                                        HorizontalAlignment="Left"
+                                        ContentSource="Header" Margin="5,2,0,2"
+                                        RecognizesAccessKey="True">
+                                    </ContentPresenter>
+                                </Border>
+                            </Grid>
+
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsSelected" Value="True">
+                                    <Setter Property="BorderThickness" Value="0,0,7,0"/>
+                                    <Setter Property="FontWeight" Value="Bold"/>
+                                    <!--Color of tab item text (when selected)-->
+                                    <Setter Property="Foreground" Value="{StaticResource TextColor2}"/>
+                                    <!--Color of tab item right side accent bar (when selected)-->
+                                    <Setter Property="BorderBrush" Value="{StaticResource AccentColor}"/>
+                                </Trigger>
+                                <Trigger Property="IsSelected" Value="False">
+                                    <Setter Property="Foreground" Value="{StaticResource TextColor2}"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+                <Setter Property="FontSize" Value="15" />
+                <Setter Property="FontWeight" Value="Bold" />
+                <Setter Property="BorderThickness" Value="0" />
+                <Setter Property="Margin" Value="0,0,2,0" />
+                <Setter Property="Padding" Value="0" />
+                <Style.Triggers>
+                    <DataTrigger Binding="{Binding Source={x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}, Path=IsRnaMode}" Value="True">
+                        <Setter Property="Background" Value="{DynamicResource RnaSideBarMainColor}"/>
+                        <Setter Property="BorderBrush" Value="{DynamicResource RnaAccentColor}"/>
+                    </DataTrigger>
+                </Style.Triggers>
+            </Style>
+
+            <!--Non-interactive section label that groups the sidebar tabs (e.g. "Set up", "Results")-->
+            <Style x:Key="GroupHeaderTabItemStyle" TargetType="TabItem">
+                <Setter Property="Background" Value="{StaticResource SideBarMainColor}"/>
+                <Setter Property="Focusable" Value="False"/>
+                <Setter Property="IsHitTestVisible" Value="False"/>
+                <Setter Property="Foreground" Value="#B7BBC2"/>
+                <Setter Property="FontSize" Value="14"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="TabItem">
+                            <Grid Height="30" Width="210" Background="{TemplateBinding Background}">
+                                <StackPanel Orientation="Vertical" VerticalAlignment="Bottom" Margin="5,0,10,0">
+                                    <TextBlock Text="{TemplateBinding Header}"
+                                               Foreground="{TemplateBinding Foreground}"
+                                               FontSize="{TemplateBinding FontSize}"
+                                               FontWeight="Normal"/>
+                                    <Border Height="1" Background="#57575D" Margin="0,2,0,0"/>
+                                </StackPanel>
+                            </Grid>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+                <Setter Property="BorderThickness" Value="0" />
+                <Setter Property="Margin" Value="0,0,2,0" />
+                <Setter Property="Padding" Value="0" />
+                <Style.Triggers>
+                    <DataTrigger Binding="{Binding Source={x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}, Path=IsRnaMode}" Value="True">
+                        <Setter Property="Background" Value="{StaticResource RnaSideBarMainColor}"/>
+                    </DataTrigger>
+                </Style.Triggers>
+            </Style>
+
+            <!--Notification Styles-->
+            <Style x:Key="NotificationItemStyle" TargetType="Border">
+                <Setter Property="Background" Value="White"/>
+                <Setter Property="BorderBrush" Value="{StaticResource BorderColor}"/>
+                <Setter Property="BorderThickness" Value="1"/>
+                <Setter Property="Margin" Value="5,2,5,2"/>
+                <Setter Property="Padding" Value="8,5,8,5"/>
+                <Setter Property="CornerRadius" Value="3"/>
+            </Style>
+        </ResourceDictionary>
+    </Window.Resources>
+    <Grid >
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!--Tab Control with all pages-->
+        <TabControl Grid.Row="0" Grid.RowSpan="2" TabStripPlacement="Left"
+                    BorderThickness="0" BorderBrush="{StaticResource BorderColor}" Style="{StaticResource TabControlStyle}">
+            <TabControl.Resources>
+                <Style TargetType="Grid">
+                    <!--This defines the *default* style for *all grids in the entire tab control*-->
+                    <!--This is not great but seems necessary to have a proper background on the tab items...-->
+                    <Setter Property="Background" Value="{StaticResource SideBarMainColor}" />
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding Source={x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}, Path=IsRnaMode}" Value="True">
+                            <Setter Property="Background" Value="{StaticResource RnaSideBarMainColor}"/>
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </TabControl.Resources>
+
+            <!-- ═══════════════════════════════════════
+                 SIDEBAR ORDER:
+                  About
+                  ── Set up ──
+                  Databases
+                  Individual Protein Analysis
+                  Digestion Conditions
+                  Run
+                  ── Results ──
+                  Load Previous Results
+                  Results Summary
+                  Protein Search
+                  Histograms
+                  Help
+                 ═══════════════════════════════════════ -->
+
+            <!-- About -->
+            <TabItem Header="About" Style="{StaticResource TabItemStyle}">
+                <Grid  Background="{StaticResource DataGridBackgroundColor}" Margin="-2 -5 0 16">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="50"/>
+                        <RowDefinition Height="25"/>
+                        <RowDefinition Height="41*"/>
+                        <RowDefinition Height="462*"/>
+                    </Grid.RowDefinitions>
+
+                    <!--Header label-->
+                    <Label Content="About" Grid.Row="0" FontSize="25" FontWeight="Bold"/>
+
+                    <!--Text content-->
+                    <TextBlock Grid.Row="2" Grid.RowSpan="2" Style="{StaticResource TextBlockStyle}"> 
+                        <Run>
+                            <Run.Text>
+                                <Binding Path="IsRnaMode"
+                                         Source="{x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}"
+                                         Converter="{StaticResource ProtTermConverter}"
+                                         ConverterParameter="ProteaseGuru is a in silico digestion program facilitating the comparison of proteolytic digests. It accepts protein databases (.xml or .fasta) as input and allows users to set digestion conditions and proteases for digestion. ProteaseGuru is designed to help users determine which protease or combination of proteases would yield the best experimental results." />
+                            </Run.Text>
+                        </Run>
+                        
+                        <LineBreak />
+                        <LineBreak />
+                        <LineBreak />
+                        
+                        <Run>
+                            <Run.Text>
+                                <Binding Path="IsRnaMode"
+                                         Source="{x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}"
+                                         Converter="{StaticResource ProtTermConverter}"
+                                         ConverterParameter="ProteaseGuru is especially helpful for the planning of the following experiment types:" />
+                            </Run.Text>
+                        </Run>
+                        
+                        <LineBreak />                        
+                        <LineBreak />
+                        
+                        <Run>
+                            <Run.Text>
+                                <Binding Path="IsRnaMode"
+                                         Source="{x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}"
+                                         Converter="{StaticResource ProtTermConverter}"
+                                         ConverterParameter="● Experiments targeting specific proteins." />
+                            </Run.Text>
+                        </Run>
+                        
+                        <LineBreak />                        
+                        <LineBreak />
+                        
+                        <Run>
+                            <Run.Text>
+                                <Binding Path="IsRnaMode"
+                                         Source="{x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}"
+                                         Converter="{StaticResource ProtTermConverter}"
+                                         ConverterParameter="● Experiments focusing on the discovery of PTMs and/or sequence variants." />
+                            </Run.Text>
+                        </Run>
+                        
+                        <LineBreak />                        
+                        <LineBreak />
+                        
+                        ● Experiments where the sample is composed of more than one species with sequence homology (e.g. xenografts).
+                        
+                        <LineBreak/>
+                        <LineBreak />
+                        <LineBreak />
+                        
+                        ProteaseGuru provides:
+                        
+                        <LineBreak />                        
+                        <LineBreak />
+                        
+                        ● The ability to analyze more than one database enabling its use with samples containing multiple species .
+                        
+                        <LineBreak />                        
+                        <LineBreak />
+                        
+                        <Run>
+                            <Run.Text>
+                                <Binding Path="IsRnaMode"
+                                         Source="{x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}"
+                                         Converter="{StaticResource ProtTermConverter}"
+                                         ConverterParameter="● Result files containing various biophysical properties of theoretical peptides such as their molecular weight, hydrophobicity and electrophoretic mobility." />
+                            </Run.Text>
+                        </Run>
+                        
+                        <LineBreak />
+                        <LineBreak />
+                        
+                        ● Determination of the uniqueness of a theoretical sequence (both in a single database and all databases used for analysis).
+                        
+                        <LineBreak /> 
+                        <LineBreak />
+                        
+                        <Run>
+                            <Run.Text>
+                                <Binding Path="IsRnaMode"
+                                         Source="{x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}"
+                                         Converter="{StaticResource ProtTermConverter}"
+                                         ConverterParameter="● Histograms of whole proteome proteolytic digests for the direct comparison of proteases." />
+                            </Run.Text>
+                        </Run>
+                        
+                        <LineBreak /> 
+                        <LineBreak />
+                        
+                        <Run>
+                            <Run.Text>
+                                <Binding Path="IsRnaMode"
+                                         Source="{x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}"
+                                         Converter="{StaticResource ProtTermConverter}"
+                                         ConverterParameter="● Protein sequence coverage maps for visualization of the in silico digestion of targeted proteins." />
+                            </Run.Text>
+                        </Run>
+                    </TextBlock>
+                </Grid>
+            </TabItem>
+
+            <!-- Set up (group header) -->
+            <TabItem Header="Set up" Style="{StaticResource GroupHeaderTabItemStyle}" />
+
+            <!-- Databases -->
+            <TabItem Header="Databases" Style="{StaticResource TabItemStyle}">
+                <Grid Style="{StaticResource PageGridStyle}" Margin="-2 -5 0 16">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="50"/>
+                        <RowDefinition Height="50"/>
+                        <RowDefinition Height="1*"/>
+                        <RowDefinition Height="50"/>
+                    </Grid.RowDefinitions>
+
+                    <!--Header label-->
+                    <Label Grid.Row="0" Style="{StaticResource HeaderLabelStyle}">
+                        <Label.Content>
+                            <Binding Converter="{StaticResource ProtTermConverter}"  Source="{x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}" Path ="IsRnaMode"
+                                     ConverterParameter="Protein Databases"/>
+                        </Label.Content>
+                    </Label>
+
+                    <!--Detail text-->
+                    <TextBlock Grid.Row="1" Style="{StaticResource TextBlockStyle}">
+                        <Run Text="Add " />
+                        
+                        <Hyperlink NavigateUri="https://www.uniprot.org/" RequestNavigate="Hyperlink_RequestNavigate">
+                            <Run>
+                                <Run.Text>
+                                    <Binding Path="IsRnaMode"
+                                             Source="{x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}"
+                                             Converter="{StaticResource ProtTermConverter}"
+                                             ConverterParameter="protein database(s)" />
+                                </Run.Text>
+                            </Run>
+                        </Hyperlink> 
+                        
+                        <Run>
+                            <Run.Text>
+                                <Binding Path="IsRnaMode"
+                                         Source="{x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}"
+                                         Converter="{StaticResource ProtTermConverter}"
+                                         ConverterParameter=" in .xml or .fasta format. Databases in .xml format can contain post-translational modification (PTM) locations, whereas .fasta format only contains amino acid sequences." />
+                            </Run.Text>
+                        </Run>
+                    </TextBlock>
+
+                    <DataGrid Grid.Row="2" x:Name="dataGridProteinDatabases"  Style="{StaticResource x:DataGridStyle}" ColumnHeaderStyle="{StaticResource DataGridColumnHeaderStyle}" ItemsSource="{Binding}">
+
+                        <DataGrid.RowStyle>
+                            <Style TargetType="{x:Type DataGridRow}" BasedOn="{StaticResource DatabaseDataGridItemStyle}" />
+                        </DataGrid.RowStyle>
+                        <DataGrid.CellStyle>
+                            <Style TargetType="{x:Type DataGridCell}" BasedOn="{StaticResource DataGridCellStyle}" />
+                        </DataGrid.CellStyle>
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="File" Binding="{Binding FileName, Mode=OneWay}" Width="450" />
+                            <DataGridTextColumn Header="File Path" Binding="{Binding FilePath, Mode=OneWay}" Width="450" />
+
+                        </DataGrid.Columns>
+                    </DataGrid>
+                    <Grid Grid.Row="3" Style="{StaticResource InternalGridStyle}" VerticalAlignment="Center">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="2"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Button Grid.Column="0" x:Name="AddXML" Width ="200" Height="35" Content="Add" Click="AddProteinDatabase_Click" Style="{StaticResource ImportantButtonStyle}" HorizontalAlignment="Right"/>
+                        <Button Grid.Column="2" x:Name="ClearXML" Width="200" Height="35" Content="Clear" Click="ClearXML_Click" Style="{StaticResource ImportantButtonStyle}" HorizontalAlignment="Left"/>
+                    </Grid>
+                </Grid>
+
+            </TabItem>
+
+            <!-- Individual Protein Analysis -->
+            <TabItem Style="{StaticResource TabItemStyle}" Name="IndividualProteinAnalyzerTab">
+                <TabItem.Header>
+                    <Binding Converter="{StaticResource ProtTermConverter}"  Source="{x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}" Path ="IsRnaMode"
+                             ConverterParameter="Individual Protein Analysis"/>
+                </TabItem.Header>
+            </TabItem>
+
+            <!-- Digestion Conditions -->
+            <TabItem Style="{StaticResource TabItemStyle}">
+                <TabItem.Header>
+                    <Binding Converter="{StaticResource ProtTermConverter}"  Source="{x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}" Path ="IsRnaMode"
+                             ConverterParameter="Digestion Conditions"/>
+                </TabItem.Header>
+                <local:DigestionConditions x:Name="digestionConditionsControl" />
+            </TabItem>
+
+            <!-- Run -->
+            <TabItem Header="Run" Style="{StaticResource TabItemStyle}" Selector.Selected="OnRunTabSelection">
+                <Grid Style="{StaticResource PageGridStyle}"  Margin="-2 -5 0 16">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="50"/>
+                        <RowDefinition Height=" 50"/>
+                        <RowDefinition Height="2.7*" />
+                        <RowDefinition Height="1*" />
+                        <RowDefinition Height="2"/>
+                        <RowDefinition Height="50"/>
+                    </Grid.RowDefinitions>
+
+                    <!--Header label-->
+                    <Label Content="Run Summary" Grid.Row="0" Style="{StaticResource HeaderLabelStyle}" />
+
+                    <!--Detail text-->
+                    <TextBlock Grid.Row="1" Style="{StaticResource TextBlockStyle}">
+                        <Run>
+                            <Run.Text>
+                                <Binding Path="IsRnaMode"
+                                         Source="{x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}"
+                                         Converter="{StaticResource ProtTermConverter}"
+                                         ConverterParameter="Summary of the databases, proteases and conditions that will be used for analysis." />
+                            </Run.Text>
+                        </Run>
+                        <LineBreak/>
+                        If everything looks good, hit RUN!
+                    </TextBlock>
+
+
+                    <Grid Grid.Row="2" Background="{StaticResource BackgroundColor}" ScrollViewer.VerticalScrollBarVisibility="Auto">
+                        <TreeView BorderThickness="0" x:Name="RunSummaryTreeView" ItemsSource="{Binding}" DataContext="{x:Type local:RunSummaryForTreeView}" Grid.ColumnSpan="4">
+                            <TreeView.Resources>
+                                <HierarchicalDataTemplate DataType="{x:Type local:RunSummaryForTreeView}" ItemsSource="{Binding Summary}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="{Binding DisplayName}" />
+                                    </StackPanel>
+                                </HierarchicalDataTemplate>
+                                <HierarchicalDataTemplate DataType="{x:Type local:CategorySummaryForTreeView}" ItemsSource="{Binding Summary}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="{Binding DisplayName}"/>
+                                    </StackPanel>
+                                </HierarchicalDataTemplate>
+                                <DataTemplate DataType="{x:Type local:FeatureForTreeView}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="{Binding DisplayName}" />
+                                    </StackPanel>
+                                </DataTemplate>
+                            </TreeView.Resources>
+                            <TreeView.ItemContainerStyle>
+                                <Style TargetType="TreeViewItem">
+                                    <Setter Property="IsExpanded" Value="{Binding Expanded}"/>
+                                </Style>
+                            </TreeView.ItemContainerStyle>
+                        </TreeView>
+                    </Grid>
+
+                    <Grid Grid.Row="3" Background="{StaticResource DataGridBackgroundColor}" >
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="20"/>
+                            <RowDefinition Height="5"/>
+                            <RowDefinition Height="40"/>
+                            <RowDefinition Height="35"/>
+                        </Grid.RowDefinitions>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width=".75*"/>
+                            <ColumnDefinition Width=".25*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <DockPanel Margin="5" Grid.Row="2" LastChildFill="True" Grid.ColumnSpan="2">
+                            <Button x:Name="OpenOutputFolderButton" Content="Open" Width="40" DockPanel.Dock="Right" Click="OpenOutputFolder_Click" Style="{StaticResource ImportantButtonStyle}"></Button>
+                            <Label Content="Output Folder:"/>
+                            <TextBox x:Name="OutputFolderTextBox"/>
+                        </DockPanel>
+                        <Button x:Name="RunTaskButton" Content="Run!" Click="RunTaskButton_Click" FontSize="24" Grid.Row="3" Grid.ColumnSpan="2" Width="400" Style="{StaticResource ImportantButtonStyle}"/>
+
+                    </Grid>
+                    <Grid Grid.Row="5" Background="{StaticResource BackgroundColor}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition></ColumnDefinition>
+                            <ColumnDefinition></ColumnDefinition>
+                        </Grid.ColumnDefinitions>
+                        <StatusBar Name="RunStatus" Grid.Column="0" Background="{StaticResource BackgroundColor}">
+                            <StatusBarItem>
+                                <TextBlock Style="{StaticResource StatusBarTextStyle}">Running:</TextBlock>
+                            </StatusBarItem>
+                        </StatusBar>
+                        <DockPanel Margin="5" Grid.Column="1">
+                            <Label Content="Run Status:" Style="{StaticResource ProgressTextStyle}" VerticalContentAlignment="Center" />
+                            <TextBox x:Name="ProgressTextBox"  Background="{StaticResource BackgroundColor}" VerticalContentAlignment="Center" BorderThickness="0"/>
+                        </DockPanel>
+
+                    </Grid>
+                </Grid>
+            </TabItem>
+
+            <!-- Results (group header) -->
+            <TabItem Header="Results" Style="{StaticResource GroupHeaderTabItemStyle}" />
+
+            <!-- Load Previous Results -->
+            <TabItem Header="Load Previous Results" Style="{StaticResource TabItemStyle}" Name="LoadTab" >
+                <Grid Style="{StaticResource PageGridStyle}" Margin="-2 -5 -2 16">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="50"/>
+                        <RowDefinition Height="25"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="50"/>
+                    </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="5"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!--Header label-->
+                    <Label Grid.Column="0" Content="Load Protease Guru Results" Grid.Row="0" Grid.ColumnSpan="3" Style="{StaticResource HeaderLabelStyle}" />
+
+                    <!--Detail text-->
+                    <TextBlock Grid.Column="0" Grid.Row="1" Grid.ColumnSpan="3" Style="{StaticResource TextBlockStyle}">
+                        Load in previous ProteaseGuru result files to go straight to data visualization.
+                    </TextBlock>
+
+                    <!-- Left Column: Parameters and Results -->
+                    <Grid Grid.Row="2" Grid.Column="0" Background="{StaticResource BackgroundColor}">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="10"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+
+                        <!--Digestion Parameters Section-->
+                        <Label Content="Digestion Parameters File" Grid.Row="0" Style="{StaticResource SubHeaderLabelStyle}" />
+
+                        <DataGrid Grid.Row="1" x:Name="dataGridParameters" Style="{StaticResource x:DataGridStyle}" 
+                                  ColumnHeaderStyle="{StaticResource DataGridColumnHeaderStyle}" ItemsSource="{Binding}" 
+                                  ScrollViewer.VerticalScrollBarVisibility="Visible">
+                            <DataGrid.RowStyle>
+                                <Style TargetType="{x:Type DataGridRow}" BasedOn="{StaticResource DatabaseDataGridItemStyle}" />
+                            </DataGrid.RowStyle>
+                            <DataGrid.CellStyle>
+                                <Style TargetType="{x:Type DataGridCell}" BasedOn="{StaticResource DataGridCellStyle}" />
+                            </DataGrid.CellStyle>
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="File" Binding="{Binding FileName, Mode=OneWay}" Width="*" />
+                            </DataGrid.Columns>
+                        </DataGrid>
+
+                        <Grid Grid.Row="2" Style="{StaticResource InternalGridStyle}" VerticalAlignment="Center">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="2"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Button Grid.Column="0" x:Name="AddParameters" Width="150" Height="25" Content="Add" 
+                                    Click="AddParameters_Click" Style="{StaticResource ImportantButtonStyle}" HorizontalAlignment="Right"/>
+                            <Button Grid.Column="2" x:Name="ClearParameters" Width="150" Height="25" Content="Clear" 
+                                    Click="ClearParameters_Click" Style="{StaticResource ImportantButtonStyle}" HorizontalAlignment="Left"/>
+                        </Grid>
+
+                        <!--Result Files Section-->
+                        <Label Content="Result Files" Grid.Row="4" Style="{StaticResource SubHeaderLabelStyle}" />
+
+                        <DataGrid Grid.Row="5" x:Name="dataGridResults" Style="{StaticResource x:DataGridStyle}" 
+                                  ColumnHeaderStyle="{StaticResource DataGridColumnHeaderStyle}" ItemsSource="{Binding}" 
+                                  ScrollViewer.VerticalScrollBarVisibility="Visible">
+                            <DataGrid.RowStyle>
+                                <Style TargetType="{x:Type DataGridRow}" BasedOn="{StaticResource DatabaseDataGridItemStyle}" />
+                            </DataGrid.RowStyle>
+                            <DataGrid.CellStyle>
+                                <Style TargetType="{x:Type DataGridCell}" BasedOn="{StaticResource DataGridCellStyle}" />
+                            </DataGrid.CellStyle>
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="File" Binding="{Binding FileName, Mode=OneWay}" Width="*" />
+                            </DataGrid.Columns>
+                        </DataGrid>
+
+                        <Grid Grid.Row="6" Style="{StaticResource InternalGridStyle}" VerticalAlignment="Center">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="2"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Button Grid.Column="0" x:Name="AddResults" Width="150" Height="25" Content="Add" 
+                                    Click="AddResults_Click" Style="{StaticResource ImportantButtonStyle}" HorizontalAlignment="Right"/>
+                            <Button Grid.Column="2" x:Name="ClearResults" Width="150" Height="25" Content="Clear" 
+                                    Click="ClearResults_Click" Style="{StaticResource ImportantButtonStyle}" HorizontalAlignment="Left"/>
+                        </Grid>
+                    </Grid>
+
+                    <!-- Right Column: Databases -->
+                    <Grid Grid.Row="2" Grid.Column="2"  Background="{StaticResource BackgroundColor}">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+
+                        <Label Content="Databases" Grid.Row="0" Style="{StaticResource SubHeaderLabelStyle}" />
+
+                        <DataGrid Grid.Row="1" x:Name="dataGridReloadDb" Style="{StaticResource x:DataGridStyle}" 
+                                  ColumnHeaderStyle="{StaticResource DataGridColumnHeaderStyle}" ItemsSource="{Binding}" 
+                                  VerticalScrollBarVisibility="Visible">
+                            <DataGrid.RowStyle>
+                                <Style TargetType="{x:Type DataGridRow}" BasedOn="{StaticResource DatabaseDataGridItemStyle}" />
+                            </DataGrid.RowStyle>
+                            <DataGrid.CellStyle>
+                                <Style TargetType="{x:Type DataGridCell}" BasedOn="{StaticResource DataGridCellStyle}" />
+                            </DataGrid.CellStyle>
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="File" Binding="{Binding FileName, Mode=OneWay}" Width="*" />
+                            </DataGrid.Columns>
+                        </DataGrid>
+
+                        <Grid Grid.Row="2" Style="{StaticResource InternalGridStyle}" VerticalAlignment="Center">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="2"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Button Grid.Column="0" x:Name="AddDb" Width="150" Height="25" Content="Add" 
+                                    Click="ReloadProteinDatabase_Click" Style="{StaticResource ImportantButtonStyle}" HorizontalAlignment="Right"/>
+                            <Button Grid.Column="2" x:Name="ClearDb" Width="150" Height="25" Content="Clear" 
+                                    Click="ClearReloadedXML_Click" Style="{StaticResource ImportantButtonStyle}" HorizontalAlignment="Left"/>
+                        </Grid>
+                    </Grid>
+
+                    <!-- Load Results Button at Bottom -->
+                    <Button Grid.Row="3" Grid.ColumnSpan="3" x:Name="LoadResults" Width="402" Height="40" 
+                            Content="Load Results" Click="LoadResults_Click" Style="{StaticResource ImportantButtonStyle}"/>
+                </Grid>
+            </TabItem>
+
+            <!-- Results Summary -->
+            <TabItem Style="{StaticResource TabItemStyle}" Name="AllResultsTab">
+                <TabItem.Header>
+                    <Binding Converter="{StaticResource ProtTermConverter}"  Source="{x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}" Path ="IsRnaMode"
+                        ConverterParameter="Results Summary"/>
+                </TabItem.Header>
+                <local:AllResultsWindow/>
+            </TabItem>
+
+            <!-- Protein Search -->
+            <TabItem Name="ProteinCovMap" Style="{StaticResource TabItemStyle}">
+                <TabItem.Header>
+                    <Binding Converter="{StaticResource ProtTermConverter}"  Source="{x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}" Path ="IsRnaMode"
+                        ConverterParameter="Protein Search"/>
+                </TabItem.Header>
+                <local:ProteinResultsWindow/>
+            </TabItem>
+
+            <!-- Histograms -->
+            <TabItem Style="{StaticResource TabItemStyle}" Name="AllHistogramsTab">
+                <TabItem.Header>
+                    <Binding Converter="{StaticResource ProtTermConverter}"  Source="{x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}" Path ="IsRnaMode"
+                             ConverterParameter="Histograms"/>
+                </TabItem.Header>
+                <local:HistogramWindow/>
+            </TabItem>
+
+            <!-- Help -->
+            <TabItem Header="Help" Style="{StaticResource TabItemStyle}">
+                <Grid Style="{StaticResource PageGridStyle}">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="50"/>
+                        <RowDefinition Height="25"/>
+                        <RowDefinition Height="1*"/>
+                        <RowDefinition Height="1*"/>
+                    </Grid.RowDefinitions>
+
+                    <!--Header label-->
+                    <Label Content="Help" Grid.Row="0" Style="{StaticResource HeaderLabelStyle}" />
+
+                    <TextBlock Grid.Row="2" Style="{StaticResource TextBlockStyle}">
+                        Please visit our 
+                        <Hyperlink NavigateUri="https://github.com/smith-chem-wisc/ProteaseGuru/wiki" RequestNavigate="Hyperlink_RequestNavigate">
+                            wiki
+                        </Hyperlink>  
+                        to find answers to commonly-asked questions.
+                    
+                        <LineBreak/>
+                        <LineBreak/>
+                    
+                        If you encounter problems or you have a suggestion, please visit  
+                        <Hyperlink NavigateUri="https://github.com/smith-chem-wisc/ProteaseGuru/issues/new" RequestNavigate="Hyperlink_RequestNavigate">
+                            our issues page
+                        </Hyperlink> 
+                        on GitHub and submit a new issue. 
+                    
+                        <LineBreak/>
+                        <LineBreak/>
+                    
+                        If you would prefer to keep your correspondence private, you may email us at 
+                        <Hyperlink NavigateUri="null" RequestNavigate="MenuItem_EmailHelp_Click">
+                           smith_software@chem.wisc.edu
+                        </Hyperlink>.
+                    </TextBlock>
+
+                    <Grid Grid.Row="3" Style="{StaticResource PageGridStyle}" Margin="5,0,0,0">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="22"/>
+                            <RowDefinition Height="22"/>
+                            <RowDefinition Height="22"/>
+                            <RowDefinition Height="22"/>
+                            <RowDefinition Height="22"/>
+                            <RowDefinition Height="22"/>
+                            <RowDefinition Height="22"/>
+                            <RowDefinition Height="22"/>
+                        </Grid.RowDefinitions>
+
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="20"/>
+                            <ColumnDefinition Width="330"/>
+                        </Grid.ColumnDefinitions>
+
+                        <TextBlock Grid.Row="0" Grid.Column="1" Style="{StaticResource TextBlockStyle}" Margin="0">
+                            You may also want to:
+                        </TextBlock>
+
+                        <Button Grid.Row="1" Grid.Column="1" HorizontalContentAlignment="Left" BorderThickness="0" Click="MenuItem_Twitter_Click">
+                            <StackPanel Orientation="Horizontal">
+                                <Image Source="Icons/Twitter_Logo_Blue.bmp" Width="20" Height="20" Margin="0,0,5,0"/>
+                                <TextBlock Text="Follow us on Twitter" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Button>
+
+                        <!--<Button Grid.Row="2" Grid.Column="1" HorizontalContentAlignment="Left" BorderThickness="0" Click="MenuItem_YouTube_Click">
+                            <StackPanel Orientation="Horizontal">
+                                <Image Source="Icons/youtube_20.bmp" Width="20" Height="20" Margin="0,0,5,0"/>
+                                <TextBlock Text="Watch YouTube help videos" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Button>-->
+
+                        <Button Grid.Row="2" Grid.Column="1" HorizontalContentAlignment="Left" BorderThickness="0" Click="MenuItem_MetaMorpheus_Click">
+                            <StackPanel Orientation="Horizontal">
+                                <Image Source="Icons/MMnice.bmp" Width="20" Height="20" Margin="0,0,5,0"/>
+                                <TextBlock VerticalAlignment="Center">
+                                    <Run>
+                                        <Run.Text>
+                                            <Binding Path="IsRnaMode"
+                                                     Source="{x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}"
+                                                     Converter="{StaticResource ProtTermConverter}"
+                                                     ConverterParameter="Search proteomic data with MetaMorpheus" />
+                                        </Run.Text>
+                                    </Run>
+                                </TextBlock>
+                            </StackPanel>
+                        </Button>
+
+                        <Button Grid.Row="3" Grid.Column="1" HorizontalContentAlignment="Left" BorderThickness="0" Click="MenuItem_Spritz_Click">
+                            <StackPanel Orientation="Horizontal">
+                                <Image Width="20" Height="20" Margin="0,0,5,0"/>
+                                <TextBlock Text="Create sample-specific database with Spritz" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Button>
+
+                        <Button Grid.Row="4" Grid.Column="1" HorizontalContentAlignment="Left" BorderThickness="0" Click="MenuItem_ProteomicsNewsBlog_Click">
+                            <StackPanel Orientation="Horizontal">
+                                <Image Source="Icons/Blogger_20.bmp" Width="20" Height="20" Margin="0,0,5,0"/>
+                                <TextBlock VerticalAlignment="Center">
+                                    <Run>
+                                        <Run.Text>
+                                            <Binding Path="IsRnaMode"
+                                                     Source="{x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}"
+                                                     Converter="{StaticResource ProtTermConverter}"
+                                                     ConverterParameter="Read News in Proteomics Research" />
+                                        </Run.Text>
+                                    </Run>
+                                </TextBlock>
+                            </StackPanel>
+                        </Button>
+                    </Grid>
+
+                </Grid>
+            </TabItem>
+        </TabControl>
+
+        <!--Notifications - separate grid with column definitions to skip tab sidebar-->
+        <Grid Grid.Row="1" Margin="1,-10,0,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="210" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <StackPanel Grid.Column="1" Background="{StaticResource DataGridBackgroundColor}" Margin="1,0,0,0">
+                <Expander x:Name="NotificationExpander" 
+                          Background="{StaticResource DataGridBackgroundColor}" 
+                          FlowDirection="RightToLeft"
+                          IsExpanded="{Binding IsExpanded, Mode=TwoWay, Source={x:Static local:NotificationService.Instance}}">
+                    <Expander.Header>
+                        <StackPanel>
+                            <TextBlock>Notifications</TextBlock>
+                        </StackPanel>
+                    </Expander.Header>
+
+                    <Grid FlowDirection="LeftToRight" Background="{StaticResource DataGridBackgroundColor}">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+
+                        <!-- Clear Button -->
+                        <Button Grid.Row="0" 
+                                Content="Clear All" 
+                                HorizontalAlignment="Right" 
+                                Margin="5"
+                                Width="80"
+                                Height="25"
+                                Click="ClearNotifications_Click"
+                                Style="{StaticResource ImportantButtonStyle}"/>
+
+                        <!-- Notifications List -->
+                        <ScrollViewer Grid.Row="1"
+                                      Background="{StaticResource DataGridBackgroundColor}"
+                                      VerticalScrollBarVisibility="Auto" 
+                                      MaxHeight="150"
+                                      Margin="5,0,5,5">
+                            <ItemsControl ItemsSource="{Binding Notifications, Source={x:Static local:NotificationService.Instance}}"
+                                          Background="{StaticResource DataGridBackgroundColor}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Style="{StaticResource NotificationItemStyle}">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
+
+                                                <TextBlock Grid.Column="0" 
+                                                           Text="{Binding TypeIcon}" 
+                                                           FontSize="14" 
+                                                           Margin="0,0,10,0"
+                                                           VerticalAlignment="Center"/>
+
+                                                <TextBlock Grid.Column="1" 
+                                                           Text="{Binding Message}" 
+                                                           TextWrapping="Wrap"
+                                                           Foreground="{StaticResource TextColor1}"
+                                                           VerticalAlignment="Center"/>
+
+                                                <TextBlock Grid.Column="2" 
+                                                           Text="{Binding FormattedTimestamp}" 
+                                                           Foreground="Gray"
+                                                           FontSize="10"
+                                                           Margin="10,0,0,0"
+                                                           VerticalAlignment="Center"/>
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
+                    </Grid>
+                </Expander>
+            </StackPanel>
+        </Grid>
+    </Grid>
+</Window>

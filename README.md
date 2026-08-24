@@ -10,6 +10,37 @@ databases with as many proteases as desired. Results of the various proteolytic 
 
 Check out the [wiki page](https://github.com/smith-chem-wisc/ProteaseGuru/wiki) for software details!
 
+## Getting Started
+
+ProteaseGuru is a **Windows desktop application**. To run your first *in silico* digestion:
+
+**1. Get the app**
+* Install the free [.NET 8 Desktop Runtime](https://dotnet.microsoft.com/en-us/download/dotnet/8.0) (Windows x64) if you don't already have it.
+* Download `ProteaseGuru.zip` from the [latest release](https://github.com/smith-chem-wisc/ProteaseGuru/releases/latest) and unzip it to a folder you can write to (not `Program Files`).
+* Double-click **`ProteaseGuru.exe`** to launch. *(Prefer to build it yourself? See [Build from source](#build-from-source).)*
+
+**2. Run a digestion in 5 steps**
+1. **Add a database** — on the *Databases* window, click **Add** (or drag & drop) a UniProt `.xml` or `.fasta` file (`.gz` is fine). Add as many as you like.
+2. **Set digestion conditions** — pick one or more proteases and set your parameters (missed cleavages, min/max peptide length, optional mass range and modifications).
+3. **Review & run** — the *Run* window summarizes your databases, proteases, parameters, and output location. Click **Run**.
+4. **Explore results** — when digestion finishes, the *Results Summary* opens. Use **Histograms** to compare proteases across the whole proteome, or **Protein Search** to view per-protein sequence-coverage maps.
+5. **Export** — result tables are written to the output folder automatically; histograms export as PDF + reproducible `.csv`, and coverage maps export from the Protein Search window.
+
+For a walkthrough of each window, see the [wiki Getting Started page](https://github.com/smith-chem-wisc/ProteaseGuru/wiki/Getting-Started).
+
+### Build from source
+
+Requires the [.NET 8 SDK](https://dotnet.microsoft.com/en-us/download/dotnet/8.0) and Windows.
+
+```
+git clone https://github.com/smith-chem-wisc/ProteaseGuru.git
+cd ProteaseGuru
+dotnet build ProteaseGuru.sln -c Release
+dotnet run --project ProteaseGuruGui
+```
+
+Or open `ProteaseGuru.sln` in Visual Studio 2022, set **ProteaseGuruGui** as the startup project, and press **F5**.
+
 ## Major Features
 * Ability to digest more than one database for application with multi-species samples such as xenografts, virally infected host cells and microbiome samples.
 * In silico digestion with as many proteases as desired!

@@ -26,6 +26,7 @@ public class TomlReadWrite
             TreatModifiedPeptidesAsDifferent = true,
             MinPeptideMassAllowed = 500,
             MaxPeptideMassAllowed = 5000,
+            DetectabilityThreshold = 0.8,
             ProteaseSpecificParameters =
             [
                 new ProteaseSpecificParameters(new DigestionParams(), new List<Modification> { carbam },
@@ -48,6 +49,7 @@ public class TomlReadWrite
         Assert.That(deserialized.TreatModifiedPeptidesAsDifferent, Is.EqualTo(original.TreatModifiedPeptidesAsDifferent));
         Assert.That(deserialized.MinPeptideMassAllowed, Is.EqualTo(original.MinPeptideMassAllowed));
         Assert.That(deserialized.MaxPeptideMassAllowed, Is.EqualTo(original.MaxPeptideMassAllowed));
+        Assert.That(deserialized.DetectabilityThreshold, Is.EqualTo(original.DetectabilityThreshold));
         Assert.That(deserialized.ProteaseSpecificParameters.Count, Is.EqualTo(original.ProteaseSpecificParameters.Count));
 
         for (int i = 0; i < original.ProteaseSpecificParameters.Count; i++)

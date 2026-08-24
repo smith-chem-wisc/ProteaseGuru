@@ -1,15 +1,19 @@
 using System.Collections.Concurrent;
 using System.Data;
+using BayesianEstimation;
 using Chromatography.RetentionTimePrediction.Chronologer;
 using Engine;
 using Omics;
 using Omics.Modifications;
+using PredictionClients.Koina.AbstractClasses;
+using PredictionClients.Koina.SupportedModels.FlyabilityModels;
+using PredictionClients.Koina.SupportedModels.FragmentIntensityModels;
+using PredictionClients.Koina.Util;
 using Proteomics;
 using Proteomics.ProteolyticDigestion;
 using Proteomics.RetentionTimePrediction;
 using Transcriptomics;
 using UsefulProteomicsDatabases;
-using PredictionClients.Koina.SupportedModels.FlyabilityModels;
 using UsefulProteomicsDatabases.Transcriptomics;
 
 namespace Tasks
@@ -53,6 +57,7 @@ namespace Tasks
         public Dictionary<string, Dictionary<string, Dictionary<IBioPolymer, List<InSilicoPep>>>>? PeptideByFile;
         public static Dictionary<string, Dictionary<IBioPolymer, List<InSilicoPep>>>? AllPeptidesByProtease;
         public Dictionary<string, Dictionary<IBioPolymer, (double, double)>> SequenceCoverageByProtease = new();
+        public Dictionary<string, Dictionary<IBioPolymer, (double, double)>> SequenceCoverageByProteaseFromDetectablePeptides = new();
 
         #endregion
 
@@ -108,6 +113,18 @@ namespace Tasks
                 Status("Writing Peptide Output...", "peptides");
                 WritePeptidesToTsv(PeptideByFile, OutputFolder, DigestionParameters);
                 SequenceCoverageByProtease = CalculateProteinSequenceCoverage(PeptideByFile);
+                SequenceCoverageByProteaseFromDetectablePeptides = CalculateProteinSequenceCoverage(
+                    PeptideByFile.ToDictionary(
+                        db => db.Key,
+                        db => db.Value.ToDictionary(
+                            protease => protease.Key,
+                            protease => protease.Value.ToDictionary(
+                                protein => protein.Key,
+                                protein => protein.Value.Where(peptide => peptide.PflyDetectability == true).ToList()
+                            )
+                        )
+                    )
+                );
                 MyTaskResults myRunResults = new MyTaskResults(this);
                 Status("Writing Results Summary...", "summary");
 
@@ -263,6 +280,7 @@ namespace Tasks
             var mobilityBySequence = new Dictionary<string, double>();
             var retentionTimeBySequence = new Dictionary<string, double>();
             var detectabilityBySequence = new Dictionary<string, bool?>();
+            var detectabilityProbabilityBySequence = new Dictionary<string, (double NotDetectable, double LowDetectability, double IntermediateDetectability, double HighDetectability)?>();
 
             // These properties only apply to peptides. If any analyte is a non-peptide
             // (e.g. an oligo), leave the maps empty so PHASE 3 falls back to NaN/null sentinels
@@ -279,12 +297,12 @@ namespace Tasks
 
                 // PFly detectability is a remote Koina (network) call; start it concurrently so its
                 // latency overlaps the CPU-bound local property calculations below.
-                var pflyTask = Task.Run(() => BatchCalculateDetectabilitiesPfly(distinctPeptides));
+                var pflyTask = Task.Run(() => BatchCalculateDetectabilitiesPfly(distinctPeptides, userParams.DetectabilityThreshold));
 
                 double[] hydrophobicityValues = BatchCalculateHydrophobicity(distinctPeptides);
                 double[] mobilityValues = BatchCalculateElectrophoreticMobility(distinctPeptides);
                 double[] retentionTimesChronologer = BatchCalculateRetentionTimesChronologer(distinctPeptides);
-                bool?[] pflyDetectabilities = pflyTask.GetAwaiter().GetResult();
+                var (pflyDetectabilities, pflyProbabilities) = pflyTask.GetAwaiter().GetResult();
 
                 for (int i = 0; i < distinctPeptides.Count; i++)
                 {
@@ -293,6 +311,7 @@ namespace Tasks
                     mobilityBySequence[sequence] = mobilityValues[i];
                     retentionTimeBySequence[sequence] = retentionTimesChronologer[i];
                     detectabilityBySequence[sequence] = pflyDetectabilities[i];
+                    detectabilityProbabilityBySequence[sequence] = pflyProbabilities[i];
                 }
             }
 
@@ -318,6 +337,7 @@ namespace Tasks
                     double mobility = mobilityBySequence.TryGetValue(fullSequence, out var mob) ? mob : double.NaN;
                     double retentionTime = retentionTimeBySequence.TryGetValue(fullSequence, out var rt) ? rt : double.NaN;
                     bool? detectability = detectabilityBySequence.TryGetValue(fullSequence, out var det) ? det : null;
+                    var detectabilityProbability = detectabilityProbabilityBySequence.TryGetValue(fullSequence, out var prob) ? prob : null;
 
                     var inSilicoPep = new InSilicoPep(
                         peptide.BaseSequence,
@@ -336,7 +356,8 @@ namespace Tasks
                         peptide.Parent.Name,
                         peptide.OneBasedStartResidue,
                         peptide.OneBasedEndResidue,
-                        peptide.DigestionParams.DigestionAgent.Name
+                        peptide.DigestionParams.DigestionAgent.Name,
+                        detectabilityProbability
                     );
 
                     peptideList.Add(inSilicoPep);
@@ -526,9 +547,9 @@ namespace Tasks
             return results;
         }
 
-        private bool?[] BatchCalculateDetectabilitiesPfly(List<PeptideWithSetModifications> peptides)
+        private (bool?[] Detectabilities, (double NotDetectable, double LowDetectability, double IntermediateDetectability, double HighDetectability)?[] Probabilities) BatchCalculateDetectabilitiesPfly(List<PeptideWithSetModifications> peptides, double detectabilityThreshold)
         {
-            if (peptides.Count == 0) return new bool?[0];
+            if (peptides.Count == 0) return (Array.Empty<bool?>(), Array.Empty<(double, double, double, double)?>());
 
             var model = CheckoutPfly();
             try
@@ -539,16 +560,17 @@ namespace Tasks
                 if (results.Count != peptides.Count)
                 {
                     Warn($"PFly detectability prediction returned {results.Count} results for {peptides.Count} peptides. Falling back to null values.");
-                    return new bool?[peptides.Count];
+                    return (new bool?[peptides.Count], new (double, double, double, double)?[peptides.Count]);
                 }
 
-                var predictedDetectability = results.Select(r => r.DetectabilityProbabilities.HasValue ? r.DetectabilityProbabilities.Value.NotDetectable < 0.5 : (bool?)null).ToArray();
-                return predictedDetectability;
+                var predictedDetectability = results.Select(r => r.DetectabilityProbabilities.HasValue ? (1.0 - r.DetectabilityProbabilities.Value.NotDetectable) >= detectabilityThreshold : (bool?)null).ToArray();
+                var predictedProbabilities = results.Select(r => r.DetectabilityProbabilities).ToArray();
+                return (predictedDetectability, predictedProbabilities);
             }
             catch (Exception ex)
             {
                 Warn($"PFly detectability prediction failed: {ex.Message}. Falling back to null values for all peptides.");
-                return new bool?[peptides.Count];
+                return (new bool?[peptides.Count], new (double, double, double, double)?[peptides.Count]);
             }
             finally
             {
@@ -780,7 +802,8 @@ namespace Tasks
                 "Next Amino Acid", "Start Residue", "End Residue", "Length", "Molecular Weight",
                 "Protein Accession", "Protein Name", "Unique Peptide (in this database)",
                 "Unique Peptide (in all databases)", "Peptide sequence exclusive to this Database",
-                "Hydrophobicity", "Electrophoretic Mobility", "Chronologer Retention Time", "Pfly Detectability (>=0.5)");
+                "Hydrophobicity", "Electrophoretic Mobility", "Chronologer Retention Time", $"Pfly Detectability (>={userParams.DetectabilityThreshold:0.0##})",
+                "PFly NotDetectable Prob", "PFly Low Detectability Prob", "PFly Intermediate Detectability Prob", "PFly High Detectability Prob");
 
             var allPeptides = new List<InSilicoPep>();
 

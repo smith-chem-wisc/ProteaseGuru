@@ -16,6 +16,7 @@ namespace Tasks
         public double ElectrophoreticMobility;
         public double ChronologerRetentionTime;
         public bool? PflyDetectability;
+        public (double NotDetectable, double LowDetectability, double IntermediateDetectability, double HighDetectability)? PflyProbabilities;
         public int Length;
         public double MolecularWeight;
         public string Database;
@@ -26,7 +27,8 @@ namespace Tasks
         public string Protease;
 
         public InSilicoPep(string baseSequence, string fullSequence, char previousAA, char nextAA, bool unique, double hydrophobicity, double electrophoreticMobility,
-            double chronologerRetentionTime, bool? pflyDetectability, int length, double molecularWeight, string database, string protein, string proteinName, int start, int end, string protease)
+            double chronologerRetentionTime, bool? pflyDetectability, int length, double molecularWeight, string database, string protein, string proteinName, int start, int end, string protease,
+            (double NotDetectable, double LowDetectability, double IntermediateDetectability, double HighDetectability)? pflyProbabilities = null)
         {
             BaseSequence = baseSequence;
             FullSequence = fullSequence;
@@ -37,6 +39,7 @@ namespace Tasks
             ElectrophoreticMobility = electrophoreticMobility;
             ChronologerRetentionTime = chronologerRetentionTime;
             PflyDetectability = pflyDetectability;
+            PflyProbabilities = pflyProbabilities;
             Length = length;
             MolecularWeight = molecularWeight;
             Database = database;
@@ -90,6 +93,14 @@ namespace Tasks
             sb.Append(ChronologerRetentionTime);
             sb.Append(tab);
             sb.Append(PflyDetectability);
+            sb.Append(tab);
+            sb.Append(PflyProbabilities?.NotDetectable);
+            sb.Append(tab);
+            sb.Append(PflyProbabilities?.LowDetectability);
+            sb.Append(tab);
+            sb.Append(PflyProbabilities?.IntermediateDetectability);
+            sb.Append(tab);
+            sb.Append(PflyProbabilities?.HighDetectability);
             return sb.ToString();
         }
         public override bool Equals(object? obj)

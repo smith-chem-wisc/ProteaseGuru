@@ -1,4 +1,4 @@
-using GuiFunctions;
+using ProteaseGuruGuiFunctions;
 using NUnit.Framework;
 
 namespace Test;

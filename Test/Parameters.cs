@@ -1,8 +1,10 @@
+using System;
 using System.ComponentModel;
+using System.IO;
 using System.Reflection;
 using Engine;
-using GuiFunctions;
 using NUnit.Framework;
+using ProteaseGuruGuiFunctions;
 using Tasks;
 
 namespace Test.GuiTests
@@ -145,6 +147,47 @@ namespace Test.GuiTests
             var vm2 = GuiGlobalParamsViewModel.Instance;
 
             Assert.That(vm2.IsRnaMode, Is.True, "IsRnaMode should persist after save/load");
+        }
+
+        [Test]
+        public void MaxThreads_SavesAndLoadsCorrectly()
+        {
+            var vm = GuiGlobalParamsViewModel.Instance;
+
+            // an in-range value, distinct from the all-cores default where the machine allows it
+            int target = Math.Clamp(2, 1, vm.MaxAvailableThreads);
+            vm.MaxThreads = target;
+            vm.Save();
+
+            ResetSingleton();
+            var vm2 = GuiGlobalParamsViewModel.Instance;
+
+            Assert.That(vm2.MaxThreads, Is.EqualTo(target), "MaxThreads should persist across save/load");
+        }
+
+        [Test]
+        public void MaxThreads_MissingKeyInSettingsFile_DefaultsToAllCores()
+        {
+            // Simulates an upgrade: a settings file written before the MaxThreads field existed,
+            // so the key is absent. Nett leaves an absent key at the property default, not 0.
+            File.WriteAllText(SettingsPath,
+                "IsRnaMode = false\r\nAskAboutSettingsChangeOnClose = true\r\nOverwriteSettingsWithoutAsking = false\r\n");
+
+            var vm = GuiGlobalParamsViewModel.Instance; // triggers Load()
+
+            Assert.That(vm.MaxThreads, Is.EqualTo(vm.MaxAvailableThreads),
+                "A settings file with no MaxThreads key should default to all cores, not 1.");
+        }
+
+        [Test]
+        public void MaxThreads_NonPositiveInSettingsFile_ClampsToFloorOfOne()
+        {
+            File.WriteAllText(SettingsPath, "MaxThreads = 0\r\n");
+
+            var vm = GuiGlobalParamsViewModel.Instance; // triggers Load()
+
+            Assert.That(vm.MaxThreads, Is.EqualTo(1),
+                "An explicit non-positive MaxThreads clamps up to the floor of 1.");
         }
     }
 }
