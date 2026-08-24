@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using GuiFunctions;
 
 namespace GUI
 {
@@ -118,33 +119,15 @@ namespace GUI
 
         private void ClampToBounds()
         {
-            if (string.IsNullOrEmpty(Text))
+            string clamped = IntegerTextBounds.Clamp(Text, LowerBound, UpperBound);
+            if (clamped == Text)
                 return;
 
-            if (int.TryParse(Text, out int value))
-            {
-                if (value < LowerBound)
-                    Text = LowerBound.ToString();
-                else if (value > UpperBound)
-                    Text = UpperBound.ToString();
-                return;
-            }
+            Text = clamped;
 
-            string trimmed = Text.Trim();
-            bool negative = trimmed.StartsWith("-");
-            string digits = negative ? trimmed.Substring(1) : trimmed;
-            if (IsAllDigits(digits))
-                Text = negative ? LowerBound.ToString() : UpperBound.ToString();
-        }
-
-        private static bool IsAllDigits(string s)
-        {
-            if (s.Length == 0)
-                return false;
-            foreach (char c in s)
-                if (!char.IsDigit(c))
-                    return false;
-            return true;
+            // Push the clamped value to the binding instead of waiting for focus to move, so the
+            // source cannot keep the out-of-range value the control just rejected.
+            GetBindingExpression(TextProperty)?.UpdateSource();
         }
 
         /// <summary>
