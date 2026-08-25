@@ -15,7 +15,7 @@ Check out the [wiki page](https://github.com/smith-chem-wisc/ProteaseGuru/wiki) 
 ProteaseGuru is a **Windows desktop application**. To run your first *in silico* digestion:
 
 **1. Get the app**
-* Install the free [.NET 8 Desktop Runtime](https://dotnet.microsoft.com/en-us/download/dotnet/8.0) (Windows x64) if you don't already have it.
+* Install the free [.NET 10 Desktop Runtime](https://dotnet.microsoft.com/en-us/download/dotnet/10.0) (Windows x64) if you don't already have it.
 * Download `ProteaseGuru.zip` from the [latest release](https://github.com/smith-chem-wisc/ProteaseGuru/releases/latest) and unzip it to a folder you can write to (not `Program Files`).
 * Double-click **`ProteaseGuru.exe`** to launch. *(Prefer to build it yourself? See [Build from source](#build-from-source).)*
 
@@ -30,7 +30,7 @@ For a walkthrough of each window, see the [wiki Getting Started page](https://gi
 
 ### Build from source
 
-Requires the [.NET 8 SDK](https://dotnet.microsoft.com/en-us/download/dotnet/8.0) and Windows.
+Requires the [.NET 10 SDK](https://dotnet.microsoft.com/en-us/download/dotnet/10.0) and Windows.
 
 ```
 git clone https://github.com/smith-chem-wisc/ProteaseGuru.git
