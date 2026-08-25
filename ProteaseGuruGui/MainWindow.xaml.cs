@@ -66,6 +66,14 @@ namespace ProteaseGuruGui
 
             // Rebuild Individual Protein Analyzer tab whenever databases are added or removed
             ProteinDbObservableCollection.CollectionChanged += (s, e) => RebuildIndividualProteinAnalyzerTab();
+
+            // Refresh the run summary when the analyte mode changes, so the Run tab updates
+            // live instead of only when it is re-entered.
+            GuiGlobalParamsViewModel.Instance.PropertyChanged += (s, e) =>
+            {
+                if (e.PropertyName == nameof(GuiGlobalParamsViewModel.IsRnaMode))
+                    GenerateRunSummary();
+            };
         }
 
         //the add button for loading previous peptide result files
