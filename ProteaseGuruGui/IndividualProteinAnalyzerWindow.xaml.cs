@@ -318,8 +318,6 @@ namespace ProteaseGuruGui
             Dictionary<string, List<(int Start, int End)>> pepsByProtease,
             List<string> orderedCheckedProteases)
         {
-            const double sequenceContentWidth = 25 * 22 + 65 + 20;
-            double availableWidth = MaxCoverageGrid.ActualWidth - 18;
             string pct = SeekMaximumCoverage.CoveragePercentage(result.CoveredResidues, protein.Length);
             string proteaseStr = result.Proteases.Count > 0
                 ? string.Join(" + ", result.Proteases)
@@ -334,7 +332,6 @@ namespace ProteaseGuruGui
                 orderedCheckedProteases,
                 pepsByProtease,
                 name => SequenceCoverageMap.GetProteaseBrush(_stableProteaseBrushes, name),
-                Math.Min(availableWidth, sequenceContentWidth),
                 coverageHeader,
                 residueSpacing: 22,
                 seqLeftOffset: 65);
@@ -357,10 +354,6 @@ namespace ProteaseGuruGui
                 foreach (var (start, end) in kvp.Value)
                     allIntervals.Add((start, end, kvp.Key));
 
-            const double sequenceContentWidth = 25 * 22 + 65 + 20;
-            double availableWidth = MaxCoverageGrid.ActualWidth > 0 ? MaxCoverageGrid.ActualWidth - 18 : sequenceContentWidth;
-            double canvasWidth = Math.Max(Math.Min(availableWidth, sequenceContentWidth), 200);
-
             string pct = SeekMaximumCoverage.CoveragePercentage(result.CoveredResidues, protein.Length);
             string proteaseStr = result.Proteases.Count > 0
                 ? string.Join(" + ", result.Proteases)
@@ -378,7 +371,6 @@ namespace ProteaseGuruGui
                 allIntervals,
                 allCovered,
                 new HashSet<int>(),
-                canvasWidth,
                 protein.FullName,
                 coverageHeader,
                 residueSpacing: 22,
@@ -397,15 +389,10 @@ namespace ProteaseGuruGui
 
         private void maxCoverageGrid_SizeChanged(object sender, SizeChangedEventArgs e)
         {
-            double availableWidth = MaxCoverageGrid.ActualWidth;
+            // The map/legend canvases size themselves to their intrinsic content width; here we only
+            // size the scroll viewport to the grid, which scrolls when the map is wider than the window.
             maxCoverageMapViewer.Height = 0.85 * MaxCoverageGrid.ActualHeight;
-            maxCoverageMapViewer.Width = availableWidth;
-
-            const double sequenceContentWidth = 25 * 22 + 65 + 20;
-            double canvasWidth = Math.Min(availableWidth - 18, sequenceContentWidth);
-            canvasWidth = Math.Max(canvasWidth, 200);
-            maxCoverageMap.Width = canvasWidth;
-            maxCoverageLegend.Width = canvasWidth;
+            maxCoverageMapViewer.Width = MaxCoverageGrid.ActualWidth;
         }
 
         private async void ExportSpectrumLibrary_Click(object sender, RoutedEventArgs e)
