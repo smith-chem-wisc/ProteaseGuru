@@ -77,7 +77,7 @@ public class MaxCoverageTests
     public void TestGreedyMinimumProteaseSet()
     {
         var coverage = _analyzer.CalculateCoverageByProtease(_testProtein, _proteaseParams);
-        var result = _analyzer.GreedyMinimumProteaseSet(coverage);
+        var result = _analyzer.GreedyMinimumProteaseSet(coverage, _testProtein.Length);
 
         Assert.That(result, Is.Not.Null);
         Assert.That(result.SelectedProteases, Is.Not.Empty);
@@ -94,7 +94,7 @@ public class MaxCoverageTests
     public void TestBestPair()
     {
         var coverage = _analyzer.CalculateCoverageByProtease(_testProtein, _proteaseParams);
-        var result = _analyzer.BestPair(coverage);
+        var result = _analyzer.BestPair(coverage, _testProtein.Length);
 
         Assert.That(result, Is.Not.Null);
         Assert.That(result.Proteases.Count, Is.EqualTo(2));
@@ -110,11 +110,11 @@ public class MaxCoverageTests
     public void TestBestTriplet()
     {
         var coverage = _analyzer.CalculateCoverageByProtease(_testProtein, _proteaseParams);
-        var result = _analyzer.BestTriplet(coverage);
+        var result = _analyzer.BestTriplet(coverage, _testProtein.Length);
 
         Assert.That(result, Is.Not.Null);
         Assert.That(result.Proteases.Count, Is.EqualTo(3));
-        Assert.That(result.CoverageCount, Is.GreaterThanOrEqualTo(_analyzer.BestPair(coverage).CoverageCount));
+        Assert.That(result.CoverageCount, Is.GreaterThanOrEqualTo(_analyzer.BestPair(coverage, _testProtein.Length).CoverageCount));
 
         TestContext.WriteLine("Best Triplet:");
         TestContext.WriteLine(new string('-', 50));
@@ -127,7 +127,7 @@ public class MaxCoverageTests
     {
         var coverage = _analyzer.CalculateCoverageByProtease(_testProtein, _proteaseParams);
         var region = (Start: 50, End: 100);
-        var result = _analyzer.GreedyMinimumProteaseSet(coverage, region);
+        var result = _analyzer.GreedyMinimumProteaseSet(coverage, _testProtein.Length, region);
 
         Assert.That(result, Is.Not.Null);
         Assert.That(result.TotalResidues, Is.EqualTo(51)); // 100 - 50 + 1
@@ -137,6 +137,62 @@ public class MaxCoverageTests
         TestContext.WriteLine(new string('-', 50));
         TestContext.WriteLine($"  Selected: {string.Join(", ", result.SelectedProteases)}");
         TestContext.WriteLine($"  Coverage: {result.CoveredResidues.Count}/{result.TotalResidues} ({result.CoverageFraction:P1})");
+    }
+
+    /// <summary>
+    /// The coverage sets carry no record of residues past the last covered one, so a denominator
+    /// derived from them silently drops an uncovered C-terminus from both numerator and
+    /// denominator — reporting 100% for a protein that is barely half covered. The tail here is
+    /// longer than MaxLength and has no cleavage site, so no protease can reach it.
+    /// </summary>
+    [Test]
+    public void CoverageFractionCountsAnUncoveredCTerminus()
+    {
+        var tailed = new Protein(SampleSequence + new string('A', 120), "TAILED");
+        var coverage = _analyzer.CalculateCoverageByProtease(tailed, _proteaseParams);
+
+        int highestCovered = coverage.Values.SelectMany(s => s).Max();
+        Assert.That(highestCovered, Is.LessThan(tailed.Length - 1),
+            "test needs a protein whose C-terminus no protease covers");
+
+        var result = _analyzer.BestPair(coverage, tailed.Length);
+
+        Assert.That(result.CoverageFraction,
+            Is.EqualTo((double)result.CoveredResidues.Count / tailed.Length).Within(1e-9));
+        Assert.That(result.CoverageFraction, Is.LessThan(0.75),
+            "an uncovered tail this long must drag the reported fraction well below 100%");
+    }
+
+    [Test]
+    public void GreedyCoverageFractionIsReportedAgainstTheGivenTotal()
+    {
+        var tailed = new Protein(SampleSequence + new string('A', 120), "TAILED");
+        var coverage = _analyzer.CalculateCoverageByProtease(tailed, _proteaseParams);
+
+        var result = _analyzer.GreedyMinimumProteaseSet(coverage, tailed.Length);
+
+        Assert.That(result.TotalResidues, Is.EqualTo(tailed.Length));
+        Assert.That(result.CoverageFraction,
+            Is.EqualTo((double)result.CoveredResidues.Count / tailed.Length).Within(1e-9));
+    }
+
+    [Test]
+    public void RegionSpanStillWinsOverTheSuppliedTotal()
+    {
+        var coverage = _analyzer.CalculateCoverageByProtease(_testProtein, _proteaseParams);
+
+        var result = _analyzer.GreedyMinimumProteaseSet(coverage, _testProtein.Length, (Start: 50, End: 100));
+
+        Assert.That(result.TotalResidues, Is.EqualTo(51));
+    }
+
+    [Test]
+    public void NegativeTotalResiduesIsRejected()
+    {
+        var coverage = _analyzer.CalculateCoverageByProtease(_testProtein, _proteaseParams);
+
+        Assert.Throws<ArgumentOutOfRangeException>(
+            () => _analyzer.GreedyMinimumProteaseSet(coverage, -1));
     }
 
     [Test]
@@ -185,8 +241,8 @@ public class MaxCoverageTests
     public void TestTripletBetterThanOrEqualToPair()
     {
         var coverage = _analyzer.CalculateCoverageByProtease(_testProtein, _proteaseParams);
-        var pairResult = _analyzer.BestPair(coverage);
-        var tripletResult = _analyzer.BestTriplet(coverage);
+        var pairResult = _analyzer.BestPair(coverage, _testProtein.Length);
+        var tripletResult = _analyzer.BestTriplet(coverage, _testProtein.Length);
 
         Assert.That(tripletResult.CoverageCount, Is.GreaterThanOrEqualTo(pairResult.CoverageCount),
             "Triplet should achieve at least as much coverage as best pair");
@@ -196,8 +252,8 @@ public class MaxCoverageTests
     public void TestGreedyVsBruteForce()
     {
         var coverage = _analyzer.CalculateCoverageByProtease(_testProtein, _proteaseParams);
-        var greedyResult = _analyzer.GreedyMinimumProteaseSet(coverage);
-        var bestTriplet = _analyzer.BestTriplet(coverage);
+        var greedyResult = _analyzer.GreedyMinimumProteaseSet(coverage, _testProtein.Length);
+        var bestTriplet = _analyzer.BestTriplet(coverage, _testProtein.Length);
 
         TestContext.WriteLine("Greedy vs Brute-Force Comparison:");
         TestContext.WriteLine(new string('-', 50));

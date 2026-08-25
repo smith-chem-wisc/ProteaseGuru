@@ -249,20 +249,24 @@ namespace ProteaseGuruGui
             // avoiding the previous double-digest (CalculateCoverageByProtease + GetDetectablePeptideIntervals).
             var (coverageDict, allIntervalsDict) = _seeker.CalculateCoverageAndIntervals(SelectedProtein.Protein, proteaseParams);
 
+            // Coverage fractions are reported against the whole protein, so the uncovered tail of
+            // a protein whose C-terminus yields no detectable peptide still counts against it.
+            int totalResidues = SelectedProtein.Protein.Length;
+
             SeekMaximumCoverage.CombinationResult result;
             if (greedyToggle.IsChecked == true)
             {
-                var g = _seeker.GreedyMinimumProteaseSet(coverageDict);
+                var g = _seeker.GreedyMinimumProteaseSet(coverageDict, totalResidues);
                 result = new SeekMaximumCoverage.CombinationResult(
                     g.SelectedProteases, g.CoveredResidues,
                     g.CoveredResidues.Count, g.CoverageFraction);
             }
             else if (singleToggle.IsChecked == true)
-                result = _seeker.BestSingle(coverageDict);
+                result = _seeker.BestSingle(coverageDict, totalResidues);
             else if (pairToggle.IsChecked == true)
-                result = _seeker.BestPair(coverageDict);
+                result = _seeker.BestPair(coverageDict, totalResidues);
             else if (tripletToggle.IsChecked == true)
-                result = _seeker.BestTriplet(coverageDict);
+                result = _seeker.BestTriplet(coverageDict, totalResidues);
             else if (allToggle.IsChecked == true)
             {
                 // All: show every checked protease — union of all covered residues
@@ -272,10 +276,10 @@ namespace ProteaseGuruGui
                 result = new SeekMaximumCoverage.CombinationResult(
                     checkedProteases.Select(vm => vm.DigestionAgentName).ToList(),
                     allCovered, allCovered.Count,
-                    SeekMaximumCoverage.CoverageFraction(allCovered, SelectedProtein.Protein.Length));
+                    SeekMaximumCoverage.CoverageFraction(allCovered, totalResidues));
             }
             else
-                result = _seeker.BestTriplet(coverageDict);
+                result = _seeker.BestTriplet(coverageDict, totalResidues);
 
             // Re-use the already-computed interval dict; filter to the winning proteases only.
             var pepsByProtease = result.Proteases
