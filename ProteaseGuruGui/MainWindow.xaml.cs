@@ -673,7 +673,7 @@ namespace ProteaseGuruGui
 
         // Reads previous-run parameter and result files and rebuilds the database -> protease -> protein -> peptides
         // structure. Pure data work with no UI access, so it can run on a background thread.
-        private (Dictionary<string, Dictionary<string, Dictionary<IBioPolymer, List<InSilicoPep>>>> peptidesByFile, RunParameters loadedParams)
+        private static (Dictionary<string, Dictionary<string, Dictionary<IBioPolymer, List<InSilicoPep>>>> peptidesByFile, RunParameters loadedParams)
             LoadResultsFromFiles(
                 List<string> parameterFilePaths,
                 List<string> resultFilePaths,
@@ -790,21 +790,22 @@ namespace ProteaseGuruGui
                 resultFileNumber++;
                 progress?.Report($"Reading result file {resultFileNumber} of {resultFilePaths.Count}...");
 
-                var fileData = File.ReadAllLines(resultFilePath);
-                if (fileData.Length == 0)
+                // Streamed rather than read whole: one line stays alive at a time instead of the entire file.
+                bool headerSeen = false;
+                foreach (var line in File.ReadLines(resultFilePath))
                 {
-                    continue;
-                }
+                    if (!headerSeen)
+                    {
+                        headerSeen = true;
+                        var header = line.Split('\t');
+                        if (header.Length < 4 || header[0] != "Database" || header[1] != "Protease" || header[2] != "Base Sequence" || header[3] != "Full Sequence")
+                        {
+                            throw new InvalidDataException("Results file provided is not from a previous ProteaseGuru run: " + System.IO.Path.GetFileName(resultFilePath));
+                        }
+                        continue;
+                    }
 
-                var header = fileData[0].Split('\t');
-                if (header.Length < 4 || header[0] != "Database" || header[1] != "Protease" || header[2] != "Base Sequence" || header[3] != "Full Sequence")
-                {
-                    throw new InvalidDataException("Results file provided is not from a previous ProteaseGuru run: " + System.IO.Path.GetFileName(resultFilePath));
-                }
-
-                for (int lineIndex = 1; lineIndex < fileData.Length; lineIndex++)
-                {
-                    var info = fileData[lineIndex].Split('\t');
+                    var info = line.Split('\t');
                     if (info.Length < 17)
                     {
                         continue; // skip blank or truncated lines
