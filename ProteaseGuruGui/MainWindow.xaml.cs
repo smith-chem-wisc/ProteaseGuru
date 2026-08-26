@@ -1077,10 +1077,10 @@ namespace ProteaseGuruGui
             }
         }
 
-        private Dictionary<string, Dictionary<IBioPolymer, (double, double)>> CalculateProteinSequenceCoverage(Dictionary<string, Dictionary<string, Dictionary<IBioPolymer, List<InSilicoPep>>>> peptideByFile)
+        private static Dictionary<string, Dictionary<IBioPolymer, (double, double)>> CalculateProteinSequenceCoverage(Dictionary<string, Dictionary<string, Dictionary<IBioPolymer, List<InSilicoPep>>>> peptideByFile)
         {
             Dictionary<string, List<InSilicoPep>> allDatabasePeptidesByProtease = new();
-            HashSet<IBioPolymer> proteins = new();
+            Dictionary<string, IBioPolymer> accessionToProtein = new();
             foreach (var database in peptideByFile)
             {
                 foreach (var protease in database.Value)
@@ -1090,7 +1090,7 @@ namespace ProteaseGuruGui
                         foreach (var protein in protease.Value)
                         {
                             allDatabasePeptidesByProtease[protease.Key].AddRange(protein.Value);
-                            proteins.Add(protein.Key);
+                            accessionToProtein[protein.Key.Accession] = protein.Key;
                         }
                     }
                     else
@@ -1098,7 +1098,7 @@ namespace ProteaseGuruGui
                         allDatabasePeptidesByProtease.Add(protease.Key, protease.Value.SelectMany(p => p.Value).ToList());
                         foreach (var protein in protease.Value)
                         {
-                            proteins.Add(protein.Key);
+                            accessionToProtein[protein.Key.Accession] = protein.Key;
                         }
                     }
                 }
@@ -1111,6 +1111,10 @@ namespace ProteaseGuruGui
                 Dictionary<IBioPolymer, (double, double)> sequenceCoverages = new();
                 foreach (var protein in proteinForProtease)
                 {
+                    // protein.Key is the accession string, so the residue count has to come from the database
+                    // entry it names rather than from the key itself.
+                    IBioPolymer actualProtein = accessionToProtein[protein.Key];
+
                     //count which residues are covered at least one time by a peptide
                     HashSet<int> coveredOneBasesResidues = new HashSet<int>();
                     HashSet<int> coveredOneBasesResiduesUnique = new HashSet<int>();
@@ -1126,11 +1130,11 @@ namespace ProteaseGuruGui
                             }
                         }
                     }
-                    //divide the number of covered residues by the total residues in the protein
-                    double seqCoverageFract = (double)coveredOneBasesResidues.Count / protein.Key.Length;
-                    double seqCoverageFractUnique = (double)coveredOneBasesResiduesUnique.Count / protein.Key.Length;
+                    //divide the number of covered residues by the total residues in the protein, as a percent
+                    double seqCoveragePercent = (double)coveredOneBasesResidues.Count / actualProtein.Length * 100.0;
+                    double seqCoveragePercentUnique = (double)coveredOneBasesResiduesUnique.Count / actualProtein.Length * 100.0;
 
-                    sequenceCoverages.Add(proteins.Where(p => p.Accession == protein.Key).First(), (Math.Round(seqCoverageFract, 3), Math.Round(seqCoverageFractUnique, 3)));
+                    sequenceCoverages.Add(actualProtein, (Math.Round(seqCoveragePercent, 2), Math.Round(seqCoveragePercentUnique, 2)));
                 }
                 proteinSequenceCoverageByProtease.Add(protease.Key, sequenceCoverages);
             }
