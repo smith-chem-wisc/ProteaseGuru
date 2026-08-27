@@ -27,6 +27,7 @@ using ProteaseGuruGuiFunctions;
 using Proteomics;
 using Proteomics.ProteolyticDigestion;
 using Tasks;
+using Tasks.CoverageMapConfiguration;
 using Transcriptomics.Digestion;
 using UsefulProteomicsDatabases;
 using static Tasks.ProteaseGuruTask;
@@ -645,7 +646,7 @@ namespace ProteaseGuruGui
                     var (peptidesByFile, loadedParams) = LoadResultsFromFiles(
                         parameterFilePaths, resultFilePaths, reloadDatabases, isRnaMode, progress);
                     progress.Report("Calculating sequence coverage...");
-                    var seqCov = CalculateProteinSequenceCoverage(peptidesByFile);
+                    var seqCov = SequenceCoverageCalculator.Calculate(peptidesByFile);
                     return (peptidesByFile, loadedParams, seqCov);
                 });
 
@@ -1077,69 +1078,6 @@ namespace ProteaseGuruGui
             }
         }
 
-        private static Dictionary<string, Dictionary<IBioPolymer, (double, double)>> CalculateProteinSequenceCoverage(Dictionary<string, Dictionary<string, Dictionary<IBioPolymer, List<InSilicoPep>>>> peptideByFile)
-        {
-            Dictionary<string, List<InSilicoPep>> allDatabasePeptidesByProtease = new();
-            Dictionary<string, IBioPolymer> accessionToProtein = new();
-            foreach (var database in peptideByFile)
-            {
-                foreach (var protease in database.Value)
-                {
-                    if (allDatabasePeptidesByProtease.ContainsKey(protease.Key))
-                    {
-                        foreach (var protein in protease.Value)
-                        {
-                            allDatabasePeptidesByProtease[protease.Key].AddRange(protein.Value);
-                            accessionToProtein[protein.Key.Accession] = protein.Key;
-                        }
-                    }
-                    else
-                    {
-                        allDatabasePeptidesByProtease.Add(protease.Key, protease.Value.SelectMany(p => p.Value).ToList());
-                        foreach (var protein in protease.Value)
-                        {
-                            accessionToProtein[protein.Key.Accession] = protein.Key;
-                        }
-                    }
-                }
-            }
-
-            Dictionary<string, Dictionary<IBioPolymer, (double, double)>> proteinSequenceCoverageByProtease = new();
-            foreach (var protease in allDatabasePeptidesByProtease)
-            {
-                var proteinForProtease = protease.Value.GroupBy(p => p.Protein).ToDictionary(group => group.Key, group => group.ToList());
-                Dictionary<IBioPolymer, (double, double)> sequenceCoverages = new();
-                foreach (var protein in proteinForProtease)
-                {
-                    // protein.Key is the accession string, so the residue count has to come from the database
-                    // entry it names rather than from the key itself.
-                    IBioPolymer actualProtein = accessionToProtein[protein.Key];
-
-                    //count which residues are covered at least one time by a peptide
-                    HashSet<int> coveredOneBasesResidues = new HashSet<int>();
-                    HashSet<int> coveredOneBasesResiduesUnique = new HashSet<int>();
-                    var minPeptideList = protein.Value.ToHashSet();
-                    foreach (var peptide in minPeptideList)
-                    {
-                        for (int i = peptide.StartResidue; i <= peptide.EndResidue; i++)
-                        {
-                            coveredOneBasesResidues.Add(i);
-                            if (peptide.Unique == true)
-                            {
-                                coveredOneBasesResiduesUnique.Add(i);
-                            }
-                        }
-                    }
-                    //divide the number of covered residues by the total residues in the protein, as a percent
-                    double seqCoveragePercent = (double)coveredOneBasesResidues.Count / actualProtein.Length * 100.0;
-                    double seqCoveragePercentUnique = (double)coveredOneBasesResiduesUnique.Count / actualProtein.Length * 100.0;
-
-                    sequenceCoverages.Add(actualProtein, (Math.Round(seqCoveragePercent, 2), Math.Round(seqCoveragePercentUnique, 2)));
-                }
-                proteinSequenceCoverageByProtease.Add(protease.Key, sequenceCoverages);
-            }
-            return proteinSequenceCoverageByProtease;
-        }
 
         private void MenuItem_Spritz_Click(object sender, RoutedEventArgs e)
         {
