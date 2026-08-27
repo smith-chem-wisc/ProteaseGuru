@@ -76,6 +76,45 @@ namespace ProteaseGuruGui
             };
         }
 
+        /// <summary>
+        /// Creates the main window with pre-loaded protein databases. Used when ProteaseGuru is
+        /// embedded in another application (e.g. launched from MetaMorpheus) so that databases
+        /// selected there are automatically available for digestion on window launch.
+        /// </summary>
+        /// <param name="databaseFilePaths">Paths of the protein databases (.xml, .fasta, or .fa,
+        /// optionally .gz compressed) to add on launch.</param>
+        public MainWindow(IEnumerable<string> databaseFilePaths) : this()
+        {
+            AddProvidedDatabases(databaseFilePaths);
+        }
+
+        /// <summary>
+        /// Adds the databases provided at construction time, validating that each path is a
+        /// supported database file before it is added to the analysis.
+        /// </summary>
+        private void AddProvidedDatabases(IEnumerable<string> databaseFilePaths)
+        {
+            if (databaseFilePaths == null)
+            {
+                return;
+            }
+
+            foreach (var databaseFilePath in databaseFilePaths)
+            {
+                var filename = System.IO.Path.GetFileName(databaseFilePath);
+                var theExtension = System.IO.Path.GetExtension(filename).ToLowerInvariant();
+                bool compressed = theExtension.EndsWith("gz"); // allows for .bgz and .tgz, too which are used on occasion
+                theExtension = compressed ? System.IO.Path.GetExtension(System.IO.Path.GetFileNameWithoutExtension(filename)).ToLowerInvariant() : theExtension;
+
+                if (theExtension != ".xml" && theExtension != ".fasta" && theExtension != ".fa")
+                {
+                    throw new ArgumentException($"The file provided is not an acceptable database format: {databaseFilePath}. Protein databases must be in .xml, .fasta, or .fa format (optionally .gz compressed).");
+                }
+
+                AddAFile(databaseFilePath);
+            }
+        }
+
         //the add button for loading previous peptide result files
         private void AddResults_Click(object sender, RoutedEventArgs e)
         {
