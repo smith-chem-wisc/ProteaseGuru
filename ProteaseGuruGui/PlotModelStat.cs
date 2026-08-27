@@ -591,7 +591,8 @@ namespace ProteaseGuruGui
                     }
                     break;
                 case 3: // Protein Sequence Coverage (unique peptides)
-                    xAxisTitle = $"{GlobalVariables.AnalyteType.GetBioPolymerLabel()} Sequence Coverage (Unique {GlobalVariables.AnalyteType.GetUniqueFormLabel()}s Only, %)";
+                    // The plot title already says "(Unique …s Only)"; repeating it here only overruns the axis.
+                    xAxisTitle = $"{GlobalVariables.AnalyteType.GetBioPolymerLabel()} Sequence Coverage (%)";
                     binSize = 10;
                     foreach (string key in SequenceCoverageUniqueByProtease.Keys)
                     {
