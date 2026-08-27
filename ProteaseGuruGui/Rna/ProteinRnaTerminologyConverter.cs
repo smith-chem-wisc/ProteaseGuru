@@ -1,9 +1,9 @@
 using System.Globalization;
 using System.Text.RegularExpressions;
 using System.Windows.Data;
-using ProteaseGuruGuiFunctions;
+using ProteaseGuru.GuiFunctions;
 
-namespace ProteaseGuruGui
+namespace ProteaseGuru.Gui
 {
     public class ProteinRnaTerminologyConverter : IValueConverter
     {

@@ -1,8 +1,8 @@
 using Omics;
 using Proteomics;
-using Tasks;
+using ProteaseGuru.Tasks;
 
-namespace Tasks.CoverageMapConfiguration
+namespace ProteaseGuru.Tasks.CoverageMapConfiguration
 {
     /// <summary>
     /// Holds the coverage analysis results for a single protein.

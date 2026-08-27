@@ -1,6 +1,6 @@
 using System.Windows.Input;
 
-namespace ProteaseGuruGuiFunctions;
+namespace ProteaseGuru.GuiFunctions;
 
 public class RelayCommand : ICommand
 {

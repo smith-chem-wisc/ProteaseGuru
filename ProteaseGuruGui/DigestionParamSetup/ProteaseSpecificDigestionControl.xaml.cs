@@ -1,7 +1,7 @@
 using System.Windows;
 using System.Windows.Controls;
 
-namespace ProteaseGuruGui
+namespace ProteaseGuru.Gui
 {
     public enum ProteaseDisplayMode
     {

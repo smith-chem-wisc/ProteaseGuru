@@ -6,8 +6,8 @@
     <UseWPF>true</UseWPF>
     <Platforms>x64</Platforms>
     <ApplicationIcon>Icons\proteaseGuru.ico</ApplicationIcon>
-    <AssemblyName>ProteaseGuruGui</AssemblyName>
-    <RootNamespace>ProteaseGuruGui</RootNamespace>
+    <AssemblyName>ProteaseGuru.Gui</AssemblyName>
+    <RootNamespace>ProteaseGuru.Gui</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>
@@ -24,9 +24,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Engine\Engine.csproj" />
-    <ProjectReference Include="..\ProteaseGuruGuiFunctions\ProteaseGuruGuiFunctions.csproj" />
-    <ProjectReference Include="..\Tasks\Tasks.csproj" />
+    <ProjectReference Include="..\Engine\ProteaseGuru.Engine.csproj" />
+    <ProjectReference Include="..\ProteaseGuruGuiFunctions\ProteaseGuru.GuiFunctions.csproj" />
+    <ProjectReference Include="..\Tasks\ProteaseGuru.Tasks.csproj" />
   </ItemGroup>
 
   <ItemGroup>

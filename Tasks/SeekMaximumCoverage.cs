@@ -3,7 +3,7 @@ using Proteomics;
 using Proteomics.ProteolyticDigestion;
 using Transcriptomics.Digestion;
 
-namespace Tasks;
+namespace ProteaseGuru.Tasks;
 
 /// <summary>
 /// Analyzes protease combinations to find optimal coverage for a protein sequence.

@@ -17,21 +17,21 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
-using Engine;
+using ProteaseGuru.Engine;
 using MzLibUtil;
 using Omics;
 using Omics.Digestion;
 using Omics.Modifications;
-using ProteaseGuruGuiFunctions;
-using ProteaseGuruGuiFunctions;
+using ProteaseGuru.GuiFunctions;
+using ProteaseGuru.GuiFunctions;
 using Proteomics;
 using Proteomics.ProteolyticDigestion;
-using Tasks;
+using ProteaseGuru.Tasks;
 using Transcriptomics.Digestion;
 using UsefulProteomicsDatabases;
-using static Tasks.ProteaseGuruTask;
+using static ProteaseGuru.Tasks.ProteaseGuruTask;
 
-namespace ProteaseGuruGui
+namespace ProteaseGuru.Gui
 {
     /// <summary>
     /// Interaction logic for MainWindow.xaml

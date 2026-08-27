@@ -1,9 +1,9 @@
-using Engine;
+using ProteaseGuru.Engine;
 using Omics.Digestion;
-using Tasks;
+using ProteaseGuru.Tasks;
 using Transcriptomics.Digestion;
 
-namespace ProteaseGuruGuiFunctions;
+namespace ProteaseGuru.GuiFunctions;
 
 public class ProteaseSpecificParametersViewModel : BaseViewModel
 {

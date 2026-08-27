@@ -1,7 +1,7 @@
 using System.Globalization;
 using System.Windows.Data;
 
-namespace ProteaseGuruGui;
+namespace ProteaseGuru.Gui;
 
 public class NOTConverter : IValueConverter
 {

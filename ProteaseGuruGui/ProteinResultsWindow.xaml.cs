@@ -5,16 +5,16 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
-using Engine;
+using ProteaseGuru.Engine;
 using Omics;
 using Omics.BioPolymer;
 using Omics.Modifications;
 using Proteomics;
 using Proteomics.ProteolyticDigestion;
-using Tasks;
-using Tasks.CoverageMapConfiguration;
+using ProteaseGuru.Tasks;
+using ProteaseGuru.Tasks.CoverageMapConfiguration;
 
-namespace ProteaseGuruGui
+namespace ProteaseGuru.Gui
 {
     /// <summary>
     /// Interaction logic for ProteinResultsWindow.xaml

@@ -1,9 +1,9 @@
 using System.Windows;
 using System.Windows.Controls;
-using ProteaseGuruGuiFunctions;
+using ProteaseGuru.GuiFunctions;
 
 
-namespace ProteaseGuruGui;
+namespace ProteaseGuru.Gui;
 /// <summary>
 /// Interaction logic for DigestionConditions.xaml
 /// </summary>

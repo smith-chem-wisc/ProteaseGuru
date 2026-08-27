@@ -1,9 +1,9 @@
 using NUnit.Framework;
 using Proteomics;
 using Proteomics.ProteolyticDigestion;
-using Tasks;
+using ProteaseGuru.Tasks;
 
-namespace Test;
+namespace ProteaseGuru.Test;
 
 [TestFixture]
 [NonParallelizable]

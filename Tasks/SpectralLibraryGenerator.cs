@@ -12,7 +12,7 @@ using Proteomics.ProteolyticDigestion;
 using Readers.SpectralLibrary;
 
 
-namespace Tasks
+namespace ProteaseGuru.Tasks
 {
     /// <summary>
     /// Configuration options for spectral library generation
