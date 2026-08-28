@@ -1,9 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
-using Tasks;
+using ProteaseGuru.Tasks;
 
-namespace ProteaseGuruGui
+namespace ProteaseGuru.Gui
 {
     internal class ProteinDbForDataGrid
     {

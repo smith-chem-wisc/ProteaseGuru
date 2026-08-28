@@ -5,16 +5,16 @@ using System.ComponentModel;
 using System.Globalization;
 using System.Linq;
 using System.Windows;
-using Engine;
+using ProteaseGuru.Engine;
 using Omics;
 using OxyPlot;
 using OxyPlot.Axes;
 using OxyPlot.Legends;
 using OxyPlot.Series;
-using ProteaseGuruGuiFunctions;
-using Tasks;
+using ProteaseGuru.GuiFunctions;
+using ProteaseGuru.Tasks;
 
-namespace ProteaseGuruGui
+namespace ProteaseGuru.Gui
 {
     // code for histogram generation
     public class PlotModelStat : INotifyPropertyChanged, IPlotModel

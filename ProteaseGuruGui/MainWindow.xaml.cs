@@ -17,21 +17,20 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
-using Engine;
+using ProteaseGuru.Engine;
 using MzLibUtil;
 using Omics;
 using Omics.Digestion;
 using Omics.Modifications;
-using ProteaseGuruGuiFunctions;
-using ProteaseGuruGuiFunctions;
+using ProteaseGuru.GuiFunctions;
 using Proteomics;
 using Proteomics.ProteolyticDigestion;
-using Tasks;
+using ProteaseGuru.Tasks;
 using Transcriptomics.Digestion;
 using UsefulProteomicsDatabases;
-using static Tasks.ProteaseGuruTask;
+using static ProteaseGuru.Tasks.ProteaseGuruTask;
 
-namespace ProteaseGuruGui
+namespace ProteaseGuru.Gui
 {
     /// <summary>
     /// Interaction logic for MainWindow.xaml
@@ -185,7 +184,7 @@ namespace ProteaseGuruGui
             var theExtension = System.IO.Path.GetExtension(filename).ToLowerInvariant();
             bool compressed = theExtension.EndsWith("gz");
             theExtension = compressed ? System.IO.Path.GetExtension(System.IO.Path.GetFileNameWithoutExtension(filename)).ToLowerInvariant() : theExtension;
-            GuiWarnHandler(null, new Engine.StringEventArgs("Unrecognized file type: " + theExtension, null));
+            GuiWarnHandler(null, new StringEventArgs("Unrecognized file type: " + theExtension, null));
         }
 
         //add a protein database file
@@ -331,12 +330,12 @@ namespace ProteaseGuruGui
             // print any error messages reading the mods to the notifications area
             foreach (var error in GlobalVariables.ErrorsReadingMods)
             {
-                GuiWarnHandler(null, new Engine.StringEventArgs(error, null));
+                GuiWarnHandler(null, new StringEventArgs(error, null));
             }
             GlobalVariables.ErrorsReadingMods.Clear();
         }
 
-        private void GuiWarnHandler(object sender, Engine.StringEventArgs e)
+        private void GuiWarnHandler(object sender, StringEventArgs e)
         {
             if (!Dispatcher.CheckAccess())
             {
@@ -386,7 +385,7 @@ namespace ProteaseGuruGui
                 }
                 catch (Exception ex)
                 {
-                    GuiWarnHandler(null, new Engine.StringEventArgs("Error opening directory: " + ex.Message, null));
+                    GuiWarnHandler(null, new StringEventArgs("Error opening directory: " + ex.Message, null));
                 }
             }
 
@@ -403,7 +402,7 @@ namespace ProteaseGuruGui
             else
             {
                 // this should only happen if the file path is empty or something unexpected happened
-                GuiWarnHandler(null, new Engine.StringEventArgs("Output folder does not exist", null));
+                GuiWarnHandler(null, new StringEventArgs("Output folder does not exist", null));
             }
         }
 
@@ -1094,7 +1093,7 @@ namespace ProteaseGuruGui
                 }
                 catch (Exception ex)
                 {
-                    GuiWarnHandler(null, new Engine.StringEventArgs($"Error loading proteins from {db.FilePath}: {ex.Message}", null));
+                    GuiWarnHandler(null, new StringEventArgs($"Error loading proteins from {db.FilePath}: {ex.Message}", null));
                 }
             }
 
@@ -1103,7 +1102,7 @@ namespace ProteaseGuruGui
                 fastaPath: ProteinDbObservableCollection.First().FilePath);
         }
 
-        private void NewoutLabelStatus(object sender, Engine.StringEventArgs s)
+        private void NewoutLabelStatus(object sender, StringEventArgs s)
         {
             if (!Dispatcher.CheckAccess())
             {

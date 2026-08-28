@@ -13,9 +13,9 @@ using System.Windows.Data;
 using Omics;
 using OxyPlot;
 using Proteomics;
-using Tasks;
+using ProteaseGuru.Tasks;
 
-namespace ProteaseGuruGui
+namespace ProteaseGuru.Gui
 {
     /// <summary>
     /// Interaction logic for HistogramWindow.xaml

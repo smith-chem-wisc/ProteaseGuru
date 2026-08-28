@@ -1,4 +1,4 @@
-namespace ProteaseGuruGui
+namespace ProteaseGuru.Gui
 {
     /// <summary>
     /// Represents a single row in the protein digestion summary table.

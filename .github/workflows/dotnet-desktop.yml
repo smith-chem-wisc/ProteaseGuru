@@ -17,7 +17,7 @@ jobs:
 
     env:
       Solution_Name: ProteaseGuru.sln
-      Test_Project_Path: Test\Test.csproj
+      Test_Project_Path: Test\ProteaseGuru.Test.csproj
 
     steps:
     - name: Checkout

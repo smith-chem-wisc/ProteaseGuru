@@ -1,11 +1,11 @@
-using Engine;
+using ProteaseGuru.Engine;
 using Nett;
 using Omics.Digestion;
 using Omics.Modifications;
 using Proteomics.ProteolyticDigestion;
 using Transcriptomics.Digestion;
 
-namespace Tasks;
+namespace ProteaseGuru.Tasks;
 
 [TreatAsInlineTable]
 public class ProteaseSpecificParameters : IEquatable<ProteaseSpecificParameters>

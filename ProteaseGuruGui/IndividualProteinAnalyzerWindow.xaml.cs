@@ -3,16 +3,16 @@ using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
-using Engine;
+using ProteaseGuru.Engine;
 using Omics;
-using ProteaseGuruGuiFunctions;
+using ProteaseGuru.GuiFunctions;
 using Proteomics;
 using Proteomics.ProteolyticDigestion;
-using Tasks;
-using Tasks.CoverageMapConfiguration;
+using ProteaseGuru.Tasks;
+using ProteaseGuru.Tasks.CoverageMapConfiguration;
 using Transcriptomics.Digestion;
 
-namespace ProteaseGuruGui
+namespace ProteaseGuru.Gui
 {
     public partial class IndividualProteinAnalyzerWindow : UserControl
     {

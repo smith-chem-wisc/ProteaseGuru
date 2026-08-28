@@ -1,11 +1,11 @@
 using System.Collections.ObjectModel;
 using System.Windows.Controls;
-using Engine;
+using ProteaseGuru.Engine;
 using Omics;
 using Proteomics;
-using Tasks;
+using ProteaseGuru.Tasks;
 
-namespace ProteaseGuruGui
+namespace ProteaseGuru.Gui
 {
     /// <summary>
     /// Interaction logic for AllResultsWindow.xaml

@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Text;
 
-namespace ProteaseGuruGui
+namespace ProteaseGuru.Gui
 {
     public class RunSummaryForTreeView
     {

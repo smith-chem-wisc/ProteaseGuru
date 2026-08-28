@@ -5,7 +5,7 @@ using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Text;
 
-namespace ProteaseGuruGui
+namespace ProteaseGuru.Gui
 {
     public class ForTreeView : INotifyPropertyChanged
     {
