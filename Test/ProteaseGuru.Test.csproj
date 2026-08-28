@@ -3,6 +3,8 @@
   <PropertyGroup>
     <OutputType>Library</OutputType>
     <TargetFramework>net10.0</TargetFramework>
+    <AssemblyName>ProteaseGuru.Test</AssemblyName>
+    <RootNamespace>ProteaseGuru.Test</RootNamespace>
     <Platforms>x64</Platforms>
   </PropertyGroup>
 

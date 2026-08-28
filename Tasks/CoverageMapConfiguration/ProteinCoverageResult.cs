@@ -1,6 +1,5 @@
 using Omics;
 using Proteomics;
-using ProteaseGuru.Tasks;
 
 namespace ProteaseGuru.Tasks.CoverageMapConfiguration
 {

@@ -3,6 +3,8 @@
   <PropertyGroup>
     <OutputType>Library</OutputType>
     <TargetFramework>net10.0</TargetFramework>
+    <AssemblyName>ProteaseGuru.Tasks</AssemblyName>
+    <RootNamespace>ProteaseGuru.Tasks</RootNamespace>
     <ApplicationIcon />
     <StartupObject />
     <Platforms>x64</Platforms>
