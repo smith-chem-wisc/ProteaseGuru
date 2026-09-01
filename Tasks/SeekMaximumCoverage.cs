@@ -281,6 +281,9 @@ public class SeekMaximumCoverage
     ///
     /// Length, missed-cleavage, and modification filters are applied by <see cref="DigestionParams"/>
     /// during digestion. An optional peptide mass filter is applied from <see cref="RunParameters"/>.
+    ///
+    /// Each protease is digested once and the interval half of that digest is discarded. Callers
+    /// that want both halves should take <see cref="CalculateCoverageAndIntervals"/>.
     /// </summary>
     /// <param name="protein">The protein to digest.</param>
     /// <param name="proteaseParams">
@@ -305,6 +308,9 @@ public class SeekMaximumCoverage
     /// mass filter, using exactly the same digest and filter logic as
     /// <see cref="CalculateCoverageByProtease(IBioPolymer, IEnumerable{ProteaseSpecificParameters})"/>.
     /// Use this to draw coverage-map bars that are guaranteed to match the coverage numbers.
+    ///
+    /// Each protease is digested once and the coverage half of that digest is discarded. Callers
+    /// that want both halves should take <see cref="CalculateCoverageAndIntervals"/>.
     /// </summary>
     /// <returns>
     /// Dictionary mapping protease name → deduplicated, start-sorted list of
@@ -327,9 +333,13 @@ public class SeekMaximumCoverage
     /// set (used by combination-search algorithms) and the 1-based interval list (used
     /// for drawing coverage maps) simultaneously.
     ///
-    /// Callers that previously invoked <see cref="CalculateCoverageByProtease"/> and
-    /// <see cref="GetDetectablePeptideIntervals"/> back-to-back on the same protein/params
-    /// should use this method instead to halve the number of digestions performed.
+    /// Prefer this over calling <see cref="CalculateCoverageByProtease"/> and
+    /// <see cref="GetDetectablePeptideIntervals"/> back-to-back on the same protein and params,
+    /// which digests everything twice.
+    ///
+    /// The analyzer window does not call this directly — it goes through
+    /// <see cref="ProteaseDigestCache"/>, which digests only the proteases whose settings changed
+    /// and keeps the rest. This stays as the uncached way to get both halves in one pass.
     /// </summary>
     public (Dictionary<string, HashSet<int>> Coverage,
             Dictionary<string, List<(int Start, int End)>> Intervals)
