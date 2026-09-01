@@ -11,17 +11,20 @@ namespace ProteaseGuru.Tasks;
 /// re-digesting. Only proteases whose settings actually changed are recomputed, and those are
 /// digested in parallel.
 ///
-/// The cache is scoped to one biopolymer and resets when a different one is passed in.
+/// The cache is scoped to one biopolymer and resets when a different one is passed in. Within a
+/// biopolymer it holds at most one entry per protease: the length and missed-cleavage boxes commit
+/// on every keystroke, so keeping superseded settings would retain a coverage set and interval list
+/// for every intermediate value the user typed.
 /// </summary>
 public class ProteaseDigestCache
 {
     private readonly SeekMaximumCoverage _seeker;
-    private readonly Dictionary<DigestCacheKey, (HashSet<int> Coverage, List<(int Start, int End)> Intervals)> _cache = new();
+    private readonly Dictionary<string, (DigestCacheKey Key, HashSet<int> Coverage, List<(int Start, int End)> Intervals)> _cache = new();
     private IBioPolymer? _cachedFor;
 
     public ProteaseDigestCache(SeekMaximumCoverage seeker) => _seeker = seeker;
 
-    /// <summary>Number of entries currently held. Grows as digestion settings are varied.</summary>
+    /// <summary>Number of entries currently held: one per protease seen for this biopolymer.</summary>
     public int Count => _cache.Count;
 
     // Matches how DigestionTask bounds its own concurrency.
@@ -55,7 +58,8 @@ public class ProteaseDigestCache
 
         var misses = new List<int>();
         for (int i = 0; i < proteaseParams.Count; i++)
-            if (!_cache.ContainsKey(keys[i]))
+            if (!_cache.TryGetValue(proteaseParams[i].DigestionAgentName, out var cached)
+                || !cached.Key.Equals(keys[i]))
                 misses.Add(i);
 
         if (misses.Count > 0)
@@ -69,16 +73,22 @@ public class ProteaseDigestCache
                 new ParallelOptions { MaxDegreeOfParallelism = MaxConcurrency },
                 m => computed[m] = _seeker.DigestSingle(biopolymer, proteaseParams[misses[m]]));
 
+            // One slot per protease, so a new settings key replaces the superseded entry instead
+            // of joining it.
             for (int m = 0; m < misses.Count; m++)
-                _cache[keys[misses[m]]] = computed[m];
+            {
+                int i = misses[m];
+                _cache[proteaseParams[i].DigestionAgentName] =
+                    (keys[i], computed[m].Coverage, computed[m].Intervals);
+            }
         }
 
         var coverage = new Dictionary<string, HashSet<int>>(proteaseParams.Count);
         var intervals = new Dictionary<string, List<(int Start, int End)>>(proteaseParams.Count);
         for (int i = 0; i < proteaseParams.Count; i++)
         {
-            var entry = _cache[keys[i]];
             string name = proteaseParams[i].DigestionAgentName;
+            var entry = _cache[name];
             coverage[name] = entry.Coverage;
             intervals[name] = entry.Intervals;
         }

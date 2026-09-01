@@ -137,9 +137,31 @@ public class ProteaseDigestCacheTests
 
         var second = cache.GetCoverageAndIntervals(_protein, proteaseParams);
 
-        Assert.That(cache.Count, Is.EqualTo(3), "expected one new entry for the changed protease");
+        Assert.That(cache.Count, Is.EqualTo(2), "changed settings should replace the protease's entry, not add one");
         Assert.That(second.Coverage["Arg-C"], Is.SameAs(first.Coverage["Arg-C"]));
         Assert.That(second.Coverage["trypsin|P"], Is.Not.SameAs(first.Coverage["trypsin|P"]));
+    }
+
+    /// <summary>
+    /// The min/max length and missed-cleavage boxes bind with UpdateSourceTrigger=PropertyChanged,
+    /// so typing "50" over "5" walks the cache through every intermediate value. Each one used to
+    /// leave its own coverage set and interval list behind until the user picked another protein.
+    /// </summary>
+    [Test]
+    public void TypingThroughIntermediateSettingsDoesNotAccumulateEntries()
+    {
+        var cache = new ProteaseDigestCache(_seeker);
+        var trypsin = Params("trypsin|P");
+        var argC = Params("Arg-C");
+        var proteaseParams = new[] { trypsin, argC };
+
+        foreach (int maxLength in new[] { 5, 50, 15, 25, 30 })
+        {
+            trypsin.DigestionParams.MaxLength = maxLength;
+            cache.GetCoverageAndIntervals(_protein, proteaseParams);
+        }
+
+        Assert.That(cache.Count, Is.EqualTo(2), "one entry per protease, however much was typed");
     }
 
     [Test]
