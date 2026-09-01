@@ -31,33 +31,40 @@ public class IntegerTextBoundsTests
         Assert.That(IntegerTextBounds.Clamp(input, Lower, Upper), Is.EqualTo(expected));
 
     /// <summary>
-    /// Whenever LowerBound is above zero, "clamped to LowerBound" and "unparseable, resolved to the
-    /// nearest valid value" collapse to the same string, so neither case really pins the other
-    /// down. These use bounds spanning zero, where a negative overflow (-5) and unparseable
-    /// text (0) are distinguishable.
+    /// Whenever LowerBound is above zero, "clamped to LowerBound" and "left alone" are easy to
+    /// confuse. These use bounds spanning zero, where a negative overflow (-5) and untouched text
+    /// are distinguishable.
     /// </summary>
     [TestCase("-99999999999999999999999", "-5", TestName = "NegativeOverflowClampsToLowerBoundNotZero")]
     [TestCase("-2147483649", "-5", TestName = "JustPastIntMinClampsToLowerBoundNotZero")]
-    [TestCase("-", "0", TestName = "LoneDashResolvesToZeroNotLowerBound")]
     [TestCase("-3", "-3", TestName = "InRangeNegativeIsUnchanged")]
     public void NegativeHandlingIsDistinguishableFromTheFallback(string input, string expected) =>
         Assert.That(IntegerTextBounds.Clamp(input, -5, 12), Is.EqualTo(expected));
 
+    /// <summary>
+    /// Text that is not a number is handed back as-is, so the TwoWay binding fails its conversion
+    /// and the source keeps the value it already had.
+    /// </summary>
     [TestCase("-", TestName = "LoneDash")]
     [TestCase("abc", TestName = "Letters")]
     [TestCase("1.5", TestName = "Decimal")]
     [TestCase("1 2", TestName = "InternalWhitespace")]
-    public void UnparseableTextResolvesToNearestValidValue(string input) =>
-        Assert.That(IntegerTextBounds.Clamp(input, Lower, Upper), Is.EqualTo("1"));
+    [TestCase("5,000", TestName = "ThousandsSeparator")]
+    public void UnparseableTextIsReturnedUnchanged(string input) =>
+        Assert.That(IntegerTextBounds.Clamp(input, Lower, Upper), Is.EqualTo(input));
 
     /// <summary>
-    /// With no bounds set the dependency properties default to int.MinValue/int.MaxValue, so
-    /// unparseable text has to resolve to 0 — clamping it to the lower bound would put
-    /// "-2147483648" in the box.
+    /// The peptide mass boxes declare no bounds, so they run on the dependency property defaults
+    /// and encode "no limit" as -1. Resolving unparseable text to the nearest valid value lands on
+    /// 0 there, which reads as a real limit: MaxPeptideMassAllowed = 0 keeps only peptides at or
+    /// below mass zero, so the run silently yields nothing. Typing is filtered to digits, paste is not.
     /// </summary>
-    [Test]
-    public void UnparseableTextWithDefaultBoundsResolvesToZero() =>
-        Assert.That(IntegerTextBounds.Clamp("-", int.MinValue, int.MaxValue), Is.EqualTo("0"));
+    [TestCase("5,000", TestName = "ThousandsSeparator")]
+    [TestCase("abc", TestName = "Letters")]
+    [TestCase("1 2", TestName = "InternalWhitespace")]
+    [TestCase("-", TestName = "LoneDash")]
+    public void UnparseableTextWithDefaultBoundsIsNotSynthesizedIntoZero(string input) =>
+        Assert.That(IntegerTextBounds.Clamp(input, int.MinValue, int.MaxValue), Is.EqualTo(input));
 
     [TestCase("", TestName = "Empty")]
     [TestCase("   ", TestName = "WhitespaceOnly")]
