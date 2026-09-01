@@ -661,11 +661,6 @@ namespace ProteaseGuru.Tasks
 
         #endregion
 
-        #region Sequence Coverage Calculation
-
-
-        #endregion
-
         #region Database Digestion
 
         /// <summary>

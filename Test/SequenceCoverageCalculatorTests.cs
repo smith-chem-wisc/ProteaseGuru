@@ -7,10 +7,10 @@ using ProteaseGuru.Tasks.CoverageMapConfiguration;
 namespace ProteaseGuru.Test
 {
     /// <summary>
-    /// Pins the behaviour SequenceCoverageCalculator was consolidated from, including the parts that are
-    /// warts rather than intentions — an accession with no database entry is skipped, and a shared
-    /// accession takes its length from whichever database was seen last. Both are load-bearing for the
-    /// callers today, so they are asserted here rather than left to be rediscovered.
+    /// Pins the behaviour SequenceCoverageCalculator was consolidated from. That covers one wart the
+    /// callers depend on — a shared accession takes its length from whichever database was seen last —
+    /// and the one place consolidating deliberately changed behaviour: an accession with no database
+    /// entry throws here, where the digestion task used to skip it.
     /// </summary>
     [TestFixture]
     public class SequenceCoverageCalculatorTests
