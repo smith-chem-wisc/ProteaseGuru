@@ -605,61 +605,73 @@ namespace ProteaseGuru.Gui
 
             GlobalVariables.StopLoops = false;
 
-            // check for valid tasks/spectra files/protein databases
-            if (ParametersViewModel.ProteaseSpecificParameters.All(p => !p.IsSelected))
+            ProgressBar? runProgressBar = null;
+
+            try
             {
-                MessageBox.Show("Warning: No protease has been selected. Please select at least one protease in 'Digestion Conditions' before continuing");
-                RunTaskButton.IsEnabled = true;
-                return;
-            }
+                // check for valid tasks/spectra files/protein databases
+                if (ParametersViewModel.ProteaseSpecificParameters.All(p => !p.IsSelected))
+                {
+                    MessageBox.Show("Warning: No protease has been selected. Please select at least one protease in 'Digestion Conditions' before continuing");
+                    return;
+                }
 
-            if (!ProteinDbObservableCollection.Any())
+                if (!ProteinDbObservableCollection.Any())
+                {
+                    MessageBox.Show("Warning: No protein databases have been provided for digestion. Add at least one protein database before proceeding with analysis.");
+                    return;
+                }
+
+                if (!ParametersViewModel.Parameters.ProteaseSpecificParameters.Any())
+                {
+                    MessageBox.Show("Warning: No proteases have been selected for digestion. Select at least one protease and save the updated digestion conditions before proceeding with analysis.");
+                    return;
+                }
+
+                var task = new DigestionTask();
+                task.DigestionParameters = ParametersViewModel.Parameters;
+                string taskId = $"Task1-{task.TaskType}";
+
+                // everything is OK to run
+                EverythingRunnerEngine a = new EverythingRunnerEngine([(taskId, task)],
+                    ProteinDbObservableCollection.Select(b => new DbForDigestion(b.FilePath)).ToList(),
+                    OutputFolderTextBox.Text);
+
+                runProgressBar = new ProgressBar();
+                runProgressBar.Orientation = Orientation.Horizontal;
+                runProgressBar.Width = 300;
+                runProgressBar.Height = 30;
+                runProgressBar.IsIndeterminate = true;
+                Stopwatch stopwatch = new Stopwatch();
+                stopwatch.Start();
+                RunStatus.Items.Add(runProgressBar);
+                var results = await Task.Run(() => a.Run());
+                Dictionary<string, Dictionary<string, Dictionary<IBioPolymer, List<InSilicoPep>>>> peptidesByFile = results.PeptideByFile;
+                Dictionary<string, Dictionary<IBioPolymer, (double, double)>> sequenceCoverageByProtease = results.SequenceCoverageByProtease;
+                stopwatch.Stop();
+
+                // when done with tasks
+                AllResultsTab.Content = new AllResultsWindow(peptidesByFile, ParametersViewModel.Parameters); // update results display
+                ProteinCovMap.Content = new ProteinResultsWindow(peptidesByFile, ParametersViewModel.Parameters, sequenceCoverageByProtease);
+                AllHistogramsTab.Content = new HistogramWindow(peptidesByFile, ParametersViewModel.Parameters, sequenceCoverageByProtease);
+                IndividualProteinAnalyzerTab.Content = new IndividualProteinAnalyzerWindow(
+                    peptidesByFile, ParametersViewModel.Parameters, sequenceCoverageByProtease,
+                    fastaPath: ProteinDbObservableCollection.Any() ? ProteinDbObservableCollection.First().FilePath : null);
+                AllResultsTab.IsSelected = true; // switch to results tab
+            }
+            catch (Exception ex)
             {
-                MessageBox.Show("Warning: No protein databases have been provided for digestion. Add at least one protein database before proceeding with analysis.");
-                RunTaskButton.IsEnabled = true;
-                return;
+                MessageBox.Show("Error running digestion: " + ex.Message);
             }
-
-            if (!ParametersViewModel.Parameters.ProteaseSpecificParameters.Any())
+            finally
             {
-                MessageBox.Show("Warning: No proteases have been selected for digestion. Select at least one protease and save the updated digestion conditions before proceeding with analysis.");
-                RunTaskButton.IsEnabled = true;
-                return;
+                if (runProgressBar != null)
+                {
+                    RunStatus.Items.Remove(runProgressBar);
+                }
+
+                RunTaskButton.IsEnabled = true; // allow user to run new task
             }
-
-            var task = new DigestionTask();
-            task.DigestionParameters = ParametersViewModel.Parameters;
-            string taskId = $"Task1-{task.TaskType}";
-
-            // everything is OK to run
-            EverythingRunnerEngine a = new EverythingRunnerEngine([(taskId, task)],
-                ProteinDbObservableCollection.Select(b => new DbForDigestion(b.FilePath)).ToList(),
-                OutputFolderTextBox.Text);
-
-            ProgressBar runProgressBar = new ProgressBar();
-            runProgressBar.Orientation = Orientation.Horizontal;
-            runProgressBar.Width = 300;
-            runProgressBar.Height = 30;
-            runProgressBar.IsIndeterminate = true;
-            Stopwatch stopwatch = new Stopwatch();
-            stopwatch.Start();
-            RunStatus.Items.Add(runProgressBar);
-            var results = await Task.Run(() => a.Run());
-            Dictionary<string, Dictionary<string, Dictionary<IBioPolymer, List<InSilicoPep>>>> peptidesByFile = results.PeptideByFile;
-            Dictionary<string, Dictionary<IBioPolymer, (double, double)>> sequenceCoverageByProtease = results.SequenceCoverageByProtease;
-            stopwatch.Stop();
-
-            runProgressBar.IsIndeterminate = false;
-
-            // when done with tasks
-            AllResultsTab.Content = new AllResultsWindow(peptidesByFile, ParametersViewModel.Parameters); // update results display
-            ProteinCovMap.Content = new ProteinResultsWindow(peptidesByFile, ParametersViewModel.Parameters, sequenceCoverageByProtease);
-            AllHistogramsTab.Content = new HistogramWindow(peptidesByFile, ParametersViewModel.Parameters, sequenceCoverageByProtease);
-            IndividualProteinAnalyzerTab.Content = new IndividualProteinAnalyzerWindow(
-                peptidesByFile, ParametersViewModel.Parameters, sequenceCoverageByProtease,
-                fastaPath: ProteinDbObservableCollection.Any() ? ProteinDbObservableCollection.First().FilePath : null);
-            AllResultsTab.IsSelected = true; // switch to results tab
-            RunTaskButton.IsEnabled = true; // allow user to run new task
         }
 
         //logic for loading in results from previous runs and opening up the results windows
