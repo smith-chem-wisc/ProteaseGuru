@@ -164,6 +164,24 @@ public class ProteaseDigestCacheTests
         Assert.That(cache.Count, Is.EqualTo(2), "one entry per protease, however much was typed");
     }
 
+    /// <summary>
+    /// One cache slot per protease name means a repeated name has to be served from the request
+    /// rather than from the slot, or successive identical calls alternate between the two settings.
+    /// The analyzer dedupes by name before it gets here, but the cache is public.
+    /// </summary>
+    [Test]
+    public void RepeatedProteaseNameReturnsTheSameResultEveryCall()
+    {
+        var cache = new ProteaseDigestCache(_seeker);
+        var proteaseParams = new[] { Params("trypsin|P", maxLength: 12), Params("trypsin|P", maxLength: 50) };
+
+        var counts = Enumerable.Range(0, 3)
+            .Select(_ => cache.GetCoverageAndIntervals(_protein, proteaseParams).Coverage["trypsin|P"].Count)
+            .ToList();
+
+        Assert.That(counts, Is.All.EqualTo(counts[0]), "successive identical calls disagreed");
+    }
+
     [Test]
     public void SwitchingBiopolymerResetsTheCache()
     {

@@ -26,9 +26,8 @@ public static class IntegerTextBounds
         if (trimmed.Length == 0)
             return original;
 
-        // A control configured with UpperBound below LowerBound used to resolve to LowerBound,
-        // because the lower check ran first. Preserve that rather than letting Clamp throw out of
-        // a UI callback over a XAML typo.
+        // Bounds configured backwards can only come from a XAML typo, and BigInteger.Clamp throws
+        // on them. Pick the lower bound rather than letting that escape a UI callback.
         if (upperBound < lowerBound)
             return lowerBound.ToString(CultureInfo.InvariantCulture);
 

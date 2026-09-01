@@ -56,11 +56,20 @@ public class ProteaseDigestCache
         for (int i = 0; i < proteaseParams.Count; i++)
             keys[i] = BuildKey(proteaseParams[i]);
 
+        // Held per request rather than read back out of the cache at the end: one slot per name
+        // means a repeated protease name would otherwise hand every occurrence whichever settings
+        // happened to be cached last.
+        var entries = new (HashSet<int> Coverage, List<(int Start, int End)> Intervals)[proteaseParams.Count];
+
         var misses = new List<int>();
         for (int i = 0; i < proteaseParams.Count; i++)
-            if (!_cache.TryGetValue(proteaseParams[i].DigestionAgentName, out var cached)
-                || !cached.Key.Equals(keys[i]))
+        {
+            if (_cache.TryGetValue(proteaseParams[i].DigestionAgentName, out var cached)
+                && cached.Key.Equals(keys[i]))
+                entries[i] = (cached.Coverage, cached.Intervals);
+            else
                 misses.Add(i);
+        }
 
         if (misses.Count > 0)
         {
@@ -78,6 +87,7 @@ public class ProteaseDigestCache
             for (int m = 0; m < misses.Count; m++)
             {
                 int i = misses[m];
+                entries[i] = computed[m];
                 _cache[proteaseParams[i].DigestionAgentName] =
                     (keys[i], computed[m].Coverage, computed[m].Intervals);
             }
@@ -88,9 +98,8 @@ public class ProteaseDigestCache
         for (int i = 0; i < proteaseParams.Count; i++)
         {
             string name = proteaseParams[i].DigestionAgentName;
-            var entry = _cache[name];
-            coverage[name] = entry.Coverage;
-            intervals[name] = entry.Intervals;
+            coverage[name] = entries[i].Coverage;
+            intervals[name] = entries[i].Intervals;
         }
         return (coverage, intervals);
     }
