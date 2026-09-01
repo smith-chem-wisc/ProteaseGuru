@@ -1,7 +1,7 @@
 using Omics;
 using Proteomics;
 
-namespace Tasks.CoverageMapConfiguration
+namespace ProteaseGuru.Tasks.CoverageMapConfiguration
 {
     /// <summary>
     /// Analyzes protein digestion results and organizes peptide data for coverage analysis.

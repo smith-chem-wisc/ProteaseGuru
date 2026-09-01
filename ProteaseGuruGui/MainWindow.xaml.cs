@@ -17,22 +17,21 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
-using Engine;
+using ProteaseGuru.Engine;
 using MzLibUtil;
 using Omics;
 using Omics.Digestion;
 using Omics.Modifications;
-using ProteaseGuruGuiFunctions;
-using ProteaseGuruGuiFunctions;
+using ProteaseGuru.GuiFunctions;
 using Proteomics;
 using Proteomics.ProteolyticDigestion;
-using Tasks;
-using Tasks.CoverageMapConfiguration;
+using ProteaseGuru.Tasks;
+using ProteaseGuru.Tasks.CoverageMapConfiguration;
 using Transcriptomics.Digestion;
 using UsefulProteomicsDatabases;
-using static Tasks.ProteaseGuruTask;
+using static ProteaseGuru.Tasks.ProteaseGuruTask;
 
-namespace ProteaseGuruGui
+namespace ProteaseGuru.Gui
 {
     /// <summary>
     /// Interaction logic for MainWindow.xaml
@@ -75,6 +74,45 @@ namespace ProteaseGuruGui
                 if (e.PropertyName == nameof(GuiGlobalParamsViewModel.IsRnaMode))
                     GenerateRunSummary();
             };
+        }
+
+        /// <summary>
+        /// Creates the main window with pre-loaded protein databases. Used when ProteaseGuru is
+        /// embedded in another application (e.g. launched from MetaMorpheus) so that databases
+        /// selected there are automatically available for digestion on window launch.
+        /// </summary>
+        /// <param name="databaseFilePaths">Paths of the protein databases (.xml, .fasta, or .fa,
+        /// optionally .gz compressed) to add on launch.</param>
+        public MainWindow(IEnumerable<string> databaseFilePaths) : this()
+        {
+            AddProvidedDatabases(databaseFilePaths);
+        }
+
+        /// <summary>
+        /// Adds the databases provided at construction time, validating that each path is a
+        /// supported database file before it is added to the analysis.
+        /// </summary>
+        private void AddProvidedDatabases(IEnumerable<string> databaseFilePaths)
+        {
+            if (databaseFilePaths == null)
+            {
+                return;
+            }
+
+            foreach (var databaseFilePath in databaseFilePaths)
+            {
+                var filename = System.IO.Path.GetFileName(databaseFilePath);
+                var theExtension = System.IO.Path.GetExtension(filename).ToLowerInvariant();
+                bool compressed = theExtension.EndsWith("gz"); // allows for .bgz and .tgz, too which are used on occasion
+                theExtension = compressed ? System.IO.Path.GetExtension(System.IO.Path.GetFileNameWithoutExtension(filename)).ToLowerInvariant() : theExtension;
+
+                if (theExtension != ".xml" && theExtension != ".fasta" && theExtension != ".fa")
+                {
+                    throw new ArgumentException($"The file provided is not an acceptable database format: {databaseFilePath}. Protein databases must be in .xml, .fasta, or .fa format (optionally .gz compressed).");
+                }
+
+                AddAFile(databaseFilePath);
+            }
         }
 
         //the add button for loading previous peptide result files
@@ -147,7 +185,7 @@ namespace ProteaseGuruGui
             var theExtension = System.IO.Path.GetExtension(filename).ToLowerInvariant();
             bool compressed = theExtension.EndsWith("gz");
             theExtension = compressed ? System.IO.Path.GetExtension(System.IO.Path.GetFileNameWithoutExtension(filename)).ToLowerInvariant() : theExtension;
-            GuiWarnHandler(null, new Engine.StringEventArgs("Unrecognized file type: " + theExtension, null));
+            GuiWarnHandler(null, new StringEventArgs("Unrecognized file type: " + theExtension, null));
         }
 
         //add a protein database file
@@ -293,12 +331,12 @@ namespace ProteaseGuruGui
             // print any error messages reading the mods to the notifications area
             foreach (var error in GlobalVariables.ErrorsReadingMods)
             {
-                GuiWarnHandler(null, new Engine.StringEventArgs(error, null));
+                GuiWarnHandler(null, new StringEventArgs(error, null));
             }
             GlobalVariables.ErrorsReadingMods.Clear();
         }
 
-        private void GuiWarnHandler(object sender, Engine.StringEventArgs e)
+        private void GuiWarnHandler(object sender, StringEventArgs e)
         {
             if (!Dispatcher.CheckAccess())
             {
@@ -348,7 +386,7 @@ namespace ProteaseGuruGui
                 }
                 catch (Exception ex)
                 {
-                    GuiWarnHandler(null, new Engine.StringEventArgs("Error opening directory: " + ex.Message, null));
+                    GuiWarnHandler(null, new StringEventArgs("Error opening directory: " + ex.Message, null));
                 }
             }
 
@@ -365,7 +403,7 @@ namespace ProteaseGuruGui
             else
             {
                 // this should only happen if the file path is empty or something unexpected happened
-                GuiWarnHandler(null, new Engine.StringEventArgs("Output folder does not exist", null));
+                GuiWarnHandler(null, new StringEventArgs("Output folder does not exist", null));
             }
         }
 
@@ -1057,7 +1095,7 @@ namespace ProteaseGuruGui
                 }
                 catch (Exception ex)
                 {
-                    GuiWarnHandler(null, new Engine.StringEventArgs($"Error loading proteins from {db.FilePath}: {ex.Message}", null));
+                    GuiWarnHandler(null, new StringEventArgs($"Error loading proteins from {db.FilePath}: {ex.Message}", null));
                 }
             }
 
@@ -1066,7 +1104,7 @@ namespace ProteaseGuruGui
                 fastaPath: ProteinDbObservableCollection.First().FilePath);
         }
 
-        private void NewoutLabelStatus(object sender, Engine.StringEventArgs s)
+        private void NewoutLabelStatus(object sender, StringEventArgs s)
         {
             if (!Dispatcher.CheckAccess())
             {

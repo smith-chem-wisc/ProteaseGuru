@@ -1,8 +1,8 @@
-using Engine;
+using ProteaseGuru.Engine;
 using Nett;
-using Tasks;
+using ProteaseGuru.Tasks;
 
-namespace ProteaseGuruGuiFunctions;
+namespace ProteaseGuru.GuiFunctions;
 public class GuiGlobalParamsViewModel : BaseViewModel
 {
     private static GuiGlobalParamsViewModel _instance;

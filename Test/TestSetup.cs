@@ -1,7 +1,7 @@
-using Engine;
+using ProteaseGuru.Engine;
 using NUnit.Framework;
 
-namespace Test
+namespace ProteaseGuru.Test
 {
     /// <summary>
     /// Assembly-wide test setup that ensures GlobalVariables is initialized

@@ -6,14 +6,14 @@ using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Shapes;
 using Easy.Common.Extensions;
-using Engine;
+using ProteaseGuru.Engine;
 using Proteomics;
 using Proteomics.ProteolyticDigestion;
-using Tasks;
-using Tasks.CoverageMapConfiguration;
+using ProteaseGuru.Tasks;
+using ProteaseGuru.Tasks.CoverageMapConfiguration;
 using Transcriptomics.Digestion;
 
-namespace ProteaseGuruGui
+namespace ProteaseGuru.Gui
 {
     public enum CoverageMapDisplayMode
     {

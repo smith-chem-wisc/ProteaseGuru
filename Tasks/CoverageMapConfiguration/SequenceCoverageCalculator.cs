@@ -1,6 +1,6 @@
 using Omics;
 
-namespace Tasks.CoverageMapConfiguration
+namespace ProteaseGuru.Tasks.CoverageMapConfiguration
 {
     /// <summary>
     /// Sequence coverage per protease per protein, pooled across databases.

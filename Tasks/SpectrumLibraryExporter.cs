@@ -7,7 +7,7 @@ using PredictionClients.Koina.SupportedModels.RetentionTimeModels;
 using Proteomics;
 using Proteomics.ProteolyticDigestion;
 
-namespace Tasks;
+namespace ProteaseGuru.Tasks;
 
 /// <summary>
 /// Exports a spectrum library for a single protein by:

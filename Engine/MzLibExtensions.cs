@@ -5,7 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Omics.Digestion;
 
-namespace Engine;
+namespace ProteaseGuru.Engine;
 public static class MzLibExtensions
 {
     /// <summary>

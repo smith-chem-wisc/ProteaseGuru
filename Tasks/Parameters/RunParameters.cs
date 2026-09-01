@@ -1,4 +1,4 @@
-namespace Tasks;
+namespace ProteaseGuru.Tasks;
 
 //digestion parameters provided by the user
 public class RunParameters : ParameterBaseClass<RunParameters>, IEquatable<RunParameters>

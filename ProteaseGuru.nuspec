@@ -30,7 +30,7 @@
 	</metadata>
 	<files>
 		<!-- Engine project files -->
-		<file src="Engine\bin\x64\Release\net10.0\Engine.dll" target="lib\net10.0" />
+		<file src="Engine\bin\x64\Release\net10.0\ProteaseGuru.Engine.dll" target="lib\net10.0" />
 		<file src="Engine\Data\elements.dat" target="lib\net10.0\Data" />
 		<file src="Engine\Data\PSI-MOD.obo.xml" target="lib\net10.0\Data" />
 		<file src="Engine\Data\ptmlist.txt" target="lib\net10.0\Data" />
@@ -44,16 +44,16 @@
 		<file src="Engine\Mods\tmt.txt" target="lib\net10.0\Mods" />
 
 		<!-- Tasks project files -->
-		<file src="Tasks\bin\x64\Release\net10.0\Tasks.dll" target="lib\net10.0" />
+		<file src="Tasks\bin\x64\Release\net10.0\ProteaseGuru.Tasks.dll" target="lib\net10.0" />
 
 		<!-- GuiFunctions project files -->
-		<file src="ProteaseGuruGuiFunctions\bin\x64\Release\net10.0\ProteaseGuruGuiFunctions.dll" target="lib\net10.0" />
-		<file src="ProteaseGuruGuiFunctions\bin\x64\Release\net10.0\ProteaseGuruGuiFunctions.dll" target="lib\net10.0-windows7.0" />
+		<file src="ProteaseGuruGuiFunctions\bin\x64\Release\net10.0\ProteaseGuru.GuiFunctions.dll" target="lib\net10.0" />
+		<file src="ProteaseGuruGuiFunctions\bin\x64\Release\net10.0\ProteaseGuru.GuiFunctions.dll" target="lib\net10.0-windows7.0" />
 
 		<!-- GUI project files -->
-		<file src="Tasks\bin\x64\Release\net10.0\Tasks.dll" target="lib\net10.0-windows7.0" />
-		<file src="Engine\bin\x64\Release\net10.0\Engine.dll" target="lib\net10.0-windows7.0" />
-		<file src="ProteaseGuruGui\bin\x64\Release\net10.0-windows\ProteaseGuruGui.dll" target="lib\net10.0-windows7.0" />
+		<file src="Tasks\bin\x64\Release\net10.0\ProteaseGuru.Tasks.dll" target="lib\net10.0-windows7.0" />
+		<file src="Engine\bin\x64\Release\net10.0\ProteaseGuru.Engine.dll" target="lib\net10.0-windows7.0" />
+		<file src="ProteaseGuruGui\bin\x64\Release\net10.0-windows\ProteaseGuru.Gui.dll" target="lib\net10.0-windows7.0" />
 		<file src="ProteaseGuruGui\Icons\proteaseGuru.ico" target="lib\net10.0-windows7.0\Icons" />
 		<file src="ProteaseGuruGui\Icons\proteaseGuru.png" target="ProteaseGuruGui/icons/" />
 

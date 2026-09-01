@@ -1,4 +1,4 @@
-namespace Tasks;
+namespace ProteaseGuru.Tasks;
 public class GlobalParameters : ParameterBaseClass<GlobalParameters>, IEquatable<GlobalParameters>
 {
     public RunParameters RunParameters { get; set; } = new();

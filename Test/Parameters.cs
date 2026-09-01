@@ -2,12 +2,12 @@ using System;
 using System.ComponentModel;
 using System.IO;
 using System.Reflection;
-using Engine;
+using ProteaseGuru.Engine;
 using NUnit.Framework;
-using ProteaseGuruGuiFunctions;
-using Tasks;
+using ProteaseGuru.GuiFunctions;
+using ProteaseGuru.Tasks;
 
-namespace Test.GuiTests
+namespace ProteaseGuru.Test.GuiTests
 {
     [TestFixture]
     [NonParallelizable]

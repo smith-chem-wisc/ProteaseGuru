@@ -1,10 +1,10 @@
 using NUnit.Framework;
 using Omics;
 using Proteomics;
-using Tasks;
-using Tasks.CoverageMapConfiguration;
+using ProteaseGuru.Tasks;
+using ProteaseGuru.Tasks.CoverageMapConfiguration;
 
-namespace Test
+namespace ProteaseGuru.Test
 {
     /// <summary>
     /// Pins the behaviour SequenceCoverageCalculator was consolidated from, including the parts that are

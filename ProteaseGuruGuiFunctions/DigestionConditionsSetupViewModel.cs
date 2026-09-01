@@ -1,13 +1,13 @@
 using System.Collections.ObjectModel;
 using System.Windows.Input;
-using Engine;
+using ProteaseGuru.Engine;
 using Omics.Modifications;
 using Proteomics.AminoAcidPolymer;
 using Proteomics.ProteolyticDigestion;
-using Tasks;
+using ProteaseGuru.Tasks;
 using Transcriptomics.Digestion;
 
-namespace ProteaseGuruGuiFunctions;
+namespace ProteaseGuru.GuiFunctions;
 
 public class DigestionConditionsSetupViewModel : BaseViewModel
 {

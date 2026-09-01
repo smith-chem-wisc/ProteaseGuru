@@ -1,8 +1,8 @@
 using System.Windows.Controls;
 using System.Windows.Input;
-using ProteaseGuruGuiFunctions;
+using ProteaseGuru.GuiFunctions;
 
-namespace ProteaseGuruGui;
+namespace ProteaseGuru.Gui;
 
 /// <summary>
 /// Interaction logic for ProteinRnaImageToggle.xaml

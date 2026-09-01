@@ -2,7 +2,7 @@ using System.Collections.Concurrent;
 using System.Data;
 using BayesianEstimation;
 using Chromatography.RetentionTimePrediction.Chronologer;
-using Engine;
+using ProteaseGuru.Engine;
 using Omics;
 using Omics.Modifications;
 using PredictionClients.Koina.AbstractClasses;
@@ -11,13 +11,13 @@ using PredictionClients.Koina.SupportedModels.FragmentIntensityModels;
 using PredictionClients.Koina.Util;
 using Proteomics;
 using Proteomics.ProteolyticDigestion;
-using Tasks.CoverageMapConfiguration;
+using ProteaseGuru.Tasks.CoverageMapConfiguration;
 using Proteomics.RetentionTimePrediction;
 using Transcriptomics;
 using UsefulProteomicsDatabases;
 using UsefulProteomicsDatabases.Transcriptomics;
 
-namespace Tasks
+namespace ProteaseGuru.Tasks
 {
     /// <summary>
     /// Digests the provided databases with the proteases and parameters provided by the user.

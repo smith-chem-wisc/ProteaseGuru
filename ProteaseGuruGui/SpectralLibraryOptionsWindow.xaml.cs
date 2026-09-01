@@ -1,9 +1,9 @@
 using System.Collections.ObjectModel;
 using System.Windows;
 using System.Windows.Controls;
-using Tasks;
+using ProteaseGuru.Tasks;
 
-namespace ProteaseGuruGui
+namespace ProteaseGuru.Gui
 {
     public partial class SpectralLibraryOptionsWindow : Window
     {

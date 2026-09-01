@@ -1,4 +1,4 @@
-namespace Tasks.CoverageMapConfiguration
+namespace ProteaseGuru.Tasks.CoverageMapConfiguration
 {
     /// <summary>
     /// Simple RGB color representation that is platform-agnostic.

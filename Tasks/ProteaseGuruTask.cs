@@ -1,9 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
-using Engine;
+using ProteaseGuru.Engine;
 
-namespace Tasks
+namespace ProteaseGuru.Tasks
 {
     public abstract class ProteaseGuruTask
     {

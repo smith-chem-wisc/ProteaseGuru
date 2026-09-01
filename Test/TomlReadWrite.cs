@@ -6,10 +6,10 @@ using System.Threading.Tasks;
 using NUnit.Framework;
 using Omics.Modifications;
 using Proteomics.ProteolyticDigestion;
-using Tasks;
+using ProteaseGuru.Tasks;
 using Transcriptomics.Digestion;
 
-namespace Test;
+namespace ProteaseGuru.Test;
 [TestFixture]
 public class TomlReadWrite
 {

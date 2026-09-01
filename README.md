@@ -36,10 +36,10 @@ Requires the [.NET 10 SDK](https://dotnet.microsoft.com/en-us/download/dotnet/10
 git clone https://github.com/smith-chem-wisc/ProteaseGuru.git
 cd ProteaseGuru
 dotnet build ProteaseGuru.sln -c Release
-dotnet run --project ProteaseGuruGui
+dotnet run --project ProteaseGuruGui/ProteaseGuru.Gui.csproj
 ```
 
-Or open `ProteaseGuru.sln` in Visual Studio 2022, set **ProteaseGuruGui** as the startup project, and press **F5**.
+Or open `ProteaseGuru.sln` in Visual Studio 2022, set **ProteaseGuru.Gui** as the startup project, and press **F5**.
 
 ## Major Features
 * Ability to digest more than one database for application with multi-species samples such as xenografts, virally infected host cells and microbiome samples.
