@@ -581,8 +581,8 @@ namespace ProteaseGuru.Gui
                     }
                     break;
                 case 2: // Protein Sequence Coverage
-                    xAxisTitle = $"{GlobalVariables.AnalyteType.GetBioPolymerLabel()} Sequence Coverage";
-                    binSize = 0.10;
+                    xAxisTitle = $"{GlobalVariables.AnalyteType.GetBioPolymerLabel()} Sequence Coverage (%)";
+                    binSize = 10;
                     foreach (string key in SequenceCoverageByProtease.Keys)
                     {
                         numbersByProtease.Add(key, SequenceCoverageByProtease[key].Select(p => p));
@@ -591,8 +591,9 @@ namespace ProteaseGuru.Gui
                     }
                     break;
                 case 3: // Protein Sequence Coverage (unique peptides)
-                    xAxisTitle = $"{GlobalVariables.AnalyteType.GetBioPolymerLabel()} Sequence Coverage (Unique {GlobalVariables.AnalyteType.GetUniqueFormLabel()}s Only)";
-                    binSize = 0.10;
+                    // The plot title already says "(Unique …s Only)"; repeating it here only overruns the axis.
+                    xAxisTitle = $"{GlobalVariables.AnalyteType.GetBioPolymerLabel()} Sequence Coverage (%)";
+                    binSize = 10;
                     foreach (string key in SequenceCoverageUniqueByProtease.Keys)
                     {
                         numbersByProtease.Add(key, SequenceCoverageUniqueByProtease[key].Select(p => p));
@@ -811,11 +812,12 @@ namespace ProteaseGuru.Gui
                         }
 
                     }
-                    //divide the number of covered residues by the total residues in the protein                    
-                    double seqCoverageFractUnique = (double)coveredOneBasesResiduesUnique.Count / protein.Key.Length;
-                    double seqCoverageFract = (double)coveredOneBasesResidues.Count / protein.Key.Length;
+                    //percent of the whole protein, so this agrees with DigestionTask and the reload path;
+                    //the same field is fed from either source depending on the database selection below
+                    double seqCoveragePercentUnique = (double)coveredOneBasesResiduesUnique.Count / protein.Key.Length * 100.0;
+                    double seqCoveragePercent = (double)coveredOneBasesResidues.Count / protein.Key.Length * 100.0;
 
-                    sequenceCoverages.Add(protein.Key, (Math.Round(seqCoverageFract, 3), Math.Round(seqCoverageFractUnique, 3)));
+                    sequenceCoverages.Add(protein.Key, (Math.Round(seqCoveragePercent, 2), Math.Round(seqCoveragePercentUnique, 2)));
                 }
                 proteinSequenceCoverageByProtease.Add(protease.Key, sequenceCoverages);
             }

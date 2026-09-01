@@ -121,6 +121,11 @@
                         <Setter Property="BorderBrush" Value="#131313"/>
                         <Setter Property="Foreground" Value="#131313"/>
                     </Trigger>
+                    <!-- After the hover trigger, which still applies to a disabled button. -->
+                    <Trigger Property="IsEnabled" Value="False">
+                        <Setter Property="Background" Value="#8f8f8f"/>
+                        <Setter Property="Foreground" Value="#d6d6d6"/>
+                    </Trigger>
                 </Style.Triggers>
             </Style>
 

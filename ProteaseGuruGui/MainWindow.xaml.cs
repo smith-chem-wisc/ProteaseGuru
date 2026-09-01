@@ -711,7 +711,7 @@ namespace ProteaseGuru.Gui
 
         // Reads previous-run parameter and result files and rebuilds the database -> protease -> protein -> peptides
         // structure. Pure data work with no UI access, so it can run on a background thread.
-        private (Dictionary<string, Dictionary<string, Dictionary<IBioPolymer, List<InSilicoPep>>>> peptidesByFile, RunParameters loadedParams)
+        private static (Dictionary<string, Dictionary<string, Dictionary<IBioPolymer, List<InSilicoPep>>>> peptidesByFile, RunParameters loadedParams)
             LoadResultsFromFiles(
                 List<string> parameterFilePaths,
                 List<string> resultFilePaths,
@@ -828,21 +828,22 @@ namespace ProteaseGuru.Gui
                 resultFileNumber++;
                 progress?.Report($"Reading result file {resultFileNumber} of {resultFilePaths.Count}...");
 
-                var fileData = File.ReadAllLines(resultFilePath);
-                if (fileData.Length == 0)
+                // Streamed rather than read whole: one line stays alive at a time instead of the entire file.
+                bool headerSeen = false;
+                foreach (var line in File.ReadLines(resultFilePath))
                 {
-                    continue;
-                }
+                    if (!headerSeen)
+                    {
+                        headerSeen = true;
+                        var header = line.Split('\t');
+                        if (header.Length < 4 || header[0] != "Database" || header[1] != "Protease" || header[2] != "Base Sequence" || header[3] != "Full Sequence")
+                        {
+                            throw new InvalidDataException("Results file provided is not from a previous ProteaseGuru run: " + System.IO.Path.GetFileName(resultFilePath));
+                        }
+                        continue;
+                    }
 
-                var header = fileData[0].Split('\t');
-                if (header.Length < 4 || header[0] != "Database" || header[1] != "Protease" || header[2] != "Base Sequence" || header[3] != "Full Sequence")
-                {
-                    throw new InvalidDataException("Results file provided is not from a previous ProteaseGuru run: " + System.IO.Path.GetFileName(resultFilePath));
-                }
-
-                for (int lineIndex = 1; lineIndex < fileData.Length; lineIndex++)
-                {
-                    var info = fileData[lineIndex].Split('\t');
+                    var info = line.Split('\t');
                     if (info.Length < 17)
                     {
                         continue; // skip blank or truncated lines
@@ -1114,10 +1115,10 @@ namespace ProteaseGuru.Gui
             }
         }
 
-        private Dictionary<string, Dictionary<IBioPolymer, (double, double)>> CalculateProteinSequenceCoverage(Dictionary<string, Dictionary<string, Dictionary<IBioPolymer, List<InSilicoPep>>>> peptideByFile)
+        private static Dictionary<string, Dictionary<IBioPolymer, (double, double)>> CalculateProteinSequenceCoverage(Dictionary<string, Dictionary<string, Dictionary<IBioPolymer, List<InSilicoPep>>>> peptideByFile)
         {
             Dictionary<string, List<InSilicoPep>> allDatabasePeptidesByProtease = new();
-            HashSet<IBioPolymer> proteins = new();
+            Dictionary<string, IBioPolymer> accessionToProtein = new();
             foreach (var database in peptideByFile)
             {
                 foreach (var protease in database.Value)
@@ -1127,7 +1128,7 @@ namespace ProteaseGuru.Gui
                         foreach (var protein in protease.Value)
                         {
                             allDatabasePeptidesByProtease[protease.Key].AddRange(protein.Value);
-                            proteins.Add(protein.Key);
+                            accessionToProtein[protein.Key.Accession] = protein.Key;
                         }
                     }
                     else
@@ -1135,7 +1136,7 @@ namespace ProteaseGuru.Gui
                         allDatabasePeptidesByProtease.Add(protease.Key, protease.Value.SelectMany(p => p.Value).ToList());
                         foreach (var protein in protease.Value)
                         {
-                            proteins.Add(protein.Key);
+                            accessionToProtein[protein.Key.Accession] = protein.Key;
                         }
                     }
                 }
@@ -1148,6 +1149,10 @@ namespace ProteaseGuru.Gui
                 Dictionary<IBioPolymer, (double, double)> sequenceCoverages = new();
                 foreach (var protein in proteinForProtease)
                 {
+                    // protein.Key is the accession string, so the residue count has to come from the database
+                    // entry it names rather than from the key itself.
+                    IBioPolymer actualProtein = accessionToProtein[protein.Key];
+
                     //count which residues are covered at least one time by a peptide
                     HashSet<int> coveredOneBasesResidues = new HashSet<int>();
                     HashSet<int> coveredOneBasesResiduesUnique = new HashSet<int>();
@@ -1163,11 +1168,11 @@ namespace ProteaseGuru.Gui
                             }
                         }
                     }
-                    //divide the number of covered residues by the total residues in the protein
-                    double seqCoverageFract = (double)coveredOneBasesResidues.Count / protein.Key.Length;
-                    double seqCoverageFractUnique = (double)coveredOneBasesResiduesUnique.Count / protein.Key.Length;
+                    //divide the number of covered residues by the total residues in the protein, as a percent
+                    double seqCoveragePercent = (double)coveredOneBasesResidues.Count / actualProtein.Length * 100.0;
+                    double seqCoveragePercentUnique = (double)coveredOneBasesResiduesUnique.Count / actualProtein.Length * 100.0;
 
-                    sequenceCoverages.Add(proteins.Where(p => p.Accession == protein.Key).First(), (Math.Round(seqCoverageFract, 3), Math.Round(seqCoverageFractUnique, 3)));
+                    sequenceCoverages.Add(actualProtein, (Math.Round(seqCoveragePercent, 2), Math.Round(seqCoveragePercentUnique, 2)));
                 }
                 proteinSequenceCoverageByProtease.Add(protease.Key, sequenceCoverages);
             }
