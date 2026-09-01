@@ -4,7 +4,7 @@ using Proteomics;
 using Proteomics.ProteolyticDigestion;
 using Transcriptomics.Digestion;
 
-namespace Tasks;
+namespace ProteaseGuru.Tasks;
 
 /// <summary>
 /// Analyzes protease combinations to find optimal coverage for a protein sequence.
@@ -165,9 +165,11 @@ public class SeekMaximumCoverage
     /// Builds a per-protease <see cref="Bitset"/> from the coverage dictionary, applying
     /// the optional region filter while setting bits. Returns the protease names (in the
     /// dictionary's enumeration order, which the greedy and brute-force tie-breaks rely on),
-    /// the bitsets, the universe size, and the residue count used for coverage fractions.
+    /// the bitsets, and the universe size. The universe only sizes the backing arrays; the
+    /// denominator coverage fractions are reported against comes from the caller, via
+    /// <see cref="ResolveDenominator"/>.
     /// </summary>
-    private static (List<string> Names, Bitset[] Sets, int Universe, int TotalResidues)
+    private static (List<string> Names, Bitset[] Sets, int Universe)
         BuildProteaseBitsets(
             Dictionary<string, HashSet<int>> coverageDict,
             (int Start, int End)? region)
@@ -175,11 +177,9 @@ public class SeekMaximumCoverage
         var names = coverageDict.Keys.ToList();
 
         int universe;
-        int totalResidues;
         if (region.HasValue)
         {
             universe = region.Value.End + 1;
-            totalResidues = region.Value.End - region.Value.Start + 1;
         }
         else
         {
@@ -188,7 +188,6 @@ public class SeekMaximumCoverage
                 foreach (var i in set)
                     if (i > maxIndex) maxIndex = i;
             universe = maxIndex + 1;
-            totalResidues = maxIndex + 1;
         }
 
         var sets = new Bitset[names.Count];
@@ -210,7 +209,23 @@ public class SeekMaximumCoverage
             sets[n] = bits;
         }
 
-        return (names, sets, universe, totalResidues);
+        return (names, sets, universe);
+    }
+
+    /// <summary>
+    /// Picks the residue count a coverage fraction is reported against. A region carries its own
+    /// span, so it wins; otherwise the caller-supplied total is used verbatim.
+    /// </summary>
+    private static int ResolveDenominator(int totalResidues, (int Start, int End)? region)
+    {
+        if (region.HasValue)
+            return region.Value.End - region.Value.Start + 1;
+
+        if (totalResidues < 0)
+            throw new ArgumentOutOfRangeException(nameof(totalResidues), totalResidues,
+                "Residue count for the coverage fraction cannot be negative.");
+
+        return totalResidues;
     }
 
     #endregion
@@ -343,11 +358,20 @@ public class SeekMaximumCoverage
     /// Implements a greedy set cover algorithm to find a minimal set of proteases
     /// that achieves maximum coverage.
     /// </summary>
+    /// <param name="totalResidues">
+    /// Residue count the coverage fraction is reported against — normally the biopolymer's length.
+    /// Required because the coverage sets alone cannot reveal it: residues past the last covered
+    /// one leave no trace, so deriving the denominator from the coverage silently drops any
+    /// uncovered C-terminus from both numerator and denominator. Ignored when
+    /// <paramref name="region"/> is supplied, since a region carries its own span.
+    /// </param>
     public SetCoverResult GreedyMinimumProteaseSet(
         Dictionary<string, HashSet<int>> coverageDict,
+        int totalResidues,
         (int Start, int End)? region = null)
     {
-        var (names, sets, universe, totalResidues) = BuildProteaseBitsets(coverageDict, region);
+        var (names, sets, universe) = BuildProteaseBitsets(coverageDict, region);
+        int denominator = ResolveDenominator(totalResidues, region);
 
         var selectedProteases = new List<string>();
         var covered = new Bitset(universe);
@@ -382,8 +406,8 @@ public class SeekMaximumCoverage
         return new SetCoverResult(
             selectedProteases,
             coveredResidues,
-            totalResidues,
-            CoverageFraction(coveredResidues, totalResidues)
+            denominator,
+            CoverageFraction(coveredResidues, denominator)
         );
     }
 
@@ -394,28 +418,40 @@ public class SeekMaximumCoverage
     /// <summary>Finds the single protease that alone produces the highest sequence coverage.</summary>
     public CombinationResult BestSingle(
         Dictionary<string, HashSet<int>> coverageDict,
+        int totalResidues,
         (int Start, int End)? region = null)
-        => BestCombination(coverageDict, 1, region);
+        => BestCombination(coverageDict, 1, totalResidues, region);
 
     /// <summary>Finds the best pair of proteases that maximizes coverage.</summary>
     public CombinationResult BestPair(
         Dictionary<string, HashSet<int>> coverageDict,
+        int totalResidues,
         (int Start, int End)? region = null)
-        => BestCombination(coverageDict, 2, region);
+        => BestCombination(coverageDict, 2, totalResidues, region);
 
     /// <summary>Finds the best triplet of proteases that maximizes coverage.</summary>
     public CombinationResult BestTriplet(
         Dictionary<string, HashSet<int>> coverageDict,
+        int totalResidues,
         (int Start, int End)? region = null)
-        => BestCombination(coverageDict, 3, region);
+        => BestCombination(coverageDict, 3, totalResidues, region);
 
     /// <summary>Finds the best combination of N proteases that maximizes coverage.</summary>
+    /// <param name="totalResidues">
+    /// Residue count the coverage fraction is reported against — normally the biopolymer's length.
+    /// Required because the coverage sets alone cannot reveal it: residues past the last covered
+    /// one leave no trace, so deriving the denominator from the coverage silently drops any
+    /// uncovered C-terminus from both numerator and denominator. Ignored when
+    /// <paramref name="region"/> is supplied, since a region carries its own span.
+    /// </param>
     public CombinationResult BestCombination(
         Dictionary<string, HashSet<int>> coverageDict,
         int combinationSize,
+        int totalResidues,
         (int Start, int End)? region = null)
     {
-        var (names, sets, universe, totalResidues) = BuildProteaseBitsets(coverageDict, region);
+        var (names, sets, universe) = BuildProteaseBitsets(coverageDict, region);
+        int denominator = ResolveDenominator(totalResidues, region);
 
         if (names.Count < combinationSize)
         {
@@ -426,7 +462,7 @@ public class SeekMaximumCoverage
             var union = allCovered.ToHashSet();
             return new CombinationResult(
                 names, union, union.Count,
-                CoverageFraction(union, totalResidues));
+                CoverageFraction(union, denominator));
         }
 
         int n = names.Count;
@@ -477,7 +513,7 @@ public class SeekMaximumCoverage
             bestNames,
             bestResidues,
             bestCount < 0 ? 0 : bestCount,
-            CoverageFraction(bestResidues, totalResidues)
+            CoverageFraction(bestResidues, denominator)
         );
     }
 

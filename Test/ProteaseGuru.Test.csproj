@@ -2,7 +2,9 @@
 
   <PropertyGroup>
     <OutputType>Library</OutputType>
-    <TargetFramework>net8.0</TargetFramework>
+    <TargetFramework>net10.0</TargetFramework>
+    <AssemblyName>ProteaseGuru.Test</AssemblyName>
+    <RootNamespace>ProteaseGuru.Test</RootNamespace>
     <Platforms>x64</Platforms>
   </PropertyGroup>
 
@@ -16,16 +18,16 @@
 
 <ItemGroup>
   <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.0.1" />
-  <PackageReference Include="mzLib" Version="1.0.580" />
+  <PackageReference Include="mzLib" Version="1.0.585" />
   <PackageReference Include="Nett" Version="0.15.0" />
   <PackageReference Include="NUnit" Version="4.4.0" />
   <PackageReference Include="NUnit3TestAdapter" Version="6.1.0" />
 </ItemGroup>
   
   <ItemGroup>
-    <ProjectReference Include="..\Engine\Engine.csproj" />
-    <ProjectReference Include="..\ProteaseGuruGuiFunctions\ProteaseGuruGuiFunctions.csproj" />
-    <ProjectReference Include="..\Tasks\Tasks.csproj" />
+    <ProjectReference Include="..\Engine\ProteaseGuru.Engine.csproj" />
+    <ProjectReference Include="..\ProteaseGuruGuiFunctions\ProteaseGuru.GuiFunctions.csproj" />
+    <ProjectReference Include="..\Tasks\ProteaseGuru.Tasks.csproj" />
   </ItemGroup>
   
   <ItemGroup>

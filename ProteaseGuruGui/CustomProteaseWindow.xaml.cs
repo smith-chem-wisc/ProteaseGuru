@@ -3,13 +3,13 @@ using System.IO;
 using System.Linq;
 using System.Windows;
 using Easy.Common.Extensions;
-using Engine;
+using ProteaseGuru.Engine;
 using Omics.Modifications;
 using Proteomics;
 using Proteomics.ProteolyticDigestion;
-using static Tasks.ProteaseGuruTask;
+using static ProteaseGuru.Tasks.ProteaseGuruTask;
 
-namespace ProteaseGuruGui
+namespace ProteaseGuru.Gui
 {
     /// <summary>
     /// Interaction logic for CustomProteaseWindow.xaml

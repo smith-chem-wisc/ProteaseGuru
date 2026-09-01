@@ -2,9 +2,9 @@ using System.Diagnostics;
 using NUnit.Framework;
 using Proteomics;
 using Proteomics.ProteolyticDigestion;
-using Tasks;
+using ProteaseGuru.Tasks;
 
-namespace Test;
+namespace ProteaseGuru.Test;
 
 /// <summary>
 /// Before/after benchmark for the "seek maximum coverage" path. Marked [Explicit] so it
@@ -171,14 +171,14 @@ public class SeekMaximumCoverageBenchmark
 
         // ---- Set-cover (#2): old HashSet vs new bitset ----
         double greedyOldMs = MeasureMs(AlgoIters, () => _sink += OldGreedyCoverageCount(cov));
-        double greedyNewMs = MeasureMs(AlgoIters, () => _sink += analyzer.GreedyMinimumProteaseSet(cov).CoveredResidues.Count);
+        double greedyNewMs = MeasureMs(AlgoIters, () => _sink += analyzer.GreedyMinimumProteaseSet(cov, protein.Length).CoveredResidues.Count);
         double tripOldMs = MeasureMs(AlgoIters, () => _sink += OldBestCombinationCount(cov, 3));
-        double tripNewMs = MeasureMs(AlgoIters, () => _sink += analyzer.BestTriplet(cov).CoverageCount);
+        double tripNewMs = MeasureMs(AlgoIters, () => _sink += analyzer.BestTriplet(cov, protein.Length).CoverageCount);
 
         // Equivalence: identical inputs must yield identical maximum coverage.
-        Assert.That(analyzer.GreedyMinimumProteaseSet(cov).CoveredResidues.Count,
+        Assert.That(analyzer.GreedyMinimumProteaseSet(cov, protein.Length).CoveredResidues.Count,
             Is.EqualTo(OldGreedyCoverageCount(cov)), $"greedy mismatch at {len} aa");
-        Assert.That(analyzer.BestTriplet(cov).CoverageCount,
+        Assert.That(analyzer.BestTriplet(cov, protein.Length).CoverageCount,
             Is.EqualTo(OldBestCombinationCount(cov, 3)), $"triplet mismatch at {len} aa");
 
         string title = label ?? $"{len} aa synthetic";

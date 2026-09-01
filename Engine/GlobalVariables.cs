@@ -5,7 +5,7 @@ using Omics.Modifications.IO;
 using Proteomics.AminoAcidPolymer;
 using Proteomics.ProteolyticDigestion;
 
-namespace Engine
+namespace ProteaseGuru.Engine
 {
     public static class GlobalVariables
     {

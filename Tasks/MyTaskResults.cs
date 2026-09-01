@@ -7,7 +7,7 @@ using Omics;
 using Proteomics;
 using Proteomics.ProteolyticDigestion;
 
-namespace Tasks
+namespace ProteaseGuru.Tasks
 {
     public class MyTaskResults
     {

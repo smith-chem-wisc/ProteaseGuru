@@ -3,7 +3,7 @@
 <package>
 	<metadata>
 		<id>ProteaseGuru</id>
-		<version>0.2.1</version>
+		<version>0.2.2</version>
 		<title>ProteaseGuru</title>
 		<authors>Rachel Miller, Nic Bollis, Peter Cruz Parrilla, Michael Shortreed</authors>
 		<owners>Rachel Miller, Nic Bollis, Peter Cruz Parrilla, Michael Shortreed</owners>
@@ -13,13 +13,13 @@
 		<description>An in silico digestion tool for the planning of bottom-up proteomic experiments.</description>
 		<tags>Chemistry Spectrometry Proteomics</tags>
 		<dependencies>
-			<group targetFramework="net8.0">
-				<dependency id="mzLib" version="1.0.579" />
+			<group targetFramework="net10.0">
+				<dependency id="mzLib" version="1.0.585" />
 				<dependency id="Nett" version="0.15.0" />
 				<dependency id="TopDownProteomics" version="0.0.298" />
 			</group>
-			<group targetFramework="net8.0-windows7.0">
-				<dependency id="mzLib" version="1.0.579" />
+			<group targetFramework="net10.0-windows7.0">
+				<dependency id="mzLib" version="1.0.585" />
 				<dependency id="Nett" version="0.15.0" />
 				<dependency id="TopDownProteomics" version="0.0.298" />
 				<dependency id="OxyPlot.Core" version="2.2.0" />
@@ -30,38 +30,38 @@
 	</metadata>
 	<files>
 		<!-- Engine project files -->
-		<file src="Engine\bin\x64\Release\net8.0\Engine.dll" target="lib\net8.0" />
-		<file src="Engine\Data\elements.dat" target="lib\net8.0\Data" />
-		<file src="Engine\Data\PSI-MOD.obo.xml" target="lib\net8.0\Data" />
-		<file src="Engine\Data\ptmlist.txt" target="lib\net8.0\Data" />
-		<file src="Engine\Data\unimod.xml" target="lib\net8.0\Data" />
-		<file src="Engine\Mods\aListOfmods.txt" target="lib\net8.0\Mods" />
-		<file src="Engine\Mods\glyco.txt" target="lib\net8.0\Mods" />
-		<file src="Engine\Mods\ProteaseMods.txt" target="lib\net8.0\Mods" />
-		<file src="Engine\Mods\Mods.txt" target="lib\net8.0\Mods" />
-		<file src="Engine\Mods\substitutions.txt" target="lib\net8.0\Mods" />
-		<file src="Engine\Mods\surfactants.txt" target="lib\net8.0\Mods" />
-		<file src="Engine\Mods\tmt.txt" target="lib\net8.0\Mods" />
+		<file src="Engine\bin\x64\Release\net10.0\ProteaseGuru.Engine.dll" target="lib\net10.0" />
+		<file src="Engine\Data\elements.dat" target="lib\net10.0\Data" />
+		<file src="Engine\Data\PSI-MOD.obo.xml" target="lib\net10.0\Data" />
+		<file src="Engine\Data\ptmlist.txt" target="lib\net10.0\Data" />
+		<file src="Engine\Data\unimod.xml" target="lib\net10.0\Data" />
+		<file src="Engine\Mods\aListOfmods.txt" target="lib\net10.0\Mods" />
+		<file src="Engine\Mods\glyco.txt" target="lib\net10.0\Mods" />
+		<file src="Engine\Mods\ProteaseMods.txt" target="lib\net10.0\Mods" />
+		<file src="Engine\Mods\Mods.txt" target="lib\net10.0\Mods" />
+		<file src="Engine\Mods\substitutions.txt" target="lib\net10.0\Mods" />
+		<file src="Engine\Mods\surfactants.txt" target="lib\net10.0\Mods" />
+		<file src="Engine\Mods\tmt.txt" target="lib\net10.0\Mods" />
 
 		<!-- Tasks project files -->
-		<file src="Tasks\bin\x64\Release\net8.0\Tasks.dll" target="lib\net8.0" />
+		<file src="Tasks\bin\x64\Release\net10.0\ProteaseGuru.Tasks.dll" target="lib\net10.0" />
 
 		<!-- GuiFunctions project files -->
-		<file src="ProteaseGuruGuiFunctions\bin\x64\Release\net8.0\ProteaseGuruGuiFunctions.dll" target="lib\net8.0" />
-		<file src="ProteaseGuruGuiFunctions\bin\x64\Release\net8.0\ProteaseGuruGuiFunctions.dll" target="lib\net8.0-windows7.0" />
+		<file src="ProteaseGuruGuiFunctions\bin\x64\Release\net10.0\ProteaseGuru.GuiFunctions.dll" target="lib\net10.0" />
+		<file src="ProteaseGuruGuiFunctions\bin\x64\Release\net10.0\ProteaseGuru.GuiFunctions.dll" target="lib\net10.0-windows7.0" />
 
 		<!-- GUI project files -->
-		<file src="Tasks\bin\x64\Release\net8.0\Tasks.dll" target="lib\net8.0-windows7.0" />
-		<file src="Engine\bin\x64\Release\net8.0\Engine.dll" target="lib\net8.0-windows7.0" />
-		<file src="ProteaseGuruGui\bin\x64\Release\net8.0-windows\ProteaseGuruGui.dll" target="lib\net8.0-windows7.0" />
-		<file src="ProteaseGuruGui\Icons\proteaseGuru.ico" target="lib\net8.0-windows7.0\Icons" />
+		<file src="Tasks\bin\x64\Release\net10.0\ProteaseGuru.Tasks.dll" target="lib\net10.0-windows7.0" />
+		<file src="Engine\bin\x64\Release\net10.0\ProteaseGuru.Engine.dll" target="lib\net10.0-windows7.0" />
+		<file src="ProteaseGuruGui\bin\x64\Release\net10.0-windows\ProteaseGuru.Gui.dll" target="lib\net10.0-windows7.0" />
+		<file src="ProteaseGuruGui\Icons\proteaseGuru.ico" target="lib\net10.0-windows7.0\Icons" />
 		<file src="ProteaseGuruGui\Icons\proteaseGuru.png" target="ProteaseGuruGui/icons/" />
 
-		<file src="ProteaseGuruGui\Icons\MMnice.bmp" target="lib\net8.0-windows7.0\Icons" />
-		<file src="ProteaseGuruGui\Twitter_Logo_Blue.bmp" target="lib\net8.0-windows7.0" />
-		<file src="ProteaseGuruGui\youtube_20.bmp" target="lib\net8.0-windows7.0" />
+		<file src="ProteaseGuruGui\Icons\MMnice.bmp" target="lib\net10.0-windows7.0\Icons" />
+		<file src="ProteaseGuruGui\Twitter_Logo_Blue.bmp" target="lib\net10.0-windows7.0" />
+		<file src="ProteaseGuruGui\youtube_20.bmp" target="lib\net10.0-windows7.0" />
 
 		<!-- Example: add other output DLLs/resources as needed -->
-		<!-- <file src="OtherProject\bin\x64\Release\net8.0\OtherProject.dll" target="lib\net8.0" /> -->
+		<!-- <file src="OtherProject\bin\x64\Release\net10.0\OtherProject.dll" target="lib\net10.0" /> -->
 	</files>
 </package>

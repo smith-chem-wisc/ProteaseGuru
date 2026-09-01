@@ -1,7 +1,7 @@
 using System;
 using System.Windows.Threading;
 
-namespace ProteaseGuruGui
+namespace ProteaseGuru.Gui
 {
     class SearchModifications
     {

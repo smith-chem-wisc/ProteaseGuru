@@ -17,16 +17,16 @@ using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
 using Chemistry;
-using Engine;
+using ProteaseGuru.Engine;
 using MassSpectrometry;
 using MzLibUtil;
 using Omics.Modifications;
 using Proteomics;
 using Proteomics.ProteolyticDigestion;
-using Tasks;
-using static Tasks.ProteaseGuruTask;
+using ProteaseGuru.Tasks;
+using static ProteaseGuru.Tasks.ProteaseGuruTask;
 
-namespace ProteaseGuruGui
+namespace ProteaseGuru.Gui
 {
     /// <summary>
     /// Interaction logic for CustomProteaseWindow.xaml

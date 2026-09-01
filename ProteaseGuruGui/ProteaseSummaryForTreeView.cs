@@ -1,6 +1,6 @@
 using System.Collections.ObjectModel;
 
-namespace ProteaseGuruGui
+namespace ProteaseGuru.Gui
 {
     public class ProteaseSummaryForTreeView
     {

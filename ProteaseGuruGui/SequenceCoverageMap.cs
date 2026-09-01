@@ -6,14 +6,14 @@ using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Shapes;
 using Easy.Common.Extensions;
-using Engine;
+using ProteaseGuru.Engine;
 using Proteomics;
 using Proteomics.ProteolyticDigestion;
-using Tasks;
-using Tasks.CoverageMapConfiguration;
+using ProteaseGuru.Tasks;
+using ProteaseGuru.Tasks.CoverageMapConfiguration;
 using Transcriptomics.Digestion;
 
-namespace ProteaseGuruGui
+namespace ProteaseGuru.Gui
 {
     public enum CoverageMapDisplayMode
     {
@@ -688,6 +688,14 @@ namespace ProteaseGuruGui
             canvas.Children.Add(cap);
         }
 
+        // The coverage map's width is intrinsic: one line is DefaultResiduesPerLine residues at
+        // residueSpacing px, plus the left label offset and a right margin. It never depends on the
+        // window size (the hosting ScrollViewer scrolls when the viewport is narrower), so it is
+        // always a sum of positive constants and can never be negative.
+        private const int CanvasRightMargin = 20;
+        private static double IntrinsicCanvasWidth(int residueSpacing, int seqLeftOffset)
+            => CoverageMapDataPreparer.DefaultResiduesPerLine * residueSpacing + seqLeftOffset + CanvasRightMargin;
+
         public static void DrawLaneViewMap(
             Canvas mapCanvas,
             Canvas legendCanvas,
@@ -698,7 +706,6 @@ namespace ProteaseGuruGui
             List<string> orderedProteases,
             Dictionary<string, List<(int Start, int End)>> intervalsByProtease,
             Func<string, SolidColorBrush> getProteaseBrush,
-            double canvasWidth,
             string? coverageHeader = null,
             int residueSpacing = 25,
             int seqLeftOffset = 45)
@@ -709,6 +716,7 @@ namespace ProteaseGuruGui
             legendGrid.Children.Clear();
             legendGrid.RowDefinitions.Clear();
             legendGrid.ColumnDefinitions.Clear();
+            double canvasWidth = IntrinsicCanvasWidth(residueSpacing, seqLeftOffset);
             mapCanvas.Width = canvasWidth;
             mapCanvas.HorizontalAlignment = HorizontalAlignment.Center;
             legendCanvas.Width = canvasWidth;
@@ -987,7 +995,6 @@ namespace ProteaseGuruGui
             HashSet<int> uniqueCovered,
             HashSet<int> sharedOnlyCovered,
             bool isMultiDatabase,
-            double canvasWidth,
             string? fullName = null,
             string? coverageHeader = null,
             int residueSpacing = 25,
@@ -1012,7 +1019,6 @@ namespace ProteaseGuruGui
                 entries,
                 uniqueCovered,
                 sharedOnlyCovered,
-                canvasWidth,
                 fullName,
                 coverageHeader,
                 residueSpacing,
@@ -1030,7 +1036,6 @@ namespace ProteaseGuruGui
             List<(int Start, int End, string Protease)> intervals,
             HashSet<int> uniqueCovered,
             HashSet<int> sharedOnlyCovered,
-            double canvasWidth,
             string? fullName = null,
             string? coverageHeader = null,
             int residueSpacing = 25,
@@ -1051,7 +1056,6 @@ namespace ProteaseGuruGui
                 entries,
                 uniqueCovered,
                 sharedOnlyCovered,
-                canvasWidth,
                 fullName,
                 coverageHeader,
                 residueSpacing,
@@ -1069,7 +1073,6 @@ namespace ProteaseGuruGui
             List<PeptideDrawEntry> entries,
             HashSet<int> uniqueCovered,
             HashSet<int> sharedOnlyCovered,
-            double canvasWidth,
             string? fullName,
             string? coverageHeader,
             int residueSpacing,
@@ -1084,6 +1087,7 @@ namespace ProteaseGuruGui
             legendGrid.Children.Clear();
             legendGrid.RowDefinitions.Clear();
             legendGrid.ColumnDefinitions.Clear();
+            double canvasWidth = IntrinsicCanvasWidth(residueSpacing, seqLeftOffset);
             mapCanvas.Width = canvasWidth;
             mapCanvas.HorizontalAlignment = HorizontalAlignment.Center;
             legendCanvas.Width = canvasWidth;

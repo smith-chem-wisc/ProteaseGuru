@@ -20,7 +20,7 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: 8.0.x
+          dotnet-version: 10.0.x
 
       - name: Set up NuGet
         uses: nuget/setup-nuget@v2
@@ -56,10 +56,10 @@ jobs:
       - name: Publish Windows app (framework-dependent)
         run: |
           $version = &git describe --tags
-          dotnet publish ProteaseGuruGui/ProteaseGuruGui.csproj --configuration Release --runtime win-x64 --self-contained false `
+          dotnet publish ProteaseGuruGui/ProteaseGuru.Gui.csproj --configuration Release --runtime win-x64 --self-contained false `
             -p:PublishSingleFile=true -p:Version=${version} `
             --output publish
-          Rename-Item -Path publish/ProteaseGuruGui.exe -NewName ProteaseGuru.exe
+          Rename-Item -Path publish/ProteaseGuru.Gui.exe -NewName ProteaseGuru.exe
           Compress-Archive -Path publish/* -DestinationPath ProteaseGuru.zip -Force
 
       - name: Attach app to GitHub Release

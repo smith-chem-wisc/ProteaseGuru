@@ -1,11 +1,11 @@
 using System.Diagnostics;
 using System.Globalization;
 using System.Text;
-using Engine;
+using ProteaseGuru.Engine;
 using Omics;
 using Proteomics;
 
-namespace Tasks
+namespace ProteaseGuru.Tasks
 {
     public class EverythingRunnerEngine
     {

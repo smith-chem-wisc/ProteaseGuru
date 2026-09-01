@@ -1,7 +1,7 @@
 using System.Globalization;
 using System.Numerics;
 
-namespace ProteaseGuruGuiFunctions;
+namespace ProteaseGuru.GuiFunctions;
 
 /// <summary>
 /// Decides what a piece of integer text should become once bounds are applied. Kept apart from the

@@ -2,9 +2,9 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using Omics;
 using Proteomics;
-using Tasks;
+using ProteaseGuru.Tasks;
 
-namespace ProteaseGuruGui
+namespace ProteaseGuru.Gui
 {
     //gives structure for protein information in protein search window
     class ProteinForTreeView

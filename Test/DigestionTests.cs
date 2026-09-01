@@ -1,11 +1,11 @@
-using Engine;
+using ProteaseGuru.Engine;
 using NUnit.Framework;
 using Omics.Digestion;
 using Proteomics.ProteolyticDigestion;
-using Tasks;
+using ProteaseGuru.Tasks;
 using UsefulProteomicsDatabases;
 
-namespace Test
+namespace ProteaseGuru.Test
 {
     [TestFixture]
     [NonParallelizable]

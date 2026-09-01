@@ -2,12 +2,12 @@
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net8.0-windows</TargetFramework>
+    <TargetFramework>net10.0-windows</TargetFramework>
     <UseWPF>true</UseWPF>
     <Platforms>x64</Platforms>
     <ApplicationIcon>Icons\proteaseGuru.ico</ApplicationIcon>
-    <AssemblyName>ProteaseGuruGui</AssemblyName>
-    <RootNamespace>ProteaseGuruGui</RootNamespace>
+    <AssemblyName>ProteaseGuru.Gui</AssemblyName>
+    <RootNamespace>ProteaseGuru.Gui</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>
@@ -16,7 +16,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="mzLib" Version="1.0.580" />
+    <PackageReference Include="mzLib" Version="1.0.585" />
     <PackageReference Include="Nett" Version="0.15.0" />
     <PackageReference Include="OxyPlot.Core" Version="2.2.0" />
     <PackageReference Include="OxyPlot.SkiaSharp" Version="2.2.0" />
@@ -24,9 +24,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Engine\Engine.csproj" />
-    <ProjectReference Include="..\ProteaseGuruGuiFunctions\ProteaseGuruGuiFunctions.csproj" />
-    <ProjectReference Include="..\Tasks\Tasks.csproj" />
+    <ProjectReference Include="..\Engine\ProteaseGuru.Engine.csproj" />
+    <ProjectReference Include="..\ProteaseGuruGuiFunctions\ProteaseGuru.GuiFunctions.csproj" />
+    <ProjectReference Include="..\Tasks\ProteaseGuru.Tasks.csproj" />
   </ItemGroup>
 
   <ItemGroup>

@@ -5,16 +5,16 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Threading;
-using Engine;
+using ProteaseGuru.Engine;
 using Omics;
-using ProteaseGuruGuiFunctions;
+using ProteaseGuru.GuiFunctions;
 using Proteomics;
 using Proteomics.ProteolyticDigestion;
-using Tasks;
-using Tasks.CoverageMapConfiguration;
+using ProteaseGuru.Tasks;
+using ProteaseGuru.Tasks.CoverageMapConfiguration;
 using Transcriptomics.Digestion;
 
-namespace ProteaseGuruGui
+namespace ProteaseGuru.Gui
 {
     public partial class IndividualProteinAnalyzerWindow : UserControl
     {
@@ -263,20 +263,24 @@ namespace ProteaseGuruGui
             var (coverageDict, allIntervalsDict) = DigestCache.GetCoverageAndIntervals(
                 SelectedProtein.Protein, proteaseParams);
 
+            // Coverage fractions are reported against the whole protein, so the uncovered tail of
+            // a protein whose C-terminus yields no detectable peptide still counts against it.
+            int totalResidues = SelectedProtein.Protein.Length;
+
             SeekMaximumCoverage.CombinationResult result;
             if (greedyToggle.IsChecked == true)
             {
-                var g = _seeker.GreedyMinimumProteaseSet(coverageDict);
+                var g = _seeker.GreedyMinimumProteaseSet(coverageDict, totalResidues);
                 result = new SeekMaximumCoverage.CombinationResult(
                     g.SelectedProteases, g.CoveredResidues,
                     g.CoveredResidues.Count, g.CoverageFraction);
             }
             else if (singleToggle.IsChecked == true)
-                result = _seeker.BestSingle(coverageDict);
+                result = _seeker.BestSingle(coverageDict, totalResidues);
             else if (pairToggle.IsChecked == true)
-                result = _seeker.BestPair(coverageDict);
+                result = _seeker.BestPair(coverageDict, totalResidues);
             else if (tripletToggle.IsChecked == true)
-                result = _seeker.BestTriplet(coverageDict);
+                result = _seeker.BestTriplet(coverageDict, totalResidues);
             else if (allToggle.IsChecked == true)
             {
                 // All: show every checked protease — union of all covered residues
@@ -286,10 +290,10 @@ namespace ProteaseGuruGui
                 result = new SeekMaximumCoverage.CombinationResult(
                     checkedProteases.Select(vm => vm.DigestionAgentName).ToList(),
                     allCovered, allCovered.Count,
-                    SeekMaximumCoverage.CoverageFraction(allCovered, SelectedProtein.Protein.Length));
+                    SeekMaximumCoverage.CoverageFraction(allCovered, totalResidues));
             }
             else
-                result = _seeker.BestTriplet(coverageDict);
+                result = _seeker.BestTriplet(coverageDict, totalResidues);
 
             // Re-use the already-computed interval dict; filter to the winning proteases only.
             var pepsByProtease = result.Proteases
@@ -344,8 +348,6 @@ namespace ProteaseGuruGui
             Dictionary<string, List<(int Start, int End)>> pepsByProtease,
             List<string> orderedCheckedProteases)
         {
-            const double sequenceContentWidth = 25 * 22 + 65 + 20;
-            double availableWidth = MaxCoverageGrid.ActualWidth - 18;
             string pct = SeekMaximumCoverage.CoveragePercentage(result.CoveredResidues, protein.Length);
             string proteaseStr = result.Proteases.Count > 0
                 ? string.Join(" + ", result.Proteases)
@@ -360,7 +362,6 @@ namespace ProteaseGuruGui
                 orderedCheckedProteases,
                 pepsByProtease,
                 name => SequenceCoverageMap.GetProteaseBrush(_stableProteaseBrushes, name),
-                Math.Min(availableWidth, sequenceContentWidth),
                 coverageHeader,
                 residueSpacing: 22,
                 seqLeftOffset: 65);
@@ -383,10 +384,6 @@ namespace ProteaseGuruGui
                 foreach (var (start, end) in kvp.Value)
                     allIntervals.Add((start, end, kvp.Key));
 
-            const double sequenceContentWidth = 25 * 22 + 65 + 20;
-            double availableWidth = MaxCoverageGrid.ActualWidth > 0 ? MaxCoverageGrid.ActualWidth - 18 : sequenceContentWidth;
-            double canvasWidth = Math.Max(Math.Min(availableWidth, sequenceContentWidth), 200);
-
             string pct = SeekMaximumCoverage.CoveragePercentage(result.CoveredResidues, protein.Length);
             string proteaseStr = result.Proteases.Count > 0
                 ? string.Join(" + ", result.Proteases)
@@ -404,7 +401,6 @@ namespace ProteaseGuruGui
                 allIntervals,
                 allCovered,
                 new HashSet<int>(),
-                canvasWidth,
                 protein.FullName,
                 coverageHeader,
                 residueSpacing: 22,
@@ -423,15 +419,10 @@ namespace ProteaseGuruGui
 
         private void maxCoverageGrid_SizeChanged(object sender, SizeChangedEventArgs e)
         {
-            double availableWidth = MaxCoverageGrid.ActualWidth;
+            // The map/legend canvases size themselves to their intrinsic content width; here we only
+            // size the scroll viewport to the grid, which scrolls when the map is wider than the window.
             maxCoverageMapViewer.Height = 0.85 * MaxCoverageGrid.ActualHeight;
-            maxCoverageMapViewer.Width = availableWidth;
-
-            const double sequenceContentWidth = 25 * 22 + 65 + 20;
-            double canvasWidth = Math.Min(availableWidth - 18, sequenceContentWidth);
-            canvasWidth = Math.Max(canvasWidth, 200);
-            maxCoverageMap.Width = canvasWidth;
-            maxCoverageLegend.Width = canvasWidth;
+            maxCoverageMapViewer.Width = MaxCoverageGrid.ActualWidth;
         }
 
         private async void ExportSpectrumLibrary_Click(object sender, RoutedEventArgs e)

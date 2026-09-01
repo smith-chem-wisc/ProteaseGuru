@@ -4,7 +4,7 @@ using Omics.Modifications;
 using Proteomics.ProteolyticDigestion;
 using Transcriptomics.Digestion;
 
-namespace Tasks;
+namespace ProteaseGuru.Tasks;
 
 public abstract class ParameterBaseClass<TParameters> where TParameters : ParameterBaseClass<TParameters>
 {

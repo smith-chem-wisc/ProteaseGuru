@@ -2,9 +2,9 @@ using NUnit.Framework;
 using Omics.Modifications;
 using Proteomics;
 using Proteomics.ProteolyticDigestion;
-using Tasks;
+using ProteaseGuru.Tasks;
 
-namespace Test;
+namespace ProteaseGuru.Test;
 
 [TestFixture]
 [NonParallelizable] // Prevent parallel execution of tests in this fixture due to shared Chronologer model file

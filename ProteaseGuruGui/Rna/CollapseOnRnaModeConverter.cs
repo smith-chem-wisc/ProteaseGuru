@@ -1,8 +1,8 @@
 using System.Globalization;
 using System.Windows.Data;
-using ProteaseGuruGuiFunctions;
+using ProteaseGuru.GuiFunctions;
 
-namespace ProteaseGuruGui;
+namespace ProteaseGuru.Gui;
 
 public class CollapseOnRnaModeConverter : IValueConverter
 {

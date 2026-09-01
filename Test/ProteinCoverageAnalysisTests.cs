@@ -2,10 +2,10 @@ using NUnit.Framework;
 using Omics;
 using Proteomics;
 using Proteomics.ProteolyticDigestion;
-using Tasks;
-using Tasks.CoverageMapConfiguration;
+using ProteaseGuru.Tasks;
+using ProteaseGuru.Tasks.CoverageMapConfiguration;
 
-namespace Test
+namespace ProteaseGuru.Test
 {
     [TestFixture]
     public class ProteinCoverageAnalysisTests

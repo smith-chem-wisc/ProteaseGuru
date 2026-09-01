@@ -1,6 +1,6 @@
 using System.ComponentModel;
 
-namespace ProteaseGuruGuiFunctions;
+namespace ProteaseGuru.GuiFunctions;
 
 /// <summary>
 /// A base view model that fires Property Changed events as needed

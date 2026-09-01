@@ -1,9 +1,9 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
-using ProteaseGuruGuiFunctions;
+using ProteaseGuru.GuiFunctions;
 
-namespace ProteaseGuruGui
+namespace ProteaseGuru.Gui
 {
     /// <summary>
     /// This text box requires input text to be integer only.

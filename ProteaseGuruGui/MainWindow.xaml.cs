@@ -17,21 +17,20 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
-using Engine;
+using ProteaseGuru.Engine;
 using MzLibUtil;
 using Omics;
 using Omics.Digestion;
 using Omics.Modifications;
-using ProteaseGuruGuiFunctions;
-using ProteaseGuruGuiFunctions;
+using ProteaseGuru.GuiFunctions;
 using Proteomics;
 using Proteomics.ProteolyticDigestion;
-using Tasks;
+using ProteaseGuru.Tasks;
 using Transcriptomics.Digestion;
 using UsefulProteomicsDatabases;
-using static Tasks.ProteaseGuruTask;
+using static ProteaseGuru.Tasks.ProteaseGuruTask;
 
-namespace ProteaseGuruGui
+namespace ProteaseGuru.Gui
 {
     /// <summary>
     /// Interaction logic for MainWindow.xaml
@@ -66,6 +65,53 @@ namespace ProteaseGuruGui
 
             // Rebuild Individual Protein Analyzer tab whenever databases are added or removed
             ProteinDbObservableCollection.CollectionChanged += (s, e) => RebuildIndividualProteinAnalyzerTab();
+
+            // Refresh the run summary when the analyte mode changes, so the Run tab updates
+            // live instead of only when it is re-entered.
+            GuiGlobalParamsViewModel.Instance.PropertyChanged += (s, e) =>
+            {
+                if (e.PropertyName == nameof(GuiGlobalParamsViewModel.IsRnaMode))
+                    GenerateRunSummary();
+            };
+        }
+
+        /// <summary>
+        /// Creates the main window with pre-loaded protein databases. Used when ProteaseGuru is
+        /// embedded in another application (e.g. launched from MetaMorpheus) so that databases
+        /// selected there are automatically available for digestion on window launch.
+        /// </summary>
+        /// <param name="databaseFilePaths">Paths of the protein databases (.xml, .fasta, or .fa,
+        /// optionally .gz compressed) to add on launch.</param>
+        public MainWindow(IEnumerable<string> databaseFilePaths) : this()
+        {
+            AddProvidedDatabases(databaseFilePaths);
+        }
+
+        /// <summary>
+        /// Adds the databases provided at construction time, validating that each path is a
+        /// supported database file before it is added to the analysis.
+        /// </summary>
+        private void AddProvidedDatabases(IEnumerable<string> databaseFilePaths)
+        {
+            if (databaseFilePaths == null)
+            {
+                return;
+            }
+
+            foreach (var databaseFilePath in databaseFilePaths)
+            {
+                var filename = System.IO.Path.GetFileName(databaseFilePath);
+                var theExtension = System.IO.Path.GetExtension(filename).ToLowerInvariant();
+                bool compressed = theExtension.EndsWith("gz"); // allows for .bgz and .tgz, too which are used on occasion
+                theExtension = compressed ? System.IO.Path.GetExtension(System.IO.Path.GetFileNameWithoutExtension(filename)).ToLowerInvariant() : theExtension;
+
+                if (theExtension != ".xml" && theExtension != ".fasta" && theExtension != ".fa")
+                {
+                    throw new ArgumentException($"The file provided is not an acceptable database format: {databaseFilePath}. Protein databases must be in .xml, .fasta, or .fa format (optionally .gz compressed).");
+                }
+
+                AddAFile(databaseFilePath);
+            }
         }
 
         //the add button for loading previous peptide result files
@@ -138,7 +184,7 @@ namespace ProteaseGuruGui
             var theExtension = System.IO.Path.GetExtension(filename).ToLowerInvariant();
             bool compressed = theExtension.EndsWith("gz");
             theExtension = compressed ? System.IO.Path.GetExtension(System.IO.Path.GetFileNameWithoutExtension(filename)).ToLowerInvariant() : theExtension;
-            GuiWarnHandler(null, new Engine.StringEventArgs("Unrecognized file type: " + theExtension, null));
+            GuiWarnHandler(null, new StringEventArgs("Unrecognized file type: " + theExtension, null));
         }
 
         //add a protein database file
@@ -284,12 +330,12 @@ namespace ProteaseGuruGui
             // print any error messages reading the mods to the notifications area
             foreach (var error in GlobalVariables.ErrorsReadingMods)
             {
-                GuiWarnHandler(null, new Engine.StringEventArgs(error, null));
+                GuiWarnHandler(null, new StringEventArgs(error, null));
             }
             GlobalVariables.ErrorsReadingMods.Clear();
         }
 
-        private void GuiWarnHandler(object sender, Engine.StringEventArgs e)
+        private void GuiWarnHandler(object sender, StringEventArgs e)
         {
             if (!Dispatcher.CheckAccess())
             {
@@ -339,7 +385,7 @@ namespace ProteaseGuruGui
                 }
                 catch (Exception ex)
                 {
-                    GuiWarnHandler(null, new Engine.StringEventArgs("Error opening directory: " + ex.Message, null));
+                    GuiWarnHandler(null, new StringEventArgs("Error opening directory: " + ex.Message, null));
                 }
             }
 
@@ -356,7 +402,7 @@ namespace ProteaseGuruGui
             else
             {
                 // this should only happen if the file path is empty or something unexpected happened
-                GuiWarnHandler(null, new Engine.StringEventArgs("Output folder does not exist", null));
+                GuiWarnHandler(null, new StringEventArgs("Output folder does not exist", null));
             }
         }
 
@@ -617,28 +663,79 @@ namespace ProteaseGuruGui
         }
 
         //logic for loading in results from previous runs and opening up the results windows
-        private void LoadResults_Click(object sender, RoutedEventArgs e)
+        private async void LoadResults_Click(object sender, RoutedEventArgs e)
         {
-            Dictionary<string, Dictionary<string, Dictionary<IBioPolymer, List<InSilicoPep>>>> PeptidesByFileSetUp = new();
-            Dictionary<string, Dictionary<string, Dictionary<IBioPolymer, List<InSilicoPep>>>> PeptidesByFile = new();
+            // Snapshot UI-bound state on the UI thread; the heavy file reading and grouping runs
+            // on a background thread so the window stays responsive for large (multi-GB) reloads.
+            var parameterFilePaths = ParametersObservableCollection.Select(p => p.FilePath).ToList();
+            var resultFilePaths = ResultsObservableCollection.Select(r => r.FilePath).ToList();
+            var reloadDatabases = ReloadProteinDbObservableCollection.Select(d => (d.FileName, d.FilePath)).ToList();
+            bool isRnaMode = GuiGlobalParamsViewModel.Instance.IsRnaMode;
 
+            var originalButtonContent = LoadResults.Content;
+            LoadResults.IsEnabled = false;
+            IProgress<string> progress = new Progress<string>(message => LoadResults.Content = message);
+
+            try
+            {
+                var loaded = await Task.Run(() =>
+                {
+                    var (peptidesByFile, loadedParams) = LoadResultsFromFiles(
+                        parameterFilePaths, resultFilePaths, reloadDatabases, isRnaMode, progress);
+                    progress.Report("Calculating sequence coverage...");
+                    var seqCov = CalculateProteinSequenceCoverage(peptidesByFile);
+                    return (peptidesByFile, loadedParams, seqCov);
+                });
+
+                LoadResults.Content = "Building results views...";
+                AllResultsTab.Content = new AllResultsWindow(loaded.peptidesByFile, loaded.loadedParams); // update results display
+                ProteinCovMap.Content = new ProteinResultsWindow(loaded.peptidesByFile, loaded.loadedParams, loaded.seqCov);
+                AllHistogramsTab.Content = new HistogramWindow(loaded.peptidesByFile, loaded.loadedParams, loaded.seqCov);
+                IndividualProteinAnalyzerTab.Content = new IndividualProteinAnalyzerWindow(loaded.peptidesByFile, loaded.loadedParams, loaded.seqCov);
+                AllResultsTab.IsSelected = true; // switch to results tab
+            }
+            catch (InvalidDataException ex)
+            {
+                MessageBox.Show("Error: " + ex.Message);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Error loading results: " + ex.Message);
+            }
+            finally
+            {
+                LoadResults.Content = originalButtonContent;
+                LoadResults.IsEnabled = true;
+            }
+        }
+
+        // Reads previous-run parameter and result files and rebuilds the database -> protease -> protein -> peptides
+        // structure. Pure data work with no UI access, so it can run on a background thread.
+        private static (Dictionary<string, Dictionary<string, Dictionary<IBioPolymer, List<InSilicoPep>>>> peptidesByFile, RunParameters loadedParams)
+            LoadResultsFromFiles(
+                List<string> parameterFilePaths,
+                List<string> resultFilePaths,
+                List<(string FileName, string FilePath)> reloadDatabases,
+                bool isRnaMode,
+                IProgress<string> progress)
+        {
             RunParameters loadedParams = new RunParameters();
 
             // Proteases are loaded from mzLib's embedded resource via ProteaseDictionary.Dictionary —
             // no local proteases.tsv file is needed.
             Dictionary<string, Protease> dict = ProteaseDictionary.Dictionary;
 
-            foreach (var parameterFile in ParametersObservableCollection)
+            foreach (var parameterFilePath in parameterFilePaths)
             {
                 // Current runs save digestion parameters as structured TOML; deserialize directly.
-                if (System.IO.Path.GetExtension(parameterFile.FilePath).ToLowerInvariant() == ".toml")
+                if (System.IO.Path.GetExtension(parameterFilePath).ToLowerInvariant() == ".toml")
                 {
-                    loadedParams = RunParameters.FromToml(parameterFile.FilePath);
+                    loadedParams = RunParameters.FromToml(parameterFilePath);
                     continue;
                 }
 
                 // Legacy fallback: parse the older human-readable ".txt" parameters summary.
-                var fileData = File.ReadAllLines(parameterFile.FilePath);
+                var fileData = File.ReadAllLines(parameterFilePath);
                 List<string> proteaseNames = new();
                 int missedCleavages = 0;
                 int minPeptideLength = 0;
@@ -690,7 +787,7 @@ namespace ProteaseGuruGui
                     if (dict.ContainsKey(proteaseName))
                     {
                         IDigestionParams digestionParams;
-                        if (GuiGlobalParamsViewModel.Instance.IsRnaMode)
+                        if (isRnaMode)
                             digestionParams = new RnaDigestionParams(
                                 rnase: proteaseName,
                                 maxMissedCleavages: missedCleavages,
@@ -713,146 +810,142 @@ namespace ProteaseGuruGui
                 loadedParams.MaxPeptideMassAllowed = maxPeptideMass;
             }
 
-            List<InSilicoPep> allpeptides = new();
-            foreach (var resultFile in ResultsObservableCollection)
+            // Collapse the many repeated metadata strings (Database, Protease, Protein, ProteinName,
+            // BaseSequence) into one *instance* each. This reduces memory usage and speeds up string comparisons,
+            // because a single internalized reference (the first instance added to the dictionary) is kept for each unique
+            // string rather than using many copies of the same string each holding a different reference. This is important
+            // for reading large results, because rows tend to have repeated values for these fields.
+            var internCache = new Dictionary<string, string>();
+            string Intern(string value) => internCache.TryGetValue(value, out var existing) ? existing : internCache[value] = value;
+
+            // Group peptides by (database, protease, protein accession) in a single pass so the per-protein
+            // assignment below is an O(1) dictionary lookup rather than a full scan of every peptide per protein.
+            var peptidesByKey = new Dictionary<(string Database, string Protease, string ProteinAccession), List<InSilicoPep>>();
+
+            int resultFileNumber = 0;
+            foreach (var resultFilePath in resultFilePaths)
             {
-                var fileData = File.ReadAllLines(resultFile.FilePath);
-                int peptideCount = 0;
-                var header = fileData[0].Split('\t');
-                if (header[0] != "Database" && header[1] != "Protease" && header[2] != "Base Sequence" && header[3] != "Full Sequence")
+                resultFileNumber++;
+                progress?.Report($"Reading result file {resultFileNumber} of {resultFilePaths.Count}...");
+
+                // Streamed rather than read whole: one line stays alive at a time instead of the entire file.
+                bool headerSeen = false;
+                foreach (var line in File.ReadLines(resultFilePath))
                 {
-                    MessageBox.Show("Error: Results file provided is not from a previous ProteaseGuru run.");
-                    return;
+                    if (!headerSeen)
+                    {
+                        headerSeen = true;
+                        var header = line.Split('\t');
+                        if (header.Length < 4 || header[0] != "Database" || header[1] != "Protease" || header[2] != "Base Sequence" || header[3] != "Full Sequence")
+                        {
+                            throw new InvalidDataException("Results file provided is not from a previous ProteaseGuru run: " + System.IO.Path.GetFileName(resultFilePath));
+                        }
+                        continue;
+                    }
+
+                    var info = line.Split('\t');
+                    if (info.Length < 17)
+                    {
+                        continue; // skip blank or truncated lines
+                    }
+
+                    string database = Intern(info[0]);
+                    string protease = Intern(info[1]);
+                    string baseSeq = Intern(info[2]);
+                    string fullSeq = info[3];
+                    char previousAA = Convert.ToChar(info[4]);
+                    char nextAA = Convert.ToChar(info[5]);
+                    int start = Convert.ToInt32(info[6]);
+                    int end = Convert.ToInt32(info[7]);
+                    int length = Convert.ToInt32(info[8]);
+                    double molecularWeight = Convert.ToDouble(info[9]);
+                    string protein = Intern(info[10]);
+                    string proteinName = Intern(info[11]);
+                    bool unique = info[12] == "True";
+                    bool uniqueAll = info[13] == "True";
+                    bool oneDb = info[14] == "True";
+                    double hydrophobicity = Convert.ToDouble(info[15]);
+                    double electrophoreticMobility = Convert.ToDouble(info[16]);
+
+                    // Handle Chronologer RT - use -1 as default for older files without this column
+                    double chronologerRetentionTime = -1;
+                    bool? pflyDetectability = null;
+                    if (info.Length > 17)
+                    {
+                        chronologerRetentionTime = Convert.ToDouble(info[17]);
+                    }
+                    if (info.Length > 18 && bool.TryParse(info[18], out bool parsedDetectability))
+                    {
+                        pflyDetectability = parsedDetectability;
+                    }
+
+                    // Handle PFly probabilities - columns 19-22 (may be missing in older files)
+                    (double NotDetectable, double LowDetectability, double IntermediateDetectability, double HighDetectability)? pflyProbabilities = null;
+                    if (info.Length > 22)
+                    {
+                        if (double.TryParse(info[19], out double notDetectable) &&
+                            double.TryParse(info[20], out double lowDetectability) &&
+                            double.TryParse(info[21], out double intermediateDetectability) &&
+                            double.TryParse(info[22], out double highDetectability))
+                        {
+                            pflyProbabilities = (notDetectable, lowDetectability, intermediateDetectability, highDetectability);
+                        }
+                    }
+
+                    InSilicoPep pep = new InSilicoPep(baseSeq, fullSeq, previousAA, nextAA, unique, hydrophobicity, electrophoreticMobility,
+                        chronologerRetentionTime, pflyDetectability, length, molecularWeight, database, protein, proteinName, start, end, protease, pflyProbabilities);
+                    pep.UniqueAllDbs = uniqueAll;
+                    pep.SeqOnlyInThisDb = oneDb;
+
+                    var key = (database, protease, protein);
+                    if (!peptidesByKey.TryGetValue(key, out var pepList))
+                    {
+                        pepList = new List<InSilicoPep>();
+                        peptidesByKey[key] = pepList;
+                    }
+                    pepList.Add(pep);
                 }
-                foreach (var peptide in fileData)
-                {
-                    if (peptideCount != 0)
-                    {
-                        var info = peptide.Split('\t');
-                        string database = info[0];
-                        string protease = info[1];
-                        string baseSeq = info[2];
-                        string fullSeq = info[3];
-                        char previousAA = Convert.ToChar(info[4]);
-                        char nextAA = Convert.ToChar(info[5]);
-                        int start = Convert.ToInt32(info[6]);
-                        int end = Convert.ToInt32(info[7]);
-                        int length = Convert.ToInt32(info[8]);
-                        double molecularWeight = Convert.ToDouble(info[9]);
-                        string protein = info[10];
-                        string proteinName = info[11];
-                        bool unique = false;
-                        if (info[12] == "True")
-                        {
-                            unique = true;
-                        }
-                        bool uniqueAll = false;
-                        if (info[13] == "True")
-                        {
-                            uniqueAll = true;
-                        }
-                        bool oneDb = false;
-                        if (info[14] == "True")
-                        {
-                            oneDb = true;
-                        }
-                        double hydrophobicity = Convert.ToDouble(info[15]);
-                        double electrophoreticMobility = Convert.ToDouble(info[16]);
-
-                        // Handle Chronologer RT - use -1 as default for older files without this column
-                        double chronologerRetentionTime = -1;
-                        bool? pflyDetectability = null;
-                        if (info.Length > 17)
-                        {
-                            chronologerRetentionTime = Convert.ToDouble(info[17]);
-                        }
-                        if (info.Length > 18 && bool.TryParse(info[18], out bool parsedDetectability))
-                        {
-                            pflyDetectability = parsedDetectability;
-                        }
-
-                        // Handle PFly probabilities - columns 19-22 (may be missing in older files)
-                        (double NotDetectable, double LowDetectability, double IntermediateDetectability, double HighDetectability)? pflyProbabilities = null;
-                        if (info.Length > 22)
-                        {
-                            pflyProbabilities = (
-                                Convert.ToDouble(info[19]),
-                                Convert.ToDouble(info[20]),
-                                Convert.ToDouble(info[21]),
-                                Convert.ToDouble(info[22])
-                            );
-                        }
-
-                        InSilicoPep pep = new InSilicoPep(baseSeq, fullSeq, previousAA, nextAA, unique, hydrophobicity, electrophoreticMobility,
-                            chronologerRetentionTime, pflyDetectability, length, molecularWeight, database, protein, proteinName, start, end, protease, pflyProbabilities);
-                        pep.UniqueAllDbs = uniqueAll;
-                        pep.SeqOnlyInThisDb = oneDb;
-                        allpeptides.Add(pep);
-                    }
-                    peptideCount++;
-                }
-
-                foreach (var db in ReloadProteinDbObservableCollection)
-                {
-                    var dbName = db.FileName;
-                    var proteinsFromDb = new DigestionTask().LoadBioPolymers(db.FilePath);
-                    var proteaseParams = loadedParams.ProteaseSpecificParameters;
-
-                    Dictionary<IBioPolymer, List<InSilicoPep>> proteinDic = new();
-
-                    foreach (var protein in proteinsFromDb)
-                    {
-                        if (!proteinDic.ContainsKey(protein))
-                        {
-                            proteinDic.Add(protein, new List<InSilicoPep>() { });
-                        }
-                    }
-                    Dictionary<string, Dictionary<IBioPolymer, List<InSilicoPep>>> proteaseDic = new();
-                    foreach (var proteaseParam in proteaseParams)
-                    {
-                        if (!proteaseDic.ContainsKey(proteaseParam.DigestionAgentName))
-                        {
-                            proteaseDic.Add(proteaseParam.DigestionAgentName, proteinDic);
-                        }
-                    }
-                    if (!PeptidesByFileSetUp.ContainsKey(dbName))
-                    {
-                        PeptidesByFileSetUp.Add(dbName, proteaseDic);
-                    }
-                }
-
-                foreach (var entry in PeptidesByFileSetUp)
-                {
-                    var pepByDb = allpeptides.Where(p => p.Database == entry.Key).ToList();
-                    Dictionary<string, Dictionary<IBioPolymer, List<InSilicoPep>>> proteaseComplete = new();
-                    foreach (var protease in entry.Value)
-                    {
-                        var pepByProtease = pepByDb.Where(p => p.Protease == protease.Key).ToList();
-
-                        Dictionary<IBioPolymer, List<InSilicoPep>> proteinComplete = new();
-
-                        foreach (var protein in protease.Value)
-                        {
-                            var pepByProtein = pepByProtease.Where(p => p.Protein == protein.Key.Accession).ToList();
-                            proteinComplete.Add(protein.Key, pepByProtein);
-                        }
-
-                        proteaseComplete.Add(protease.Key, proteinComplete);
-
-                    }
-
-                    PeptidesByFile.Add(entry.Key, proteaseComplete);
-                }
-
             }
 
-            var seqCov = CalculateProteinSequenceCoverage(PeptidesByFile);
+            // Assemble database -> protease -> protein -> peptides. Every protein in each reloaded database
+            // gets an entry (empty list when it has no matching peptides), matching the original behavior.
+            var peptidesByFile = new Dictionary<string, Dictionary<string, Dictionary<IBioPolymer, List<InSilicoPep>>>>();
+            var distinctProteaseNames = loadedParams.ProteaseSpecificParameters.Select(p => p.DigestionAgentName).Distinct().ToList();
 
-            AllResultsTab.Content = new AllResultsWindow(PeptidesByFile, loadedParams); // update results display
-            ProteinCovMap.Content = new ProteinResultsWindow(PeptidesByFile, loadedParams, seqCov);
-            AllHistogramsTab.Content = new HistogramWindow(PeptidesByFile, loadedParams, seqCov);
-            IndividualProteinAnalyzerTab.Content = new IndividualProteinAnalyzerWindow(PeptidesByFile, loadedParams, seqCov);
-            AllResultsTab.IsSelected = true; // switch to results tab
+            int databaseNumber = 0;
+            foreach (var db in reloadDatabases)
+            {
+                databaseNumber++;
+                progress?.Report($"Loading database {databaseNumber} of {reloadDatabases.Count}...");
+
+                if (peptidesByFile.ContainsKey(db.FileName))
+                {
+                    continue;
+                }
+
+                var proteinsFromDb = new DigestionTask().LoadBioPolymers(db.FilePath);
+
+                var proteaseDic = new Dictionary<string, Dictionary<IBioPolymer, List<InSilicoPep>>>();
+                foreach (var proteaseName in distinctProteaseNames)
+                {
+                    var proteinDic = new Dictionary<IBioPolymer, List<InSilicoPep>>();
+                    foreach (var protein in proteinsFromDb)
+                    {
+                        if (proteinDic.ContainsKey(protein))
+                        {
+                            continue;
+                        }
+                        proteinDic[protein] = peptidesByKey.TryGetValue((db.FileName, proteaseName, protein.Accession), out var peps)
+                            ? peps
+                            : new List<InSilicoPep>();
+                    }
+                    proteaseDic[proteaseName] = proteinDic;
+                }
+
+                peptidesByFile[db.FileName] = proteaseDic;
+            }
+
+            return (peptidesByFile, loadedParams);
         }
 
 
@@ -1001,7 +1094,7 @@ namespace ProteaseGuruGui
                 }
                 catch (Exception ex)
                 {
-                    GuiWarnHandler(null, new Engine.StringEventArgs($"Error loading proteins from {db.FilePath}: {ex.Message}", null));
+                    GuiWarnHandler(null, new StringEventArgs($"Error loading proteins from {db.FilePath}: {ex.Message}", null));
                 }
             }
 
@@ -1010,7 +1103,7 @@ namespace ProteaseGuruGui
                 fastaPath: ProteinDbObservableCollection.First().FilePath);
         }
 
-        private void NewoutLabelStatus(object sender, Engine.StringEventArgs s)
+        private void NewoutLabelStatus(object sender, StringEventArgs s)
         {
             if (!Dispatcher.CheckAccess())
             {
@@ -1022,10 +1115,10 @@ namespace ProteaseGuruGui
             }
         }
 
-        private Dictionary<string, Dictionary<IBioPolymer, (double, double)>> CalculateProteinSequenceCoverage(Dictionary<string, Dictionary<string, Dictionary<IBioPolymer, List<InSilicoPep>>>> peptideByFile)
+        private static Dictionary<string, Dictionary<IBioPolymer, (double, double)>> CalculateProteinSequenceCoverage(Dictionary<string, Dictionary<string, Dictionary<IBioPolymer, List<InSilicoPep>>>> peptideByFile)
         {
             Dictionary<string, List<InSilicoPep>> allDatabasePeptidesByProtease = new();
-            HashSet<IBioPolymer> proteins = new();
+            Dictionary<string, IBioPolymer> accessionToProtein = new();
             foreach (var database in peptideByFile)
             {
                 foreach (var protease in database.Value)
@@ -1035,7 +1128,7 @@ namespace ProteaseGuruGui
                         foreach (var protein in protease.Value)
                         {
                             allDatabasePeptidesByProtease[protease.Key].AddRange(protein.Value);
-                            proteins.Add(protein.Key);
+                            accessionToProtein[protein.Key.Accession] = protein.Key;
                         }
                     }
                     else
@@ -1043,7 +1136,7 @@ namespace ProteaseGuruGui
                         allDatabasePeptidesByProtease.Add(protease.Key, protease.Value.SelectMany(p => p.Value).ToList());
                         foreach (var protein in protease.Value)
                         {
-                            proteins.Add(protein.Key);
+                            accessionToProtein[protein.Key.Accession] = protein.Key;
                         }
                     }
                 }
@@ -1056,6 +1149,10 @@ namespace ProteaseGuruGui
                 Dictionary<IBioPolymer, (double, double)> sequenceCoverages = new();
                 foreach (var protein in proteinForProtease)
                 {
+                    // protein.Key is the accession string, so the residue count has to come from the database
+                    // entry it names rather than from the key itself.
+                    IBioPolymer actualProtein = accessionToProtein[protein.Key];
+
                     //count which residues are covered at least one time by a peptide
                     HashSet<int> coveredOneBasesResidues = new HashSet<int>();
                     HashSet<int> coveredOneBasesResiduesUnique = new HashSet<int>();
@@ -1071,11 +1168,11 @@ namespace ProteaseGuruGui
                             }
                         }
                     }
-                    //divide the number of covered residues by the total residues in the protein
-                    double seqCoverageFract = (double)coveredOneBasesResidues.Count / protein.Key.Length;
-                    double seqCoverageFractUnique = (double)coveredOneBasesResiduesUnique.Count / protein.Key.Length;
+                    //divide the number of covered residues by the total residues in the protein, as a percent
+                    double seqCoveragePercent = (double)coveredOneBasesResidues.Count / actualProtein.Length * 100.0;
+                    double seqCoveragePercentUnique = (double)coveredOneBasesResiduesUnique.Count / actualProtein.Length * 100.0;
 
-                    sequenceCoverages.Add(proteins.Where(p => p.Accession == protein.Key).First(), (Math.Round(seqCoverageFract, 3), Math.Round(seqCoverageFractUnique, 3)));
+                    sequenceCoverages.Add(actualProtein, (Math.Round(seqCoveragePercent, 2), Math.Round(seqCoveragePercentUnique, 2)));
                 }
                 proteinSequenceCoverageByProtease.Add(protease.Key, sequenceCoverages);
             }

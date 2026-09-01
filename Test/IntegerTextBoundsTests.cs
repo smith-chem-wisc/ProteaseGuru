@@ -1,7 +1,7 @@
-using ProteaseGuruGuiFunctions;
+using ProteaseGuru.GuiFunctions;
 using NUnit.Framework;
 
-namespace Test;
+namespace ProteaseGuru.Test;
 
 [TestFixture]
 public class IntegerTextBoundsTests

@@ -13,9 +13,9 @@ using System.Windows.Data;
 using Omics;
 using OxyPlot;
 using Proteomics;
-using Tasks;
+using ProteaseGuru.Tasks;
 
-namespace ProteaseGuruGui
+namespace ProteaseGuru.Gui
 {
     /// <summary>
     /// Interaction logic for HistogramWindow.xaml
@@ -320,7 +320,7 @@ namespace ProteaseGuruGui
             switch (normalizedPlot)
             {
                 case " Protein Sequence Coverage": // Protein Sequence Coverage                    
-                    binSize = 0.01;
+                    binSize = 1;
                     Dictionary<string, List<double>> sequenceCoverageByProtease = new();
                     foreach (var protease in CurrentPlotCoverageByProtease)
                     {
@@ -336,14 +336,14 @@ namespace ProteaseGuruGui
                     foreach (string key in sequenceCoverageByProtease.Keys)
                     {
                         numbersByProtease.Add(key, sequenceCoverageByProtease[key].Select(p => p));
-                        maxValue = 1;
+                        maxValue = 100;
                         var testList = numbersByProtease[key].Select(p => roundToBin(p, binSize)).ToList();
                         var results = numbersByProtease[key].GroupBy(p => roundToBin(p, binSize)).OrderBy(p => p.Key).Select(p => p).ToList();
                         dictsByProtease.Add(key, results.ToDictionary(p => p.Key.ToString(), v => v.Count()));
                     }
                     break;
                 case " Protein Sequence Coverage (Unique Peptides Only)": // Protein Sequence Coverage (unique peptides)                    
-                    binSize = 0.01;
+                    binSize = 1;
                     Dictionary<string, List<double>> sequenceCoverageUniqueByProtease = new();
                     foreach (var protease in CurrentPlotCoverageByProtease)
                     {
@@ -359,7 +359,7 @@ namespace ProteaseGuruGui
                     foreach (string key in sequenceCoverageUniqueByProtease.Keys)
                     {
                         numbersByProtease.Add(key, sequenceCoverageUniqueByProtease[key].Select(p => p));
-                        maxValue = 1;
+                        maxValue = 100;
                         var testList = numbersByProtease[key].Select(p => roundToBin(p, binSize)).ToList();
                         var results = numbersByProtease[key].GroupBy(p => roundToBin(p, binSize)).OrderBy(p => p.Key).Select(p => p).ToList();
                         dictsByProtease.Add(key, results.ToDictionary(p => p.Key.ToString(), v => v.Count()));

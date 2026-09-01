@@ -1,9 +1,9 @@
-using Engine;
+using ProteaseGuru.Engine;
 using Omics;
 using Omics.Digestion;
 using Proteomics.ProteolyticDigestion;
 
-namespace Tasks;
+namespace ProteaseGuru.Tasks;
 
 /// <summary>
 /// Caches per-protease digestion results for a single biopolymer so that refreshes which do not
