@@ -263,6 +263,69 @@ public class MaxCoverageTests
         }
     }
 
+    /// <summary>
+    /// DigestSingle is the primitive every coverage number and every coverage-map bar comes from,
+    /// and the assertions around it were all relational — a filter that stopped applying, or a
+    /// peptide's last residue going missing, satisfied every one of them. These pin the three
+    /// pieces of its output against values worked out from the digest itself.
+    /// </summary>
+    [Test]
+    public void DigestSingleCoversEveryResidueOfEveryPeptide()
+    {
+        var trypsin = _proteaseParams.First(p => p.DigestionAgentName == "trypsin|P");
+        var (coverage, intervals) = _analyzer.DigestSingle(_testProtein, trypsin);
+
+        Assert.That(intervals, Is.Not.Empty, "fixture digested to nothing");
+
+        var expected = new HashSet<int>();
+        foreach (var (start, end) in intervals)
+            for (int i = start - 1; i <= end - 1; i++)
+                expected.Add(i);
+
+        Assert.That(coverage, Is.EquivalentTo(expected));
+
+        // Stated separately: an off-by-one at either end of the loop leaves the two sets agreeing
+        // with each other, so compare against the spans as well.
+        Assert.That(coverage.Min(), Is.EqualTo(intervals.Min(t => t.Start) - 1));
+        Assert.That(coverage.Max(), Is.EqualTo(intervals.Max(t => t.End) - 1));
+    }
+
+    [Test]
+    public void DigestSingleIntervalsAreDeduplicatedAndSortedByStart()
+    {
+        foreach (var proteaseParam in _proteaseParams)
+        {
+            var (_, intervals) = _analyzer.DigestSingle(_testProtein, proteaseParam);
+            string name = proteaseParam.DigestionAgentName;
+
+            Assert.That(intervals, Is.Unique, $"duplicate spans for {name}");
+            Assert.That(intervals.Select(t => t.Start), Is.Ordered, $"spans out of order for {name}");
+        }
+    }
+
+    /// <summary>
+    /// A mass window this tight has to remove peptides, not merely fail to add any. Asserting only
+    /// "filtered &lt;= unfiltered" is satisfied by a filter that never runs at all.
+    /// </summary>
+    [Test]
+    public void MassFilterStrictlyNarrowsAtLeastOneProtease()
+    {
+        var filtered = new SeekMaximumCoverage(new RunParameters
+        {
+            MinPeptideMassAllowed = 1000,
+            MaxPeptideMassAllowed = 2000
+        });
+
+        var trypsin = _proteaseParams.First(p => p.DigestionAgentName == "trypsin|P");
+        var unfilteredIntervals = _analyzer.DigestSingle(_testProtein, trypsin).Intervals;
+        var filteredIntervals = filtered.DigestSingle(_testProtein, trypsin).Intervals;
+
+        Assert.That(filteredIntervals.Count, Is.LessThan(unfilteredIntervals.Count),
+            "the mass window removed nothing, so the filter is not being applied");
+        Assert.That(filteredIntervals, Is.SubsetOf(unfilteredIntervals),
+            "filtering introduced a span the unfiltered digest never produced");
+    }
+
     [Test]
     public void TestTripletBetterThanOrEqualToPair()
     {

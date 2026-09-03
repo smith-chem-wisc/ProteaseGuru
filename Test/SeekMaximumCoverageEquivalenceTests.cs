@@ -76,9 +76,15 @@ public class SeekMaximumCoverageEquivalenceTests
         Assert.That(actual.CoveredResidues, Is.EquivalentTo(expectedResidues));
     }
 
+    /// <summary>
+    /// 7 exceeds the six proteases in the fixture, which takes the short-dictionary branch — the
+    /// one the analyzer reaches whenever fewer proteases are checked than the combination asks
+    /// for, since it calls BestPair/BestTriplet without looking at how many are ticked.
+    /// </summary>
     [TestCase(1)]
     [TestCase(2)]
     [TestCase(3)]
+    [TestCase(7)]
     public void BestCombinationMatchesTheHashSetImplementation(int combinationSize)
     {
         var coverage = RealCoverage();
@@ -115,6 +121,10 @@ public class SeekMaximumCoverageEquivalenceTests
     [TestCase(0, 63)]
     [TestCase(64, 127)]
     [TestCase(60, 70)]
+    // Ends that land on a word boundary: the universe has to span the index, not stop at it.
+    [TestCase(0, 64)]
+    [TestCase(0, 128)]
+    [TestCase(64, 128)]
     public void RegionRestrictedResultsMatchTheHashSetImplementation(int start, int end)
     {
         var coverage = RealCoverage();

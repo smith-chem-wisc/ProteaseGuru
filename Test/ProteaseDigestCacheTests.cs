@@ -182,18 +182,33 @@ public class ProteaseDigestCacheTests
         Assert.That(counts, Is.All.EqualTo(counts[0]), "successive identical calls disagreed");
     }
 
+    /// <summary>
+    /// Since the slot key is the protease name, an entry left over from another protein matches by
+    /// name and by settings and would be served as a hit — with the entry count identical either
+    /// way. So the second protein needs a different sequence, and the check has to be that the
+    /// result is that protein's, not that the cache is a particular size.
+    /// </summary>
     [Test]
     public void SwitchingBiopolymerResetsTheCache()
     {
         var cache = new ProteaseDigestCache(_seeker);
         var proteaseParams = new[] { Params("trypsin|P") };
 
-        cache.GetCoverageAndIntervals(_protein, proteaseParams);
+        var first = cache.GetCoverageAndIntervals(_protein, proteaseParams);
         Assert.That(cache.Count, Is.EqualTo(1));
 
-        var other = new Protein(SampleSequence, "OTHER");
-        cache.GetCoverageAndIntervals(other, proteaseParams);
+        var other = new Protein(SampleSequence[..80], "OTHER");
+        var second = cache.GetCoverageAndIntervals(other, proteaseParams);
+
         Assert.That(cache.Count, Is.EqualTo(1), "cache should reset rather than grow across proteins");
+
+        var freshForOther = _seeker.DigestSingle(other, Params("trypsin|P"));
+        Assert.That(second.Coverage["trypsin|P"], Is.EquivalentTo(freshForOther.Coverage),
+            "served the previous protein's coverage");
+        Assert.That(second.Intervals["trypsin|P"], Is.EqualTo(freshForOther.Intervals),
+            "served the previous protein's peptide spans");
+        Assert.That(second.Coverage["trypsin|P"], Is.Not.EquivalentTo(first.Coverage["trypsin|P"]),
+            "the two proteins digest identically, so this test cannot detect a stale hit");
     }
 
     /// <summary>

@@ -168,6 +168,11 @@ public class SeekMaximumCoverage
     /// the bitsets, and the universe size. The universe only sizes the backing arrays; the
     /// denominator coverage fractions are reported against comes from the caller, via
     /// <see cref="ResolveDenominator"/>.
+    ///
+    /// The universe spans the indices actually packed, measured after the region filter rather
+    /// than taken from the region's end. A region ending near int.MaxValue would otherwise
+    /// overflow the word count, and one starting far into the sequence would allocate across the
+    /// whole gap in front of it.
     /// </summary>
     private static (List<string> Names, Bitset[] Sets, int Universe)
         BuildProteaseBitsets(
@@ -176,36 +181,22 @@ public class SeekMaximumCoverage
     {
         var names = coverageDict.Keys.ToList();
 
-        int universe;
-        if (region.HasValue)
-        {
-            universe = region.Value.End + 1;
-        }
-        else
-        {
-            int maxIndex = -1;
-            foreach (var set in coverageDict.Values)
-                foreach (var i in set)
-                    if (i > maxIndex) maxIndex = i;
-            universe = maxIndex + 1;
-        }
+        int start = region?.Start ?? int.MinValue;
+        int end = region?.End ?? int.MaxValue;
+
+        int maxIndex = -1;
+        foreach (var set in coverageDict.Values)
+            foreach (var i in set)
+                if (i >= start && i <= end && i > maxIndex) maxIndex = i;
+
+        int universe = maxIndex + 1;
 
         var sets = new Bitset[names.Count];
         for (int n = 0; n < names.Count; n++)
         {
             var bits = new Bitset(universe);
-            if (region.HasValue)
-            {
-                int start = region.Value.Start;
-                int end = region.Value.End;
-                foreach (var i in coverageDict[names[n]])
-                    if (i >= start && i <= end) bits.Set(i);
-            }
-            else
-            {
-                foreach (var i in coverageDict[names[n]])
-                    bits.Set(i);
-            }
+            foreach (var i in coverageDict[names[n]])
+                if (i >= start && i <= end) bits.Set(i);
             sets[n] = bits;
         }
 
