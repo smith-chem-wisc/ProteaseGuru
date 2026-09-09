@@ -95,7 +95,8 @@ internal class ChronologerTests
         lock (ChronologerLock)
         {
             // Direct test of the Chronologer predictor with known peptides
-            using var rtPredictor = new Chromatography.RetentionTimePrediction.Chronologer.ChronologerRetentionTimePredictor();
+            using var session = SharedChronologerPredictor.Open();
+            var rtPredictor = session.Predictor;
 
             // Use correct protease name from the dictionary
             var protein = new Protein(
@@ -157,7 +158,8 @@ internal class ChronologerTests
         lock (ChronologerLock)
         {
             // Test that batch processing gives consistent results
-            using var rtPredictor = new Chromatography.RetentionTimePrediction.Chronologer.ChronologerRetentionTimePredictor();
+            using var session = SharedChronologerPredictor.Open();
+            var rtPredictor = session.Predictor;
 
             var protein = new Protein(
                 "MSFVNGNEIFTAARKQGHYAVGAFNTNNLEWTRKPEPTIDESAMPLERKNTPVLIQVSMGAAKYLVKTLVEEEMR",
