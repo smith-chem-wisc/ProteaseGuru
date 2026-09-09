@@ -101,8 +101,7 @@ namespace ProteaseGuru.Gui
                 // with the generator rather than freezing the window before the export appears to start.
                 var spectra = await Task.Run(() =>
                 {
-                    var peptides = Source.GetPeptides(ExportOptions);
-                    _exportCts!.Token.ThrowIfCancellationRequested();
+                    var peptides = Source.GetPeptides(ExportOptions, progress, _exportCts!.Token);
 
                     if (peptides.Count == 0)
                     {
@@ -115,7 +114,7 @@ namespace ProteaseGuru.Gui
 
                 if (spectra == null)
                 {
-                    statusText.Text = "No peptides match the selected proteases and proteins.";
+                    statusText.Text = "No peptides to export. Check the protease and protein selection, and the detectability threshold if that filter is on.";
                     return;
                 }
 
@@ -244,11 +243,9 @@ namespace ProteaseGuru.Gui
                 return false;
             }
 
-            // Validate m/z thresholds (DoubleTextBoxControl handles bounds, just check if empty)
-            if (string.IsNullOrEmpty(tbMinMzThreshold.Text) || string.IsNullOrWhiteSpace(tbMaxMzThreshold.Text))
+            if (!IsValidNumber(tbMinMzThreshold.Text, "minimum m/z threshold", 0, double.MaxValue) ||
+                !IsValidNumber(tbMaxMzThreshold.Text, "maximum m/z threshold", 0, double.MaxValue))
             {
-                MessageBox.Show("Please enter valid m/z thresholds.", "Invalid Input",
-                    MessageBoxButton.OK, MessageBoxImage.Error);
                 return false;
             }
 
@@ -264,11 +261,9 @@ namespace ProteaseGuru.Gui
 
             // NOTConverter ensures only one of the two intensity filtering options can be checked, so just check if either is checked and validate corresponding input
 
-            // Validate intensity threshold if checked (DoubleTextBoxControl handles bounds, just check if empty)
-            if (cbEnableIntensityThresholdFiltering.IsChecked == true && string.IsNullOrWhiteSpace(tbRelIntThreshold.Text))
+            if (cbEnableIntensityThresholdFiltering.IsChecked == true &&
+                !IsValidNumber(tbRelIntThreshold.Text, "minimum intensity threshold", 0, 100))
             {
-                MessageBox.Show("Please enter a valid minimum intensity threshold.", "Invalid Input",
-                    MessageBoxButton.OK, MessageBoxImage.Error);
                 return false;
             }
 
@@ -281,10 +276,8 @@ namespace ProteaseGuru.Gui
             }
 
             if (cbExcludeUndetectablePeptides.IsChecked == true &&
-                string.IsNullOrWhiteSpace(tbDetectabilityThreshold.Text))
+                !IsValidNumber(tbDetectabilityThreshold.Text, "detectability threshold", 0, 1))
             {
-                MessageBox.Show("Please enter a valid detectability threshold.", "Invalid Input",
-                    MessageBoxButton.OK, MessageBoxImage.Error);
                 return false;
             }
 
@@ -292,6 +285,30 @@ namespace ProteaseGuru.Gui
             if (cbOutputFormat.SelectedItem == null)
             {
                 MessageBox.Show("Please select an output format.", "Invalid Input",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+                return false;
+            }
+
+            return true;
+        }
+
+        /// <summary>
+        /// A decimal box can hold text that is neither empty nor a number -- a bare "." passes the
+        /// control's input filter, and its clamp does nothing when parsing fails. Checking only for
+        /// emptiness let such a value through to a silent fallback.
+        /// </summary>
+        private static bool IsValidNumber(string text, string fieldName, double minimum, double maximum)
+        {
+            if (!double.TryParse(text, out double value))
+            {
+                MessageBox.Show($"Please enter a number for the {fieldName}.", "Invalid Input",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+                return false;
+            }
+
+            if (value < minimum || value > maximum)
+            {
+                MessageBox.Show($"The {fieldName} must be between {minimum} and {maximum}.", "Invalid Input",
                     MessageBoxButton.OK, MessageBoxImage.Error);
                 return false;
             }
@@ -421,7 +438,7 @@ namespace ProteaseGuru.Gui
         {
             runProteaseCount.Text = lbProteases.SelectedItems.Count.ToString();
 
-            // Show "All" if none selected
+            // Say "All" rather than a bare count when everything is selected.
             if (_selectedProteins.Count == _allProteins.Count)
             {
                 runProteinCount.Text = $"All ({_allProteins.Count})";

@@ -145,7 +145,6 @@ namespace ProteaseGuru.Tasks
             cancellationToken.ThrowIfCancellationRequested();
             progress?.Report("Filtering fragment ions...");
             ApplyFragmentFilters(model.Predictions, model.ValidInputsMask);
-            cancellationToken.ThrowIfCancellationRequested();
 
             // mzLib builds the spectra and collapses duplicates. It is asked not to write, because a
             // spectrum the user's filters emptied has to be removed first: the MSP writer takes Max()
@@ -215,6 +214,17 @@ namespace ProteaseGuru.Tasks
             if (emptied > 0)
                 progress?.Report($"Dropped {emptied} spectra whose fragment ions were all filtered out.");
 
+            // Only a failure if there was something to write and the filters took all of it. Having no
+            // spectra at all is either no selection, which the dialog stops, or total model rejection,
+            // which ReportRejectedInputs has already thrown for.
+            if (spectra.Count == 0 && emptied > 0)
+            {
+                throw new InvalidOperationException(
+                    $"All {emptied} spectra were left with no fragment ions once filtering was applied, " +
+                    "so there is nothing to write. Widen the m/z, relative-intensity and rank filters " +
+                    "and export again.");
+            }
+
             switch (_options.OutputFormat)
             {
                 case SpectralLibraryFormat.Msp:
@@ -237,6 +247,21 @@ namespace ProteaseGuru.Tasks
         {
             int total = model.ValidInputsMask.Length;
             int rejected = model.ValidInputsMask.Count(valid => !valid);
+            int altered = model.ValidInputsMask
+                .Select((valid, index) => (valid, index))
+                .Where(x => x.valid && model.Predictions[x.index].Warning != null)
+                .Select(x => model.Predictions[x.index].FullSequence)
+                .Distinct()
+                .Count();
+
+            if (altered > 0)
+            {
+                progress?.Report(
+                    $"{altered} peptides carried modifications {model.ModelName} cannot represent. Their " +
+                    "intensities were predicted without those modifications, but the library still names " +
+                    "the modified peptide.");
+            }
+
             if (rejected == 0) return;
 
             if (rejected == total)

@@ -228,12 +228,12 @@
                     <StackPanel Orientation="Vertical" Margin="15,5">
                         <CheckBox x:Name="cbExcludeIncompatiblePeptides" Content="Exclude Incompatible Peptides" IsChecked="True" Margin="15,5" FontWeight="Bold">
                             <CheckBox.ToolTip>
-                                <ToolTip Content="If checked, peptides with unsupported modifications will be excluded from the export. If unchecked, the unsupported modifications will be removed and a prediction will be generated." FontSize="10" Margin="35,0,5,5"/>
+                                <ToolTip Content="If checked, peptides carrying modifications the model cannot represent are excluded. If unchecked, those modifications are removed before prediction and the spectrum is still named for the modified peptide." FontSize="10" Margin="35,0,5,5"/>
                             </CheckBox.ToolTip>
                         </CheckBox>
                         <CheckBox x:Name="cbExcludeUndetectablePeptides" Content="Exclude Undetectable Peptides" IsChecked="False" Margin="15,5" FontWeight="Bold">
                             <CheckBox.ToolTip>
-                                <ToolTip x:Name="ttExcludeUndetectablePeptides" Content="If checked, peptides predicted to have low detectability will be excluded." FontSize="10" Margin="35,0,5,5"/>
+                                <ToolTip x:Name="ttExcludeUndetectablePeptides" Content="If checked, peptides predicted to have low detectability are excluded. The detectability model accepts no modifications, so it judges the unmodified sequence." FontSize="10" Margin="35,0,5,5"/>
                             </CheckBox.ToolTip>
                         </CheckBox>
                         <StackPanel Orientation="Horizontal" Margin="35,0,15,5"

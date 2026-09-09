@@ -1,5 +1,7 @@
 using NUnit.Framework;
 using Omics;
+using Omics.SequenceConversion;
+using ProteaseGuru.GuiFunctions;
 using ProteaseGuru.Tasks;
 using ProteaseGuru.Tasks.CoverageMapConfiguration;
 using Proteomics;
@@ -54,6 +56,29 @@ internal class SpectralLibraryPeptideSourceTests
         var coverage = new Dictionary<string, Dictionary<IBioPolymer, (double, double)>>();
         return new ResultsBackedPeptideSource(new ProteinCoverageAnalyzer(byFile, coverage));
     }
+
+    #region Digestion condition modifications
+
+    [Test]
+    public static void UntickingCarbamidomethylationRemovesIt()
+    {
+        var conditions = new DigestionConditionsSetupViewModel(null);
+        var proteinProteases = conditions.ProteaseSpecificParameters
+            .Where(p => p is { IsRna: false, IsVisible: true })
+            .ToList();
+        Assert.That(proteinProteases, Is.Not.Empty, "expected at least one visible protein protease");
+
+        conditions.ApplyFixedCarbamidomethylation = true;
+        Assert.That(proteinProteases.All(p => p.ProteaseSpecificParams.FixedMods.Any(m => m.IdWithMotif.StartsWith("Carbamidomethyl"))), Is.True);
+
+        conditions.ApplyFixedCarbamidomethylation = false;
+
+        // The setter used to add regardless of the value, so unticking never removed it -- and
+        // ResetDigestionConditions, which sets false, applied the modification it should clear.
+        Assert.That(proteinProteases.Any(p => p.ProteaseSpecificParams.FixedMods.Any(m => m.IdWithMotif.StartsWith("Carbamidomethyl"))), Is.False);
+    }
+
+    #endregion
 
     #region Results-backed source
 
@@ -193,6 +218,71 @@ internal class SpectralLibraryPeptideSourceTests
     #endregion
 
     #region On-demand source
+
+    [Test]
+    public static void DetectabilityModelStripsModificationsItCannotRepresent()
+    {
+        // PFly's converter allows no modifications, so rejecting instead of stripping would leave
+        // every modified peptide unassessed -- and unassessed is dropped as undetectable. One factory
+        // serves the digestion run and the export, so this pins both.
+        Assert.That(DetectabilityModel.Create().ModHandlingMode,
+            Is.EqualTo(SequenceConversionHandlingMode.RemoveIncompatibleElements));
+    }
+
+    [Test]
+    public static void GatheringStopsBeforeTheDetectabilityRequest()
+    {
+        // No protein selected, so the digest yields nothing and the cancellation check before the
+        // network call is the only thing that can throw.
+        var source = new OnDemandDigestPeptideSource(new[] { TestProtein }, new[] { TrypsinParameters });
+        var options = OptionsFor(source.AvailableProteases, Array.Empty<string>());
+        options.ExcludeUndetectablePeptides = true;
+
+        using var cts = new CancellationTokenSource();
+        cts.Cancel();
+
+        Assert.Throws<OperationCanceledException>(() => source.GetPeptides(options, null, cts.Token));
+    }
+
+    [Test]
+    public static void GatheringFromRunResultsStopsWhenCancelled()
+    {
+        var source = SourceOver(PeptideWith("PEPTIDEK", 10, detectable: true));
+        using var cts = new CancellationTokenSource();
+        cts.Cancel();
+
+        Assert.Throws<OperationCanceledException>(() =>
+            source.GetPeptides(OptionsFor(source.AvailableProteases, source.AvailableProteins), null, cts.Token));
+    }
+
+    [TestCase(0.10, 0.5, false, TestName = "BelowThresholdIsNotDetectable")]
+    [TestCase(0.50, 0.5, true, TestName = "AtThresholdIsDetectable")]
+    [TestCase(0.90, 0.5, true, TestName = "AboveThresholdIsDetectable")]
+    [TestCase(0.90, 0.95, false, TestName = "AHigherThresholdExcludesMore")]
+    public static void DetectabilityIsJudgedAgainstTheThreshold(double detectable, double threshold, bool expected)
+    {
+        // PFly reports the probability a peptide is NOT detectable.
+        Assert.That(
+            OnDemandDigestPeptideSource.IsDetectable((1.0 - detectable, 0, 0, 0), threshold),
+            Is.EqualTo(expected));
+    }
+
+    [Test]
+    public static void APeptidePFlyCouldNotAssessIsNotDetectable()
+    {
+        Assert.That(OnDemandDigestPeptideSource.IsDetectable(null, 0.5), Is.False);
+    }
+
+    [Test]
+    public static void GatheringStopsWhenCancelled()
+    {
+        var source = new OnDemandDigestPeptideSource(new[] { TestProtein }, new[] { TrypsinParameters });
+        using var cts = new CancellationTokenSource();
+        cts.Cancel();
+
+        Assert.Throws<OperationCanceledException>(() =>
+            source.GetPeptides(OptionsFor(source.AvailableProteases, source.AvailableProteins), null, cts.Token));
+    }
 
     [Test]
     public static void OnDemandDigestionYieldsPeptidesWithoutRetentionTimes()

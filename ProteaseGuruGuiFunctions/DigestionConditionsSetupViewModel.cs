@@ -189,10 +189,23 @@ public class DigestionConditionsSetupViewModel : BaseViewModel
         get => _applyFixedCarbamidomethylation;
         set
         {
+            if (_applyFixedCarbamidomethylation == value) return;
+
             _applyFixedCarbamidomethylation = value;
-            foreach (var specificParams in ProteaseSpecificParameters.Where(p => p is { IsRna: false, IsVisible: true } && !p.ProteaseSpecificParams.FixedMods.Contains(Carbamidomethylation)))
+
+            if (_applyFixedCarbamidomethylation)
             {
-                specificParams.ProteaseSpecificParams.FixedMods.Add(Carbamidomethylation);
+                foreach (var specificParams in ProteaseSpecificParameters.Where(p => p is { IsRna: false, IsVisible: true } && !p.ProteaseSpecificParams.FixedMods.Contains(Carbamidomethylation)))
+                {
+                    specificParams.ProteaseSpecificParams.FixedMods.Add(Carbamidomethylation);
+                }
+            }
+            else
+            {
+                foreach (var specificParams in ProteaseSpecificParameters.Where(p => p.ProteaseSpecificParams.FixedMods.Contains(Carbamidomethylation)))
+                {
+                    specificParams.ProteaseSpecificParams.FixedMods.Remove(Carbamidomethylation);
+                }
             }
 
             OnPropertyChanged(nameof(ApplyFixedCarbamidomethylation));

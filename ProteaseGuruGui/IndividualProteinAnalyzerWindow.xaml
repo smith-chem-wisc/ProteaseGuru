@@ -202,9 +202,11 @@ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
 
                     <!--Header label with view toggle button-->
                     <Grid Grid.Row="0" Style="{StaticResource InternalGridStyle}">
+                        <!-- The buttons size to content and the header label absorbs the squeeze, so
+                             narrowing this pane cannot clip the export button out of reach. -->
                         <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto"/>
                             <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
                         <Label Grid.Column="0"
                                Style="{StaticResource SmallHeaderLabelStyle}" Padding="5,2,0,0">

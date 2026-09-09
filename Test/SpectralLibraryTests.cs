@@ -296,6 +296,80 @@ internal class SpectralLibraryTests
     #region Alignment and rejected inputs
 
     [Test]
+    public static void CancellingDuringFilteringLeavesNoFileBehind()
+    {
+        // The only cancellation check past the Koina call is the one guarding the write, so this has
+        // to prove both that the export stops and that nothing reached disk.
+        var options = PermissiveOptions;
+        options.ChargeStates = new List<int>();
+        string path = Path.Combine(Path.GetTempPath(), $"pgtest_{Guid.NewGuid():N}.msp");
+
+        using var cts = new CancellationTokenSource();
+        var cancelOnFiltering = new SynchronousProgress(message =>
+        {
+            if (message.StartsWith("Filtering")) cts.Cancel();
+        });
+
+        try
+        {
+            Assert.Throws<OperationCanceledException>(() =>
+                new SpectralLibraryGenerator(new List<SpectralLibraryPeptide>(), options, path)
+                    .GenerateLibrary(cancelOnFiltering, cts.Token));
+
+            Assert.That(File.Exists(path), Is.False, "a cancelled export must not write its file");
+        }
+        finally
+        {
+            if (File.Exists(path)) File.Delete(path);
+        }
+    }
+
+    [Test]
+    public static void SequencesTheModelAlteredAreReported()
+    {
+        // mzLib attaches a warning to a prediction whose sequence it had to change; with the
+        // incompatible-peptide filter off that is how a stripped modification is surfaced.
+        var altered = PredictionFor(MzLibSequence, UnimodSequence) with
+        {
+            Warning = new System.ComponentModel.WarningException("stripped a modification")
+        };
+        var model = new SeededHcdModel(FragmentIonMappingMode.MapToInputFullSequence,
+            new[] { true, true }, altered, PredictionFor("PEPTIDEK", "PEPTIDEK"));
+
+        var reported = new List<string>();
+        SpectralLibraryGenerator.ReportRejectedInputs(model, new SynchronousProgress(reported.Add));
+
+        Assert.That(reported, Has.Exactly(1).Contains("1 peptides carried modifications"));
+    }
+
+    [Test]
+    public static void HavingNoSpectraForOtherReasonsIsNotAFilterFailure()
+    {
+        // Nothing to write because nothing was there is not the same as filters eating everything;
+        // only the latter is an error.
+        var empty = new List<LibrarySpectrum>();
+        string path = Path.Combine(Path.GetTempPath(), $"pgtest_{Guid.NewGuid():N}.msp");
+        try
+        {
+            Assert.DoesNotThrow(() => GeneratorWriting(path).WriteLibrary(empty));
+        }
+        finally
+        {
+            if (File.Exists(path)) File.Delete(path);
+        }
+    }
+
+    [Test]
+    public static void ExportOptionsCarryTheirDocumentedDefaults()
+    {
+        var options = new SpectralLibraryExportOptions();
+
+        Assert.That(options.DetectabilityThreshold, Is.EqualTo(0.5).Within(1e-9));
+        Assert.That(options.PredictionModel, Is.EqualTo(FragmentIntensityPredictionModel.Prosit2020IntensityHcd));
+        Assert.That(options.OutputFormat, Is.EqualTo(SpectralLibraryFormat.Msp));
+    }
+
+    [Test]
     public static void RejectingEveryPeptideFailsLoudlyInsteadOfWritingAnEmptyLibrary()
     {
         var model = new SeededHcdModel(FragmentIonMappingMode.MapToInputFullSequence, new[] { false },
@@ -424,6 +498,25 @@ internal class SpectralLibraryTests
     #region Writing
 
     [Test]
+    public static void AnExportFilteredDownToNothingFailsInsteadOfWritingAnEmptyFile()
+    {
+        var library = new List<LibrarySpectrum> { SpectrumWith() };
+        string path = Path.Combine(Path.GetTempPath(), $"pgtest_{Guid.NewGuid():N}.msp");
+        try
+        {
+            var ex = Assert.Throws<InvalidOperationException>(
+                () => GeneratorWriting(path).WriteLibrary(library));
+
+            Assert.That(ex!.Message, Does.Contain("no fragment ions"));
+            Assert.That(File.Exists(path), Is.False, "a failed export must not leave a file behind");
+        }
+        finally
+        {
+            if (File.Exists(path)) File.Delete(path);
+        }
+    }
+
+    [Test]
     public static void SpectraLeftWithNoFragmentsAreDroppedRatherThanKillingTheWrite()
     {
         // The MSP writer takes Max() over a spectrum's peaks, so an empty one throws
@@ -493,6 +586,14 @@ internal class SpectralLibraryTests
 
 
     private static bool[] AllValid(int count) => Enumerable.Repeat(true, count).ToArray();
+
+    /// <summary>Reports on the calling thread, so a test can act on a stage before the next begins.</summary>
+    private sealed class SynchronousProgress : IProgress<string>
+    {
+        private readonly Action<string> _onReport;
+        public SynchronousProgress(Action<string> onReport) => _onReport = onReport;
+        public void Report(string value) => _onReport(value);
+    }
 
 
     private static List<Omics.SpectrumMatch.LibrarySpectrum> GenerateFrom(SeededHcdModel model, double? retentionTime) =>
