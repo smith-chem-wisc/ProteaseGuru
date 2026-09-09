@@ -1,4 +1,7 @@
 using Omics;
+using Omics.SequenceConversion;
+using PredictionClients.Koina.AbstractClasses;
+using PredictionClients.Koina.SupportedModels.FlyabilityModels;
 
 namespace ProteaseGuru.Tasks;
 
@@ -18,11 +21,6 @@ public interface ISpectralLibraryPeptideSource
     IReadOnlyList<string> AvailableProteases { get; }
 
     IReadOnlyList<string> AvailableProteins { get; }
-
-    /// <summary>
-    /// Whether peptides carry detectability, and so whether the undetectable-peptide filter applies.
-    /// </summary>
-    bool SupportsDetectabilityFilter { get; }
 
     List<SpectralLibraryPeptide> GetPeptides(SpectralLibraryExportOptions options);
 }
@@ -44,8 +42,6 @@ public class ResultsBackedPeptideSource : ISpectralLibraryPeptideSource
 
     public IReadOnlyList<string> AvailableProteins => _analyzer.ProteinAccessions;
 
-    public bool SupportsDetectabilityFilter => true;
-
     public List<SpectralLibraryPeptide> GetPeptides(SpectralLibraryExportOptions options)
     {
         var selectedProteins = _analyzer.ProteinCoverageResults.Keys
@@ -61,7 +57,7 @@ public class ResultsBackedPeptideSource : ISpectralLibraryPeptideSource
         }
 
         return peptides
-            .Where(p => !options.ExcludeUndetectablePeptides || p.PflyDetectability == true)
+            .Where(p => !options.ExcludeUndetectablePeptides || IsDetectableAtThreshold(p, options.DetectabilityThreshold))
             .DistinctBy(p => p.FullSequence)
             .Select(p => new SpectralLibraryPeptide(
                 p.FullSequence,
@@ -69,12 +65,25 @@ public class ResultsBackedPeptideSource : ISpectralLibraryPeptideSource
                 p.PflyDetectability))
             .ToList();
     }
+
+    private static bool IsDetectableAtThreshold(InSilicoPep peptide, double threshold)
+    {
+        if (peptide.PflyProbabilities is { } probabilities)
+        {
+            return 1.0 - probabilities.NotDetectable >= threshold;
+        }
+
+        // Results written before PFly probabilities were persisted can only use the Boolean that was
+        // stored with the run. Its original threshold is not recoverable from those legacy files.
+        return peptide.PflyDetectability == true;
+    }
 }
 
 /// <summary>
 /// Digests on demand with the protease parameters the caller currently has selected, so a library can
 /// be exported before any run has happened and against parameters the run did not use. Peptides carry
-/// no retention time or detectability; the generator predicts retention times for them.
+/// no retention time; the generator predicts those. Detectability is predicted here, but only when the
+/// filter asks for it, since it costs a network round trip and nothing else reads it.
 /// </summary>
 public class OnDemandDigestPeptideSource : ISpectralLibraryPeptideSource
 {
@@ -94,8 +103,6 @@ public class OnDemandDigestPeptideSource : ISpectralLibraryPeptideSource
 
     public IReadOnlyList<string> AvailableProteins =>
         _proteins.Select(p => p.Accession).Distinct().ToList();
-
-    public bool SupportsDetectabilityFilter => false;
 
     public List<SpectralLibraryPeptide> GetPeptides(SpectralLibraryExportOptions options)
     {
@@ -121,6 +128,46 @@ public class OnDemandDigestPeptideSource : ISpectralLibraryPeptideSource
             }
         }
 
-        return peptides;
+        // PFly is intentionally not contacted for an unfiltered export: detectability is not written
+        // to the library, so the request would add latency and an avoidable network failure mode.
+        return options.ExcludeUndetectablePeptides
+            ? KeepDetectable(peptides, options.DetectabilityThreshold)
+            : peptides;
+    }
+
+    /// <summary>
+    /// Asks PFly which peptides are detectable and drops the rest. A digestion run stores this on each
+    /// peptide; digesting on demand has to predict it, which is why it happens only when asked.
+    /// </summary>
+    private List<SpectralLibraryPeptide> KeepDetectable(
+        List<SpectralLibraryPeptide> peptides,
+        double detectabilityThreshold)
+    {
+        if (peptides.Count == 0) return peptides;
+
+        // PFly accepts no modifications at all -- its converter is built with an empty set of allowed
+        // UNIMOD ids -- and defaults to rejecting whatever it cannot represent. Left at that default
+        // every modified peptide comes back unassessed, and unassessed is dropped below, so a
+        // carbamidomethylated cysteine would be enough to call a peptide undetectable.
+        var predictions = new PFly2024FineTuned(SequenceConversionHandlingMode.RemoveIncompatibleElements)
+            .Predict(peptides.Select(p => new DetectabilityPredictionInput(p.FullSequence)).ToList());
+
+        if (predictions.Count != peptides.Count)
+        {
+            throw new InvalidOperationException(
+                $"PFly returned {predictions.Count} detectability predictions for {peptides.Count} peptides.");
+        }
+
+        var detectable = new List<SpectralLibraryPeptide>(peptides.Count);
+        for (int i = 0; i < peptides.Count; i++)
+        {
+            var probabilities = predictions[i].DetectabilityProbabilities;
+            if (probabilities.HasValue && 1.0 - probabilities.Value.NotDetectable >= detectabilityThreshold)
+            {
+                detectable.Add(peptides[i] with { IsDetectable = true });
+            }
+        }
+
+        return detectable;
     }
 }

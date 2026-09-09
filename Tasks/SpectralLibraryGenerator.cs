@@ -66,6 +66,7 @@ namespace ProteaseGuru.Tasks
         // Peptide filtering options
         public bool ExcludeIncompatiblePeptides { get; set; }
         public bool ExcludeUndetectablePeptides { get; set; }
+        public double DetectabilityThreshold { get; set; } = 0.5;
 
         // Fragment ion filtering options
         public double MinimumMZThreshold { get; set; }
@@ -144,6 +145,7 @@ namespace ProteaseGuru.Tasks
             cancellationToken.ThrowIfCancellationRequested();
             progress?.Report("Filtering fragment ions...");
             ApplyFragmentFilters(model.Predictions, model.ValidInputsMask);
+            cancellationToken.ThrowIfCancellationRequested();
 
             // mzLib builds the spectra and collapses duplicates. It is asked not to write, because a
             // spectrum the user's filters emptied has to be removed first: the MSP writer takes Max()
@@ -157,6 +159,10 @@ namespace ProteaseGuru.Tasks
             int collapsed = model.ValidInputsMask.Count(valid => valid) - library.Count;
             if (collapsed > 0)
                 progress?.Report($"{collapsed} duplicate spectra (same peptide at the same charge) were collapsed.");
+
+            // Last chance to stop: past this point a cancelled export has still written its file, and
+            // reporting success for it would be worse than the wasted work.
+            cancellationToken.ThrowIfCancellationRequested();
 
             WriteLibrary(library, progress);
             progress?.Report($"Wrote {library.Count} spectra to {_outputPath}.");

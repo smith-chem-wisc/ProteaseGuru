@@ -27,11 +27,19 @@ internal class SpectralLibraryPeptideSourceTests
             OutputFormat = SpectralLibraryFormat.Msp
         };
 
-    private static InSilicoPep PeptideWith(string fullSequence, double? retentionTime, bool? detectable, int start = 1) =>
+    private static InSilicoPep PeptideWith(
+        string fullSequence,
+        double? retentionTime,
+        bool? detectable,
+        int start = 1,
+        double? notDetectableProbability = null) =>
         new(fullSequence, fullSequence, 'K', 'A', unique: true, hydrophobicity: 0, electrophoreticMobility: 0,
             chronologerRetentionTime: retentionTime, pflyDetectability: detectable, length: fullSequence.Length,
             molecularWeight: 0, database: "db", protein: "TESTPROT", proteinName: "TESTPROT",
-            start: start, end: start + fullSequence.Length - 1, protease: "trypsin|P");
+            start: start, end: start + fullSequence.Length - 1, protease: "trypsin|P",
+            pflyProbabilities: notDetectableProbability.HasValue
+                ? (notDetectableProbability.Value, 0, 0, 1.0 - notDetectableProbability.Value)
+                : null);
 
     private static ResultsBackedPeptideSource SourceOver(params InSilicoPep[] peptides)
     {
@@ -143,18 +151,43 @@ internal class SpectralLibraryPeptideSourceTests
     }
 
     [Test]
+    public static void ResultsBackedFilteringUsesTheExportThresholdAndStoredProbabilities()
+    {
+        var source = SourceOver(
+            PeptideWith("PEPTIDEK", 10, detectable: false, notDetectableProbability: 0.2),
+            PeptideWith("SAMPLERK", 20, detectable: true, notDetectableProbability: 0.4));
+        var options = OptionsFor(source.AvailableProteases, source.AvailableProteins);
+        options.ExcludeUndetectablePeptides = true;
+        options.DetectabilityThreshold = 0.7;
+
+        var filtered = source.GetPeptides(options);
+
+        Assert.That(filtered.Select(p => p.FullSequence), Is.EqualTo(new[] { "PEPTIDEK" }),
+            "stored probabilities should be evaluated against the threshold chosen for this export");
+    }
+
+    [Test]
+    public static void LegacyResultsWithoutProbabilitiesFallBackToStoredDetectability()
+    {
+        var source = SourceOver(
+            PeptideWith("PEPTIDEK", 10, detectable: true),
+            PeptideWith("SAMPLERK", 20, detectable: false));
+        var options = OptionsFor(source.AvailableProteases, source.AvailableProteins);
+        options.ExcludeUndetectablePeptides = true;
+        options.DetectabilityThreshold = 0.9;
+
+        var filtered = source.GetPeptides(options);
+
+        Assert.That(filtered.Select(p => p.FullSequence), Is.EqualTo(new[] { "PEPTIDEK" }));
+    }
+
+    [Test]
     public static void UnselectedProteinsAndProteasesContributeNothing()
     {
         var source = SourceOver(PeptideWith("PEPTIDEK", 10, detectable: true));
 
         Assert.That(source.GetPeptides(OptionsFor(source.AvailableProteases, new[] { "OTHERPROT" })), Is.Empty);
         Assert.That(source.GetPeptides(OptionsFor(new[] { "chymotrypsin|P" }, source.AvailableProteins)), Is.Empty);
-    }
-
-    [Test]
-    public static void ResultsBackedSourceSupportsTheDetectabilityFilter()
-    {
-        Assert.That(SourceOver().SupportsDetectabilityFilter, Is.True);
     }
 
     #endregion
@@ -171,7 +204,6 @@ internal class SpectralLibraryPeptideSourceTests
         Assert.That(peptides, Is.Not.Empty);
         Assert.That(peptides.Select(p => p.RetentionTime), Is.All.Null);
         Assert.That(peptides.Select(p => p.IsDetectable), Is.All.Null);
-        Assert.That(source.SupportsDetectabilityFilter, Is.False);
     }
 
     [Test]

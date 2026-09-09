@@ -4,6 +4,7 @@ using BayesianEstimation;
 using ProteaseGuru.Engine;
 using Omics;
 using Omics.Modifications;
+using Omics.SequenceConversion;
 using PredictionClients.Koina.AbstractClasses;
 using PredictionClients.Koina.SupportedModels.FlyabilityModels;
 using PredictionClients.Koina.SupportedModels.FragmentIntensityModels;
@@ -396,7 +397,9 @@ namespace ProteaseGuru.Tasks
                 _pflyPool = new ConcurrentBag<PFly2024FineTuned>();
 
                 // One model suffices: detectability is requested once per protease, sequentially.
-                _pflyPool.Add(new PFly2024FineTuned());
+                // PFly's converter allows no modifications, so ReturnNull leaves every modified peptide
+                // unassessed. Stated rather than inherited, because it decides what counts as detectable.
+                _pflyPool.Add(new PFly2024FineTuned(modHandlingMode: SequenceConversionHandlingMode.ReturnNull));
             }
         }
 

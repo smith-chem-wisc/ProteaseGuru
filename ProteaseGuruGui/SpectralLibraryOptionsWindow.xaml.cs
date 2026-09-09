@@ -55,16 +55,6 @@ namespace ProteaseGuru.Gui
                 }
             }
 
-            if (!source.SupportsDetectabilityFilter)
-            {
-                // Detectability is only predicted during a run, so ticking this against an on-demand
-                // digest would silently do nothing.
-                cbExcludeUndetectablePeptides.IsChecked = false;
-                cbExcludeUndetectablePeptides.IsEnabled = false;
-                ttExcludeUndetectablePeptides.Content =
-                    "Detectability is only predicted during a digestion run, so this filter does not apply to these peptides.";
-            }
-
             UpdateSummary();
         }
 
@@ -184,6 +174,9 @@ namespace ProteaseGuru.Gui
 
                 ExcludeIncompatiblePeptides = cbExcludeIncompatiblePeptides.IsChecked == true,
                 ExcludeUndetectablePeptides = cbExcludeUndetectablePeptides.IsChecked == true,
+                DetectabilityThreshold = double.TryParse(tbDetectabilityThreshold.Text, out double detectabilityThreshold)
+                    ? detectabilityThreshold
+                    : 0.5,
 
                 MinimumMZThreshold = double.TryParse(tbMinMzThreshold.Text, out double minMZ) ? minMZ : 200,
 
@@ -283,6 +276,14 @@ namespace ProteaseGuru.Gui
             if (cbEnableIntensityRankFiltering.IsChecked == true && string.IsNullOrWhiteSpace(tbRankThreshold.Text))
             {
                 MessageBox.Show("Please enter a valid intensity rank threshold.", "Invalid Input",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+                return false;
+            }
+
+            if (cbExcludeUndetectablePeptides.IsChecked == true &&
+                string.IsNullOrWhiteSpace(tbDetectabilityThreshold.Text))
+            {
+                MessageBox.Show("Please enter a valid detectability threshold.", "Invalid Input",
                     MessageBoxButton.OK, MessageBoxImage.Error);
                 return false;
             }

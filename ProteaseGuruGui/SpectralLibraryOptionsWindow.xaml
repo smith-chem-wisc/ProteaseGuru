@@ -236,6 +236,16 @@
                                 <ToolTip x:Name="ttExcludeUndetectablePeptides" Content="If checked, peptides predicted to have low detectability will be excluded." FontSize="10" Margin="35,0,5,5"/>
                             </CheckBox.ToolTip>
                         </CheckBox>
+                        <StackPanel Orientation="Horizontal" Margin="35,0,15,5"
+                                    Visibility="{Binding ElementName=cbExcludeUndetectablePeptides, Path=IsChecked, Converter={StaticResource BooleanToVisibilityConverter}}">
+                            <Label Content="Detectability Threshold:" VerticalAlignment="Center"/>
+                            <gui:DoubleTextBoxControl x:Name="tbDetectabilityThreshold" Width="60" Text="0.5"
+                                                      LowerBound="0" UpperBound="1" Margin="5,0">
+                                <gui:DoubleTextBoxControl.ToolTip>
+                                    <ToolTip Content="Keep peptides whose predicted detectability probability is at least this value (0-1)." FontSize="10"/>
+                                </gui:DoubleTextBoxControl.ToolTip>
+                            </gui:DoubleTextBoxControl>
+                        </StackPanel>
                     </StackPanel>
                 </Expander>
 
