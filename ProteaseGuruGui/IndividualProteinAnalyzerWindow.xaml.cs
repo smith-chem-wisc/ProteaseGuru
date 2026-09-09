@@ -28,7 +28,6 @@ namespace ProteaseGuru.Gui
         private DigestionConditionsSetupViewModel _allProteaseVm;
         private readonly SeekMaximumCoverage _seeker = new SeekMaximumCoverage();
 
-        private string? _fastaPath;
 
         private readonly Dictionary<string, Color> _stableProteaseColors;
         private readonly Dictionary<string, SolidColorBrush> _stableProteaseBrushes;
@@ -43,10 +42,9 @@ namespace ProteaseGuru.Gui
 
         public IndividualProteinAnalyzerWindow() { }
 
-        public IndividualProteinAnalyzerWindow(List<IBioPolymer> proteins, string? fastaPath = null)
+        public IndividualProteinAnalyzerWindow(List<IBioPolymer> proteins)
         {
             InitializeComponent();
-            _fastaPath = fastaPath;
 
             var emptyPeptideByFile = new Dictionary<string, Dictionary<string, Dictionary<IBioPolymer, List<InSilicoPep>>>>();
             var emptySeqCov = new Dictionary<string, Dictionary<IBioPolymer, (double, double)>>();
@@ -79,11 +77,9 @@ namespace ProteaseGuru.Gui
         public IndividualProteinAnalyzerWindow(
             Dictionary<string, Dictionary<string, Dictionary<IBioPolymer, List<InSilicoPep>>>> peptideByFile,
             RunParameters userParams,
-            Dictionary<string, Dictionary<IBioPolymer, (double, double)>> sequenceCoverageByProtease,
-            string? fastaPath = null)
+            Dictionary<string, Dictionary<IBioPolymer, (double, double)>> sequenceCoverageByProtease)
         {
             InitializeComponent();
-            _fastaPath = fastaPath;
             _analyzer = new ProteinCoverageAnalyzer(peptideByFile, sequenceCoverageByProtease);
             UserParams = userParams;
 
@@ -399,7 +395,9 @@ namespace ProteaseGuru.Gui
         {
             var checkedProteases = _allProteaseVm.ProteaseSpecificParameters
                 .Where(vm => vm.IsSelected && vm.IsVisible)
-                .Select(vm => vm.ProteaseSpecificParams)
+                // Cloned: the dialog is non-modal, so the panel behind it stays editable and a
+                // live reference would let edits change what a running export digests.
+                .Select(vm => vm.ProteaseSpecificParams.Clone())
                 .ToList();
 
             if (checkedProteases.Count == 0)
@@ -415,8 +413,7 @@ namespace ProteaseGuru.Gui
 
             new SpectralLibraryOptionsWindow(
                 source,
-                checkedProteases.Select(p => p.DigestionAgentName).Distinct().ToList(),
-                SelectedProtein?.Protein.Accession)
+                checkedProteases.Select(p => p.DigestionAgentName).Distinct().ToList())
             {
                 Owner = Window.GetWindow(this)
             }.Show();

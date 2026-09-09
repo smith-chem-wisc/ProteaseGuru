@@ -188,39 +188,11 @@ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
             <GridSplitter Grid.Column="3" HorizontalAlignment="Center"
                           Background="{StaticResource BackgroundColor}" Width="3"/>
 
-            <!-- Column 4: Export panel + Coverage map -->
+            <!-- Column 4: Coverage map -->
             <Grid Grid.Column="4" Name="AllResultsGrid" Style="{StaticResource InternalGridStyle}">
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="3"/>
-                    <RowDefinition Height="*"/>
-                </Grid.RowDefinitions>
-
-                <!-- Export Spectrum Library -->
-                <Border Grid.Row="0" BorderBrush="{StaticResource BorderColor}" BorderThickness="0,0,0,1"
-                        Background="{StaticResource BackgroundColor}" Padding="4,3,4,4"
-                        Visibility="{Binding Source={x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}, Path=IsRnaMode, Converter={StaticResource CollapseOnRna}}">
-                    <DockPanel LastChildFill="False">
-                        <Label DockPanel.Dock="Left" Style="{StaticResource SmallHeaderLabelStyle}">
-                            <Label.Content>
-                                <Binding Converter="{StaticResource ProtTermConverter}" Source="{x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}" Path="IsRnaMode"
-                                         ConverterParameter="Export Spectrum Library"/>
-                            </Label.Content>
-                        </Label>
-                        <Button x:Name="ExportSpectrumLibraryButton"
-                                DockPanel.Dock="Right"
-                                Style="{StaticResource ImportantButtonStyle}"
-                                Width="170" Height="22"
-                                Click="ExportSpectrumLibrary_Click"
-                                Content="Export Library..."/>
-                    </DockPanel>
-                </Border>
-
-                <GridSplitter Grid.Row="1" Height="3" HorizontalAlignment="Stretch"
-                              Background="{StaticResource BackgroundColor}" ResizeDirection="Rows"/>
 
                 <!-- Maximum Coverage Analysis -->
-                <Grid Grid.Row="2" Name="MaxCoverageGrid" SizeChanged="maxCoverageGrid_SizeChanged"
+                <Grid Name="MaxCoverageGrid" SizeChanged="maxCoverageGrid_SizeChanged"
                       Style="{StaticResource InternalGridStyle}">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="30"/>
@@ -241,13 +213,22 @@ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                                          ConverterParameter="Maximum Coverage Analysis"/>
                             </Label.Content>
                         </Label>
-                        <Button x:Name="coverageViewToggleButton" Grid.Column="1"
-                                Content="Lane View"
-                                Click="CoverageViewToggle_Click"
-                                Width="130" Height="24"
-                                HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,10,0"
-                                Style="{StaticResource ImportantButtonStyle}"
-                                FontSize="11" FontWeight="SemiBold"/>
+                        <StackPanel Grid.Column="1" Orientation="Horizontal"
+                                    HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,10,0">
+                            <Button x:Name="ExportSpectrumLibraryButton"
+                                    Content="Export Spectrum Library..."
+                                    Click="ExportSpectrumLibrary_Click"
+                                    Width="180" Height="24" Margin="0,0,6,0"
+                                    Style="{StaticResource ImportantButtonStyle}"
+                                    FontSize="11" FontWeight="SemiBold"
+                                    Visibility="{Binding Source={x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}, Path=IsRnaMode, Converter={StaticResource CollapseOnRna}}"/>
+                            <Button x:Name="coverageViewToggleButton"
+                                    Content="Lane View"
+                                    Click="CoverageViewToggle_Click"
+                                    Width="130" Height="24"
+                                    Style="{StaticResource ImportantButtonStyle}"
+                                    FontSize="11" FontWeight="SemiBold"/>
+                        </StackPanel>
                     </Grid>
 
                     <StackPanel Grid.Row="1" Orientation="Horizontal"

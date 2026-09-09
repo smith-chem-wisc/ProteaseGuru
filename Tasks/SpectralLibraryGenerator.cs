@@ -82,10 +82,7 @@ namespace ProteaseGuru.Tasks
     public class SpectralLibraryGenerator
     {
         /// <summary>Absolute intensity floor, below mzLib's default so the user's own filters govern.</summary>
-        private const double MinimumAbsoluteIntensity = 1e-6;
-
-        /// <summary>Set after generation when mzLib reported something worth surfacing.</summary>
-        public string? Warning { get; private set; }
+        internal const double MinimumAbsoluteIntensity = 1e-6;
 
         private readonly List<SpectralLibraryPeptide> _peptides;
         private readonly SpectralLibraryExportOptions _options;
@@ -153,12 +150,13 @@ namespace ProteaseGuru.Tasks
             // over the peaks, so a single empty spectrum throws and the whole export is lost.
             var library = model.GenerateLibrarySpectraFromPredictions(
                 alignedRetentionTimes: rts.ToArray(),
-                warning: out var warning,
+                warning: out _,
                 filepath: null,
                 minIntensityFilter: MinimumAbsoluteIntensity);
 
-            Warning = warning?.Message;
-            if (Warning != null) progress?.Report(Warning);
+            int collapsed = model.ValidInputsMask.Count(valid => valid) - library.Count;
+            if (collapsed > 0)
+                progress?.Report($"{collapsed} duplicate spectra (same peptide at the same charge) were collapsed.");
 
             WriteLibrary(library, progress);
             progress?.Report($"Wrote {library.Count} spectra to {_outputPath}.");

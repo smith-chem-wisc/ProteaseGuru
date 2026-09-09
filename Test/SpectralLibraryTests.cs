@@ -121,6 +121,9 @@ internal class SpectralLibraryTests
         // The validated spelling is Unimod-encoded and has no parser, so mapping onto it cannot build
         // a peptide at all; see TheValidatedMappingModeCannotBuildModifiedPeptides.
         Assert.That(model.FragmentIonMappingMode, Is.EqualTo(FragmentIonMappingMode.MapToInputFullSequence));
+
+        // Decides whether an out-of-range charge or collision energy drops the input or throws.
+        Assert.That(model.ParameterHandlingMode, Is.EqualTo(IncompatibleParameterHandlingMode.ReturnNull));
     }
 
     [Test]
@@ -174,16 +177,24 @@ internal class SpectralLibraryTests
     [Test]
     public static void ProgressIsReportedAtEachStage()
     {
-        var reported = new List<string>();
+        var reported = new System.Collections.Concurrent.ConcurrentQueue<string>();
         var options = PermissiveOptions;
         options.ChargeStates = new List<int>();
-        var generator = new SpectralLibraryGenerator(new List<SpectralLibraryPeptide>(), options, "unused.msp");
 
-        generator.GenerateLibrary(new Progress<string>(reported.Add));
+        string path = Path.Combine(Path.GetTempPath(), $"pgtest_{Guid.NewGuid():N}.msp");
+        try
+        {
+            new SpectralLibraryGenerator(new List<SpectralLibraryPeptide>(), options, path)
+                .GenerateLibrary(new Progress<string>(reported.Enqueue));
 
-        // Progress<T> posts asynchronously, so drain the queue before asserting.
-        SpinWait.SpinUntil(() => reported.Count >= 4, TimeSpan.FromSeconds(5));
-        Assert.That(reported, Has.Count.GreaterThanOrEqualTo(4));
+            // Progress<T> posts each report separately onto the thread pool, so drain before asserting.
+            SpinWait.SpinUntil(() => reported.Count >= 4, TimeSpan.FromSeconds(5));
+            Assert.That(reported, Has.Count.GreaterThanOrEqualTo(4));
+        }
+        finally
+        {
+            if (File.Exists(path)) File.Delete(path);
+        }
     }
 
     [Test]
@@ -439,6 +450,39 @@ internal class SpectralLibraryTests
 
     #endregion
 
+    [Test]
+    public static void TheMslFormatIsActuallyWritable()
+    {
+        var library = new List<LibrarySpectrum>
+        {
+            SpectrumWith(new MatchedFragmentIon(
+                new Product(ProductType.b, FragmentationTerminus.N, 226.0953, 2, 2, 0), 227.1026, 1.0, 1))
+        };
+        var options = PermissiveOptions;
+        options.OutputFormat = SpectralLibraryFormat.Msl;
+
+        string path = Path.Combine(Path.GetTempPath(), $"pgtest_{Guid.NewGuid():N}.msl");
+        try
+        {
+            Assert.DoesNotThrow(() =>
+                new SpectralLibraryGenerator(new List<SpectralLibraryPeptide>(), options, path).WriteLibrary(library));
+            Assert.That(new FileInfo(path).Length, Is.GreaterThan(0));
+        }
+        finally
+        {
+            if (File.Exists(path)) File.Delete(path);
+        }
+    }
+
+    [Test]
+    public static void AMaskThatDoesNotDescribeThePredictionsIsRejected()
+    {
+        var prediction = PredictionFor(MzLibSequence, UnimodSequence);
+
+        Assert.Throws<ArgumentException>(() =>
+            GeneratorWith(PermissiveOptions).ApplyFragmentFilters(new[] { prediction }, new[] { true, true }));
+    }
+
     #region Helpers
 
     private static LibrarySpectrum SpectrumWith(params MatchedFragmentIon[] ions) =>
@@ -456,7 +500,7 @@ internal class SpectralLibraryTests
             alignedRetentionTimes: new[] { retentionTime },
             warning: out _,
             filepath: null,
-            minIntensityFilter: 1e-6);
+            minIntensityFilter: SpectralLibraryGenerator.MinimumAbsoluteIntensity);
 
     private static SpectralLibraryGenerator GeneratorWith(SpectralLibraryExportOptions options) =>
         new(new List<SpectralLibraryPeptide>(), options, "unused.msp");

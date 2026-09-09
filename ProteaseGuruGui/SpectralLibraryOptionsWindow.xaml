@@ -119,7 +119,12 @@
     </Window.Resources>
 
     <Grid Style="{StaticResource PageGridStyle}" Margin="10">
-        <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto">
             <StackPanel x:Name="settingsPanel" Orientation="Vertical">
 
                 <!-- Selection Boxes -->
@@ -170,6 +175,18 @@
                     </StackPanel>
                 </StackPanel>
 
+                <!-- Summary -->
+                <Label Content="Selection Summary" HorizontalAlignment="Center" Style="{StaticResource SectionHeaderStyle}"/>
+                <Border BorderBrush="#131313" BorderThickness="1" Margin="15,5" Padding="10" Width="350" Background="White">
+                    <StackPanel>
+                        <TextBlock TextWrapping="Wrap" FontSize="11" TextAlignment="Center">
+                            <Run Text="Proteases: "/><Run x:Name="runProteaseCount" Text="0" FontWeight="Bold"/>
+                            <LineBreak/>
+                            <Run Text="Proteins: "/><Run x:Name="runProteinCount" Text="0" FontWeight="Bold"/>
+                        </TextBlock>
+                    </StackPanel>
+                </Border>
+
                 <!-- Fragment Intensity Prediction Options -->
                 <Expander Header="Fragment Intensity Prediction Options" IsExpanded="True">
                     <StackPanel Orientation="Vertical" Background="{StaticResource BackgroundColor}">
@@ -177,8 +194,7 @@
                         <!-- Fragment Prediction Model -->
                         <StackPanel Orientation="Horizontal" Margin="15,5">
                             <Label Content="Model:" FontWeight="Bold" Margin="15,0" VerticalAlignment="Center"/>
-                            <ComboBox x:Name="cbFragmentModel" Margin="0,5" Width="200"
-                                      SelectionChanged="FragmentModel_SelectionChanged" VerticalAlignment="Center">
+                            <ComboBox x:Name="cbFragmentModel" Margin="0,5" Width="200" VerticalAlignment="Center">
                                 <ComboBoxItem Content="Prosit 2020 Intensity HCD" IsSelected="True" IsEnabled="False" Tag="Prosit2020IntensityHCD" />
                             </ComboBox>
                         </StackPanel>
@@ -279,32 +295,20 @@
                     </ComboBox>
                 </StackPanel>
 
-                <!-- Summary -->
-                <Label Content="Selection Summary" HorizontalAlignment="Center" Style="{StaticResource SectionHeaderStyle}"/>
-                <Border BorderBrush="#131313" BorderThickness="1" Margin="15,5" Padding="10" Width="350" Background="White">
-                    <StackPanel>
-                        <TextBlock TextWrapping="Wrap" FontSize="11" TextAlignment="Center">
-                            <Run Text="Proteases: "/><Run x:Name="runProteaseCount" Text="0" FontWeight="Bold"/>
-                            <LineBreak/>
-                            <Run Text="Proteins: "/><Run x:Name="runProteinCount" Text="0" FontWeight="Bold"/>
-                        </TextBlock>
-                    </StackPanel>
-                </Border>
-
-                <!-- Progress -->
-                <TextBlock x:Name="statusText" Text="" FontSize="11" FontStyle="Italic"
-                           Foreground="#333333" HorizontalAlignment="Center" TextWrapping="Wrap"
-                           Margin="20,10,20,0"/>
-
-                <!-- Buttons -->
-                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,10,0,20">
-                    <Button x:Name="btnExport" Content="Export" Click="Export_Click" 
-                            Style="{StaticResource ImportantButtonStyle}" Margin="5"/>
-                    <Button x:Name="btnCancel" Content="Close" Click="Cancel_Click" 
-                            Style="{StaticResource ImportantButtonStyle}" Margin="5"/>
-                </StackPanel>
-
             </StackPanel>
         </ScrollViewer>
+
+        <StackPanel Grid.Row="1" Orientation="Vertical">
+            <TextBlock x:Name="statusText" Text="" FontSize="11" FontStyle="Italic"
+                       Foreground="#333333" HorizontalAlignment="Center" TextWrapping="Wrap"
+                       Margin="20,10,20,0"/>
+
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,10,0,10">
+                <Button x:Name="btnExport" Content="Export" Click="Export_Click"
+                        Style="{StaticResource ImportantButtonStyle}" Margin="5"/>
+                <Button x:Name="btnCancel" Content="Close" Click="Cancel_Click"
+                        Style="{StaticResource ImportantButtonStyle}" Margin="5"/>
+            </StackPanel>
+        </StackPanel>
     </Grid>
 </Window>

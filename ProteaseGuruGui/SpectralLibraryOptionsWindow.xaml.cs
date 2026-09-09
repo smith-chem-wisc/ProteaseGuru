@@ -27,11 +27,9 @@ namespace ProteaseGuru.Gui
 
         /// <param name="source">Supplies the selectable proteases and proteins, and later the peptides</param>
         /// <param name="currentlySelectedProteases">Pre-selected in the list</param>
-        /// <param name="currentlySelectedProtein">Pre-selected in the list</param>
         public SpectralLibraryOptionsWindow(
             ISpectralLibraryPeptideSource source,
-            List<string>? currentlySelectedProteases = null,
-            string? currentlySelectedProtein = null)
+            List<string>? currentlySelectedProteases = null)
         {
             InitializeComponent();
             Source = source;
@@ -57,12 +55,6 @@ namespace ProteaseGuru.Gui
                 }
             }
 
-            if (!string.IsNullOrEmpty(currentlySelectedProtein) && _allProteins.Contains(currentlySelectedProtein))
-            {
-                _selectedProteins.Add(currentlySelectedProtein);
-                lbProteins.SelectedItems.Add(currentlySelectedProtein);
-            }
-
             if (!source.SupportsDetectabilityFilter)
             {
                 // Detectability is only predicted during a run, so ticking this against an on-demand
@@ -74,18 +66,6 @@ namespace ProteaseGuru.Gui
             }
 
             UpdateSummary();
-        }
-
-        private void FragmentModel_SelectionChanged(object sender, SelectionChangedEventArgs e)
-        {
-            if (cbFragmentModel.SelectedItem is ComboBoxItem selectedItem)
-            {
-                string modelTag = selectedItem?.Tag?.ToString();
-                if (!string.IsNullOrEmpty(modelTag) && modelTag != "Prosit2020IntensityHCD")
-                {
-                    throw new NotImplementedException($"Model {modelTag ?? "null"} is not implemented yet. Only Prosit2020IntensityHCD is currently supported.");
-                }
-            }
         }
 
         private async void Export_Click(object sender, RoutedEventArgs e)
@@ -121,21 +101,33 @@ namespace ProteaseGuru.Gui
 
         private async Task RunExportAsync(string outputPath)
         {
-            var peptides = Source.GetPeptides(ExportOptions);
-            if (peptides.Count == 0)
-            {
-                statusText.Text = "No peptides match the selected proteases and proteins.";
-                return;
-            }
-
             BeginExport();
             try
             {
-                var generator = new SpectralLibraryGenerator(peptides, ExportOptions, outputPath);
-                var progress = new Progress<string>(message => statusText.Text = message);
+                IProgress<string> progress = new Progress<string>(message => statusText.Text = message);
+                progress.Report("Gathering peptides...");
 
-                var spectra = await Task.Run(
-                    () => generator.GenerateLibrary(progress, _exportCts!.Token), _exportCts!.Token);
+                // Gathering is a full digest for an on-demand source, so it runs off the UI thread
+                // with the generator rather than freezing the window before the export appears to start.
+                var spectra = await Task.Run(() =>
+                {
+                    var peptides = Source.GetPeptides(ExportOptions);
+                    _exportCts!.Token.ThrowIfCancellationRequested();
+
+                    if (peptides.Count == 0)
+                    {
+                        return null;
+                    }
+
+                    return new SpectralLibraryGenerator(peptides, ExportOptions, outputPath)
+                        .GenerateLibrary(progress, _exportCts.Token);
+                }, _exportCts!.Token);
+
+                if (spectra == null)
+                {
+                    statusText.Text = "No peptides match the selected proteases and proteins.";
+                    return;
+                }
 
                 NotificationService.Instance.AddNotification(
                     $"Spectral library generated with {spectra.Count} spectra. File saved to: {outputPath}",
@@ -166,6 +158,7 @@ namespace ProteaseGuru.Gui
             settingsPanel.IsEnabled = false;
             btnExport.Content = "Cancel Export";
             btnCancel.IsEnabled = false;
+            statusText.Text = string.Empty;
         }
 
         private void EndExport()

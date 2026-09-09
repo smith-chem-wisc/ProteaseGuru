@@ -656,8 +656,7 @@ namespace ProteaseGuru.Gui
             ProteinCovMap.Content = new ProteinResultsWindow(peptidesByFile, ParametersViewModel.Parameters, sequenceCoverageByProtease);
             AllHistogramsTab.Content = new HistogramWindow(peptidesByFile, ParametersViewModel.Parameters, sequenceCoverageByProtease);
             IndividualProteinAnalyzerTab.Content = new IndividualProteinAnalyzerWindow(
-                peptidesByFile, ParametersViewModel.Parameters, sequenceCoverageByProtease,
-                fastaPath: ProteinDbObservableCollection.Any() ? ProteinDbObservableCollection.First().FilePath : null);
+                peptidesByFile, ParametersViewModel.Parameters, sequenceCoverageByProtease);
             AllResultsTab.IsSelected = true; // switch to results tab
             RunTaskButton.IsEnabled = true; // allow user to run new task
         }
@@ -1099,9 +1098,7 @@ namespace ProteaseGuru.Gui
                 }
             }
 
-            IndividualProteinAnalyzerTab.Content = new IndividualProteinAnalyzerWindow(
-                allProteins,
-                fastaPath: ProteinDbObservableCollection.First().FilePath);
+            IndividualProteinAnalyzerTab.Content = new IndividualProteinAnalyzerWindow(allProteins);
         }
 
         private void NewoutLabelStatus(object sender, StringEventArgs s)

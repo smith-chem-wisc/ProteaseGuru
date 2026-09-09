@@ -637,9 +637,8 @@ namespace ProteaseGuru.Gui
             var source = new ResultsBackedPeptideSource(_analyzer);
 
             List<string>? currentProteases = SelectedProteases.Any() ? SelectedProteases : null;
-            string? currentProtein = SelectedProtein?.Protein.Accession;
 
-            new SpectralLibraryOptionsWindow(source, currentProteases, currentProtein)
+            new SpectralLibraryOptionsWindow(source, currentProteases)
             {
                 Owner = Window.GetWindow(this)
             }.Show();
