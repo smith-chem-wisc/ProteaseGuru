@@ -120,7 +120,7 @@
 
     <Grid Style="{StaticResource PageGridStyle}" Margin="10">
         <ScrollViewer VerticalScrollBarVisibility="Auto">
-            <StackPanel Orientation="Vertical">
+            <StackPanel x:Name="settingsPanel" Orientation="Vertical">
 
                 <!-- Selection Boxes -->
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
@@ -186,15 +186,22 @@
                         <!-- Charge States -->
                         <StackPanel Orientation="Horizontal" Margin="15,5">
                             <Label Content="Charge States to Predict:" FontWeight="Bold" Margin="15,0" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                            <CheckBox x:Name="cbCharge1" Content="1+" IsChecked="False" Margin="5,5" VerticalAlignment="Center"/>
                             <CheckBox x:Name="cbCharge2" Content="2+" IsChecked="True" Margin="5,5" VerticalAlignment="Center"/>
                             <CheckBox x:Name="cbCharge3" Content="3+" IsChecked="True" Margin="5,5" VerticalAlignment="Center"/>
                             <CheckBox x:Name="cbCharge4" Content="4+" IsChecked="False" Margin="5,5" VerticalAlignment="Center"/>
+                            <CheckBox x:Name="cbCharge5" Content="5+" IsChecked="False" Margin="5,5" VerticalAlignment="Center"/>
+                            <CheckBox x:Name="cbCharge6" Content="6+" IsChecked="False" Margin="5,5" VerticalAlignment="Center"/>
                         </StackPanel>
 
                         <!-- Collision Energy -->
                         <StackPanel Orientation="Horizontal" Margin="15,5">
                             <Label Content="Collision Energy (NCE):" FontWeight="Bold" Margin="15,0" VerticalAlignment="Center" HorizontalAlignment="Center"/>
-                            <gui:IntegerTextBoxControl x:Name="tbCollisionEnergy" Width="60" Text="30" LowerBound="0" UpperBound="100" Margin="5,5"/>
+                            <gui:IntegerTextBoxControl x:Name="tbCollisionEnergy" Width="60" Text="30" LowerBound="20" UpperBound="45" Margin="5,5">
+                                <gui:IntegerTextBoxControl.ToolTip>
+                                    <ToolTip Content="Prosit 2020 is calibrated for 20, 23, 25, 28, 30 and 35. Values between 20 and 45 are accepted." FontSize="10" Margin="35,0,5,5"/>
+                                </gui:IntegerTextBoxControl.ToolTip>
+                            </gui:IntegerTextBoxControl>
                             <Label Content="%" Margin="5,0"/>
                         </StackPanel>
                     </StackPanel>
@@ -210,7 +217,7 @@
                         </CheckBox>
                         <CheckBox x:Name="cbExcludeUndetectablePeptides" Content="Exclude Undetectable Peptides" IsChecked="False" Margin="15,5" FontWeight="Bold">
                             <CheckBox.ToolTip>
-                                <ToolTip Content="If checked, peptides predicted to have low detectability will be excluded." FontSize="10" Margin="35,0,5,5"/>
+                                <ToolTip x:Name="ttExcludeUndetectablePeptides" Content="If checked, peptides predicted to have low detectability will be excluded." FontSize="10" Margin="35,0,5,5"/>
                             </CheckBox.ToolTip>
                         </CheckBox>
                     </StackPanel>
@@ -284,11 +291,16 @@
                     </StackPanel>
                 </Border>
 
+                <!-- Progress -->
+                <TextBlock x:Name="statusText" Text="" FontSize="11" FontStyle="Italic"
+                           Foreground="#333333" HorizontalAlignment="Center" TextWrapping="Wrap"
+                           Margin="20,10,20,0"/>
+
                 <!-- Buttons -->
-                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,20">
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,10,0,20">
                     <Button x:Name="btnExport" Content="Export" Click="Export_Click" 
                             Style="{StaticResource ImportantButtonStyle}" Margin="5"/>
-                    <Button x:Name="btnCancel" Content="Cancel" Click="Cancel_Click" 
+                    <Button x:Name="btnCancel" Content="Close" Click="Cancel_Click" 
                             Style="{StaticResource ImportantButtonStyle}" Margin="5"/>
                 </StackPanel>
 

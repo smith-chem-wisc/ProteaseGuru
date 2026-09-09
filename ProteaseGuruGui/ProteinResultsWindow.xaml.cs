@@ -2,7 +2,6 @@ using System.Collections.ObjectModel;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using ProteaseGuru.Engine;
@@ -630,85 +629,20 @@ namespace ProteaseGuru.Gui
         #region Spectral Library Export
 
         /// <summary>
-        /// Opens the spectral library export options dialog
+        /// Opens the spectral library export dialog. It is not modal: an export runs for minutes, and
+        /// the dialog stays up to report progress and offer cancellation while the results stay usable.
         /// </summary>
-        private async void ExportSpectralLibrary(object sender, RoutedEventArgs e)
+        private void ExportSpectralLibrary(object sender, RoutedEventArgs e)
         {
             var source = new ResultsBackedPeptideSource(_analyzer);
-            var availableProteases = source.AvailableProteases.ToList();
-            var availableProteins = source.AvailableProteins.ToList();
 
-            // Get current selections to pre-populate the dialog
             List<string>? currentProteases = SelectedProteases.Any() ? SelectedProteases : null;
             string? currentProtein = SelectedProtein?.Protein.Accession;
 
-            // Show the options dialog with available data
-            var optionsWindow = new SpectralLibraryOptionsWindow(
-                availableProteases,
-                availableProteins,
-                currentProteases,
-                currentProtein
-            );
-
-            optionsWindow.Owner = Window.GetWindow(this);
-            optionsWindow.ShowDialog();
-
-            if (optionsWindow.DialogResultOk)
+            new SpectralLibraryOptionsWindow(source, currentProteases, currentProtein)
             {
-                await ExecuteSpectralLibraryExportAsync(source, optionsWindow.ExportOptions);
-            }
-        }
-
-        /// <summary>
-        /// Executes the spectral library export based on user options
-        /// </summary>
-        private async Task ExecuteSpectralLibraryExportAsync(ISpectralLibraryPeptideSource source, SpectralLibraryExportOptions options)
-        {
-            NotificationService.Instance.AddNotification("Starting spectral library export...", NotificationType.Information);
-            try
-            {
-                var saveDialog = new Microsoft.Win32.SaveFileDialog
-                {
-                    Filter = options.OutputFormat.FileFilter(),
-                    DefaultExt = options.OutputFormat.Extension(),
-                    FileName = $"SpectralLibrary_{DateTime.Now:yyyyMMdd_HHmmss}"
-                };
-
-                if (saveDialog.ShowDialog() != true)
-                {
-                    return;
-                }
-
-                var peptidesToExport = source.GetPeptides(options);
-
-                if (!peptidesToExport.Any())
-                {
-                    NotificationService.Instance.AddNotification("No peptides found for the selected proteases and proteins. Export cancelled.", NotificationType.Error);
-                    return;
-                }
-
-                NotificationService.Instance.AddNotification($"Generating spectral library for {peptidesToExport.Count} peptides. This may take several minutes...", NotificationType.Information);
-
-                var generator = new SpectralLibraryGenerator(
-                    peptidesToExport,
-                    options,
-                    saveDialog.FileName);
-
-                // Milestones only; the export runs for minutes and used to report nothing until it finished.
-                var progress = new Progress<string>(message =>
-                    NotificationService.Instance.AddNotification(message, NotificationType.Information));
-
-                Mouse.OverrideCursor = Cursors.Wait;
-                var result = await Task.Run(() => generator.GenerateLibrary(progress));
-                Mouse.OverrideCursor = null;
-
-                NotificationService.Instance.AddNotification($"Spectral library generated with {result.Count} spectra. File saved to: {saveDialog.FileName}", NotificationType.Success);
-            }
-            catch (Exception ex)
-            {
-                Mouse.OverrideCursor = null;
-                NotificationService.Instance.AddNotification($"Error generating spectral library: {ex.Message}\n\n{ex.StackTrace}", NotificationType.Error);
-            }
+                Owner = Window.GetWindow(this)
+            }.Show();
         }
 
         #endregion

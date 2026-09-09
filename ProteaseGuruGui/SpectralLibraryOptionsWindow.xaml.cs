@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.Windows;
 using System.Windows.Controls;
+using Microsoft.Win32;
 using ProteaseGuru.Tasks;
 
 namespace ProteaseGuru.Gui
@@ -8,7 +9,9 @@ namespace ProteaseGuru.Gui
     public partial class SpectralLibraryOptionsWindow : Window
     {
         public SpectralLibraryExportOptions ExportOptions { get; private set; }
-        public bool DialogResultOk { get; private set; }
+
+        private CancellationTokenSource? _exportCts;
+        private bool _isExporting;
 
         private ObservableCollection<string> _allProteases;
         private ObservableCollection<string> _allProteins;
@@ -17,23 +20,25 @@ namespace ProteaseGuru.Gui
         private bool _isRefreshingProteinFilter;
 
         /// <summary>
-        /// Constructor for spectral library options window
+        /// The peptides this export will draw from. Both the digestion results and the individual
+        /// protein analyzer supply one, so the dialog does not care which produced them.
         /// </summary>
-        /// <param name="availableProteases">List of proteases available in the digestion results</param>
-        /// <param name="availableProteins">List of protein accessions available in the digestion results</param>
-        /// <param name="currentlySelectedProteases">Currently selected proteases in ProteinResultsWindow (will be pre-selected)</param>
-        /// <param name="currentlySelectedProtein">Currently selected protein in ProteinResultsWindow (will be pre-selected)</param>
+        public ISpectralLibraryPeptideSource Source { get; }
+
+        /// <param name="source">Supplies the selectable proteases and proteins, and later the peptides</param>
+        /// <param name="currentlySelectedProteases">Pre-selected in the list</param>
+        /// <param name="currentlySelectedProtein">Pre-selected in the list</param>
         public SpectralLibraryOptionsWindow(
-            List<string> availableProteases,
-            List<string> availableProteins,
+            ISpectralLibraryPeptideSource source,
             List<string>? currentlySelectedProteases = null,
             string? currentlySelectedProtein = null)
         {
             InitializeComponent();
+            Source = source;
 
             // Initialize collections
-            _allProteases = new ObservableCollection<string>(availableProteases.OrderBy(p => p));
-            _allProteins = new ObservableCollection<string>(availableProteins.OrderBy(p => p));
+            _allProteases = new ObservableCollection<string>(source.AvailableProteases.OrderBy(p => p));
+            _allProteins = new ObservableCollection<string>(source.AvailableProteins.OrderBy(p => p));
             _filteredProteins = new ObservableCollection<string>(_allProteins);
 
             // Populate ListBoxes
@@ -58,6 +63,16 @@ namespace ProteaseGuru.Gui
                 lbProteins.SelectedItems.Add(currentlySelectedProtein);
             }
 
+            if (!source.SupportsDetectabilityFilter)
+            {
+                // Detectability is only predicted during a run, so ticking this against an on-demand
+                // digest would silently do nothing.
+                cbExcludeUndetectablePeptides.IsChecked = false;
+                cbExcludeUndetectablePeptides.IsEnabled = false;
+                ttExcludeUndetectablePeptides.Content =
+                    "Detectability is only predicted during a digestion run, so this filter does not apply to these peptides.";
+            }
+
             UpdateSummary();
         }
 
@@ -73,16 +88,99 @@ namespace ProteaseGuru.Gui
             }
         }
 
-        private void Export_Click(object sender, RoutedEventArgs e)
+        private async void Export_Click(object sender, RoutedEventArgs e)
         {
-            // Validate inputs
+            if (_isExporting)
+            {
+                _exportCts?.Cancel();
+                statusText.Text = "Cancelling after the current step...";
+                return;
+            }
+
             if (!ValidateInputs())
             {
                 return;
             }
 
-            // Build export options
-            ExportOptions = new SpectralLibraryExportOptions
+            ExportOptions = BuildExportOptions();
+
+            var saveDialog = new SaveFileDialog
+            {
+                Filter = ExportOptions.OutputFormat.FileFilter(),
+                DefaultExt = ExportOptions.OutputFormat.Extension(),
+                FileName = $"SpectralLibrary_{DateTime.Now:yyyyMMdd_HHmmss}"
+            };
+
+            if (saveDialog.ShowDialog() != true)
+            {
+                return;
+            }
+
+            await RunExportAsync(saveDialog.FileName);
+        }
+
+        private async Task RunExportAsync(string outputPath)
+        {
+            var peptides = Source.GetPeptides(ExportOptions);
+            if (peptides.Count == 0)
+            {
+                statusText.Text = "No peptides match the selected proteases and proteins.";
+                return;
+            }
+
+            BeginExport();
+            try
+            {
+                var generator = new SpectralLibraryGenerator(peptides, ExportOptions, outputPath);
+                var progress = new Progress<string>(message => statusText.Text = message);
+
+                var spectra = await Task.Run(
+                    () => generator.GenerateLibrary(progress, _exportCts!.Token), _exportCts!.Token);
+
+                NotificationService.Instance.AddNotification(
+                    $"Spectral library generated with {spectra.Count} spectra. File saved to: {outputPath}",
+                    NotificationType.Success);
+                Close();
+            }
+            catch (OperationCanceledException)
+            {
+                statusText.Text = "Export cancelled.";
+            }
+            catch (Exception ex)
+            {
+                statusText.Text = $"Export failed: {ex.Message}";
+                NotificationService.Instance.AddNotification(
+                    $"Error generating spectral library: {ex.Message}", NotificationType.Error);
+            }
+            finally
+            {
+                EndExport();
+            }
+        }
+
+        private void BeginExport()
+        {
+            _isExporting = true;
+            _exportCts?.Dispose();
+            _exportCts = new CancellationTokenSource();
+            settingsPanel.IsEnabled = false;
+            btnExport.Content = "Cancel Export";
+            btnCancel.IsEnabled = false;
+        }
+
+        private void EndExport()
+        {
+            _isExporting = false;
+            _exportCts?.Dispose();
+            _exportCts = null;
+            settingsPanel.IsEnabled = true;
+            btnExport.Content = "Export";
+            btnCancel.IsEnabled = true;
+        }
+
+        private SpectralLibraryExportOptions BuildExportOptions()
+        {
+            return new SpectralLibraryExportOptions
             {
                 SelectedProteases = lbProteases.SelectedItems.Cast<string>().ToList(),
                 SelectedProteins = _selectedProteins.ToList(),
@@ -106,15 +204,16 @@ namespace ProteaseGuru.Gui
 
                 OutputFormat = Enum.Parse<SpectralLibraryFormat>(((ComboBoxItem)cbOutputFormat.SelectedItem).Tag.ToString()!, ignoreCase: true)
             };
-
-            DialogResultOk = true;
-            Close();
         }
 
-        private void Cancel_Click(object sender, RoutedEventArgs e)
+        private void Cancel_Click(object sender, RoutedEventArgs e) => Close();
+
+        protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
         {
-            DialogResultOk = false;
-            Close();
+            // Cancellation lands at the next stage boundary, so the export may outlive the window
+            // briefly; its progress reports are harmless once nobody is watching them.
+            _exportCts?.Cancel();
+            base.OnClosing(e);
         }
 
         private bool ValidateInputs()
@@ -208,10 +307,15 @@ namespace ProteaseGuru.Gui
 
         private List<int> GetSelectedChargeStates()
         {
+            // Prosit 2020 HCD accepts precursor charges 1-6; 7 is not offered because the model
+            // rejects it, which the analyzer window used to hide by dropping it silently.
             var charges = new List<int>();
+            if (cbCharge1.IsChecked == true) charges.Add(1);
             if (cbCharge2.IsChecked == true) charges.Add(2);
             if (cbCharge3.IsChecked == true) charges.Add(3);
             if (cbCharge4.IsChecked == true) charges.Add(4);
+            if (cbCharge5.IsChecked == true) charges.Add(5);
+            if (cbCharge6.IsChecked == true) charges.Add(6);
             return charges;
         }
 
