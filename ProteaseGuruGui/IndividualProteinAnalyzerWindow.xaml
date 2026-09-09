@@ -202,8 +202,8 @@ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
 
                     <!--Header label with view toggle button-->
                     <Grid Grid.Row="0" Style="{StaticResource InternalGridStyle}">
-                        <!-- The buttons size to content and the header label absorbs the squeeze, so
-                             narrowing this pane cannot clip the export button out of reach. -->
+                        <!-- Auto on the button column and star on the label: narrowing this pane
+                             squeezes the label rather than clipping a button out of reach. -->
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*"/>
                             <ColumnDefinition Width="Auto"/>

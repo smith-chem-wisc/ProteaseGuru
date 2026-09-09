@@ -28,7 +28,6 @@ namespace ProteaseGuru.Gui
         private DigestionConditionsSetupViewModel _allProteaseVm;
         private readonly SeekMaximumCoverage _seeker = new SeekMaximumCoverage();
 
-
         private readonly Dictionary<string, Color> _stableProteaseColors;
         private readonly Dictionary<string, SolidColorBrush> _stableProteaseBrushes;
 

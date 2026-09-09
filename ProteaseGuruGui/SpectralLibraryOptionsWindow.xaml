@@ -233,7 +233,7 @@
                         </CheckBox>
                         <CheckBox x:Name="cbExcludeUndetectablePeptides" Content="Exclude Undetectable Peptides" IsChecked="False" Margin="15,5" FontWeight="Bold">
                             <CheckBox.ToolTip>
-                                <ToolTip x:Name="ttExcludeUndetectablePeptides" Content="If checked, peptides predicted to have low detectability are excluded. The detectability model accepts no modifications, so it judges the unmodified sequence." FontSize="10" Margin="35,0,5,5"/>
+                                <ToolTip Content="If checked, peptides predicted to have low detectability are excluded. The detectability model accepts no modifications, so it judges the unmodified sequence." FontSize="10" Margin="35,0,5,5"/>
                             </CheckBox.ToolTip>
                         </CheckBox>
                         <StackPanel Orientation="Horizontal" Margin="35,0,15,5"

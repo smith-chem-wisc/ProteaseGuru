@@ -7,22 +7,9 @@ namespace ProteaseGuru.Tasks;
 
 /// <summary>
 /// A peptide bound for a spectral library, independent of where it came from.
-/// <paramref name="RetentionTime"/> is null when the source has none, in which case the generator
-/// predicts one. <paramref name="IsDetectable"/> is null when the source has no detectability data.
 /// </summary>
-public readonly record struct SpectralLibraryPeptide(string FullSequence, double? RetentionTime, bool? IsDetectable);
-
-/// <summary>
-/// PFly's converter allows no modifications at all, so it has to strip what it cannot represent and
-/// assess the backbone. Rejecting instead would leave every modified peptide unassessed, and
-/// unassessed reads as undetectable everywhere it is consumed. The digestion run and the export ask
-/// the same question, so they build the model the same way.
-/// </summary>
-internal static class DetectabilityModel
-{
-    internal static PFly2024FineTuned Create() =>
-        new(modHandlingMode: SequenceConversionHandlingMode.RemoveIncompatibleElements);
-}
+/// <param name="RetentionTime">Null when the source has none; the generator predicts those.</param>
+public readonly record struct SpectralLibraryPeptide(string FullSequence, double? RetentionTime);
 
 /// <summary>
 /// Supplies the peptides a spectral library is built from, and the protease and protein choices the
@@ -35,8 +22,8 @@ public interface ISpectralLibraryPeptideSource
     IReadOnlyList<string> AvailableProteins { get; }
 
     /// <summary>
-    /// Gathering can be long-running -- an on-demand digest, and a detectability round trip when the
-    /// filter asks for one -- so it reports progress and observes cancellation.
+    /// Observes cancellation, and reports progress where gathering is long-running: an on-demand
+    /// digest, and a detectability round trip when the filter asks for one.
     /// </summary>
     List<SpectralLibraryPeptide> GetPeptides(
         SpectralLibraryExportOptions options,
@@ -83,10 +70,7 @@ public class ResultsBackedPeptideSource : ISpectralLibraryPeptideSource
         return peptides
             .Where(p => !options.ExcludeUndetectablePeptides || IsDetectableAtThreshold(p, options.DetectabilityThreshold))
             .DistinctBy(p => p.FullSequence)
-            .Select(p => new SpectralLibraryPeptide(
-                p.FullSequence,
-                p.ChronologerRetentionTime,
-                p.PflyDetectability))
+            .Select(p => new SpectralLibraryPeptide(p.FullSequence, p.ChronologerRetentionTime))
             .ToList();
     }
 
@@ -107,7 +91,7 @@ public class ResultsBackedPeptideSource : ISpectralLibraryPeptideSource
 /// Digests on demand with the protease parameters the caller currently has selected, so a library can
 /// be exported before any run has happened and against parameters the run did not use. Peptides carry
 /// no retention time; the generator predicts those. Detectability is predicted here, but only when the
-/// filter asks for it, since it costs a network round trip and nothing else reads it.
+/// filter asks for it, since it costs a network round trip.
 /// </summary>
 public class OnDemandDigestPeptideSource : ISpectralLibraryPeptideSource
 {
@@ -156,7 +140,7 @@ public class OnDemandDigestPeptideSource : ISpectralLibraryPeptideSource
                 {
                     if (seen.Add(peptide.FullSequence))
                     {
-                        peptides.Add(new SpectralLibraryPeptide(peptide.FullSequence, RetentionTime: null, IsDetectable: null));
+                        peptides.Add(new SpectralLibraryPeptide(peptide.FullSequence, RetentionTime: null));
                     }
                 }
             }
@@ -185,22 +169,14 @@ public class OnDemandDigestPeptideSource : ISpectralLibraryPeptideSource
         var predictions = DetectabilityModel.Create()
             .Predict(peptides.Select(p => new DetectabilityPredictionInput(p.FullSequence)).ToList());
 
-        var detectable = new List<SpectralLibraryPeptide>(peptides.Count);
-        for (int i = 0; i < peptides.Count; i++)
-        {
-            if (IsDetectable(predictions[i].DetectabilityProbabilities, detectabilityThreshold))
-            {
-                detectable.Add(peptides[i] with { IsDetectable = true });
-            }
-        }
-
-        return detectable;
+        return peptides
+            .Where((_, i) => IsDetectable(predictions[i].DetectabilityProbabilities, detectabilityThreshold))
+            .ToList();
     }
 
     /// <summary>
     /// PFly reports the probability a peptide is <em>not</em> detectable; the filter is stated the
-    /// other way round. A peptide it could not assess counts as undetectable, matching how a
-    /// digestion run's stored value is read.
+    /// other way round. One it could not assess counts as undetectable.
     /// </summary>
     internal static bool IsDetectable(
         (double NotDetectable, double LowDetectability, double IntermediateDetectability, double HighDetectability)? probabilities,

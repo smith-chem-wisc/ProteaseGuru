@@ -118,6 +118,7 @@ internal class SharedChronologerPredictorTests
 
         using var second = SharedChronologerPredictor.Open();
 
+        Assert.That(SharedChronologerPredictor.IsModelLoaded, Is.True, "the model must load again");
         Assert.That(second.Predict(peptides, maxThreads: 1), Has.Count.EqualTo(peptides.Count));
     }
 

@@ -6,15 +6,11 @@ namespace ProteaseGuru.Tasks;
 /// <summary>
 /// Process-wide access to the Chronologer retention time predictor.
 ///
-/// Constructing a predictor extracts Chronologer's weights from an embedded resource to a fixed path
-/// under the temp directory and loads the model from it, so two constructions race on one file. That,
-/// not coexistence, is the hazard: predictors that already exist are independent, and each serializes
-/// its own forward passes internally. Sharing one instance behind this class keeps construction
-/// serialized and avoids paying the load repeatedly.
+/// Constructing a predictor extracts Chronologer's weights to a fixed path under the temp directory,
+/// so two constructions race on one file. Sharing one instance keeps construction serialized.
 ///
 /// Callers open a session for the span of work that needs the model. It loads on the first session and
-/// unloads when the last one closes, so a digestion run pays the load cost once however many databases
-/// and proteases it covers, and a concurrent consumer shares that instance rather than building another.
+/// unloads when the last closes, so a run pays the load cost once however many databases it covers.
 /// </summary>
 public static class SharedChronologerPredictor
 {
@@ -69,7 +65,7 @@ public static class SharedChronologerPredictor
         internal Session(ChronologerRetentionTimePredictor predictor) => _predictor = predictor;
 
         /// <summary>
-        /// The underlying predictor, for callers needing an mzLib API this session does not wrap.
+        /// The underlying predictor, for tests exercising an mzLib API this session does not wrap.
         /// Do not retain it beyond the life of the session.
         /// </summary>
         internal ChronologerRetentionTimePredictor Predictor

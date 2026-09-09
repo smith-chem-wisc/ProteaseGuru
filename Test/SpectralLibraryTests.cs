@@ -12,6 +12,7 @@ using Proteomics.ProteolyticDigestion;
 namespace ProteaseGuru.Test;
 
 [TestFixture]
+[NonParallelizable] // Opens the process-wide Chronologer model, as the sibling fixtures do.
 internal class SpectralLibraryTests
 {
     private const string MzLibSequence = "PEPTC[Common Fixed:Carbamidomethyl on C]IDEK";
@@ -116,7 +117,7 @@ internal class SpectralLibraryTests
     [Test]
     public static void TheConfiguredModelMapsFragmentsOntoTheSubmittedSequence()
     {
-        var model = GeneratorWith(PermissiveOptions).CreateModel();
+        var model = GeneratorWith(PermissiveOptions).CreateIntensityModel();
 
         // The validated spelling is Unimod-encoded and has no parser, so mapping onto it cannot build
         // a peptide at all; see TheValidatedMappingModeCannotBuildModifiedPeptides.
@@ -132,11 +133,11 @@ internal class SpectralLibraryTests
         var options = PermissiveOptions;
 
         options.ExcludeIncompatiblePeptides = true;
-        Assert.That(GeneratorWith(options).CreateModel().ModHandlingMode,
+        Assert.That(GeneratorWith(options).CreateIntensityModel().ModHandlingMode,
             Is.EqualTo(SequenceConversionHandlingMode.ReturnNull));
 
         options.ExcludeIncompatiblePeptides = false;
-        Assert.That(GeneratorWith(options).CreateModel().ModHandlingMode,
+        Assert.That(GeneratorWith(options).CreateIntensityModel().ModHandlingMode,
             Is.EqualTo(SequenceConversionHandlingMode.RemoveIncompatibleElements));
     }
 
@@ -146,7 +147,7 @@ internal class SpectralLibraryTests
         var options = PermissiveOptions;
         options.PredictionModel = (FragmentIntensityPredictionModel)999;
 
-        Assert.Throws<NotSupportedException>(() => GeneratorWith(options).CreateModel());
+        Assert.Throws<NotSupportedException>(() => GeneratorWith(options).CreateIntensityModel());
     }
 
     #endregion
@@ -202,9 +203,9 @@ internal class SpectralLibraryTests
     {
         using var cancelled = new CancellationTokenSource();
         cancelled.Cancel();
-        var generator = new SpectralLibraryGenerator(new List<SpectralLibraryPeptide>(), PermissiveOptions, "unused.msp");
 
-        Assert.Throws<OperationCanceledException>(() => generator.GenerateLibrary(null, cancelled.Token));
+        Assert.Throws<OperationCanceledException>(
+            () => GeneratorWith(PermissiveOptions).GenerateLibrary(null, cancelled.Token));
     }
 
     #endregion
@@ -337,7 +338,7 @@ internal class SpectralLibraryTests
             new[] { true, true }, altered, PredictionFor("PEPTIDEK", "PEPTIDEK"));
 
         var reported = new List<string>();
-        SpectralLibraryGenerator.ReportRejectedInputs(model, new SynchronousProgress(reported.Add));
+        SpectralLibraryGenerator.ReportAlteredSequences(model, new SynchronousProgress(reported.Add));
 
         Assert.That(reported, Has.Exactly(1).Contains("1 peptides carried modifications"));
     }
@@ -389,9 +390,8 @@ internal class SpectralLibraryTests
         var model = new SeededHcdModel(FragmentIonMappingMode.MapToInputFullSequence, new[] { true, false },
             PredictionFor(MzLibSequence, UnimodSequence), PredictionFor(MzLibSequence, UnimodSequence));
 
-        Assert.DoesNotThrow(() => SpectralLibraryGenerator.ReportRejectedInputs(model, new Progress<string>(reported.Add)));
+        Assert.DoesNotThrow(() => SpectralLibraryGenerator.ReportRejectedInputs(model, new SynchronousProgress(reported.Add)));
 
-        SpinWait.SpinUntil(() => reported.Count > 0, TimeSpan.FromSeconds(5));
         Assert.That(reported.Single(), Does.Contain("1 of 2"));
     }
 
@@ -401,7 +401,8 @@ internal class SpectralLibraryTests
         var reported = new List<string>();
         var model = SeededModel(FragmentIonMappingMode.MapToInputFullSequence, PredictionFor(MzLibSequence, UnimodSequence));
 
-        SpectralLibraryGenerator.ReportRejectedInputs(model, new Progress<string>(reported.Add));
+        // Synchronous, or an empty list would pass whether or not anything was reported.
+        SpectralLibraryGenerator.ReportRejectedInputs(model, new SynchronousProgress(reported.Add));
 
         Assert.That(reported, Is.Empty);
     }
@@ -434,8 +435,8 @@ internal class SpectralLibraryTests
         options.ChargeStates = new List<int> { 2, 3 };
         var peptides = new List<SpectralLibraryPeptide>
         {
-            new("PEPTIDEK", RetentionTime: 10, IsDetectable: null),
-            new("ELVISLIVESK", RetentionTime: 20, IsDetectable: null)
+            new("PEPTIDEK", RetentionTime: 10),
+            new("ELVISLIVESK", RetentionTime: 20)
         };
         var generator = new SpectralLibraryGenerator(peptides, options, "unused.msp");
 
@@ -458,10 +459,9 @@ internal class SpectralLibraryTests
     public static void ANegativeRetentionTimeIsAPredictionNotAFailure()
     {
         // Chronologer predicts below zero for hydrophilic peptides; GSGSGSGSK is about -0.464.
-        var generator = new SpectralLibraryGenerator(new List<SpectralLibraryPeptide>(), PermissiveOptions, "unused.msp");
-        var peptides = new List<SpectralLibraryPeptide> { new("GSGSGSGSK", RetentionTime: null, IsDetectable: null) };
+                var peptides = new List<SpectralLibraryPeptide> { new("GSGSGSGSK", RetentionTime: null) };
 
-        var resolved = generator.ResolveRetentionTimes(peptides);
+        var resolved = SpectralLibraryGenerator.ResolveRetentionTimes(peptides);
 
         Assert.That(resolved["GSGSGSGSK"], Is.Not.Null);
         Assert.That(resolved["GSGSGSGSK"], Is.LessThan(0));
@@ -622,7 +622,7 @@ internal class SpectralLibraryTests
         MaximumMZThreshold = double.MaxValue,
         FilterByRelativeIntensity = false,
         FilterByIntensityRank = false,
-        IntensityRankThreshold = -1,
+        IntensityRankThreshold = null,
         OutputFormat = SpectralLibraryFormat.Msp
     };
 

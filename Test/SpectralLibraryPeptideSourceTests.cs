@@ -73,8 +73,6 @@ internal class SpectralLibraryPeptideSourceTests
 
         conditions.ApplyFixedCarbamidomethylation = false;
 
-        // The setter used to add regardless of the value, so unticking never removed it -- and
-        // ResetDigestionConditions, which sets false, applied the modification it should clear.
         Assert.That(proteinProteases.Any(p => p.ProteaseSpecificParams.FixedMods.Any(m => m.IdWithMotif.StartsWith("Carbamidomethyl"))), Is.False);
     }
 
@@ -91,7 +89,6 @@ internal class SpectralLibraryPeptideSourceTests
 
         Assert.That(peptides, Has.Count.EqualTo(1));
         Assert.That(peptides[0].RetentionTime, Is.EqualTo(42.5).Within(1e-9));
-        Assert.That(peptides[0].IsDetectable, Is.True);
     }
 
     [Test]
@@ -207,6 +204,17 @@ internal class SpectralLibraryPeptideSourceTests
     }
 
     [Test]
+    public static void GatheringFromRunResultsStopsWhenCancelled()
+    {
+        var source = SourceOver(PeptideWith("PEPTIDEK", 10, detectable: true));
+        using var cts = new CancellationTokenSource();
+        cts.Cancel();
+
+        Assert.Throws<OperationCanceledException>(() =>
+            source.GetPeptides(OptionsFor(source.AvailableProteases, source.AvailableProteins), null, cts.Token));
+    }
+
+    [Test]
     public static void UnselectedProteinsAndProteasesContributeNothing()
     {
         var source = SourceOver(PeptideWith("PEPTIDEK", 10, detectable: true));
@@ -242,17 +250,6 @@ internal class SpectralLibraryPeptideSourceTests
         cts.Cancel();
 
         Assert.Throws<OperationCanceledException>(() => source.GetPeptides(options, null, cts.Token));
-    }
-
-    [Test]
-    public static void GatheringFromRunResultsStopsWhenCancelled()
-    {
-        var source = SourceOver(PeptideWith("PEPTIDEK", 10, detectable: true));
-        using var cts = new CancellationTokenSource();
-        cts.Cancel();
-
-        Assert.Throws<OperationCanceledException>(() =>
-            source.GetPeptides(OptionsFor(source.AvailableProteases, source.AvailableProteins), null, cts.Token));
     }
 
     [TestCase(0.10, 0.5, false, TestName = "BelowThresholdIsNotDetectable")]
@@ -293,7 +290,6 @@ internal class SpectralLibraryPeptideSourceTests
 
         Assert.That(peptides, Is.Not.Empty);
         Assert.That(peptides.Select(p => p.RetentionTime), Is.All.Null);
-        Assert.That(peptides.Select(p => p.IsDetectable), Is.All.Null);
     }
 
     [Test]
@@ -324,14 +320,13 @@ internal class SpectralLibraryPeptideSourceTests
     [Test]
     public static void RetentionTimesArePredictedOnlyForPeptidesLackingThem()
     {
-        var generator = new SpectralLibraryGenerator(new List<SpectralLibraryPeptide>(), new SpectralLibraryExportOptions(), "unused.msp");
-        var peptides = new List<SpectralLibraryPeptide>
+                var peptides = new List<SpectralLibraryPeptide>
         {
-            new("PEPTIDEK", RetentionTime: 42.5, IsDetectable: null),
-            new("ELVISLIVESK", RetentionTime: null, IsDetectable: null)
+            new("PEPTIDEK", RetentionTime: 42.5),
+            new("ELVISLIVESK", RetentionTime: null)
         };
 
-        var resolved = generator.ResolveRetentionTimes(peptides);
+        var resolved = SpectralLibraryGenerator.ResolveRetentionTimes(peptides);
 
         Assert.That(resolved["PEPTIDEK"], Is.EqualTo(42.5).Within(1e-9), "an existing retention time must not be re-predicted");
         Assert.That(resolved["ELVISLIVESK"], Is.Not.Null, "a missing retention time must be predicted");
@@ -340,10 +335,9 @@ internal class SpectralLibraryPeptideSourceTests
     [Test]
     public static void ResolvingRetentionTimesTouchesNoModelWhenNoneAreMissing()
     {
-        var generator = new SpectralLibraryGenerator(new List<SpectralLibraryPeptide>(), new SpectralLibraryExportOptions(), "unused.msp");
-        var peptides = new List<SpectralLibraryPeptide> { new("PEPTIDEK", RetentionTime: 42.5, IsDetectable: null) };
+                var peptides = new List<SpectralLibraryPeptide> { new("PEPTIDEK", RetentionTime: 42.5) };
 
-        var resolved = generator.ResolveRetentionTimes(peptides);
+        var resolved = SpectralLibraryGenerator.ResolveRetentionTimes(peptides);
 
         Assert.That(resolved["PEPTIDEK"], Is.EqualTo(42.5).Within(1e-9));
         Assert.That(SharedChronologerPredictor.IsModelLoaded, Is.False);

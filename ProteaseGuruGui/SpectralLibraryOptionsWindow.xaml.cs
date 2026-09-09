@@ -8,7 +8,7 @@ namespace ProteaseGuru.Gui
 {
     public partial class SpectralLibraryOptionsWindow : Window
     {
-        public SpectralLibraryExportOptions ExportOptions { get; private set; }
+        private SpectralLibraryExportOptions _exportOptions = new();
 
         private CancellationTokenSource? _exportCts;
         private bool _isExporting;
@@ -23,7 +23,7 @@ namespace ProteaseGuru.Gui
         /// The peptides this export will draw from. Both the digestion results and the individual
         /// protein analyzer supply one, so the dialog does not care which produced them.
         /// </summary>
-        public ISpectralLibraryPeptideSource Source { get; }
+        private readonly ISpectralLibraryPeptideSource _source;
 
         /// <param name="source">Supplies the selectable proteases and proteins, and later the peptides</param>
         /// <param name="currentlySelectedProteases">Pre-selected in the list</param>
@@ -32,7 +32,7 @@ namespace ProteaseGuru.Gui
             List<string>? currentlySelectedProteases = null)
         {
             InitializeComponent();
-            Source = source;
+            _source = source;
 
             // Initialize collections
             _allProteases = new ObservableCollection<string>(source.AvailableProteases.OrderBy(p => p));
@@ -72,12 +72,12 @@ namespace ProteaseGuru.Gui
                 return;
             }
 
-            ExportOptions = BuildExportOptions();
+            _exportOptions = BuildExportOptions();
 
             var saveDialog = new SaveFileDialog
             {
-                Filter = ExportOptions.OutputFormat.FileFilter(),
-                DefaultExt = ExportOptions.OutputFormat.Extension(),
+                Filter = _exportOptions.OutputFormat.FileFilter(),
+                DefaultExt = _exportOptions.OutputFormat.Extension(),
                 FileName = $"SpectralLibrary_{DateTime.Now:yyyyMMdd_HHmmss}"
             };
 
@@ -101,14 +101,14 @@ namespace ProteaseGuru.Gui
                 // with the generator rather than freezing the window before the export appears to start.
                 var spectra = await Task.Run(() =>
                 {
-                    var peptides = Source.GetPeptides(ExportOptions, progress, _exportCts!.Token);
+                    var peptides = _source.GetPeptides(_exportOptions, progress, _exportCts!.Token);
 
                     if (peptides.Count == 0)
                     {
                         return null;
                     }
 
-                    return new SpectralLibraryGenerator(peptides, ExportOptions, outputPath)
+                    return new SpectralLibraryGenerator(peptides, _exportOptions, outputPath)
                         .GenerateLibrary(progress, _exportCts.Token);
                 }, _exportCts!.Token);
 
@@ -185,7 +185,7 @@ namespace ProteaseGuru.Gui
                 // UI collects a percentage (0-100); convert to a fraction of the max intensity for filtering.
                 RelativeIntensityThreshold = double.TryParse(tbRelIntThreshold.Text, out double intensityThreshold) ? intensityThreshold / 100.0 : 0,
                 FilterByIntensityRank = cbEnableIntensityRankFiltering.IsChecked == true,
-                IntensityRankThreshold = int.TryParse(tbRankThreshold.Text, out int rankThreshold) ? rankThreshold : -1, // -1 indicates keep all
+                IntensityRankThreshold = int.TryParse(tbRankThreshold.Text, out int rankThreshold) ? rankThreshold : null,
 
                 OutputFormat = Enum.Parse<SpectralLibraryFormat>(((ComboBoxItem)cbOutputFormat.SelectedItem).Tag.ToString()!, ignoreCase: true)
             };
@@ -214,7 +214,7 @@ namespace ProteaseGuru.Gui
             // Validate proteins selected
             if (_selectedProteins.Count == 0)
             {
-                var result = MessageBox.Show("Please select at least one protein.", "No Protein Selected",
+                MessageBox.Show("Please select at least one protein.", "No Protein Selected",
                     MessageBoxButton.OK, MessageBoxImage.Error);
                 return false;
             }
@@ -243,8 +243,8 @@ namespace ProteaseGuru.Gui
                 return false;
             }
 
-            if (!IsValidNumber(tbMinMzThreshold.Text, "minimum m/z threshold", 0, double.MaxValue) ||
-                !IsValidNumber(tbMaxMzThreshold.Text, "maximum m/z threshold", 0, double.MaxValue))
+            if (!RequireNumber(tbMinMzThreshold.Text, "minimum m/z threshold", 0, double.MaxValue) ||
+                !RequireNumber(tbMaxMzThreshold.Text, "maximum m/z threshold", 0, double.MaxValue))
             {
                 return false;
             }
@@ -262,7 +262,7 @@ namespace ProteaseGuru.Gui
             // NOTConverter ensures only one of the two intensity filtering options can be checked, so just check if either is checked and validate corresponding input
 
             if (cbEnableIntensityThresholdFiltering.IsChecked == true &&
-                !IsValidNumber(tbRelIntThreshold.Text, "minimum intensity threshold", 0, 100))
+                !RequireNumber(tbRelIntThreshold.Text, "minimum intensity threshold", 0, 100))
             {
                 return false;
             }
@@ -276,7 +276,7 @@ namespace ProteaseGuru.Gui
             }
 
             if (cbExcludeUndetectablePeptides.IsChecked == true &&
-                !IsValidNumber(tbDetectabilityThreshold.Text, "detectability threshold", 0, 1))
+                !RequireNumber(tbDetectabilityThreshold.Text, "detectability threshold", 0, 1))
             {
                 return false;
             }
@@ -294,10 +294,9 @@ namespace ProteaseGuru.Gui
 
         /// <summary>
         /// A decimal box can hold text that is neither empty nor a number -- a bare "." passes the
-        /// control's input filter, and its clamp does nothing when parsing fails. Checking only for
-        /// emptiness let such a value through to a silent fallback.
+        /// control's input filter, and its clamp does nothing when parsing fails.
         /// </summary>
-        private static bool IsValidNumber(string text, string fieldName, double minimum, double maximum)
+        private static bool RequireNumber(string text, string fieldName, double minimum, double maximum)
         {
             if (!double.TryParse(text, out double value))
             {
@@ -319,7 +318,7 @@ namespace ProteaseGuru.Gui
         private List<int> GetSelectedChargeStates()
         {
             // Prosit 2020 HCD accepts precursor charges 1-6; 7 is not offered because the model
-            // rejects it, which the analyzer window used to hide by dropping it silently.
+            // rejects it.
             var charges = new List<int>();
             if (cbCharge1.IsChecked == true) charges.Add(1);
             if (cbCharge2.IsChecked == true) charges.Add(2);

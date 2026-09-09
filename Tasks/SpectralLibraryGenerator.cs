@@ -1,16 +1,10 @@
-using System.ComponentModel;
-using System.Diagnostics;
-using Chemistry;
-using Omics.Fragmentation;
 using Omics.SequenceConversion;
 using Omics.SpectrumMatch;
 using PredictionClients.Koina.AbstractClasses;
-using PredictionClients.Koina.Interfaces;
 using PredictionClients.Koina.SupportedModels.FragmentIntensityModels;
 using PredictionClients.Koina.Util;
 using Proteomics.ProteolyticDigestion;
 using Readers.SpectralLibrary;
-
 
 namespace ProteaseGuru.Tasks
 {
@@ -74,7 +68,7 @@ namespace ProteaseGuru.Tasks
         public bool FilterByRelativeIntensity { get; set; }
         public double RelativeIntensityThreshold { get; set; }
         public bool FilterByIntensityRank { get; set; }
-        public int IntensityRankThreshold { get; set; }
+        public int? IntensityRankThreshold { get; set; }
 
         // Output options
         public SpectralLibraryFormat OutputFormat { get; set; } = SpectralLibraryFormat.Msp;
@@ -103,7 +97,7 @@ namespace ProteaseGuru.Tasks
         /// Builds the prediction model the options ask for. Separate from generation so the configuration
         /// can be asserted without a Koina round trip.
         /// </summary>
-        internal FragmentIntensityModel CreateModel()
+        internal FragmentIntensityModel CreateIntensityModel()
         {
             switch (_options.PredictionModel)
             {
@@ -129,7 +123,7 @@ namespace ProteaseGuru.Tasks
             IProgress<string>? progress = null,
             CancellationToken cancellationToken = default)
         {
-            var model = CreateModel();
+            var model = CreateIntensityModel();
 
             cancellationToken.ThrowIfCancellationRequested();
             progress?.Report($"Resolving retention times for {_peptides.Count} peptides...");
@@ -141,14 +135,13 @@ namespace ProteaseGuru.Tasks
             progress?.Report($"Predicting fragment intensities for {inputs.Count} spectra. This may take several minutes...");
             model.Predict(inputs);
             ReportRejectedInputs(model, progress);
+            ReportAlteredSequences(model, progress);
 
             cancellationToken.ThrowIfCancellationRequested();
             progress?.Report("Filtering fragment ions...");
             ApplyFragmentFilters(model.Predictions, model.ValidInputsMask);
 
-            // mzLib builds the spectra and collapses duplicates. It is asked not to write, because a
-            // spectrum the user's filters emptied has to be removed first: the MSP writer takes Max()
-            // over the peaks, so a single empty spectrum throws and the whole export is lost.
+            // Asked not to write: WriteLibrary has to drop emptied spectra first.
             var library = model.GenerateLibrarySpectraFromPredictions(
                 alignedRetentionTimes: rts.ToArray(),
                 warning: out _,
@@ -174,7 +167,7 @@ namespace ProteaseGuru.Tasks
         /// on demand rather than read back from a run - are predicted here, on the same sequence the
         /// intensity model is given, so both describe the same molecule.
         /// </summary>
-        internal Dictionary<string, double?> ResolveRetentionTimes(List<SpectralLibraryPeptide> peptides)
+        internal static Dictionary<string, double?> ResolveRetentionTimes(List<SpectralLibraryPeptide> peptides)
         {
             var known = new Dictionary<string, double?>(StringComparer.Ordinal);
             var toPredict = new List<PeptideWithSetModifications>();
@@ -208,6 +201,28 @@ namespace ProteaseGuru.Tasks
         /// dropped first: the MSP writer takes Max() over the peaks, so one empty spectrum would throw
         /// and cost the whole export.
         /// </summary>
+        /// <summary>
+        /// Counts the peptides whose sequence the model had to change in order to predict them. mzLib
+        /// records that on each prediction; the library still names the peptide the user asked about.
+        /// </summary>
+        internal static void ReportAlteredSequences(FragmentIntensityModel model, IProgress<string>? progress)
+        {
+            int altered = model.ValidInputsMask
+                .Select((valid, index) => (valid, index))
+                .Where(x => x.valid && model.Predictions[x.index].Warning != null)
+                .Select(x => model.Predictions[x.index].FullSequence)
+                .Distinct()
+                .Count();
+
+            if (altered > 0)
+            {
+                progress?.Report(
+                    $"{altered} peptides carried modifications {model.ModelName} cannot represent. Their " +
+                    "intensities were predicted without those modifications, but the library still names " +
+                    "the modified peptide.");
+            }
+        }
+
         internal void WriteLibrary(List<LibrarySpectrum> spectra, IProgress<string>? progress = null)
         {
             int emptied = spectra.RemoveAll(s => s.MatchedFragmentIons.Count == 0);
@@ -247,21 +262,6 @@ namespace ProteaseGuru.Tasks
         {
             int total = model.ValidInputsMask.Length;
             int rejected = model.ValidInputsMask.Count(valid => !valid);
-            int altered = model.ValidInputsMask
-                .Select((valid, index) => (valid, index))
-                .Where(x => x.valid && model.Predictions[x.index].Warning != null)
-                .Select(x => model.Predictions[x.index].FullSequence)
-                .Distinct()
-                .Count();
-
-            if (altered > 0)
-            {
-                progress?.Report(
-                    $"{altered} peptides carried modifications {model.ModelName} cannot represent. Their " +
-                    "intensities were predicted without those modifications, but the library still names " +
-                    "the modified peptide.");
-            }
-
             if (rejected == 0) return;
 
             if (rejected == total)
@@ -351,12 +351,11 @@ namespace ProteaseGuru.Tasks
                     keep.Add(i);
                 }
 
-                // -1 means no threshold was set.
-                if (_options.FilterByIntensityRank && _options.IntensityRankThreshold != -1)
+                if (_options.FilterByIntensityRank && _options.IntensityRankThreshold is { } rankLimit)
                 {
                     keep = keep
                         .OrderByDescending(i => prediction.FragmentIntensities[i])
-                        .Take(_options.IntensityRankThreshold)
+                        .Take(rankLimit)
                         .OrderBy(i => i)
                         .ToList();
                 }

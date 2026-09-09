@@ -104,9 +104,11 @@ namespace ProteaseGuru.Tasks
             sb.Append(PflyProbabilities?.HighDetectability);
             return sb.ToString();
         }
+
         /// <summary>
         /// Reads a retention time out of a results file. Files written before this column existed have
-        /// no value at all; within the column, both -1 and NaN were written to mean "no prediction".
+        /// no value at all. Within the column, NaN means no prediction; -1 meant the same in files
+        /// written by earlier versions.
         /// </summary>
         public static double? RetentionTimeFromStoredValue(double stored) =>
             double.IsFinite(stored) && stored != -1 ? stored : null;

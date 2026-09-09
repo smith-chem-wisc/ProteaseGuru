@@ -37,7 +37,7 @@ namespace ProteaseGuru.Tasks
 
         #endregion
 
-        #region Prediction Model Pools
+        #region Prediction Models
 
         // Chronologer is shared process-wide; this run holds a session for as long as it needs the model.
         private SharedChronologerPredictor.Session? _chronologerSession;
@@ -376,7 +376,7 @@ namespace ProteaseGuru.Tasks
 
         #endregion
 
-        #region Prediction Model Pool Management
+        #region Prediction Model Management
 
         private void ReleaseChronologerSession()
         {
