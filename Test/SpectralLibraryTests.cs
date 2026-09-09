@@ -139,9 +139,59 @@ internal class SpectralLibraryTests
     public static void AnUnsupportedPredictionModelIsRejected()
     {
         var options = PermissiveOptions;
-        options.PredictionModel = "Prosit2020IntensityCID";
+        options.PredictionModel = (FragmentIntensityPredictionModel)999;
 
         Assert.Throws<NotSupportedException>(() => GeneratorWith(options).CreateModel());
+    }
+
+    #endregion
+
+    #region Output formats
+
+    [Test]
+    public static void EveryFormatHasAMatchingFilterAndExtension()
+    {
+        foreach (SpectralLibraryFormat format in Enum.GetValues<SpectralLibraryFormat>())
+        {
+            // The save dialog's filter and its default extension have to agree, or the file lands with
+            // an extension mzLib routes somewhere else.
+            Assert.That(format.FileFilter(), Does.Contain("*" + format.Extension()),
+                $"{format}'s filter and extension disagree");
+        }
+    }
+
+    [Test]
+    public static void AnUnsupportedFormatIsRejectedRatherThanSilentlyIgnored()
+    {
+        var bogus = (SpectralLibraryFormat)999;
+
+        Assert.Throws<NotSupportedException>(() => bogus.Extension());
+        Assert.Throws<NotSupportedException>(() => bogus.FileFilter());
+    }
+
+    [Test]
+    public static void ProgressIsReportedAtEachStage()
+    {
+        var reported = new List<string>();
+        var options = PermissiveOptions;
+        options.ChargeStates = new List<int>();
+        var generator = new SpectralLibraryGenerator(new List<SpectralLibraryPeptide>(), options, "unused.msp");
+
+        generator.GenerateLibrary(new Progress<string>(reported.Add));
+
+        // Progress<T> posts asynchronously, so drain the queue before asserting.
+        SpinWait.SpinUntil(() => reported.Count >= 4, TimeSpan.FromSeconds(5));
+        Assert.That(reported, Has.Count.GreaterThanOrEqualTo(4));
+    }
+
+    [Test]
+    public static void CancellationIsHonouredBeforeAnyPredictionStarts()
+    {
+        using var cancelled = new CancellationTokenSource();
+        cancelled.Cancel();
+        var generator = new SpectralLibraryGenerator(new List<SpectralLibraryPeptide>(), PermissiveOptions, "unused.msp");
+
+        Assert.Throws<OperationCanceledException>(() => generator.GenerateLibrary(null, cancelled.Token));
     }
 
     #endregion
@@ -253,13 +303,13 @@ internal class SpectralLibraryTests
 
     private static SpectralLibraryExportOptions PermissiveOptions => new()
     {
-        PredictionModel = "Prosit2020IntensityHCD",
+        PredictionModel = FragmentIntensityPredictionModel.Prosit2020IntensityHcd,
         MinimumMZThreshold = 0,
         MaximumMZThreshold = double.MaxValue,
         FilterByRelativeIntensity = false,
         FilterByIntensityRank = false,
         IntensityRankThreshold = -1,
-        OutputFormat = "MSP"
+        OutputFormat = SpectralLibraryFormat.Msp
     };
 
     private static SeededHcdModel SeededModel(FragmentIonMappingMode mode, params PeptideFragmentIntensityPrediction[] predictions) =>

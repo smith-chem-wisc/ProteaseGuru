@@ -23,8 +23,8 @@ internal class SpectralLibraryPeptideSourceTests
         {
             SelectedProteases = proteases.ToList(),
             SelectedProteins = proteins.ToList(),
-            PredictionModel = "Prosit2020IntensityHCD",
-            OutputFormat = "MSP"
+            PredictionModel = FragmentIntensityPredictionModel.Prosit2020IntensityHcd,
+            OutputFormat = SpectralLibraryFormat.Msp
         };
 
     private static InSilicoPep PeptideWith(string fullSequence, double retentionTime, bool? detectable) =>

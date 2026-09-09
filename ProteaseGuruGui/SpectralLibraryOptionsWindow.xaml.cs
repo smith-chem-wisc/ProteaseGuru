@@ -87,7 +87,7 @@ namespace ProteaseGuru.Gui
                 SelectedProteases = lbProteases.SelectedItems.Cast<string>().ToList(),
                 SelectedProteins = _selectedProteins.ToList(),
 
-                PredictionModel = ((ComboBoxItem)cbFragmentModel.SelectedItem).Tag.ToString(),
+                PredictionModel = Enum.Parse<FragmentIntensityPredictionModel>(((ComboBoxItem)cbFragmentModel.SelectedItem).Tag.ToString()!, ignoreCase: true),
                 ChargeStates = GetSelectedChargeStates(),
                 CollisionEnergy = int.Parse(tbCollisionEnergy.Text),
 
@@ -104,7 +104,7 @@ namespace ProteaseGuru.Gui
                 FilterByIntensityRank = cbEnableIntensityRankFiltering.IsChecked == true,
                 IntensityRankThreshold = int.TryParse(tbRankThreshold.Text, out int rankThreshold) ? rankThreshold : -1, // -1 indicates keep all
 
-                OutputFormat = ((ComboBoxItem)cbOutputFormat.SelectedItem).Tag.ToString()
+                OutputFormat = Enum.Parse<SpectralLibraryFormat>(((ComboBoxItem)cbOutputFormat.SelectedItem).Tag.ToString()!, ignoreCase: true)
             };
 
             DialogResultOk = true;

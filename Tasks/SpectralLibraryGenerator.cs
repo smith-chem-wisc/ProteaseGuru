@@ -15,6 +15,41 @@ using Readers.SpectralLibrary;
 namespace ProteaseGuru.Tasks
 {
     /// <summary>
+    /// The fragment intensity models ProteaseGuru can drive.
+    /// </summary>
+    public enum FragmentIntensityPredictionModel
+    {
+        Prosit2020IntensityHcd
+    }
+
+    /// <summary>
+    /// The library formats mzLib can write. mzLib routes on file extension, so these exist to build the
+    /// save dialog's filter and default extension, and to keep the two in step.
+    /// </summary>
+    public enum SpectralLibraryFormat
+    {
+        Msp,
+        Msl
+    }
+
+    public static class SpectralLibraryFormats
+    {
+        public static string Extension(this SpectralLibraryFormat format) => format switch
+        {
+            SpectralLibraryFormat.Msp => ".msp",
+            SpectralLibraryFormat.Msl => ".msl",
+            _ => throw new NotSupportedException($"No extension is defined for {format}.")
+        };
+
+        public static string FileFilter(this SpectralLibraryFormat format) => format switch
+        {
+            SpectralLibraryFormat.Msp => "MSP Files (*.msp)|*.msp",
+            SpectralLibraryFormat.Msl => "MSL Files (*.msl)|*.msl",
+            _ => throw new NotSupportedException($"No file filter is defined for {format}.")
+        };
+    }
+
+    /// <summary>
     /// Configuration options for spectral library generation
     /// </summary>
     public class SpectralLibraryExportOptions
@@ -24,7 +59,7 @@ namespace ProteaseGuru.Tasks
         public List<string> SelectedProteins { get; set; }
 
         // Prediction model options
-        public string PredictionModel { get; set; }
+        public FragmentIntensityPredictionModel PredictionModel { get; set; } = FragmentIntensityPredictionModel.Prosit2020IntensityHcd;
         public List<int> ChargeStates { get; set; }
         public int CollisionEnergy { get; set; }
 
@@ -41,7 +76,7 @@ namespace ProteaseGuru.Tasks
         public int IntensityRankThreshold { get; set; }
 
         // Output options
-        public string OutputFormat { get; set; }
+        public SpectralLibraryFormat OutputFormat { get; set; } = SpectralLibraryFormat.Msp;
     }
 
     public class SpectralLibraryGenerator
@@ -74,7 +109,7 @@ namespace ProteaseGuru.Tasks
         {
             switch (_options.PredictionModel)
             {
-                case "Prosit2020IntensityHCD":
+                case FragmentIntensityPredictionModel.Prosit2020IntensityHcd:
                     return new Prosit2020IntensityHCD(
                        modHandlingMode: _options.ExcludeIncompatiblePeptides ? SequenceConversionHandlingMode.ReturnNull : SequenceConversionHandlingMode.RemoveIncompatibleElements,
                        parameterHandlingMode: IncompatibleParameterHandlingMode.ReturnNull,
@@ -87,10 +122,19 @@ namespace ProteaseGuru.Tasks
             }
         }
 
-        public List<LibrarySpectrum> GenerateLibrary()
+        /// <summary>
+        /// Predicts fragment intensities and writes the library. Cancellation is cooperative between
+        /// stages: neither the Koina round trip nor a Chronologer forward pass can be interrupted once
+        /// started, so a cancel takes effect at the next stage boundary rather than immediately.
+        /// </summary>
+        public List<LibrarySpectrum> GenerateLibrary(
+            IProgress<string>? progress = null,
+            CancellationToken cancellationToken = default)
         {
             var model = CreateModel();
 
+            cancellationToken.ThrowIfCancellationRequested();
+            progress?.Report($"Resolving retention times for {_peptides.Count} peptides...");
             var retentionTimes = ResolveRetentionTimes(_peptides);
 
             var inputs = new List<FragmentIntensityPredictionInput>();
@@ -108,8 +152,12 @@ namespace ProteaseGuru.Tasks
                 rts.AddRange(_peptides.Select(p => retentionTimes[p.FullSequence]));
             }
 
+            cancellationToken.ThrowIfCancellationRequested();
+            progress?.Report($"Predicting fragment intensities for {inputs.Count} spectra. This may take several minutes...");
             model.Predict(inputs);
 
+            cancellationToken.ThrowIfCancellationRequested();
+            progress?.Report("Filtering fragment ions...");
             ApplyFragmentFilters(model.Predictions);
 
             // mzLib builds the spectra, collapses duplicates, and writes MSP or MSL by file extension.
@@ -120,6 +168,7 @@ namespace ProteaseGuru.Tasks
                 minIntensityFilter: MinimumAbsoluteIntensity);
 
             Warning = warning?.Message;
+            progress?.Report($"Wrote {library.Count} spectra to {_outputPath}.");
 
             return library;
         }

@@ -669,8 +669,8 @@ namespace ProteaseGuru.Gui
             {
                 var saveDialog = new Microsoft.Win32.SaveFileDialog
                 {
-                    Filter = GetFileFilterForSpectralLibrary(options.OutputFormat),
-                    DefaultExt = GetDefaultExtensionForSpectralLibrary(options.OutputFormat),
+                    Filter = options.OutputFormat.FileFilter(),
+                    DefaultExt = options.OutputFormat.Extension(),
                     FileName = $"SpectralLibrary_{DateTime.Now:yyyyMMdd_HHmmss}"
                 };
 
@@ -694,8 +694,12 @@ namespace ProteaseGuru.Gui
                     options,
                     saveDialog.FileName);
 
+                // Milestones only; the export runs for minutes and used to report nothing until it finished.
+                var progress = new Progress<string>(message =>
+                    NotificationService.Instance.AddNotification(message, NotificationType.Information));
+
                 Mouse.OverrideCursor = Cursors.Wait;
-                var result = await Task.Run(() => generator.GenerateLibrary());
+                var result = await Task.Run(() => generator.GenerateLibrary(progress));
                 Mouse.OverrideCursor = null;
 
                 NotificationService.Instance.AddNotification($"Spectral library generated with {result.Count} spectra. File saved to: {saveDialog.FileName}", NotificationType.Success);
@@ -705,28 +709,6 @@ namespace ProteaseGuru.Gui
                 Mouse.OverrideCursor = null;
                 NotificationService.Instance.AddNotification($"Error generating spectral library: {ex.Message}\n\n{ex.StackTrace}", NotificationType.Error);
             }
-        }
-
-        private string GetFileFilterForSpectralLibrary(string format)
-        {
-            return format switch
-            {
-                "SpectraST" => "SpectraST Files (*.sptxt)|*.sptxt",
-                "BiblioSpec" => "BiblioSpec Files (*.blib)|*.blib",
-                "MSP" => "MSP Files (*.msp)|*.msp",
-                "NIST" => "NIST MSP Files (*.msp)|*.msp",
-                _ => "All Files (*.*)|*.*"
-            };
-        }
-
-        private string GetDefaultExtensionForSpectralLibrary(string format)
-        {
-            return format switch
-            {
-                "SpectraST" => ".sptxt",
-                "BiblioSpec" => ".blib",
-                _ => ".msp"
-            };
         }
 
         #endregion
