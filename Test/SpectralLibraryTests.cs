@@ -46,9 +46,9 @@ internal class SpectralLibraryTests
     public static void ModifiedPeptidesProduceLibrarySpectra()
     {
         var model = new SeededHcdModel(PredictionFor(MzLibSequence, UnimodSequence));
-        var generator = new SpectralLibraryGenerator(new List<InSilicoPep>(), PermissiveOptions, "unused.msp");
+        var generator = new SpectralLibraryGenerator(new List<SpectralLibraryPeptide>(), PermissiveOptions, "unused.msp");
 
-        var spectra = generator.PredictionsToLibrarySpectra(model, new List<double> { 12.3 });
+        var spectra = generator.PredictionsToLibrarySpectra(model, new List<double?> { 12.3 });
 
         Assert.That(spectra, Has.Count.EqualTo(1));
         Assert.That(spectra[0].Sequence, Is.EqualTo(MzLibSequence));

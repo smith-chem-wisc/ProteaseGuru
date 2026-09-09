@@ -46,12 +46,12 @@ namespace ProteaseGuru.Tasks
 
     public class SpectralLibraryGenerator
     {
-        private readonly List<InSilicoPep> _peptides;
+        private readonly List<SpectralLibraryPeptide> _peptides;
         private readonly SpectralLibraryExportOptions _options;
         private readonly string _outputPath;
 
         public SpectralLibraryGenerator(
-            List<InSilicoPep> peptides,
+            List<SpectralLibraryPeptide> peptides,
             SpectralLibraryExportOptions options,
             string outputPath)
         {
@@ -76,8 +76,10 @@ namespace ProteaseGuru.Tasks
                     throw new NotSupportedException($"Prediction model {_options.PredictionModel} is not supported.");
             }
 
+            var retentionTimes = ResolveRetentionTimes(_peptides);
+
             var inputs = new List<FragmentIntensityPredictionInput>();
-            var rts = new List<double>();
+            var rts = new List<double?>();
             foreach (var pc in _options.ChargeStates)
             {
                 inputs.AddRange(_peptides.Select(p => new FragmentIntensityPredictionInput(
@@ -88,7 +90,7 @@ namespace ProteaseGuru.Tasks
                     FragmentationType: null
                     )
                 ));
-                rts.AddRange(_peptides.Select(p => p.ChronologerRetentionTime));
+                rts.AddRange(_peptides.Select(p => retentionTimes[p.FullSequence]));
             }
 
             model.Predict(inputs);
@@ -101,11 +103,45 @@ namespace ProteaseGuru.Tasks
         }
 
         /// <summary>
+        /// Retention times keyed by full sequence. Peptides that arrive without one - anything digested
+        /// on demand rather than read back from a run - are predicted here, on the same sequence the
+        /// intensity model is given, so both describe the same molecule. Chronologer's -1 sentinel stays
+        /// null so that a spectrum is written without a retention time rather than with a fake one.
+        /// </summary>
+        internal Dictionary<string, double?> ResolveRetentionTimes(List<SpectralLibraryPeptide> peptides)
+        {
+            var known = new Dictionary<string, double?>(StringComparer.Ordinal);
+            var toPredict = new List<PeptideWithSetModifications>();
+
+            foreach (var peptide in peptides)
+            {
+                if (known.ContainsKey(peptide.FullSequence)) continue;
+
+                known[peptide.FullSequence] = peptide.RetentionTime;
+                if (peptide.RetentionTime == null)
+                    toPredict.Add(new PeptideWithSetModifications(peptide.FullSequence));
+            }
+
+            if (toPredict.Count == 0) return known;
+
+            using var session = SharedChronologerPredictor.Open();
+            var predictions = session.Predict(toPredict, maxThreads: Environment.ProcessorCount);
+
+            for (int i = 0; i < predictions.Count; i++)
+            {
+                double? predicted = predictions[i].PredictedValue;
+                known[toPredict[i].FullSequence] = predicted >= 0 ? predicted : null;
+            }
+
+            return known;
+        }
+
+        /// <summary>
         /// Mirrors mzLib's FragmentIntensityModel.GenerateLibrarySpectraFromPredictions, but adds the m/z range,
         /// relative-intensity, and top-N rank filters that the upstream method does not currently support. If those
         /// filters are added upstream, this method can be replaced with a direct call to the library method.
         /// </summary>
-        internal List<LibrarySpectrum> PredictionsToLibrarySpectra(FragmentIntensityModel model, List<double> retentionTimes)
+        internal List<LibrarySpectrum> PredictionsToLibrarySpectra(FragmentIntensityModel model, List<double?> retentionTimes)
         {
             // FragmentIntensityModel.Predict realigns Predictions to the full input length, inserting placeholder
             // predictions for inputs that failed validation. Predictions is therefore parallel to ValidInputsMask,
