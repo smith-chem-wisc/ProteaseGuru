@@ -9,6 +9,7 @@
              xmlns:guiFunctions="clr-namespace:ProteaseGuru.GuiFunctions;assembly=ProteaseGuru.GuiFunctions"
              d:DesignHeight="600" d:DesignWidth="1200">
     <UserControl.Resources>
+        <local:CollapseOnRnaModeConverter x:Key="CollapseOnRna" />
 
         <local:ProteinRnaTerminologyConverter x:Key="ProtTermConverter" />
 
@@ -323,6 +324,7 @@
                     </Button>
                     <Button x:Name="exportSpectralLibraryButton" Content="Export Spectral Library" Click="ExportSpectralLibrary" Grid.Row="3" Width="200"  HorizontalAlignment="Right" Margin="0,0,20,0"
                             Style="{StaticResource ImportantButtonStyle}"
+                            Visibility="{Binding Source={x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}, Path=IsRnaMode, Converter={StaticResource CollapseOnRna}}"
                             ToolTip="Generate in silico spectral library from digestion results"/>
 
                 </Grid>

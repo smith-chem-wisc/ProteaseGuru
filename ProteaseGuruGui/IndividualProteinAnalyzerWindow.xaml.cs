@@ -23,14 +23,12 @@ namespace ProteaseGuru.Gui
         private ObservableCollection<string> filteredList;
         private Dictionary<IBioPolymer, ProteinForTreeView> ProteinsForTreeView;
         private Dictionary<string, SolidColorBrush> ModsByColor;
-        private List<string> SelectedProteases;
         private ProteinForTreeView SelectedProtein;
         private readonly RunParameters UserParams;
         private DigestionConditionsSetupViewModel _allProteaseVm;
         private readonly SeekMaximumCoverage _seeker = new SeekMaximumCoverage();
 
         private string? _fastaPath;
-        private CancellationTokenSource? _exportCts;
 
         private readonly Dictionary<string, Color> _stableProteaseColors;
         private readonly Dictionary<string, SolidColorBrush> _stableProteaseBrushes;
@@ -54,7 +52,6 @@ namespace ProteaseGuru.Gui
             var emptySeqCov = new Dictionary<string, Dictionary<IBioPolymer, (double, double)>>();
             _analyzer = new ProteinCoverageAnalyzer(emptyPeptideByFile, emptySeqCov);
 
-            SelectedProteases = new List<string>();
             SelectedProtein = null;
             proteinList = new ObservableCollection<string>();
             filteredList = new ObservableCollection<string>();
@@ -90,7 +87,6 @@ namespace ProteaseGuru.Gui
             _analyzer = new ProteinCoverageAnalyzer(peptideByFile, sequenceCoverageByProtease);
             UserParams = userParams;
 
-            SelectedProteases = new List<string>();
             SelectedProtein = null;
             proteinList = new ObservableCollection<string>();
             filteredList = new ObservableCollection<string>();
@@ -399,81 +395,31 @@ namespace ProteaseGuru.Gui
             maxCoverageMapViewer.Width = MaxCoverageGrid.ActualWidth;
         }
 
-        private async void ExportSpectrumLibrary_Click(object sender, RoutedEventArgs e)
+        private void ExportSpectrumLibrary_Click(object sender, RoutedEventArgs e)
         {
-            if (SelectedProtein == null)
-            {
-                ExportStatusLabel.Text = "Select a protein first.";
-                return;
-            }
-
             var checkedProteases = _allProteaseVm.ProteaseSpecificParameters
                 .Where(vm => vm.IsSelected && vm.IsVisible)
+                .Select(vm => vm.ProteaseSpecificParams)
                 .ToList();
 
             if (checkedProteases.Count == 0)
             {
-                ExportStatusLabel.Text = "Select at least one protease first.";
+                NotificationService.Instance.AddNotification(
+                    "Select at least one protease before exporting a spectrum library.", NotificationType.Error);
                 return;
             }
 
-            if (NceComboBox.SelectedItem is not ComboBoxItem nceItem ||
-                !int.TryParse(nceItem.Content?.ToString(), out int nce))
+            // Digested on demand against the parameters checked in this window, which need not match
+            // any completed run -- this tab is usable before one has happened.
+            var source = new OnDemandDigestPeptideSource(ProteinsForTreeView.Keys.ToList(), checkedProteases);
+
+            new SpectralLibraryOptionsWindow(
+                source,
+                checkedProteases.Select(p => p.DigestionAgentName).Distinct().ToList(),
+                SelectedProtein?.Protein.Accession)
             {
-                ExportStatusLabel.Text = "Select a collision energy value.";
-                return;
-            }
-
-            var chargeStates = new List<int>();
-            if (chk1.IsChecked == true) chargeStates.Add(1);
-            if (chk2.IsChecked == true) chargeStates.Add(2);
-            if (chk3.IsChecked == true) chargeStates.Add(3);
-            if (chk4.IsChecked == true) chargeStates.Add(4);
-            if (chk5.IsChecked == true) chargeStates.Add(5);
-            if (chk6.IsChecked == true) chargeStates.Add(6);
-            if (chk7.IsChecked == true) chargeStates.Add(7);
-
-            if (chargeStates.Count == 0)
-            {
-                ExportStatusLabel.Text = "Select at least one charge state.";
-                return;
-            }
-
-            ExportSpectrumLibraryButton.IsEnabled = false;
-            _exportCts?.Cancel();
-            _exportCts = new CancellationTokenSource();
-            var ct = _exportCts.Token;
-
-            var progress = new Progress<string>(msg =>
-                Dispatcher.Invoke(() => ExportStatusLabel.Text = msg));
-
-            try
-            {
-                var proteaseParams = checkedProteases.Select(vm => vm.ProteaseSpecificParams).ToList();
-
-                string outputPath = await SpectrumLibraryExporter.ExportAsync(
-                    protein: SelectedProtein.Protein,
-                    proteaseParams: proteaseParams,
-                    chargeStates: chargeStates,
-                    nce: nce,
-                    fastaPath: _fastaPath,
-                    progress: progress,
-                    cancellationToken: ct);
-
-                ExportStatusLabel.Text = $"✓ Library saved: {System.IO.Path.GetFileName(outputPath)}";
-            }
-            catch (OperationCanceledException)
-            {
-                ExportStatusLabel.Text = "Export cancelled.";
-            }
-            catch (Exception ex)
-            {
-                ExportStatusLabel.Text = $"Export failed: {ex.Message}";
-            }
-            finally
-            {
-                ExportSpectrumLibraryButton.IsEnabled = true;
-            }
+                Owner = Window.GetWindow(this)
+            }.Show();
         }
 
         private void CoverageViewToggle_Click(object sender, RoutedEventArgs e)

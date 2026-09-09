@@ -142,6 +142,7 @@ namespace ProteaseGuru.Tasks
             cancellationToken.ThrowIfCancellationRequested();
             progress?.Report($"Predicting fragment intensities for {inputs.Count} spectra. This may take several minutes...");
             model.Predict(inputs);
+            ReportRejectedInputs(model, progress);
 
             cancellationToken.ThrowIfCancellationRequested();
             progress?.Report("Filtering fragment ions...");
@@ -221,6 +222,31 @@ namespace ProteaseGuru.Tasks
                 default:
                     throw new NotSupportedException($"Cannot write a spectral library in {_options.OutputFormat} format.");
             }
+        }
+
+        /// <summary>
+        /// Says how many inputs the model refused, and fails loudly if it refused all of them rather
+        /// than writing an empty library. The model decides what it can accept -- its limits are read
+        /// back off it here rather than restated -- so this stays correct if those limits change.
+        /// </summary>
+        internal static void ReportRejectedInputs(FragmentIntensityModel model, IProgress<string>? progress)
+        {
+            int total = model.ValidInputsMask.Length;
+            int rejected = model.ValidInputsMask.Count(valid => !valid);
+            if (rejected == 0) return;
+
+            if (rejected == total)
+            {
+                throw new InvalidOperationException(
+                    $"Every peptide was rejected by {model.ModelName}. It accepts base sequences of " +
+                    $"{model.MinPeptideLength}-{model.MaxPeptideLength} canonical residues at charges " +
+                    $"{string.Join(", ", model.AllowedPrecursorCharges.OrderBy(c => c))}, with modifications " +
+                    $"limited to UNIMOD {string.Join(", ", model.AllowedUnimodIds.OrderBy(id => id))}.");
+            }
+
+            progress?.Report(
+                $"{rejected} of {total} peptide and charge combinations were rejected by {model.ModelName} " +
+                "and will not appear in the library.");
         }
 
         /// <summary>

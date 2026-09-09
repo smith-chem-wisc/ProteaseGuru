@@ -285,6 +285,43 @@ internal class SpectralLibraryTests
     #region Alignment and rejected inputs
 
     [Test]
+    public static void RejectingEveryPeptideFailsLoudlyInsteadOfWritingAnEmptyLibrary()
+    {
+        var model = new SeededHcdModel(FragmentIonMappingMode.MapToInputFullSequence, new[] { false },
+            PredictionFor(MzLibSequence, UnimodSequence));
+
+        var ex = Assert.Throws<InvalidOperationException>(
+            () => SpectralLibraryGenerator.ReportRejectedInputs(model, null));
+
+        // The limits come off the model, so the message stays true if the model changes.
+        Assert.That(ex!.Message, Does.Contain("1-30").And.Contain("UNIMOD"));
+    }
+
+    [Test]
+    public static void RejectingSomePeptidesIsReportedButNotFatal()
+    {
+        var reported = new List<string>();
+        var model = new SeededHcdModel(FragmentIonMappingMode.MapToInputFullSequence, new[] { true, false },
+            PredictionFor(MzLibSequence, UnimodSequence), PredictionFor(MzLibSequence, UnimodSequence));
+
+        Assert.DoesNotThrow(() => SpectralLibraryGenerator.ReportRejectedInputs(model, new Progress<string>(reported.Add)));
+
+        SpinWait.SpinUntil(() => reported.Count > 0, TimeSpan.FromSeconds(5));
+        Assert.That(reported.Single(), Does.Contain("1 of 2"));
+    }
+
+    [Test]
+    public static void AcceptingEveryPeptideReportsNothing()
+    {
+        var reported = new List<string>();
+        var model = SeededModel(FragmentIonMappingMode.MapToInputFullSequence, PredictionFor(MzLibSequence, UnimodSequence));
+
+        SpectralLibraryGenerator.ReportRejectedInputs(model, new Progress<string>(reported.Add));
+
+        Assert.That(reported, Is.Empty);
+    }
+
+    [Test]
     public static void PlaceholderPredictionsForRejectedInputsAreSkipped()
     {
         // mzLib realigns Predictions to the full input length, inserting entries whose three fragment
@@ -454,10 +491,15 @@ internal class SpectralLibraryTests
     private sealed class SeededHcdModel : Prosit2020IntensityHCD
     {
         public SeededHcdModel(FragmentIonMappingMode mode, params PeptideFragmentIntensityPrediction[] predictions)
+            : this(mode, Enumerable.Repeat(true, predictions.Length).ToArray(), predictions)
+        {
+        }
+
+        public SeededHcdModel(FragmentIonMappingMode mode, bool[] validInputsMask, params PeptideFragmentIntensityPrediction[] predictions)
             : base(fragmentIonMappingMode: mode)
         {
             Predictions = predictions.ToList();
-            ValidInputsMask = Enumerable.Repeat(true, predictions.Length).ToArray();
+            ValidInputsMask = validInputsMask;
         }
     }
 
