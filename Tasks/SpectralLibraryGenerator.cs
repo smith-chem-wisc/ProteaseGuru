@@ -105,7 +105,7 @@ namespace ProteaseGuru.Tasks
         /// relative-intensity, and top-N rank filters that the upstream method does not currently support. If those
         /// filters are added upstream, this method can be replaced with a direct call to the library method.
         /// </summary>
-        private List<LibrarySpectrum> PredictionsToLibrarySpectra(FragmentIntensityModel model, List<double> retentionTimes)
+        internal List<LibrarySpectrum> PredictionsToLibrarySpectra(FragmentIntensityModel model, List<double> retentionTimes)
         {
             // FragmentIntensityModel.Predict realigns Predictions to the full input length, inserting placeholder
             // predictions for inputs that failed validation. Predictions is therefore parallel to ValidInputsMask,
@@ -125,7 +125,8 @@ namespace ProteaseGuru.Tasks
 
             foreach (var (prediction, retentionTime) in validPredictions)
             {
-                var peptide = new PeptideWithSetModifications(prediction.ValidatedFullSequence);
+                // Not ValidatedFullSequence: it is Unimod-encoded, and mzLib has no Unimod parser.
+                var peptide = new PeptideWithSetModifications(prediction.FullSequence);
                 List<MatchedFragmentIon> fragmentIons = new();
 
                 List<Product> theoreticalProducts = new();
