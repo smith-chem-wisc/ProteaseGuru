@@ -46,6 +46,12 @@ namespace ProteaseGuru.Tasks
 
     public class SpectralLibraryGenerator
     {
+        /// <summary>Absolute intensity floor, below mzLib's default so the user's own filters govern.</summary>
+        private const double MinimumAbsoluteIntensity = 1e-6;
+
+        /// <summary>Set after generation when mzLib reported something worth surfacing.</summary>
+        public string? Warning { get; private set; }
+
         private readonly List<SpectralLibraryPeptide> _peptides;
         private readonly SpectralLibraryExportOptions _options;
         private readonly string _outputPath;
@@ -60,21 +66,30 @@ namespace ProteaseGuru.Tasks
             _outputPath = outputPath;
         }
 
-        public List<LibrarySpectrum> GenerateLibrary()
+        /// <summary>
+        /// Builds the prediction model the options ask for. Separate from generation so the configuration
+        /// can be asserted without a Koina round trip.
+        /// </summary>
+        internal FragmentIntensityModel CreateModel()
         {
-            FragmentIntensityModel model;
             switch (_options.PredictionModel)
             {
                 case "Prosit2020IntensityHCD":
-                    model = new Prosit2020IntensityHCD(
+                    return new Prosit2020IntensityHCD(
                        modHandlingMode: _options.ExcludeIncompatiblePeptides ? SequenceConversionHandlingMode.ReturnNull : SequenceConversionHandlingMode.RemoveIncompatibleElements,
                        parameterHandlingMode: IncompatibleParameterHandlingMode.ReturnNull,
-                       fragmentIonMappingMode: FragmentIonMappingMode.MapToValidatedFullSequence
+                       // Input, not validated: the peptide written to the library, the m/z filtered on,
+                       // and the m/z written must all describe the molecule the user asked about.
+                       fragmentIonMappingMode: FragmentIonMappingMode.MapToInputFullSequence
                        );
-                    break;
                 default:
                     throw new NotSupportedException($"Prediction model {_options.PredictionModel} is not supported.");
             }
+        }
+
+        public List<LibrarySpectrum> GenerateLibrary()
+        {
+            var model = CreateModel();
 
             var retentionTimes = ResolveRetentionTimes(_peptides);
 
@@ -95,9 +110,16 @@ namespace ProteaseGuru.Tasks
 
             model.Predict(inputs);
 
-            // Write to file based on format
-            var library = PredictionsToLibrarySpectra(model, rts);
-            WriteLibrary(library);
+            ApplyFragmentFilters(model.Predictions);
+
+            // mzLib builds the spectra, collapses duplicates, and writes MSP or MSL by file extension.
+            var library = model.GenerateLibrarySpectraFromPredictions(
+                alignedRetentionTimes: rts.ToArray(),
+                warning: out var warning,
+                filepath: _outputPath,
+                minIntensityFilter: MinimumAbsoluteIntensity);
+
+            Warning = warning?.Message;
 
             return library;
         }
@@ -137,120 +159,72 @@ namespace ProteaseGuru.Tasks
         }
 
         /// <summary>
-        /// Mirrors mzLib's FragmentIntensityModel.GenerateLibrarySpectraFromPredictions, but adds the m/z range,
-        /// relative-intensity, and top-N rank filters that the upstream method does not currently support. If those
-        /// filters are added upstream, this method can be replaced with a direct call to the library method.
+        /// Removes the fragments the user filtered out, in place, before mzLib turns predictions into
+        /// spectra. These three filters -- m/z range, intensity relative to the base peak, and top-N by
+        /// rank -- are the only part of library generation ProteaseGuru owns; everything downstream of
+        /// here is mzLib's GenerateLibrarySpectraFromPredictions.
         /// </summary>
-        internal List<LibrarySpectrum> PredictionsToLibrarySpectra(FragmentIntensityModel model, List<double?> retentionTimes)
+        internal void ApplyFragmentFilters(IReadOnlyList<PeptideFragmentIntensityPrediction> predictions)
         {
-            // FragmentIntensityModel.Predict realigns Predictions to the full input length, inserting placeholder
-            // predictions for inputs that failed validation. Predictions is therefore parallel to ValidInputsMask,
-            // so indexing it by the absolute input index is correct.
-            Debug.Assert(model.Predictions.Count == model.ValidInputsMask.Length,
-                "Predictions are expected to be realigned to the full input length (one entry per input, including invalid inputs).");
-
-            // Pair each valid prediction with its retention time positionally rather than keying a
-            // dictionary on the prediction. Keying by prediction relies on the record's list members
-            // comparing by reference, which is fragile and would break if two equal predictions collided.
-            var validPredictions = model.ValidInputsMask.Select((isValid, index) => (isValid, index))
-                .Where(x => x.isValid)
-                .Select(x => (Prediction: model.Predictions[x.index], RetentionTime: retentionTimes[x.index]))
-                .ToList();
-
-            var predictedSpectra = new List<LibrarySpectrum>();
-
-            foreach (var (prediction, retentionTime) in validPredictions)
+            foreach (var prediction in predictions)
             {
-                // Not ValidatedFullSequence: it is Unimod-encoded, and mzLib has no Unimod parser.
-                var peptide = new PeptideWithSetModifications(prediction.FullSequence);
-                List<MatchedFragmentIon> fragmentIons = new();
+                // DefaultIfEmpty guards predictions whose fragments were all stripped upstream, where
+                // Max() would throw. Only consumed when relative-intensity filtering is on.
+                double maxIntensity = prediction.FragmentIntensities.DefaultIfEmpty(0).Max();
 
-                List<Product> theoreticalProducts = new();
-                peptide.Fragment(MassSpectrometry.DissociationType.HCD, FragmentationTerminus.Both, theoreticalProducts);
-                Dictionary<string, double> predictionAnnotationIntensityLookup = new();
-                Dictionary<string, Product> tpLookup = theoreticalProducts.ToDictionary(tp => tp.Annotation);
-                // DefaultIfEmpty guards against predictions whose fragments were all stripped upstream;
-                // Max() throws on an empty sequence. Only consumed when relative-intensity filtering is on.
-                var maxFragmentIntensity = prediction.FragmentIntensities.DefaultIfEmpty(0).Max();
-
+                var keep = new List<int>(prediction.FragmentAnnotations.Count);
                 for (int i = 0; i < prediction.FragmentAnnotations.Count; i++)
                 {
-                    // Skip misannotated fragments and apply the user's m/z range and relative-intensity filters.
-                    // The m/z gate compares against the fragment m/z (FragmentMZs), not the predicted intensity.
-                    // Impossible ions (intensity -1) are already removed upstream in ResponseToPredictions.
-                    if (prediction.FragmentAnnotations[i] == null ||
-                        !prediction.FragmentAnnotations[i].Contains("+") ||
-                        prediction.FragmentMZs[i] < _options.MinimumMZThreshold ||
-                        prediction.FragmentMZs[i] > _options.MaximumMZThreshold ||
-                        (_options.FilterByRelativeIntensity &&
-                         prediction.FragmentIntensities[i] < maxFragmentIntensity * _options.RelativeIntensityThreshold)
-                    )
+                    if (prediction.FragmentMZs[i] < _options.MinimumMZThreshold ||
+                        prediction.FragmentMZs[i] > _options.MaximumMZThreshold)
                     {
                         continue;
                     }
-                    predictionAnnotationIntensityLookup[prediction.FragmentAnnotations[i]] = prediction.FragmentIntensities[i];
+
+                    if (_options.FilterByRelativeIntensity &&
+                        prediction.FragmentIntensities[i] < maxIntensity * _options.RelativeIntensityThreshold)
+                    {
+                        continue;
+                    }
+
+                    keep.Add(i);
                 }
 
-                foreach (var pa in predictionAnnotationIntensityLookup.Keys)
-                {
-                    var productTypeAndCharge = pa.Split("+");
-
-                    var tp = tpLookup[productTypeAndCharge[0]]; // Get theoretical product ("b5") from annotation like "b5+1"
-                    var charge = int.Parse(productTypeAndCharge[1]); // Get charge ("1") from annotation like "b5+1"
-                    // Create a new MatchedFragmentIon for each output
-                    var fragmentIon = new MatchedFragmentIon
-                    (
-                        neutralTheoreticalProduct: tp,
-                        experMz: tp.ToMz(charge),
-                        experIntensity: predictionAnnotationIntensityLookup[pa],
-                        charge: charge
-                    );
-
-                    fragmentIons.Add(fragmentIon);
-                }
-
-                // Apply intensity rank filtering if enabled. -1 is default indication of no threshold set.
+                // -1 means no threshold was set.
                 if (_options.FilterByIntensityRank && _options.IntensityRankThreshold != -1)
                 {
-                    fragmentIons = _options.FilterByIntensityRank ?
-                        fragmentIons.OrderByDescending(fi => fi.Intensity).Take(_options.IntensityRankThreshold).ToList()
-                        : fragmentIons;
+                    keep = keep
+                        .OrderByDescending(i => prediction.FragmentIntensities[i])
+                        .Take(_options.IntensityRankThreshold)
+                        .OrderBy(i => i)
+                        .ToList();
                 }
 
-                var spectrum = new LibrarySpectrum
-                (
-                    sequence: peptide.FullSequence,
-                    precursorMz: peptide.ToMz(prediction.PrecursorCharge),
-                    chargeState: prediction.PrecursorCharge,
-                    peaks: fragmentIons,
-                    rt: retentionTime
-                );
-
-                predictedSpectra.Add(spectrum);
+                RetainFragments(prediction, keep);
             }
-
-            // LibrarySpectrum.Name is "Sequence/ChargeState", so this only collapses genuine duplicates
-            // (same peptide at the same charge, e.g. shared across proteins/proteases); distinct charge
-            // states of the same peptide are preserved.
-            var unique = predictedSpectra.DistinctBy(p => p.Name).ToList();
-            return unique;
         }
 
-        private void WriteLibrary(List<LibrarySpectrum> spectra)
+        /// <summary>
+        /// Rewrites a prediction's three parallel fragment lists down to <paramref name="keep"/>, which
+        /// must be ascending. The lists are rewritten rather than replaced because Predictions is not
+        /// settable from outside the model.
+        /// </summary>
+        private static void RetainFragments(PeptideFragmentIntensityPrediction prediction, List<int> keep)
         {
-            switch (_options.OutputFormat)
+            if (keep.Count == prediction.FragmentAnnotations.Count) return;
+
+            for (int target = 0; target < keep.Count; target++)
             {
-                case "MSP":
-                    WriteMSP(spectra);
-                    break;
+                int source = keep[target];
+                prediction.FragmentAnnotations[target] = prediction.FragmentAnnotations[source];
+                prediction.FragmentMZs[target] = prediction.FragmentMZs[source];
+                prediction.FragmentIntensities[target] = prediction.FragmentIntensities[source];
             }
+
+            prediction.FragmentAnnotations.RemoveRange(keep.Count, prediction.FragmentAnnotations.Count - keep.Count);
+            prediction.FragmentMZs.RemoveRange(keep.Count, prediction.FragmentMZs.Count - keep.Count);
+            prediction.FragmentIntensities.RemoveRange(keep.Count, prediction.FragmentIntensities.Count - keep.Count);
         }
 
-        private void WriteMSP(List<LibrarySpectrum> spectra)
-        {
-            var spectralLibrary = new SpectralLibrary();
-            spectralLibrary.Results = spectra;
-            spectralLibrary.WriteResults(_outputPath);
-        }
     }
 }
