@@ -397,9 +397,10 @@ namespace ProteaseGuru.Tasks
                 _pflyPool = new ConcurrentBag<PFly2024FineTuned>();
 
                 // One model suffices: detectability is requested once per protease, sequentially.
-                // PFly's converter allows no modifications, so ReturnNull leaves every modified peptide
-                // unassessed. Stated rather than inherited, because it decides what counts as detectable.
-                _pflyPool.Add(new PFly2024FineTuned(modHandlingMode: SequenceConversionHandlingMode.ReturnNull));
+                // PFly's converter allows no modifications, so it has to strip them and assess the
+                // peptide underneath. Rejecting instead would leave every modified peptide unassessed,
+                // and unassessed is excluded everywhere detectability is consumed.
+                _pflyPool.Add(new PFly2024FineTuned(modHandlingMode: SequenceConversionHandlingMode.RemoveIncompatibleElements));
             }
         }
 
