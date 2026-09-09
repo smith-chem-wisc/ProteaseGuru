@@ -49,10 +49,13 @@ public static class SharedChronologerPredictor
             OpenSessions--;
             if (OpenSessions > 0) return;
 
+            // Clear the shared reference before teardown. If mzLib throws while disposing its Torch
+            // module, a later Open must construct a fresh predictor rather than reuse a poisoned one.
+            var predictorToDispose = Predictor;
+            Predictor = null;
             lock (PredictionGate)
             {
-                Predictor?.Dispose();
-                Predictor = null;
+                predictorToDispose?.Dispose();
             }
         }
     }

@@ -90,14 +90,16 @@ internal class SpectralLibraryTests
             ValidatedFullSequence: StrippedUnimod,
             PrecursorCharge: 2,
             FragmentAnnotations: new List<string> { "b5+1" },
-            FragmentMZs: new List<double> { 592.2014 },
+            // Seed the model-frame mass so this test fails if the writer echoes it instead of
+            // rebuilding the ion from FullSequence.
+            FragmentMZs: new List<double> { 512.2351 },
             FragmentIntensities: new List<double> { 1.0 });
 
         var spectra = GenerateFrom(SeededModel(FragmentIonMappingMode.MapToInputFullSequence, prediction), retentionTime: 5);
 
         Assert.That(spectra[0].Sequence, Is.EqualTo(Phospho));
         Assert.That(spectra[0].MatchedFragmentIons[0].Mz, Is.EqualTo(592.2014).Within(0.001),
-            "the written m/z must match the m/z the filters gated on");
+            "the writer must rebuild the fragment from FullSequence instead of echoing the model-frame m/z");
     }
 
     [Test]
@@ -191,6 +193,50 @@ internal class SpectralLibraryTests
             // Progress<T> posts each report separately onto the thread pool, so drain before asserting.
             SpinWait.SpinUntil(() => reported.Count >= 4, TimeSpan.FromSeconds(5));
             Assert.That(reported, Has.Count.GreaterThanOrEqualTo(4));
+        }
+        finally
+        {
+            if (File.Exists(path)) File.Delete(path);
+        }
+    }
+
+    [Test]
+    public static void GenerateLibraryComposesPredictionFilteringRetentionTimesAndDuplicateCollapsing()
+    {
+        var options = PermissiveOptions;
+        options.ChargeStates = new List<int> { 2, 3 };
+        options.FilterByRelativeIntensity = true;
+        options.RelativeIntensityThreshold = 0.75;
+
+        var peptides = new List<SpectralLibraryPeptide>
+        {
+            new("PEPTIDEK", RetentionTime: 10),
+            new("ELVISLIVESK", RetentionTime: 20),
+            new("PEPTIDEK", RetentionTime: 10)
+        };
+        var predictions = options.ChargeStates
+            .SelectMany(charge => peptides.Select(peptide =>
+                PredictionFor(peptide.FullSequence, peptide.FullSequence, charge)))
+            .ToArray();
+        var model = SeededModel(FragmentIonMappingMode.MapToInputFullSequence, predictions);
+        var reported = new List<string>();
+        string path = Path.Combine(Path.GetTempPath(), $"pgtest_{Guid.NewGuid():N}.msp");
+
+        try
+        {
+            var spectra = new SpectralLibraryGenerator(peptides, options, path, model)
+                .GenerateLibrary(new SynchronousProgress(reported.Add));
+
+            Assert.That(spectra, Has.Count.EqualTo(4), "two sequences at two charges should survive");
+            Assert.That(spectra.Select(s => s.Name), Is.Unique);
+            Assert.That(spectra, Has.All.Matches<LibrarySpectrum>(s => s.MatchedFragmentIons.Count == 1),
+                "the relative-intensity filter should remove the weaker ion before mzLib builds spectra");
+            Assert.That(spectra.Where(s => s.Sequence == "PEPTIDEK").Select(s => s.RetentionTime),
+                Has.All.EqualTo(10));
+            Assert.That(spectra.Where(s => s.Sequence == "ELVISLIVESK").Select(s => s.RetentionTime),
+                Has.All.EqualTo(20));
+            Assert.That(reported, Has.Exactly(1).Contains("2 duplicate spectra"));
+            Assert.That(new FileInfo(path).Length, Is.GreaterThan(0));
         }
         finally
         {
@@ -606,11 +652,14 @@ internal class SpectralLibraryTests
     private static SpectralLibraryGenerator GeneratorWith(SpectralLibraryExportOptions options) =>
         new(new List<SpectralLibraryPeptide>(), options, "unused.msp");
 
-    private static PeptideFragmentIntensityPrediction PredictionFor(string fullSequence, string validatedFullSequence) =>
+    private static PeptideFragmentIntensityPrediction PredictionFor(
+        string fullSequence,
+        string validatedFullSequence,
+        int precursorCharge = 2) =>
         new(
             FullSequence: fullSequence,
             ValidatedFullSequence: validatedFullSequence,
-            PrecursorCharge: 2,
+            PrecursorCharge: precursorCharge,
             FragmentAnnotations: new List<string> { "b2+1", "y2+1" },
             FragmentMZs: new List<double> { 227.1026, 276.1554 },
             FragmentIntensities: new List<double> { 0.5, 1.0 });
@@ -635,6 +684,9 @@ internal class SpectralLibraryTests
     /// </summary>
     private sealed class SeededHcdModel : Prosit2020IntensityHCD
     {
+        private readonly List<PeptideFragmentIntensityPrediction> _seededPredictions;
+        private readonly bool[] _seededValidInputsMask;
+
         public SeededHcdModel(FragmentIonMappingMode mode, params PeptideFragmentIntensityPrediction[] predictions)
             : this(mode, Enumerable.Repeat(true, predictions.Length).ToArray(), predictions)
         {
@@ -643,8 +695,34 @@ internal class SpectralLibraryTests
         public SeededHcdModel(FragmentIonMappingMode mode, bool[] validInputsMask, params PeptideFragmentIntensityPrediction[] predictions)
             : base(fragmentIonMappingMode: mode)
         {
-            Predictions = predictions.ToList();
-            ValidInputsMask = validInputsMask;
+            _seededPredictions = predictions.ToList();
+            _seededValidInputsMask = validInputsMask;
+            Predictions = _seededPredictions;
+            ValidInputsMask = _seededValidInputsMask;
+        }
+
+        protected override Task<List<PeptideFragmentIntensityPrediction>> AsyncThrottledPredictor(
+            List<FragmentIntensityPredictionInput> modelInputs)
+        {
+            if (modelInputs.Count != _seededPredictions.Count)
+            {
+                throw new InvalidOperationException(
+                    $"Seeded {_seededPredictions.Count} predictions for {modelInputs.Count} model inputs.");
+            }
+
+            for (int i = 0; i < modelInputs.Count; i++)
+            {
+                if (modelInputs[i].FullSequence != _seededPredictions[i].FullSequence ||
+                    modelInputs[i].PrecursorCharge != _seededPredictions[i].PrecursorCharge)
+                {
+                    throw new InvalidOperationException($"Seeded prediction {i} does not match its model input.");
+                }
+            }
+
+            ModelInputs = modelInputs;
+            Predictions = _seededPredictions;
+            ValidInputsMask = _seededValidInputsMask;
+            return Task.FromResult(Predictions);
         }
     }
 

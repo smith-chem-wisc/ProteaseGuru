@@ -82,6 +82,7 @@ namespace ProteaseGuru.Tasks
         private readonly List<SpectralLibraryPeptide> _peptides;
         private readonly SpectralLibraryExportOptions _options;
         private readonly string _outputPath;
+        private readonly FragmentIntensityModel? _intensityModel;
 
         public SpectralLibraryGenerator(
             List<SpectralLibraryPeptide> peptides,
@@ -94,11 +95,27 @@ namespace ProteaseGuru.Tasks
         }
 
         /// <summary>
+        /// Supplies a model whose prediction boundary can be controlled by offline composition tests.
+        /// Production callers use the public constructor and create the model from export options.
+        /// </summary>
+        internal SpectralLibraryGenerator(
+            List<SpectralLibraryPeptide> peptides,
+            SpectralLibraryExportOptions options,
+            string outputPath,
+            FragmentIntensityModel intensityModel)
+            : this(peptides, options, outputPath)
+        {
+            _intensityModel = intensityModel;
+        }
+
+        /// <summary>
         /// Builds the prediction model the options ask for. Separate from generation so the configuration
         /// can be asserted without a Koina round trip.
         /// </summary>
         internal FragmentIntensityModel CreateIntensityModel()
         {
+            if (_intensityModel != null) return _intensityModel;
+
             switch (_options.PredictionModel)
             {
                 case FragmentIntensityPredictionModel.Prosit2020IntensityHcd:
