@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.Windows;
 using System.Windows.Controls;
 using Microsoft.Win32;
+using ProteaseGuru.GuiFunctions;
 using ProteaseGuru.Tasks;
 
 namespace ProteaseGuru.Gui
@@ -406,8 +407,7 @@ namespace ProteaseGuru.Gui
 
                 foreach (var protein in _allProteins)
                 {
-                    if (string.IsNullOrWhiteSpace(searchText) ||
-                        protein.Contains(searchText, StringComparison.OrdinalIgnoreCase))
+                    if (TextSearchMatcher.Matches(protein, searchText))
                     {
                         _filteredProteins.Add(protein);
                     }

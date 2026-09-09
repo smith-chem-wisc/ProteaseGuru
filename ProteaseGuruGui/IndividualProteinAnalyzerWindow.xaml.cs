@@ -22,7 +22,6 @@ namespace ProteaseGuru.Gui
 
         private readonly ProteinCoverageAnalyzer _analyzer;
         private ObservableCollection<string> proteinList;
-        private ObservableCollection<string> filteredList;
         private Dictionary<IBioPolymer, ProteinForTreeView> ProteinsForTreeView;
         private Dictionary<string, SolidColorBrush> ModsByColor;
         private ProteinForTreeView SelectedProtein;
@@ -63,7 +62,6 @@ namespace ProteaseGuru.Gui
 
             SelectedProtein = null;
             proteinList = new ObservableCollection<string>();
-            filteredList = new ObservableCollection<string>();
             ProteinsForTreeView = new Dictionary<IBioPolymer, ProteinForTreeView>();
             ModsByColor = new Dictionary<string, SolidColorBrush>();
 
@@ -75,15 +73,12 @@ namespace ProteaseGuru.Gui
                     new List<InSilicoPep>(), new List<InSilicoPep>(), new List<InSilicoPep>());
                 ProteinsForTreeView[protein] = ptv;
                 proteinList.Add(protein.Accession);
-                dataGridProteins.Items.Add(protein.Accession);
             }
-            dataGridProteins.DataContext = proteinList;
+            dataGridProteins.ItemsSource = proteinList;
 
             WireProteasePanel();
             this.Loaded += results_Loaded;
             this.Unloaded += results_Unloaded;
-            SearchModifications.SetUp();
-            SearchModifications.Timer.Tick += new EventHandler(searchBox_TextChangedHandler);
         }
 
         public IndividualProteinAnalyzerWindow(
@@ -97,7 +92,6 @@ namespace ProteaseGuru.Gui
 
             SelectedProtein = null;
             proteinList = new ObservableCollection<string>();
-            filteredList = new ObservableCollection<string>();
             ProteinsForTreeView = new Dictionary<IBioPolymer, ProteinForTreeView>();
             ModsByColor = new Dictionary<string, SolidColorBrush>();
 
@@ -109,8 +103,6 @@ namespace ProteaseGuru.Gui
             WireProteasePanel();
             this.Loaded += results_Loaded;
             this.Unloaded += results_Unloaded;
-            SearchModifications.SetUp();
-            SearchModifications.Timer.Tick += new EventHandler(searchBox_TextChangedHandler);
         }
 
         #endregion
@@ -175,9 +167,8 @@ namespace ProteaseGuru.Gui
             foreach (var accession in _analyzer.ProteinAccessions)
             {
                 proteinList.Add(accession);
-                dataGridProteins.Items.Add(accession);
             }
-            dataGridProteins.DataContext = proteinList;
+            dataGridProteins.ItemsSource = proteinList;
         }
 
         #endregion
@@ -185,27 +176,9 @@ namespace ProteaseGuru.Gui
         #region Search
 
         private void Search_TextChanged(object sender, TextChangedEventArgs e)
-            => SearchModifications.SetTimer();
-
-        private void searchBox_TextChangedHandler(object sender, EventArgs e)
         {
-            string userInput = SearchTextBox.Text;
-            if (string.IsNullOrEmpty(userInput))
-            {
-                dataGridProteins.DataContext = proteinList;
-                return;
-            }
-
-            filteredList.Clear();
-            foreach (var protein in proteinList)
-                if (protein.Contains(userInput, StringComparison.OrdinalIgnoreCase))
-                    filteredList.Add(protein);
-
-            dataGridProteins.Items.Clear();
-            foreach (var entry in filteredList)
-                dataGridProteins.Items.Add(entry);
-
-            SearchModifications.Timer.Stop();
+            string searchText = SearchTextBox.Text;
+            dataGridProteins.Items.Filter = item => TextSearchMatcher.Matches(item as string, searchText);
         }
 
         #endregion
