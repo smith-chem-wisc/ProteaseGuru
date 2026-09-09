@@ -65,8 +65,7 @@ public class ResultsBackedPeptideSource : ISpectralLibraryPeptideSource
             .DistinctBy(p => p.FullSequence)
             .Select(p => new SpectralLibraryPeptide(
                 p.FullSequence,
-                // -1 is the sentinel for peptides Chronologer could not predict during the run.
-                p.ChronologerRetentionTime >= 0 ? p.ChronologerRetentionTime : null,
+                p.ChronologerRetentionTime,
                 p.PflyDetectability))
             .ToList();
     }

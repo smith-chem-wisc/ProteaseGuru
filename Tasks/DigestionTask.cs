@@ -276,7 +276,7 @@ namespace ProteaseGuru.Tasks
 
             var hydrophobicityBySequence = new Dictionary<string, double>();
             var mobilityBySequence = new Dictionary<string, double>();
-            var retentionTimeBySequence = new Dictionary<string, double>();
+            var retentionTimeBySequence = new Dictionary<string, double?>();
             var detectabilityBySequence = new Dictionary<string, bool?>();
             var detectabilityProbabilityBySequence = new Dictionary<string, (double NotDetectable, double LowDetectability, double IntermediateDetectability, double HighDetectability)?>();
 
@@ -299,7 +299,7 @@ namespace ProteaseGuru.Tasks
 
                 double[] hydrophobicityValues = BatchCalculateHydrophobicity(distinctPeptides);
                 double[] mobilityValues = BatchCalculateElectrophoreticMobility(distinctPeptides);
-                double[] retentionTimesChronologer = BatchCalculateRetentionTimesChronologer(distinctPeptides);
+                double?[] retentionTimesChronologer = BatchCalculateRetentionTimesChronologer(distinctPeptides);
                 var (pflyDetectabilities, pflyProbabilities) = pflyTask.GetAwaiter().GetResult();
 
                 for (int i = 0; i < distinctPeptides.Count; i++)
@@ -333,7 +333,7 @@ namespace ProteaseGuru.Tasks
                     string fullSequence = peptide.FullSequence;
                     double hydrophobicity = hydrophobicityBySequence.TryGetValue(fullSequence, out var hydro) ? hydro : double.NaN;
                     double mobility = mobilityBySequence.TryGetValue(fullSequence, out var mob) ? mob : double.NaN;
-                    double retentionTime = retentionTimeBySequence.TryGetValue(fullSequence, out var rt) ? rt : double.NaN;
+                    double? retentionTime = retentionTimeBySequence.TryGetValue(fullSequence, out var rt) ? rt : null;
                     bool? detectability = detectabilityBySequence.TryGetValue(fullSequence, out var det) ? det : null;
                     var detectabilityProbability = detectabilityProbabilityBySequence.TryGetValue(fullSequence, out var prob) ? prob : null;
 
@@ -452,28 +452,28 @@ namespace ProteaseGuru.Tasks
         /// <summary>
         /// Batch calculates Chronologer-predicted retention times for a collection of peptides.
         /// </summary>
-        private double[] BatchCalculateRetentionTimesChronologer(List<PeptideWithSetModifications> peptides)
+        private double?[] BatchCalculateRetentionTimesChronologer(List<PeptideWithSetModifications> peptides)
         {
-            var results = new double[peptides.Count];
+            var results = new double?[peptides.Count];
             if (peptides.Count == 0) return results;
 
             // Use Chronologer's batched API: it encodes the peptides in parallel and runs the
             // Torch model in large batched forward passes (one model lock per chunk) rather than
             // a locked batch-of-1 call per peptide. This is dramatically faster for many peptides.
-            // Results come back in input order; -1 is the sentinel for peptides it couldn't predict.
+            // Results come back in input order; null for peptides it couldn't predict.
             if (_chronologerSession == null)
                 throw new InvalidOperationException("Chronologer session not open. Retention times can only be predicted during a run.");
 
             var predictions = _chronologerSession.Predict(peptides, maxThreads: MaxConcurrency);
             if (predictions.Count != peptides.Count)
             {
-                Warn($"Chronologer returned {predictions.Count} retention times for {peptides.Count} peptides. Falling back to -1.");
-                Array.Fill(results, -1.0);
+                Warn($"Chronologer returned {predictions.Count} retention times for {peptides.Count} peptides. Falling back to no retention time.");
+                Array.Fill(results, null);
                 return results;
             }
             for (int i = 0; i < results.Length; i++)
             {
-                results[i] = predictions[i].PredictedValue ?? -1;
+                results[i] = predictions[i].PredictedValue;
             }
 
             return results;

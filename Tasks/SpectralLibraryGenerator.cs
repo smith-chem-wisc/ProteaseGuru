@@ -137,20 +137,7 @@ namespace ProteaseGuru.Tasks
             progress?.Report($"Resolving retention times for {_peptides.Count} peptides...");
             var retentionTimes = ResolveRetentionTimes(_peptides);
 
-            var inputs = new List<FragmentIntensityPredictionInput>();
-            var rts = new List<double?>();
-            foreach (var pc in _options.ChargeStates)
-            {
-                inputs.AddRange(_peptides.Select(p => new FragmentIntensityPredictionInput(
-                    FullSequence: p.FullSequence,
-                    PrecursorCharge: pc,
-                    CollisionEnergy: _options.CollisionEnergy,
-                    InstrumentType: null,
-                    FragmentationType: null
-                    )
-                ));
-                rts.AddRange(_peptides.Select(p => retentionTimes[p.FullSequence]));
-            }
+            var (inputs, rts) = BuildPredictionInputs(retentionTimes);
 
             cancellationToken.ThrowIfCancellationRequested();
             progress?.Report($"Predicting fragment intensities for {inputs.Count} spectra. This may take several minutes...");
@@ -158,16 +145,21 @@ namespace ProteaseGuru.Tasks
 
             cancellationToken.ThrowIfCancellationRequested();
             progress?.Report("Filtering fragment ions...");
-            ApplyFragmentFilters(model.Predictions);
+            ApplyFragmentFilters(model.Predictions, model.ValidInputsMask);
 
-            // mzLib builds the spectra, collapses duplicates, and writes MSP or MSL by file extension.
+            // mzLib builds the spectra and collapses duplicates. It is asked not to write, because a
+            // spectrum the user's filters emptied has to be removed first: the MSP writer takes Max()
+            // over the peaks, so a single empty spectrum throws and the whole export is lost.
             var library = model.GenerateLibrarySpectraFromPredictions(
                 alignedRetentionTimes: rts.ToArray(),
                 warning: out var warning,
-                filepath: _outputPath,
+                filepath: null,
                 minIntensityFilter: MinimumAbsoluteIntensity);
 
             Warning = warning?.Message;
+            if (Warning != null) progress?.Report(Warning);
+
+            WriteLibrary(library, progress);
             progress?.Report($"Wrote {library.Count} spectra to {_outputPath}.");
 
             return library;
@@ -176,8 +168,7 @@ namespace ProteaseGuru.Tasks
         /// <summary>
         /// Retention times keyed by full sequence. Peptides that arrive without one - anything digested
         /// on demand rather than read back from a run - are predicted here, on the same sequence the
-        /// intensity model is given, so both describe the same molecule. Chronologer's -1 sentinel stays
-        /// null so that a spectrum is written without a retention time rather than with a fake one.
+        /// intensity model is given, so both describe the same molecule.
         /// </summary>
         internal Dictionary<string, double?> ResolveRetentionTimes(List<SpectralLibraryPeptide> peptides)
         {
@@ -200,11 +191,63 @@ namespace ProteaseGuru.Tasks
 
             for (int i = 0; i < predictions.Count; i++)
             {
-                double? predicted = predictions[i].PredictedValue;
-                known[toPredict[i].FullSequence] = predicted >= 0 ? predicted : null;
+                // Null is how the model reports failure. Negative values are real: Chronologer
+                // predicts below zero for hydrophilic peptides (GSGSGSGSK is -0.464).
+                known[toPredict[i].FullSequence] = predictions[i].PredictedValue;
             }
 
             return known;
+        }
+
+        /// <summary>
+        /// Writes what can be written. A spectrum the user's filters left with no fragment ions is
+        /// dropped first: the MSP writer takes Max() over the peaks, so one empty spectrum would throw
+        /// and cost the whole export.
+        /// </summary>
+        internal void WriteLibrary(List<LibrarySpectrum> spectra, IProgress<string>? progress = null)
+        {
+            int emptied = spectra.RemoveAll(s => s.MatchedFragmentIons.Count == 0);
+            if (emptied > 0)
+                progress?.Report($"Dropped {emptied} spectra whose fragment ions were all filtered out.");
+
+            switch (_options.OutputFormat)
+            {
+                case SpectralLibraryFormat.Msp:
+                    new SpectralLibrary { Results = spectra }.WriteResults(_outputPath);
+                    break;
+                case SpectralLibraryFormat.Msl:
+                    MslLibrary.SaveFromLibrarySpectra(_outputPath, spectra);
+                    break;
+                default:
+                    throw new NotSupportedException($"Cannot write a spectral library in {_options.OutputFormat} format.");
+            }
+        }
+
+        /// <summary>
+        /// One prediction input per peptide per charge state, with a retention time array of the same
+        /// length and ordering. mzLib pairs the two positionally, so they must stay in lockstep.
+        /// </summary>
+        internal (List<FragmentIntensityPredictionInput> Inputs, List<double?> RetentionTimes) BuildPredictionInputs(
+            Dictionary<string, double?> retentionTimes)
+        {
+            var inputs = new List<FragmentIntensityPredictionInput>();
+            var rts = new List<double?>();
+
+            foreach (var charge in _options.ChargeStates)
+            {
+                foreach (var peptide in _peptides)
+                {
+                    inputs.Add(new FragmentIntensityPredictionInput(
+                        FullSequence: peptide.FullSequence,
+                        PrecursorCharge: charge,
+                        CollisionEnergy: _options.CollisionEnergy,
+                        InstrumentType: null,
+                        FragmentationType: null));
+                    rts.Add(retentionTimes[peptide.FullSequence]);
+                }
+            }
+
+            return (inputs, rts);
         }
 
         /// <summary>
@@ -213,10 +256,24 @@ namespace ProteaseGuru.Tasks
         /// rank -- are the only part of library generation ProteaseGuru owns; everything downstream of
         /// here is mzLib's GenerateLibrarySpectraFromPredictions.
         /// </summary>
-        internal void ApplyFragmentFilters(IReadOnlyList<PeptideFragmentIntensityPrediction> predictions)
+        internal void ApplyFragmentFilters(
+            IReadOnlyList<PeptideFragmentIntensityPrediction> predictions,
+            IReadOnlyList<bool> validInputsMask)
         {
-            foreach (var prediction in predictions)
+            if (predictions.Count != validInputsMask.Count)
+                throw new ArgumentException(
+                    $"Expected one mask entry per prediction, got {validInputsMask.Count} for {predictions.Count}.",
+                    nameof(validInputsMask));
+
+            for (int p = 0; p < predictions.Count; p++)
             {
+                // Predict realigns Predictions to the full input length, inserting placeholders whose
+                // three fragment lists are all null for inputs it rejected -- anything over Prosit's
+                // 30-residue limit, non-canonical residues, unsupported mods. Only valid entries have
+                // fragments to filter, and only they survive into the library.
+                if (!validInputsMask[p]) continue;
+
+                var prediction = predictions[p];
                 // DefaultIfEmpty guards predictions whose fragments were all stripped upstream, where
                 // Max() would throw. Only consumed when relative-intensity filtering is on.
                 double maxIntensity = prediction.FragmentIntensities.DefaultIfEmpty(0).Max();

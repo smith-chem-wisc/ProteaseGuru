@@ -1,4 +1,6 @@
 using MzLibUtil;
+using Omics.Fragmentation;
+using Omics.SpectrumMatch;
 using NUnit.Framework;
 using Omics.SequenceConversion;
 using PredictionClients.Koina.AbstractClasses;
@@ -205,7 +207,7 @@ internal class SpectralLibraryTests
         var options = PermissiveOptions;
         options.MinimumMZThreshold = 250;
 
-        GeneratorWith(options).ApplyFragmentFilters(new[] { prediction });
+        GeneratorWith(options).ApplyFragmentFilters(new[] { prediction }, AllValid(1));
 
         // b2 sits at 227.1026, below the window; y2 at 276.1554 survives.
         Assert.That(prediction.FragmentAnnotations, Is.EqualTo(new[] { "y2+1" }));
@@ -221,7 +223,7 @@ internal class SpectralLibraryTests
         options.FilterByRelativeIntensity = true;
         options.RelativeIntensityThreshold = 0.75; // base peak is 1.0, so the 0.5 fragment goes
 
-        GeneratorWith(options).ApplyFragmentFilters(new[] { prediction });
+        GeneratorWith(options).ApplyFragmentFilters(new[] { prediction }, AllValid(1));
 
         Assert.That(prediction.FragmentAnnotations, Is.EqualTo(new[] { "y2+1" }));
         Assert.That(prediction.FragmentIntensities, Is.EqualTo(new[] { 1.0 }));
@@ -242,7 +244,7 @@ internal class SpectralLibraryTests
         options.FilterByIntensityRank = true;
         options.IntensityRankThreshold = 2;
 
-        GeneratorWith(options).ApplyFragmentFilters(new[] { prediction });
+        GeneratorWith(options).ApplyFragmentFilters(new[] { prediction }, AllValid(1));
 
         Assert.That(prediction.FragmentAnnotations, Is.EqualTo(new[] { "y2+1", "b3+1" }),
             "the two most intense survive, still in m/z order");
@@ -254,7 +256,7 @@ internal class SpectralLibraryTests
     {
         var prediction = PredictionFor(MzLibSequence, UnimodSequence);
 
-        GeneratorWith(PermissiveOptions).ApplyFragmentFilters(new[] { prediction });
+        GeneratorWith(PermissiveOptions).ApplyFragmentFilters(new[] { prediction }, AllValid(1));
 
         Assert.That(prediction.FragmentAnnotations, Has.Count.EqualTo(2));
     }
@@ -274,13 +276,143 @@ internal class SpectralLibraryTests
         options.FilterByRelativeIntensity = true;
         options.RelativeIntensityThreshold = 0.5;
 
-        Assert.DoesNotThrow(() => GeneratorWith(options).ApplyFragmentFilters(new[] { prediction }));
+        Assert.DoesNotThrow(() => GeneratorWith(options).ApplyFragmentFilters(new[] { prediction }, AllValid(1)));
         Assert.That(prediction.FragmentAnnotations, Is.Empty);
     }
 
     #endregion
 
+    #region Alignment and rejected inputs
+
+    [Test]
+    public static void PlaceholderPredictionsForRejectedInputsAreSkipped()
+    {
+        // mzLib realigns Predictions to the full input length, inserting entries whose three fragment
+        // lists are all null for inputs it rejected -- over 30 residues, non-canonical, unsupported
+        // mods. Walking into one throws and kills the whole export.
+        var rejected = new PeptideFragmentIntensityPrediction(
+            FullSequence: "PEPTIDEK",
+            ValidatedFullSequence: null,
+            PrecursorCharge: 2,
+            FragmentAnnotations: null,
+            FragmentMZs: null,
+            FragmentIntensities: null);
+        var accepted = PredictionFor(MzLibSequence, UnimodSequence);
+
+        Assert.DoesNotThrow(() => GeneratorWith(PermissiveOptions)
+            .ApplyFragmentFilters(new[] { rejected, accepted }, new[] { false, true }));
+
+        Assert.That(accepted.FragmentAnnotations, Has.Count.EqualTo(2), "valid predictions are still filtered");
+    }
+
+    [Test]
+    public static void RetentionTimesStayInLockstepWithPredictionInputs()
+    {
+        var options = PermissiveOptions;
+        options.ChargeStates = new List<int> { 2, 3 };
+        var peptides = new List<SpectralLibraryPeptide>
+        {
+            new("PEPTIDEK", RetentionTime: 10, IsDetectable: null),
+            new("ELVISLIVESK", RetentionTime: 20, IsDetectable: null)
+        };
+        var generator = new SpectralLibraryGenerator(peptides, options, "unused.msp");
+
+        var (inputs, rts) = generator.BuildPredictionInputs(
+            new Dictionary<string, double?> { ["PEPTIDEK"] = 10, ["ELVISLIVESK"] = 20 });
+
+        // mzLib pairs the two arrays positionally, so every input must sit beside its own peptide's
+        // retention time. The ordering itself is ours to choose; only the pairing is required.
+        Assert.That(inputs, Has.Count.EqualTo(4));
+        Assert.That(rts, Has.Count.EqualTo(inputs.Count));
+        for (int i = 0; i < inputs.Count; i++)
+        {
+            double expected = inputs[i].FullSequence == "PEPTIDEK" ? 10 : 20;
+            Assert.That(rts[i], Is.EqualTo(expected).Within(1e-9), $"input {i} ({inputs[i].FullSequence}) got the wrong retention time");
+        }
+        Assert.That(inputs.Select(i => i.PrecursorCharge), Is.EquivalentTo(new[] { 2, 2, 3, 3 }));
+    }
+
+    [Test]
+    public static void ANegativeRetentionTimeIsAPredictionNotAFailure()
+    {
+        // Chronologer predicts below zero for hydrophilic peptides; GSGSGSGSK is about -0.464.
+        var generator = new SpectralLibraryGenerator(new List<SpectralLibraryPeptide>(), PermissiveOptions, "unused.msp");
+        var peptides = new List<SpectralLibraryPeptide> { new("GSGSGSGSK", RetentionTime: null, IsDetectable: null) };
+
+        var resolved = generator.ResolveRetentionTimes(peptides);
+
+        Assert.That(resolved["GSGSGSGSK"], Is.Not.Null);
+        Assert.That(resolved["GSGSGSGSK"], Is.LessThan(0));
+    }
+
+    [Test]
+    public static void RankFilteringKeepsIndicesAscendingSoFragmentsAreNotDuplicated()
+    {
+        // RetainFragments compacts in place, so a descending keep-set would overwrite a source slot
+        // before reading it and silently duplicate a fragment.
+        var prediction = new PeptideFragmentIntensityPrediction(
+            FullSequence: MzLibSequence,
+            ValidatedFullSequence: UnimodSequence,
+            PrecursorCharge: 2,
+            FragmentAnnotations: new List<string> { "b2+1", "y2+1", "b3+1" },
+            FragmentMZs: new List<double> { 227.1026, 276.1554, 324.1554 },
+            // Keep-set is {1,0} before sorting: descending intensity picks y2+1 then b2+1. Without
+            // the sort, RetainFragments overwrites slot 0 before reading it and duplicates y2+1.
+            FragmentIntensities: new List<double> { 0.9, 1.0, 0.1 });
+
+        var options = PermissiveOptions;
+        options.FilterByIntensityRank = true;
+        options.IntensityRankThreshold = 2;
+
+        GeneratorWith(options).ApplyFragmentFilters(new[] { prediction }, AllValid(1));
+
+        Assert.That(prediction.FragmentAnnotations, Is.EqualTo(new[] { "b2+1", "y2+1" }));
+        Assert.That(prediction.FragmentAnnotations, Is.Unique);
+        Assert.That(prediction.FragmentMZs, Is.EqualTo(new[] { 227.1026, 276.1554 }));
+    }
+
+    #endregion
+
+    #region Writing
+
+    [Test]
+    public static void SpectraLeftWithNoFragmentsAreDroppedRatherThanKillingTheWrite()
+    {
+        // The MSP writer takes Max() over a spectrum's peaks, so an empty one throws
+        // "Sequence contains no elements" and the export produces no file at all.
+        var withPeaks = SpectrumWith(new MatchedFragmentIon(
+            new Product(ProductType.b, FragmentationTerminus.N, 226.0953, 2, 2, 0), 227.1026, 1.0, 1));
+        var emptied = SpectrumWith();
+        var library = new List<LibrarySpectrum> { withPeaks, emptied };
+
+        string path = Path.Combine(Path.GetTempPath(), $"pgtest_{Guid.NewGuid():N}.msp");
+        try
+        {
+            Assert.DoesNotThrow(() => GeneratorWriting(path).WriteLibrary(library));
+
+            Assert.That(library, Has.Count.EqualTo(1), "the empty spectrum is dropped");
+            Assert.That(File.Exists(path), Is.True);
+            Assert.That(File.ReadAllText(path), Does.Contain("PEPTIDEK"));
+        }
+        finally
+        {
+            if (File.Exists(path)) File.Delete(path);
+        }
+    }
+
+    #endregion
+
     #region Helpers
+
+    private static LibrarySpectrum SpectrumWith(params MatchedFragmentIon[] ions) =>
+        new("PEPTIDEK", 500.0, 2, ions.ToList(), 10.0);
+
+    private static SpectralLibraryGenerator GeneratorWriting(string path) =>
+        new(new List<SpectralLibraryPeptide>(), PermissiveOptions, path);
+
+
+    private static bool[] AllValid(int count) => Enumerable.Repeat(true, count).ToArray();
+
 
     private static List<Omics.SpectrumMatch.LibrarySpectrum> GenerateFrom(SeededHcdModel model, double? retentionTime) =>
         model.GenerateLibrarySpectraFromPredictions(

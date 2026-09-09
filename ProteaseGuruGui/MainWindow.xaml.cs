@@ -867,12 +867,13 @@ namespace ProteaseGuru.Gui
                     double hydrophobicity = Convert.ToDouble(info[15]);
                     double electrophoreticMobility = Convert.ToDouble(info[16]);
 
-                    // Handle Chronologer RT - use -1 as default for older files without this column
-                    double chronologerRetentionTime = -1;
+                    // Older files have no such column at all. Within the column, -1 and NaN were both
+                    // written for "no prediction"; neither is a retention time.
+                    double? chronologerRetentionTime = null;
                     bool? pflyDetectability = null;
                     if (info.Length > 17)
                     {
-                        chronologerRetentionTime = Convert.ToDouble(info[17]);
+                        chronologerRetentionTime = InSilicoPep.RetentionTimeFromStoredValue(Convert.ToDouble(info[17]));
                     }
                     if (info.Length > 18 && bool.TryParse(info[18], out bool parsedDetectability))
                     {

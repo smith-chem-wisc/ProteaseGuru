@@ -27,11 +27,11 @@ internal class SpectralLibraryPeptideSourceTests
             OutputFormat = SpectralLibraryFormat.Msp
         };
 
-    private static InSilicoPep PeptideWith(string fullSequence, double retentionTime, bool? detectable) =>
+    private static InSilicoPep PeptideWith(string fullSequence, double? retentionTime, bool? detectable, int start = 1) =>
         new(fullSequence, fullSequence, 'K', 'A', unique: true, hydrophobicity: 0, electrophoreticMobility: 0,
             chronologerRetentionTime: retentionTime, pflyDetectability: detectable, length: fullSequence.Length,
             molecularWeight: 0, database: "db", protein: "TESTPROT", proteinName: "TESTPROT",
-            start: 1, end: fullSequence.Length, protease: "trypsin|P");
+            start: start, end: start + fullSequence.Length - 1, protease: "trypsin|P");
 
     private static ResultsBackedPeptideSource SourceOver(params InSilicoPep[] peptides)
     {
@@ -62,14 +62,67 @@ internal class SpectralLibraryPeptideSourceTests
     }
 
     [Test]
-    public static void ChronologerFailureSentinelBecomesNoRetentionTime()
+    public static void AMissingRetentionTimeStaysMissing()
     {
-        var source = SourceOver(PeptideWith("PEPTIDEK", -1, detectable: true));
+        var source = SourceOver(PeptideWith("PEPTIDEK", null, detectable: true));
 
         var peptides = source.GetPeptides(OptionsFor(source.AvailableProteases, source.AvailableProteins));
 
-        // -1 means Chronologer could not predict it; writing that as a retention time would be a lie.
         Assert.That(peptides[0].RetentionTime, Is.Null);
+    }
+
+    [Test]
+    public static void AMissingRetentionTimeSurvivesTheResultsFileRoundTrip()
+    {
+        // Column 17 is what the previous-results loader reads. A missing value has to come back
+        // missing, and has to stay parseable by the Convert.ToDouble the loader uses.
+        var written = PeptideWith("PEPTIDEK", null, detectable: true).ToString().Split('	')[17];
+
+        Assert.That(InSilicoPep.RetentionTimeFromStoredValue(Convert.ToDouble(written)), Is.Null);
+    }
+
+    [Test]
+    public static void ARealRetentionTimeSurvivesTheResultsFileRoundTrip()
+    {
+        var written = PeptideWith("PEPTIDEK", -0.464, detectable: true).ToString().Split('	')[17];
+
+        Assert.That(InSilicoPep.RetentionTimeFromStoredValue(Convert.ToDouble(written)),
+            Is.EqualTo(-0.464).Within(1e-9));
+    }
+
+    [TestCase(-1.0, null, TestName = "StoredMinusOneMeantChronologerFailed")]
+    [TestCase(double.NaN, null, TestName = "StoredNaNMeantNeverCalculated")]
+    [TestCase(-0.464, -0.464, TestName = "StoredNegativeIsARealPrediction")]
+    [TestCase(42.5, 42.5, TestName = "StoredPositiveIsARealPrediction")]
+    public static void LegacyStoredMarkersAreReadBackAsMissing(double stored, double? expected)
+    {
+        // Results files written before this column was nullable used both -1 and NaN for "no value".
+        Assert.That(InSilicoPep.RetentionTimeFromStoredValue(stored), Is.EqualTo(expected));
+    }
+
+    [Test]
+    public static void ANegativeRetentionTimeIsCarriedThrough()
+    {
+        // Chronologer predicts below zero for hydrophilic peptides.
+        var source = SourceOver(PeptideWith("PEPTIDEK", -0.464, detectable: true));
+
+        var peptides = source.GetPeptides(OptionsFor(source.AvailableProteases, source.AvailableProteins));
+
+        Assert.That(peptides[0].RetentionTime, Is.EqualTo(-0.464).Within(1e-9));
+    }
+
+    [Test]
+    public static void TheSameSequenceAtTwoPositionsCollapsesToOnePeptide()
+    {
+        // InSilicoPep.Equals keys on start and end, so these stay distinct peptides all the way to the
+        // final DistinctBy -- which is the case that guard exists for.
+        var source = SourceOver(
+            PeptideWith("PEPTIDEK", 10, detectable: true, start: 1),
+            PeptideWith("PEPTIDEK", 10, detectable: true, start: 40));
+
+        var peptides = source.GetPeptides(OptionsFor(source.AvailableProteases, source.AvailableProteins));
+
+        Assert.That(peptides, Has.Count.EqualTo(1));
     }
 
     [Test]

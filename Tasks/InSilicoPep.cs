@@ -14,7 +14,8 @@ namespace ProteaseGuru.Tasks
         public bool SeqOnlyInThisDb;
         public double Hydrophobicity;
         public double ElectrophoreticMobility;
-        public double ChronologerRetentionTime;
+        // Null when no retention time was predicted, whether the model failed or never ran.
+        public double? ChronologerRetentionTime;
         public bool? PflyDetectability;
         public (double NotDetectable, double LowDetectability, double IntermediateDetectability, double HighDetectability)? PflyProbabilities;
         public int Length;
@@ -27,7 +28,7 @@ namespace ProteaseGuru.Tasks
         public string Protease;
 
         public InSilicoPep(string baseSequence, string fullSequence, char previousAA, char nextAA, bool unique, double hydrophobicity, double electrophoreticMobility,
-            double chronologerRetentionTime, bool? pflyDetectability, int length, double molecularWeight, string database, string protein, string proteinName, int start, int end, string protease,
+            double? chronologerRetentionTime, bool? pflyDetectability, int length, double molecularWeight, string database, string protein, string proteinName, int start, int end, string protease,
             (double NotDetectable, double LowDetectability, double IntermediateDetectability, double HighDetectability)? pflyProbabilities = null)
         {
             BaseSequence = baseSequence;
@@ -90,7 +91,7 @@ namespace ProteaseGuru.Tasks
             sb.Append(tab);
             sb.Append(ElectrophoreticMobility);
             sb.Append(tab);
-            sb.Append(ChronologerRetentionTime);
+            sb.Append(ChronologerRetentionTime ?? double.NaN);
             sb.Append(tab);
             sb.Append(PflyDetectability);
             sb.Append(tab);
@@ -103,6 +104,13 @@ namespace ProteaseGuru.Tasks
             sb.Append(PflyProbabilities?.HighDetectability);
             return sb.ToString();
         }
+        /// <summary>
+        /// Reads a retention time out of a results file. Files written before this column existed have
+        /// no value at all; within the column, both -1 and NaN were written to mean "no prediction".
+        /// </summary>
+        public static double? RetentionTimeFromStoredValue(double stored) =>
+            double.IsFinite(stored) && stored != -1 ? stored : null;
+
         public override bool Equals(object? obj)
         {
             if (obj is not InSilicoPep q)

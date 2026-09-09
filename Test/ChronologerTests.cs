@@ -384,14 +384,14 @@ MSFVNGNEIFTAARKQGHYAVGAFNTNNLEWTRKPEPTIDESAMPLERKNTPVLIQVSMGAAKYLVKTLVEEEMRK";
 
             foreach (var peptide in allPeptides)
             {
-                // Access the ChronologerRetentionTime property
-                double rt = peptide.ChronologerRetentionTime;
+                double? rt = peptide.ChronologerRetentionTime;
 
-                if (rt >= 0)
+                if (rt.HasValue)
                 {
+                    double value = rt.Value;
                     validRtCount++;
-                    Assert.That(double.IsNaN(rt), Is.False, $"RT for {peptide.BaseSequence} should not be NaN");
-                    Assert.That(double.IsInfinity(rt), Is.False, $"RT for {peptide.BaseSequence} should not be infinite");
+                    Assert.That(double.IsNaN(value), Is.False, $"RT for {peptide.BaseSequence} should not be NaN");
+                    Assert.That(double.IsInfinity(value), Is.False, $"RT for {peptide.BaseSequence} should not be infinite");
                 }
                 else
                 {
@@ -409,7 +409,7 @@ MSFVNGNEIFTAARKQGHYAVGAFNTNNLEWTRKPEPTIDESAMPLERKNTPVLIQVSMGAAKYLVKTLVEEEMRK";
 
             // Show some examples
             TestContext.WriteLine("\nExample peptides with Chronologer RT:");
-            foreach (var pep in allPeptides.Where(p => p.ChronologerRetentionTime >= 0).Take(5))
+            foreach (var pep in allPeptides.Where(p => p.ChronologerRetentionTime.HasValue).Take(5))
             {
                 TestContext.WriteLine($"  {pep.BaseSequence}: RT = {pep.ChronologerRetentionTime:F4}");
             }
