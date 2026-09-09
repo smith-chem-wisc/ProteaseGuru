@@ -11,6 +11,7 @@ using PredictionClients.Koina.SupportedModels.FragmentIntensityModels;
 using PredictionClients.Koina.Util;
 using Proteomics;
 using Proteomics.ProteolyticDigestion;
+using ProteaseGuru.Tasks.CoverageMapConfiguration;
 using Proteomics.RetentionTimePrediction;
 using Transcriptomics;
 using UsefulProteomicsDatabases;
@@ -112,8 +113,8 @@ namespace ProteaseGuru.Tasks
 
                 Status("Writing Peptide Output...", "peptides");
                 WritePeptidesToTsv(PeptideByFile, OutputFolder, DigestionParameters);
-                SequenceCoverageByProtease = CalculateProteinSequenceCoverage(PeptideByFile);
-                SequenceCoverageByProteaseFromDetectablePeptides = CalculateProteinSequenceCoverage(
+                SequenceCoverageByProtease = SequenceCoverageCalculator.Calculate(PeptideByFile);
+                SequenceCoverageByProteaseFromDetectablePeptides = SequenceCoverageCalculator.Calculate(
                     PeptideByFile.ToDictionary(
                         db => db.Key,
                         db => db.Value.ToDictionary(
@@ -656,91 +657,6 @@ namespace ProteaseGuru.Tasks
         {
             return modifications.Count(mod =>
                 mod.OriginalId != null && ShiftingModifications.Contains(mod.OriginalId));
-        }
-
-        #endregion
-
-        #region Sequence Coverage Calculation
-
-        /// <summary>
-        /// Calculates protein sequence coverage for each protease across all databases.
-        /// </summary>
-        private Dictionary<string, Dictionary<IBioPolymer, (double, double)>> CalculateProteinSequenceCoverage(
-            Dictionary<string, Dictionary<string, Dictionary<IBioPolymer, List<InSilicoPep>>>> peptideByFile)
-        {
-            // PHASE 1: Aggregate peptides from all databases by protease
-            var allDatabasePeptidesByProtease = new Dictionary<string, List<InSilicoPep>>();
-            var accessionToProtein = new Dictionary<string, IBioPolymer>();
-
-            foreach (var database in peptideByFile)
-            {
-                foreach (var protease in database.Value)
-                {
-                    string proteaseName = protease.Key;
-
-                    if (!allDatabasePeptidesByProtease.TryGetValue(proteaseName, out var peptideList))
-                    {
-                        peptideList = new List<InSilicoPep>();
-                        allDatabasePeptidesByProtease[proteaseName] = peptideList;
-                    }
-
-                    foreach (var proteinEntry in protease.Value)
-                    {
-                        peptideList.AddRange(proteinEntry.Value);
-                        accessionToProtein[proteinEntry.Key.Accession] = proteinEntry.Key;
-                    }
-                }
-            }
-
-            // PHASE 2: Calculate coverage for each protease-protein combination
-            var proteinSequenceCoverageByProtease = new Dictionary<string, Dictionary<IBioPolymer, (double, double)>>();
-
-            foreach (var protease in allDatabasePeptidesByProtease)
-            {
-                string proteaseName = protease.Key;
-                var peptidesForProtease = protease.Value;
-
-                var peptidesByProteinAccession = peptidesForProtease
-                    .GroupBy(p => p.Protein)
-                    .ToDictionary(group => group.Key, group => group.ToList());
-
-                var sequenceCoverages = new Dictionary<IBioPolymer, (double, double)>();
-
-                foreach (var proteinGroup in peptidesByProteinAccession)
-                {
-                    string proteinAccession = proteinGroup.Key;
-                    var peptidesForThisProtein = proteinGroup.Value;
-
-                    if (!accessionToProtein.TryGetValue(proteinAccession, out IBioPolymer? actualProtein))
-                        continue;
-
-                    int proteinSequenceLength = actualProtein.Length;
-                    var coveredResidues = new HashSet<int>();
-                    var coveredResiduesUnique = new HashSet<int>();
-                    var uniquePeptideSet = peptidesForThisProtein.ToHashSet();
-
-                    foreach (var peptide in uniquePeptideSet)
-                    {
-                        for (int residuePosition = peptide.StartResidue; residuePosition <= peptide.EndResidue; residuePosition++)
-                        {
-                            coveredResidues.Add(residuePosition);
-                            if (peptide.Unique)
-                            {
-                                coveredResiduesUnique.Add(residuePosition);
-                            }
-                        }
-                    }
-
-                    double totalCoveragePercent = Math.Round((double)coveredResidues.Count / proteinSequenceLength * 100.0, 2);
-                    double uniqueCoveragePercent = Math.Round((double)coveredResiduesUnique.Count / proteinSequenceLength * 100.0, 2);
-
-                    sequenceCoverages.Add(actualProtein, (totalCoveragePercent, uniqueCoveragePercent));
-                }
-
-                proteinSequenceCoverageByProtease.Add(proteaseName, sequenceCoverages);
-            }
-
-            return proteinSequenceCoverageByProtease;
         }
 
         #endregion
