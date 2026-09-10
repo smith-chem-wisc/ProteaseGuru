@@ -1,21 +1,11 @@
 using Omics.SequenceConversion;
 using Omics.SpectrumMatch;
 using PredictionClients.Koina.AbstractClasses;
-using PredictionClients.Koina.SupportedModels.FragmentIntensityModels;
 using PredictionClients.Koina.Util;
-using Proteomics.ProteolyticDigestion;
 using Readers.SpectralLibrary;
 
 namespace ProteaseGuru.Tasks
 {
-    /// <summary>
-    /// The fragment intensity models ProteaseGuru can drive.
-    /// </summary>
-    public enum FragmentIntensityPredictionModel
-    {
-        Prosit2020IntensityHcd
-    }
-
     /// <summary>
     /// The library formats mzLib can write. mzLib routes on file extension, so these exist to build the
     /// save dialog's filter and default extension, and to keep the two in step.
@@ -53,9 +43,12 @@ namespace ProteaseGuru.Tasks
         public List<string> SelectedProteins { get; set; }
 
         // Prediction model options
-        public FragmentIntensityPredictionModel PredictionModel { get; set; } = FragmentIntensityPredictionModel.Prosit2020IntensityHcd;
-        public List<int> ChargeStates { get; set; }
-        public int CollisionEnergy { get; set; }
+        public FragmentIntensityPredictionModel FragmentIntensityModel { get; set; } = FragmentIntensityPredictionModel.Prosit2020IntensityHcd;
+        public RetentionTimePredictionModel RetentionTimeModel { get; set; } = RetentionTimePredictionModel.ChronologerRt;
+        public List<int> ChargeStates { get; set; } = new() { 2, 3 };
+        public int? CollisionEnergy { get; set; } = 30;
+        public string? InstrumentType { get; set; }
+        public string? FragmentationType { get; set; }
 
         // Peptide filtering options
         public bool ExcludeIncompatiblePeptides { get; set; }
@@ -83,6 +76,7 @@ namespace ProteaseGuru.Tasks
         private readonly SpectralLibraryExportOptions _options;
         private readonly string _outputPath;
         private readonly FragmentIntensityModel? _intensityModel;
+        private readonly RetentionTimeModel? _retentionTimeModel;
 
         public SpectralLibraryGenerator(
             List<SpectralLibraryPeptide> peptides,
@@ -95,17 +89,20 @@ namespace ProteaseGuru.Tasks
         }
 
         /// <summary>
-        /// Supplies a model whose prediction boundary can be controlled by offline composition tests.
-        /// Production callers use the public constructor and create the model from export options.
+        /// Supplies models whose prediction boundary can be controlled by offline composition tests.
+        /// Production callers use the public constructor and create the models from export options.
+        /// The generator disposes a retention time model given here, as it does one it creates itself.
         /// </summary>
         internal SpectralLibraryGenerator(
             List<SpectralLibraryPeptide> peptides,
             SpectralLibraryExportOptions options,
             string outputPath,
-            FragmentIntensityModel intensityModel)
+            FragmentIntensityModel intensityModel,
+            RetentionTimeModel? retentionTimeModel = null)
             : this(peptides, options, outputPath)
         {
             _intensityModel = intensityModel;
+            _retentionTimeModel = retentionTimeModel;
         }
 
         /// <summary>
@@ -116,20 +113,22 @@ namespace ProteaseGuru.Tasks
         {
             if (_intensityModel != null) return _intensityModel;
 
-            switch (_options.PredictionModel)
-            {
-                case FragmentIntensityPredictionModel.Prosit2020IntensityHcd:
-                    return new Prosit2020IntensityHCD(
-                       modHandlingMode: _options.ExcludeIncompatiblePeptides ? SequenceConversionHandlingMode.ReturnNull : SequenceConversionHandlingMode.RemoveIncompatibleElements,
-                       parameterHandlingMode: IncompatibleParameterHandlingMode.ReturnNull,
-                       // Input, not validated: the peptide written to the library, the m/z filtered on,
-                       // and the m/z written must all describe the molecule the user asked about.
-                       fragmentIonMappingMode: FragmentIonMappingMode.MapToInputFullSequence
-                       );
-                default:
-                    throw new NotSupportedException($"Prediction model {_options.PredictionModel} is not supported.");
-            }
+            var definition = KoinaModelCatalog.FragmentIntensity(_options.FragmentIntensityModel);
+            return definition.Create(
+                ModHandlingMode(),
+                IncompatibleParameterHandlingMode.ReturnNull,
+                // Input, not validated: the peptide written to the library, the m/z filtered on,
+                // and the m/z written must all describe the molecule the user asked about.
+                FragmentIonMappingMode.MapToInputFullSequence);
         }
+
+        internal RetentionTimeModel CreateRetentionTimeModel() =>
+            _retentionTimeModel ?? KoinaModelCatalog.RetentionTime(_options.RetentionTimeModel).Create(ModHandlingMode());
+
+        private SequenceConversionHandlingMode ModHandlingMode() =>
+            _options.ExcludeIncompatiblePeptides
+                ? SequenceConversionHandlingMode.ReturnNull
+                : SequenceConversionHandlingMode.RemoveIncompatibleElements;
 
         /// <summary>
         /// Predicts fragment intensities and writes the library. Cancellation is cooperative between
@@ -141,10 +140,11 @@ namespace ProteaseGuru.Tasks
             CancellationToken cancellationToken = default)
         {
             var model = CreateIntensityModel();
+            using var retentionTimeModel = CreateRetentionTimeModel();
 
             cancellationToken.ThrowIfCancellationRequested();
-            progress?.Report($"Resolving retention times for {_peptides.Count} peptides...");
-            var retentionTimes = ResolveRetentionTimes(_peptides);
+            progress?.Report($"Predicting retention times with {retentionTimeModel.ModelName} for {_peptides.Count} peptides...");
+            var retentionTimes = ResolveRetentionTimes(_peptides, retentionTimeModel, progress);
 
             var (inputs, rts) = BuildPredictionInputs(retentionTimes);
 
@@ -180,45 +180,75 @@ namespace ProteaseGuru.Tasks
         }
 
         /// <summary>
-        /// Retention times keyed by full sequence. Peptides that arrive without one - anything digested
-        /// on demand rather than read back from a run - are predicted here, on the same sequence the
-        /// intensity model is given, so both describe the same molecule.
+        /// Retention times keyed by full sequence. Every unique peptide is predicted with the selected
+        /// model, even when the source carries a Chronologer value from a completed run; otherwise a
+        /// library could silently mix outputs from two retention-time models.
         /// </summary>
-        internal static Dictionary<string, double?> ResolveRetentionTimes(List<SpectralLibraryPeptide> peptides)
+        internal static Dictionary<string, double?> ResolveRetentionTimes(
+            List<SpectralLibraryPeptide> peptides,
+            RetentionTimeModel model,
+            IProgress<string>? progress = null)
         {
-            var known = new Dictionary<string, double?>(StringComparer.Ordinal);
-            var toPredict = new List<PeptideWithSetModifications>();
+            var inputs = peptides
+                .Select(peptide => peptide.FullSequence)
+                .Distinct(StringComparer.Ordinal)
+                .Select(sequence => new RetentionTimePredictionInput(sequence))
+                .ToList();
 
-            foreach (var peptide in peptides)
-            {
-                if (known.ContainsKey(peptide.FullSequence)) continue;
+            var predictions = model.Predict(inputs);
+            if (predictions.Count != inputs.Count)
+                throw new InvalidOperationException(
+                    $"{model.ModelName} returned {predictions.Count} retention times for {inputs.Count} inputs.");
 
-                known[peptide.FullSequence] = peptide.RetentionTime;
-                if (peptide.RetentionTime == null)
-                    toPredict.Add(new PeptideWithSetModifications(peptide.FullSequence));
-            }
+            ReportRejectedRetentionTimeInputs(model, progress);
+            ReportAlteredRetentionTimeSequences(model, progress);
 
-            if (toPredict.Count == 0) return known;
-
-            using var session = SharedChronologerPredictor.Open();
-            var predictions = session.Predict(toPredict, maxThreads: Environment.ProcessorCount);
-
-            for (int i = 0; i < predictions.Count; i++)
-            {
-                // Null is how the model reports failure. Negative values are real: Chronologer
-                // predicts %ACN at elution, which goes below zero for hydrophilic peptides
-                // (GSGSGSGSK is -0.464).
-                known[toPredict[i].FullSequence] = predictions[i].PredictedValue;
-            }
-
-            return known;
+            return predictions.ToDictionary(
+                prediction => prediction.FullSequence,
+                prediction => prediction.PredictedRetentionTime is { } value && double.IsFinite(value)
+                    ? (double?)value
+                    : null,
+                StringComparer.Ordinal);
         }
 
-        /// <summary>
-        /// Writes what can be written. A spectrum the user's filters left with no fragment ions is
-        /// dropped first: the MSP writer takes Max() over the peaks, so one empty spectrum would throw
-        /// and cost the whole export.
-        /// </summary>
+        internal static void ReportRejectedRetentionTimeInputs(
+            RetentionTimeModel model,
+            IProgress<string>? progress)
+        {
+            int total = model.ValidInputsMask.Length;
+            int rejected = model.ValidInputsMask.Count(valid => !valid);
+            if (rejected == 0) return;
+
+            if (rejected == total)
+            {
+                throw new InvalidOperationException(
+                    $"Every peptide was rejected by {model.ModelName}. It accepts base sequences of " +
+                    $"{model.MinPeptideLength}-{model.MaxPeptideLength} canonical residues, with modifications " +
+                    $"limited to {DescribeAllowedModifications(model.AllowedUnimodIds)}.");
+            }
+
+            progress?.Report(
+                $"{rejected} of {total} peptides were rejected by {model.ModelName} and have no predicted retention time.");
+        }
+
+        internal static void ReportAlteredRetentionTimeSequences(
+            RetentionTimeModel model,
+            IProgress<string>? progress)
+        {
+            int altered = model.Predictions
+                .Where(prediction => prediction.PredictedRetentionTime != null && prediction.Warning != null)
+                .Select(prediction => prediction.FullSequence)
+                .Distinct(StringComparer.Ordinal)
+                .Count();
+
+            if (altered > 0)
+            {
+                progress?.Report(
+                    $"{altered} peptides carried modifications {model.ModelName} cannot represent. Their " +
+                    "retention times were predicted without those modifications.");
+            }
+        }
+
         /// <summary>
         /// Counts the peptides whose sequence the model had to change in order to predict them. mzLib
         /// records that on each prediction; the library still names the peptide the user asked about.
@@ -241,6 +271,11 @@ namespace ProteaseGuru.Tasks
             }
         }
 
+        /// <summary>
+        /// Writes what can be written. A spectrum the user's filters left with no fragment ions is
+        /// dropped first: the MSP writer takes Max() over the peaks, so one empty spectrum would throw
+        /// and cost the whole export.
+        /// </summary>
         internal void WriteLibrary(List<LibrarySpectrum> spectra, IProgress<string>? progress = null)
         {
             int emptied = spectra.RemoveAll(s => s.MatchedFragmentIons.Count == 0);
@@ -287,13 +322,18 @@ namespace ProteaseGuru.Tasks
                     $"Every peptide was rejected by {model.ModelName}. It accepts base sequences of " +
                     $"{model.MinPeptideLength}-{model.MaxPeptideLength} canonical residues at charges " +
                     $"{string.Join(", ", model.AllowedPrecursorCharges.OrderBy(c => c))}, with modifications " +
-                    $"limited to UNIMOD {string.Join(", ", model.AllowedUnimodIds.OrderBy(id => id))}.");
+                    $"limited to {DescribeAllowedModifications(model.AllowedUnimodIds)}.");
             }
 
             progress?.Report(
                 $"{rejected} of {total} peptide and charge combinations were rejected by {model.ModelName} " +
                 "and will not appear in the library.");
         }
+
+        private static string DescribeAllowedModifications(IReadOnlySet<int> allowedUnimodIds) =>
+            allowedUnimodIds.Count == 0
+                ? "any UNIMOD modification"
+                : $"UNIMOD {string.Join(", ", allowedUnimodIds.OrderBy(id => id))}";
 
         /// <summary>
         /// One prediction input per peptide per charge state, with a retention time array of the same
@@ -309,13 +349,17 @@ namespace ProteaseGuru.Tasks
             {
                 foreach (var peptide in _peptides)
                 {
+                    double? retentionTime = retentionTimes[peptide.FullSequence];
+                    if (_options.ExcludeIncompatiblePeptides && retentionTime == null)
+                        continue;
+
                     inputs.Add(new FragmentIntensityPredictionInput(
                         FullSequence: peptide.FullSequence,
                         PrecursorCharge: charge,
                         CollisionEnergy: _options.CollisionEnergy,
-                        InstrumentType: null,
-                        FragmentationType: null));
-                    rts.Add(retentionTimes[peptide.FullSequence]);
+                        InstrumentType: _options.InstrumentType,
+                        FragmentationType: _options.FragmentationType));
+                    rts.Add(retentionTime);
                 }
             }
 
