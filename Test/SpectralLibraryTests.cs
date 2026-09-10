@@ -540,11 +540,10 @@ internal class SpectralLibraryTests
         });
     }
 
-    [TestCase(true, 1, TestName = "RejectedRetentionTimeInputIsExcludedWhenRequested")]
-    [TestCase(false, 2, TestName = "RejectedRetentionTimeInputIsKeptWithNullWhenExclusionIsOff")]
-    public static void RetentionTimeRejectionHonoursTheIncompatiblePeptideOption(
-        bool excludeIncompatiblePeptides,
-        int expectedInputs)
+    [TestCase(true)]
+    [TestCase(false)]
+    public static void RetentionTimeRejectionDoesNotRemoveAPeptideFromTheLibrary(
+        bool excludeIncompatiblePeptides)
     {
         var options = PermissiveOptions;
         options.ExcludeIncompatiblePeptides = excludeIncompatiblePeptides;
@@ -561,11 +560,12 @@ internal class SpectralLibraryTests
         var (inputs, retentionTimes) = generator.BuildPredictionInputs(
             new Dictionary<string, double?> { ["PEPTIDEK"] = 10, ["ELVISLIVESK"] = null });
 
-        Assert.That(inputs, Has.Count.EqualTo(expectedInputs));
-        Assert.That(retentionTimes, Has.Count.EqualTo(expectedInputs));
-        Assert.That(inputs[0].FullSequence, Is.EqualTo("PEPTIDEK"));
-        if (!excludeIncompatiblePeptides)
-            Assert.That(retentionTimes[1], Is.Null);
+        // ExcludeIncompatiblePeptides governs the fragment model's modification handling. A peptide
+        // the retention time model could not take still gets its spectrum, with no retention time.
+        Assert.That(inputs, Has.Count.EqualTo(2));
+        Assert.That(retentionTimes, Has.Count.EqualTo(2));
+        Assert.That(inputs[1].FullSequence, Is.EqualTo("ELVISLIVESK"));
+        Assert.That(retentionTimes[1], Is.Null);
     }
 
     [Test]
@@ -592,15 +592,21 @@ internal class SpectralLibraryTests
     }
 
     [Test]
-    public static void RejectingEveryRetentionTimeInputFailsLoudly()
+    public static void RejectingEveryRetentionTimeInputIsReportedButNotFatal()
     {
         var peptides = new List<SpectralLibraryPeptide> { new("PEPTIDEK", RetentionTime: null) };
         using var model = new SeededRetentionModel(("PEPTIDEK", null, false, null));
+        var reported = new List<string>();
 
-        var ex = Assert.Throws<InvalidOperationException>(
-            () => SpectralLibraryGenerator.ResolveRetentionTimes(peptides, model));
+        var resolved = SpectralLibraryGenerator.ResolveRetentionTimes(
+            peptides, model, new SynchronousProgress(reported.Add));
 
-        Assert.That(ex!.Message, Does.Contain("Every peptide was rejected").And.Contain(model.ModelName));
+        Assert.Multiple(() =>
+        {
+            Assert.That(resolved["PEPTIDEK"], Is.Null);
+            Assert.That(reported, Has.Exactly(1).Contains(model.ModelName)
+                .And.Exactly(1).Contains("without retention times"));
+        });
     }
 
     [Test]

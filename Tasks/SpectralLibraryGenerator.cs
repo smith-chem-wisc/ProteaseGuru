@@ -219,12 +219,16 @@ namespace ProteaseGuru.Tasks
             int rejected = model.ValidInputsMask.Count(valid => !valid);
             if (rejected == 0) return;
 
+            // A retention time is optional metadata, so losing it costs the column and nothing else.
+            // Failing an export is the fragment model's call, since that is what leaves nothing to write.
             if (rejected == total)
             {
-                throw new InvalidOperationException(
-                    $"Every peptide was rejected by {model.ModelName}. It accepts base sequences of " +
-                    $"{model.MinPeptideLength}-{model.MaxPeptideLength} canonical residues, with modifications " +
-                    $"limited to {DescribeAllowedModifications(model.AllowedUnimodIds)}.");
+                progress?.Report(
+                    $"No peptide could be given a retention time by {model.ModelName}. It accepts base " +
+                    $"sequences of {model.MinPeptideLength}-{model.MaxPeptideLength} canonical residues, with " +
+                    $"modifications limited to {DescribeAllowedModifications(model.AllowedUnimodIds)}. The " +
+                    "library will be written without retention times.");
+                return;
             }
 
             progress?.Report(
@@ -349,17 +353,13 @@ namespace ProteaseGuru.Tasks
             {
                 foreach (var peptide in _peptides)
                 {
-                    double? retentionTime = retentionTimes[peptide.FullSequence];
-                    if (_options.ExcludeIncompatiblePeptides && retentionTime == null)
-                        continue;
-
                     inputs.Add(new FragmentIntensityPredictionInput(
                         FullSequence: peptide.FullSequence,
                         PrecursorCharge: charge,
                         CollisionEnergy: _options.CollisionEnergy,
                         InstrumentType: _options.InstrumentType,
                         FragmentationType: _options.FragmentationType));
-                    rts.Add(retentionTime);
+                    rts.Add(retentionTimes[peptide.FullSequence]);
                 }
             }
 
