@@ -119,8 +119,13 @@
     </Window.Resources>
 
     <Grid Style="{StaticResource PageGridStyle}" Margin="10">
-        <ScrollViewer VerticalScrollBarVisibility="Auto">
-            <StackPanel Orientation="Vertical">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto">
+            <StackPanel x:Name="settingsPanel" Orientation="Vertical">
 
                 <!-- Selection Boxes -->
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
@@ -170,6 +175,18 @@
                     </StackPanel>
                 </StackPanel>
 
+                <!-- Summary -->
+                <Label Content="Selection Summary" HorizontalAlignment="Center" Style="{StaticResource SectionHeaderStyle}"/>
+                <Border BorderBrush="#131313" BorderThickness="1" Margin="15,5" Padding="10" Width="350" Background="White">
+                    <StackPanel>
+                        <TextBlock TextWrapping="Wrap" FontSize="11" TextAlignment="Center">
+                            <Run Text="Proteases: "/><Run x:Name="runProteaseCount" Text="0" FontWeight="Bold"/>
+                            <LineBreak/>
+                            <Run Text="Proteins: "/><Run x:Name="runProteinCount" Text="0" FontWeight="Bold"/>
+                        </TextBlock>
+                    </StackPanel>
+                </Border>
+
                 <!-- Fragment Intensity Prediction Options -->
                 <Expander Header="Fragment Intensity Prediction Options" IsExpanded="True">
                     <StackPanel Orientation="Vertical" Background="{StaticResource BackgroundColor}">
@@ -177,8 +194,7 @@
                         <!-- Fragment Prediction Model -->
                         <StackPanel Orientation="Horizontal" Margin="15,5">
                             <Label Content="Model:" FontWeight="Bold" Margin="15,0" VerticalAlignment="Center"/>
-                            <ComboBox x:Name="cbFragmentModel" Margin="0,5" Width="200"
-                                      SelectionChanged="FragmentModel_SelectionChanged" VerticalAlignment="Center">
+                            <ComboBox x:Name="cbFragmentModel" Margin="0,5" Width="200" VerticalAlignment="Center">
                                 <ComboBoxItem Content="Prosit 2020 Intensity HCD" IsSelected="True" IsEnabled="False" Tag="Prosit2020IntensityHCD" />
                             </ComboBox>
                         </StackPanel>
@@ -186,15 +202,22 @@
                         <!-- Charge States -->
                         <StackPanel Orientation="Horizontal" Margin="15,5">
                             <Label Content="Charge States to Predict:" FontWeight="Bold" Margin="15,0" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                            <CheckBox x:Name="cbCharge1" Content="1+" IsChecked="False" Margin="5,5" VerticalAlignment="Center"/>
                             <CheckBox x:Name="cbCharge2" Content="2+" IsChecked="True" Margin="5,5" VerticalAlignment="Center"/>
                             <CheckBox x:Name="cbCharge3" Content="3+" IsChecked="True" Margin="5,5" VerticalAlignment="Center"/>
                             <CheckBox x:Name="cbCharge4" Content="4+" IsChecked="False" Margin="5,5" VerticalAlignment="Center"/>
+                            <CheckBox x:Name="cbCharge5" Content="5+" IsChecked="False" Margin="5,5" VerticalAlignment="Center"/>
+                            <CheckBox x:Name="cbCharge6" Content="6+" IsChecked="False" Margin="5,5" VerticalAlignment="Center"/>
                         </StackPanel>
 
                         <!-- Collision Energy -->
                         <StackPanel Orientation="Horizontal" Margin="15,5">
                             <Label Content="Collision Energy (NCE):" FontWeight="Bold" Margin="15,0" VerticalAlignment="Center" HorizontalAlignment="Center"/>
-                            <gui:IntegerTextBoxControl x:Name="tbCollisionEnergy" Width="60" Text="30" LowerBound="0" UpperBound="100" Margin="5,5"/>
+                            <gui:IntegerTextBoxControl x:Name="tbCollisionEnergy" Width="60" Text="30" LowerBound="20" UpperBound="45" Margin="5,5">
+                                <gui:IntegerTextBoxControl.ToolTip>
+                                    <ToolTip Content="Prosit 2020 is calibrated for 20, 23, 25, 28, 30 and 35. Values between 20 and 45 are accepted." FontSize="10" Margin="35,0,5,5"/>
+                                </gui:IntegerTextBoxControl.ToolTip>
+                            </gui:IntegerTextBoxControl>
                             <Label Content="%" Margin="5,0"/>
                         </StackPanel>
                     </StackPanel>
@@ -205,14 +228,24 @@
                     <StackPanel Orientation="Vertical" Margin="15,5">
                         <CheckBox x:Name="cbExcludeIncompatiblePeptides" Content="Exclude Incompatible Peptides" IsChecked="True" Margin="15,5" FontWeight="Bold">
                             <CheckBox.ToolTip>
-                                <ToolTip Content="If checked, peptides with unsupported modifications will be excluded from the export. If unchecked, the unsupported modifications will be removed and a prediction will be generated." FontSize="10" Margin="35,0,5,5"/>
+                                <ToolTip Content="If checked, peptides carrying modifications the model cannot represent are excluded. If unchecked, those modifications are removed before prediction and the spectrum is still named for the modified peptide." FontSize="10" Margin="35,0,5,5"/>
                             </CheckBox.ToolTip>
                         </CheckBox>
                         <CheckBox x:Name="cbExcludeUndetectablePeptides" Content="Exclude Undetectable Peptides" IsChecked="False" Margin="15,5" FontWeight="Bold">
                             <CheckBox.ToolTip>
-                                <ToolTip Content="If checked, peptides predicted to have low detectability will be excluded." FontSize="10" Margin="35,0,5,5"/>
+                                <ToolTip Content="If checked, peptides predicted to have low detectability are excluded. The detectability model accepts no modifications, so it judges the unmodified sequence." FontSize="10" Margin="35,0,5,5"/>
                             </CheckBox.ToolTip>
                         </CheckBox>
+                        <StackPanel Orientation="Horizontal" Margin="35,0,15,5"
+                                    Visibility="{Binding ElementName=cbExcludeUndetectablePeptides, Path=IsChecked, Converter={StaticResource BooleanToVisibilityConverter}}">
+                            <Label Content="Detectability Threshold:" VerticalAlignment="Center"/>
+                            <gui:DoubleTextBoxControl x:Name="tbDetectabilityThreshold" Width="60" Text="0.5"
+                                                      LowerBound="0" UpperBound="1" Margin="5,0">
+                                <gui:DoubleTextBoxControl.ToolTip>
+                                    <ToolTip Content="Keep peptides whose predicted detectability probability is at least this value (0-1)." FontSize="10"/>
+                                </gui:DoubleTextBoxControl.ToolTip>
+                            </gui:DoubleTextBoxControl>
+                        </StackPanel>
                     </StackPanel>
                 </Expander>
 
@@ -272,27 +305,20 @@
                     </ComboBox>
                 </StackPanel>
 
-                <!-- Summary -->
-                <Label Content="Selection Summary" HorizontalAlignment="Center" Style="{StaticResource SectionHeaderStyle}"/>
-                <Border BorderBrush="#131313" BorderThickness="1" Margin="15,5" Padding="10" Width="350" Background="White">
-                    <StackPanel>
-                        <TextBlock TextWrapping="Wrap" FontSize="11" TextAlignment="Center">
-                            <Run Text="Proteases: "/><Run x:Name="runProteaseCount" Text="0" FontWeight="Bold"/>
-                            <LineBreak/>
-                            <Run Text="Proteins: "/><Run x:Name="runProteinCount" Text="0" FontWeight="Bold"/>
-                        </TextBlock>
-                    </StackPanel>
-                </Border>
-
-                <!-- Buttons -->
-                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,20">
-                    <Button x:Name="btnExport" Content="Export" Click="Export_Click" 
-                            Style="{StaticResource ImportantButtonStyle}" Margin="5"/>
-                    <Button x:Name="btnCancel" Content="Cancel" Click="Cancel_Click" 
-                            Style="{StaticResource ImportantButtonStyle}" Margin="5"/>
-                </StackPanel>
-
             </StackPanel>
         </ScrollViewer>
+
+        <StackPanel Grid.Row="1" Orientation="Vertical">
+            <TextBlock x:Name="statusText" Text="" FontSize="11" FontStyle="Italic"
+                       Foreground="#333333" HorizontalAlignment="Center" TextWrapping="Wrap"
+                       Margin="20,10,20,0"/>
+
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,10,0,10">
+                <Button x:Name="btnExport" Content="Export" Click="Export_Click"
+                        Style="{StaticResource ImportantButtonStyle}" Margin="5"/>
+                <Button x:Name="btnCancel" Content="Close" Click="Cancel_Click"
+                        Style="{StaticResource ImportantButtonStyle}" Margin="5"/>
+            </StackPanel>
+        </StackPanel>
     </Grid>
 </Window>

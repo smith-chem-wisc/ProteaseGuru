@@ -1,10 +1,10 @@
 using System.Collections.Concurrent;
 using System.Data;
 using BayesianEstimation;
-using Chromatography.RetentionTimePrediction.Chronologer;
 using ProteaseGuru.Engine;
 using Omics;
 using Omics.Modifications;
+using Omics.SequenceConversion;
 using PredictionClients.Koina.AbstractClasses;
 using PredictionClients.Koina.SupportedModels.FlyabilityModels;
 using PredictionClients.Koina.SupportedModels.FragmentIntensityModels;
@@ -38,11 +38,10 @@ namespace ProteaseGuru.Tasks
 
         #endregion
 
-        #region Chronologer Predictor Pool
+        #region Prediction Models
 
-        // Instance-scoped predictor pool to avoid cross-instance race conditions
-        private readonly object _predictorLock = new();
-        private ConcurrentBag<ChronologerRetentionTimePredictor>? _predictorPool;
+        // Chronologer is shared process-wide; this run holds a session for as long as it needs the model.
+        private SharedChronologerPredictor.Session? _chronologerSession;
         private readonly object _pflyLock = new();
         private ConcurrentBag<PFly2024FineTuned>? _pflyPool;
         private bool _disposed;
@@ -75,12 +74,12 @@ namespace ProteaseGuru.Tasks
 
         public override MyTaskResults RunSpecific(string OutputFolder, List<DbForDigestion> dbFileList)
         {
-            // Initialize predictor pools for this run
-            InitializePredictorPool();
-            InitializePflyPool();
-
             try
             {
+                // Hold the shared Chronologer model and the PFly pool for the length of the run
+                _chronologerSession ??= SharedChronologerPredictor.Open();
+                InitializePflyPool();
+
                 AllPeptidesByProtease = new Dictionary<string, Dictionary<IBioPolymer, List<InSilicoPep>>>();
                 PeptideByFile = new Dictionary<string, Dictionary<string, Dictionary<IBioPolymer, List<InSilicoPep>>>>(dbFileList.Count);
 
@@ -133,8 +132,8 @@ namespace ProteaseGuru.Tasks
             }
             finally
             {
-                // Clean up predictor pools after run completes
-                DisposePredictorPool();
+                // Release the shared model and the PFly pool once the run completes
+                ReleaseChronologerSession();
                 DisposePflyPool();
             }
         }
@@ -279,7 +278,7 @@ namespace ProteaseGuru.Tasks
 
             var hydrophobicityBySequence = new Dictionary<string, double>();
             var mobilityBySequence = new Dictionary<string, double>();
-            var retentionTimeBySequence = new Dictionary<string, double>();
+            var retentionTimeBySequence = new Dictionary<string, double?>();
             var detectabilityBySequence = new Dictionary<string, bool?>();
             var detectabilityProbabilityBySequence = new Dictionary<string, (double NotDetectable, double LowDetectability, double IntermediateDetectability, double HighDetectability)?>();
 
@@ -302,7 +301,7 @@ namespace ProteaseGuru.Tasks
 
                 double[] hydrophobicityValues = BatchCalculateHydrophobicity(distinctPeptides);
                 double[] mobilityValues = BatchCalculateElectrophoreticMobility(distinctPeptides);
-                double[] retentionTimesChronologer = BatchCalculateRetentionTimesChronologer(distinctPeptides);
+                double?[] retentionTimesChronologer = BatchCalculateRetentionTimesChronologer(distinctPeptides);
                 var (pflyDetectabilities, pflyProbabilities) = pflyTask.GetAwaiter().GetResult();
 
                 for (int i = 0; i < distinctPeptides.Count; i++)
@@ -336,7 +335,7 @@ namespace ProteaseGuru.Tasks
                     string fullSequence = peptide.FullSequence;
                     double hydrophobicity = hydrophobicityBySequence.TryGetValue(fullSequence, out var hydro) ? hydro : double.NaN;
                     double mobility = mobilityBySequence.TryGetValue(fullSequence, out var mob) ? mob : double.NaN;
-                    double retentionTime = retentionTimeBySequence.TryGetValue(fullSequence, out var rt) ? rt : double.NaN;
+                    double? retentionTime = retentionTimeBySequence.TryGetValue(fullSequence, out var rt) ? rt : null;
                     bool? detectability = detectabilityBySequence.TryGetValue(fullSequence, out var det) ? det : null;
                     var detectabilityProbability = detectabilityProbabilityBySequence.TryGetValue(fullSequence, out var prob) ? prob : null;
 
@@ -378,73 +377,12 @@ namespace ProteaseGuru.Tasks
 
         #endregion
 
-        #region Chronologer Predictor Pool Management
+        #region Prediction Model Management
 
-        /// <summary>
-        /// Initializes the predictor pool with a single predictor (work is sequential per protease).
-        /// Called once per run, not resizable to avoid race conditions.
-        /// </summary>
-        private void InitializePredictorPool()
+        private void ReleaseChronologerSession()
         {
-            lock (_predictorLock)
-            {
-                if (_predictorPool != null)
-                    return;
-
-                _predictorPool = new ConcurrentBag<ChronologerRetentionTimePredictor>();
-
-                // One predictor suffices: databases and proteases run sequentially, and the batched
-                // Chronologer call uses a single instance (it parallelizes encoding internally).
-                _predictorPool.Add(new ChronologerRetentionTimePredictor());
-            }
-        }
-
-        /// <summary>
-        /// Disposes all predictors in the pool.
-        /// </summary>
-        private void DisposePredictorPool()
-        {
-            lock (_predictorLock)
-            {
-                if (_predictorPool == null)
-                    return;
-
-                while (_predictorPool.TryTake(out var predictor))
-                {
-                    if (predictor is IDisposable disposable)
-                    {
-                        disposable.Dispose();
-                    }
-                }
-
-                _predictorPool = null;
-            }
-        }
-
-        /// <summary>
-        /// Checks out a predictor from the pool. Blocks if none available.
-        /// </summary>
-        private ChronologerRetentionTimePredictor CheckoutPredictor()
-        {
-            if (_predictorPool == null)
-                throw new InvalidOperationException("Predictor pool not initialized.");
-
-            SpinWait spinner = default;
-            ChronologerRetentionTimePredictor? predictor;
-            while (!_predictorPool.TryTake(out predictor))
-            {
-                spinner.SpinOnce();
-            }
-
-            return predictor;
-        }
-
-        /// <summary>
-        /// Returns a predictor to the pool for reuse.
-        /// </summary>
-        private void ReturnPredictor(ChronologerRetentionTimePredictor predictor)
-        {
-            _predictorPool?.Add(predictor);
+            _chronologerSession?.Dispose();
+            _chronologerSession = null;
         }
 
         /// <summary>
@@ -460,7 +398,7 @@ namespace ProteaseGuru.Tasks
                 _pflyPool = new ConcurrentBag<PFly2024FineTuned>();
 
                 // One model suffices: detectability is requested once per protease, sequentially.
-                _pflyPool.Add(new PFly2024FineTuned());
+                _pflyPool.Add(DetectabilityModel.Create());
             }
         }
 
@@ -516,33 +454,28 @@ namespace ProteaseGuru.Tasks
         /// <summary>
         /// Batch calculates Chronologer-predicted retention times for a collection of peptides.
         /// </summary>
-        private double[] BatchCalculateRetentionTimesChronologer(List<PeptideWithSetModifications> peptides)
+        private double?[] BatchCalculateRetentionTimesChronologer(List<PeptideWithSetModifications> peptides)
         {
-            var results = new double[peptides.Count];
+            var results = new double?[peptides.Count];
             if (peptides.Count == 0) return results;
 
             // Use Chronologer's batched API: it encodes the peptides in parallel and runs the
             // Torch model in large batched forward passes (one model lock per chunk) rather than
             // a locked batch-of-1 call per peptide. This is dramatically faster for many peptides.
-            // Results come back in input order; -1 is the sentinel for peptides it couldn't predict.
-            var predictor = CheckoutPredictor();
-            try
+            // Results come back in input order; null for peptides it couldn't predict.
+            if (_chronologerSession == null)
+                throw new InvalidOperationException("Chronologer session not open. Retention times can only be predicted during a run.");
+
+            var predictions = _chronologerSession.Predict(peptides, maxThreads: MaxConcurrency);
+            if (predictions.Count != peptides.Count)
             {
-                var predictions = predictor.PredictRetentionTimeEquivalents(peptides, maxThreads: MaxConcurrency);
-                if (predictions.Count != peptides.Count)
-                {
-                    Warn($"Chronologer returned {predictions.Count} retention times for {peptides.Count} peptides. Falling back to -1.");
-                    Array.Fill(results, -1.0);
-                    return results;
-                }
-                for (int i = 0; i < results.Length; i++)
-                {
-                    results[i] = predictions[i].PredictedValue ?? -1;
-                }
+                Warn($"Chronologer returned {predictions.Count} retention times for {peptides.Count} peptides. Falling back to no retention time.");
+                Array.Fill(results, null);
+                return results;
             }
-            finally
+            for (int i = 0; i < results.Length; i++)
             {
-                ReturnPredictor(predictor);
+                results[i] = predictions[i].PredictedValue;
             }
 
             return results;
@@ -854,7 +787,7 @@ namespace ProteaseGuru.Tasks
 
             if (disposing)
             {
-                DisposePredictorPool();
+                ReleaseChronologerSession();
                 DisposePflyPool();
             }
 

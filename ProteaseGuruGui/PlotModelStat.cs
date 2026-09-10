@@ -654,10 +654,9 @@ namespace ProteaseGuru.Gui
                     binSize = 5;
                     foreach (string key in PeptidesByProtease.Keys)
                     {
-                        // Filter out failed predictions (value of -1)
                         var validPredictions = PeptidesByProtease[key]
-                            .Where(p => p.ChronologerRetentionTime >= 0)
-                            .Select(p => p.ChronologerRetentionTime);
+                            .Where(p => p.ChronologerRetentionTime.HasValue)
+                            .Select(p => p.ChronologerRetentionTime!.Value);
 
                         if (validPredictions.Any())
                         {

@@ -27,4 +27,8 @@
     <ProjectReference Include="..\Engine\ProteaseGuru.Engine.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="ProteaseGuru.Test" />
+  </ItemGroup>
+
 </Project>
