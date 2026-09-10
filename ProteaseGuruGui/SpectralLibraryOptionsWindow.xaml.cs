@@ -21,6 +21,7 @@ namespace ProteaseGuru.Gui
         private HashSet<string> _selectedProteins = new();
         private bool _isRefreshingProteinFilter;
         private FragmentIntensityInputOptions? _fragmentInputOptions;
+        private int _lastCollisionEnergy = 30;
 
         /// <summary>
         /// The peptides this export will draw from. Both the digestion results and the individual
@@ -382,7 +383,7 @@ namespace ProteaseGuru.Gui
             }
 
             var previousCharges = GetSelectedChargeStates();
-            int? previousCollisionEnergy = GetCollisionEnergy();
+            _lastCollisionEnergy = GetCollisionEnergy() ?? _lastCollisionEnergy;
             string? previousInstrument = GetStringInput(instrumentTypePanel, cbInstrumentType);
             string? previousFragmentation = GetStringInput(fragmentationTypePanel, cbFragmentationType);
 
@@ -398,7 +399,7 @@ namespace ProteaseGuru.Gui
             AppendInputScopeNote(tbFragmentModelSummary, definition.InputScopeNote);
 
             PopulateChargeStates(_fragmentInputOptions.AllowedPrecursorCharges, previousCharges);
-            ConfigureCollisionEnergy(_fragmentInputOptions.CollisionEnergies, previousCollisionEnergy);
+            ConfigureCollisionEnergy(_fragmentInputOptions.CollisionEnergies, _lastCollisionEnergy);
             ConfigureStringInput(instrumentTypePanel, cbInstrumentType,
                 _fragmentInputOptions.InstrumentTypes, previousInstrument, "LUMOS", "QE", "NONE");
             ConfigureStringInput(fragmentationTypePanel, cbFragmentationType,

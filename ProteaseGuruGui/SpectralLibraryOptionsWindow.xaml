@@ -226,7 +226,7 @@
                         <StackPanel x:Name="collisionEnergyPanel" Orientation="Horizontal" Margin="15,5">
                             <Label Content="Collision Energy (NCE):" FontWeight="Bold" Margin="15,0" VerticalAlignment="Center" HorizontalAlignment="Center"/>
                             <gui:IntegerTextBoxControl x:Name="tbCollisionEnergy" Width="60" Text="30"
-                                                       AllowNegative="True" Margin="5,5"/>
+                                                       AllowNegative="False" LowerBound="0" UpperBound="100" Margin="5,5"/>
                             <ComboBox x:Name="cbCollisionEnergy" Width="90" Margin="5,5" Visibility="Collapsed"/>
                         </StackPanel>
 

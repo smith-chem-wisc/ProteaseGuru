@@ -8,7 +8,8 @@ namespace ProteaseGuru.Tasks;
 /// <summary>
 /// A peptide bound for a spectral library, independent of where it came from.
 /// </summary>
-/// <param name="RetentionTime">Null when the source has none; the generator predicts those.</param>
+/// <param name="RetentionTime">What the source already knows. The generator predicts its own with
+/// the selected model rather than reading this, so one library cannot mix two models.</param>
 public readonly record struct SpectralLibraryPeptide(string FullSequence, double? RetentionTime);
 
 /// <summary>
@@ -32,8 +33,7 @@ public interface ISpectralLibraryPeptideSource
 }
 
 /// <summary>
-/// Draws peptides from a completed digestion run. Retention times were computed during the run, so
-/// nothing here needs to predict them.
+/// Draws peptides from a completed digestion run.
 /// </summary>
 public class ResultsBackedPeptideSource : ISpectralLibraryPeptideSource
 {
@@ -98,9 +98,8 @@ public class ResultsBackedPeptideSource : ISpectralLibraryPeptideSource
 
 /// <summary>
 /// Digests on demand with the protease parameters the caller currently has selected, so a library can
-/// be exported before any run has happened and against parameters the run did not use. Peptides carry
-/// no retention time; the generator predicts those. Detectability is predicted here, but only when the
-/// filter asks for it, since it costs a network round trip.
+/// be exported before any run has happened and against parameters the run did not use. Detectability
+/// is predicted here, but only when the filter asks for it, since it costs a network round trip.
 /// </summary>
 public class OnDemandDigestPeptideSource : ISpectralLibraryPeptideSource
 {

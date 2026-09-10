@@ -132,8 +132,8 @@ namespace ProteaseGuru.Tasks
 
         /// <summary>
         /// Predicts fragment intensities and writes the library. Cancellation is cooperative between
-        /// stages: neither the Koina round trip nor a Chronologer forward pass can be interrupted once
-        /// started, so a cancel takes effect at the next stage boundary rather than immediately.
+        /// stages: a Koina round trip cannot be interrupted once started, so a cancel takes effect at
+        /// the next stage boundary rather than immediately.
         /// </summary>
         public List<LibrarySpectrum> GenerateLibrary(
             IProgress<string>? progress = null,
