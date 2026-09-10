@@ -259,8 +259,6 @@ namespace ProteaseGuru.Gui
                 return false;
             }
 
-            // NOTConverter ensures only one of the two intensity filtering options can be checked, so just check if either is checked and validate corresponding input
-
             if (cbEnableIntensityThresholdFiltering.IsChecked == true &&
                 !RequireNumber(tbRelIntThreshold.Text, "minimum intensity threshold", 0, 100))
             {

@@ -43,6 +43,23 @@ internal class SpectralLibraryPeptideSourceTests
                 ? (notDetectableProbability.Value, 0, 0, 1.0 - notDetectableProbability.Value)
                 : null);
 
+    private static ResultsBackedPeptideSource SourceOverProteins(int proteinCount)
+    {
+        var byProtein = new Dictionary<IBioPolymer, List<InSilicoPep>>();
+        for (int i = 0; i < proteinCount; i++)
+        {
+            byProtein[new Protein(Sequence, $"PROT{i}")] =
+                new List<InSilicoPep> { PeptideWith($"PEPTIDE{i}K", 10, detectable: true) };
+        }
+
+        var byFile = new Dictionary<string, Dictionary<string, Dictionary<IBioPolymer, List<InSilicoPep>>>>
+        {
+            ["db"] = new() { ["trypsin|P"] = byProtein }
+        };
+        return new ResultsBackedPeptideSource(new ProteinCoverageAnalyzer(
+            byFile, new Dictionary<string, Dictionary<IBioPolymer, (double, double)>>()));
+    }
+
     private static ResultsBackedPeptideSource SourceOver(params InSilicoPep[] peptides)
     {
         var protein = TestProtein;
@@ -212,6 +229,22 @@ internal class SpectralLibraryPeptideSourceTests
 
         Assert.Throws<OperationCanceledException>(() =>
             source.GetPeptides(OptionsFor(source.AvailableProteases, source.AvailableProteins), null, cts.Token));
+    }
+
+    [Test]
+    public static void GatheringFromRunResultsStopsPartWayThrough()
+    {
+        // 60 proteins reports twice if it runs to completion, so one report proves it stopped early.
+        var source = SourceOverProteins(60);
+        using var cts = new CancellationTokenSource();
+        var reported = new List<string>();
+
+        Assert.Throws<OperationCanceledException>(() => source.GetPeptides(
+            OptionsFor(source.AvailableProteases, source.AvailableProteins),
+            new SynchronousProgress(message => { reported.Add(message); cts.Cancel(); }),
+            cts.Token));
+
+        Assert.That(reported, Has.Count.EqualTo(1));
     }
 
     [Test]

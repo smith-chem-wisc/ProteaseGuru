@@ -206,7 +206,8 @@ namespace ProteaseGuru.Tasks
             for (int i = 0; i < predictions.Count; i++)
             {
                 // Null is how the model reports failure. Negative values are real: Chronologer
-                // predicts below zero for hydrophilic peptides (GSGSGSGSK is -0.464).
+                // predicts %ACN at elution, which goes below zero for hydrophilic peptides
+                // (GSGSGSGSK is -0.464).
                 known[toPredict[i].FullSequence] = predictions[i].PredictedValue;
             }
 
@@ -253,8 +254,7 @@ namespace ProteaseGuru.Tasks
             {
                 throw new InvalidOperationException(
                     $"All {emptied} spectra were left with no fragment ions once filtering was applied, " +
-                    "so there is nothing to write. Widen the m/z, relative-intensity and rank filters " +
-                    "and export again.");
+                    "so there is nothing to write. Widen the fragment filters and export again.");
             }
 
             switch (_options.OutputFormat)

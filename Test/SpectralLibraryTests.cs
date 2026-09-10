@@ -633,15 +633,6 @@ internal class SpectralLibraryTests
 
     private static bool[] AllValid(int count) => Enumerable.Repeat(true, count).ToArray();
 
-    /// <summary>Reports on the calling thread, so a test can act on a stage before the next begins.</summary>
-    private sealed class SynchronousProgress : IProgress<string>
-    {
-        private readonly Action<string> _onReport;
-        public SynchronousProgress(Action<string> onReport) => _onReport = onReport;
-        public void Report(string value) => _onReport(value);
-    }
-
-
     private static List<Omics.SpectrumMatch.LibrarySpectrum> GenerateFrom(SeededHcdModel model, double? retentionTime) =>
         model.GenerateLibrarySpectraFromPredictions(
             alignedRetentionTimes: new[] { retentionTime },
@@ -727,4 +718,12 @@ internal class SpectralLibraryTests
     }
 
     #endregion
+}
+
+/// <summary>Reports on the calling thread, so a test can act on a stage before the next begins.</summary>
+internal sealed class SynchronousProgress : IProgress<string>
+{
+    private readonly Action<string> _onReport;
+    public SynchronousProgress(Action<string> onReport) => _onReport = onReport;
+    public void Report(string value) => _onReport(value);
 }

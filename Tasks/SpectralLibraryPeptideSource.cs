@@ -22,8 +22,8 @@ public interface ISpectralLibraryPeptideSource
     IReadOnlyList<string> AvailableProteins { get; }
 
     /// <summary>
-    /// Observes cancellation, and reports progress where gathering is long-running: an on-demand
-    /// digest, and a detectability round trip when the filter asks for one.
+    /// Observes cancellation throughout, and reports progress as it goes: gathering can be long
+    /// running for an on-demand digest, a detectability round trip, or a large protein selection.
     /// </summary>
     List<SpectralLibraryPeptide> GetPeptides(
         SpectralLibraryExportOptions options,
@@ -37,6 +37,8 @@ public interface ISpectralLibraryPeptideSource
 /// </summary>
 public class ResultsBackedPeptideSource : ISpectralLibraryPeptideSource
 {
+    private const int ProgressInterval = 25;
+
     private readonly CoverageMapConfiguration.ProteinCoverageAnalyzer _analyzer;
 
     public ResultsBackedPeptideSource(CoverageMapConfiguration.ProteinCoverageAnalyzer analyzer)
@@ -55,12 +57,19 @@ public class ResultsBackedPeptideSource : ISpectralLibraryPeptideSource
     {
         cancellationToken.ThrowIfCancellationRequested();
 
+        var selected = new HashSet<string>(options.SelectedProteins, StringComparer.Ordinal);
         var selectedProteins = _analyzer.ProteinCoverageResults.Keys
-            .Where(p => options.SelectedProteins.Contains(p.Accession));
+            .Where(p => selected.Contains(p.Accession))
+            .ToList();
 
         var peptides = new HashSet<InSilicoPep>();
+        int gathered = 0;
         foreach (var protein in selectedProteins)
         {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (++gathered % ProgressInterval == 0)
+                progress?.Report($"Gathering peptides from protein {gathered} of {selectedProteins.Count}...");
+
             foreach (var proteaseName in options.SelectedProteases)
             {
                 peptides.UnionWith(_analyzer.GetPeptidesForProteinAndProtease(protein, proteaseName));
