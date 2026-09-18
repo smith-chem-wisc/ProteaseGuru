@@ -72,6 +72,21 @@ public class ProteaseDigestCacheTests
             Is.EqualTo(ProteaseDigestCache.BuildModSignature(forward)));
     }
 
+    [Test]
+    public void ModSignatureSeparatesNoModsFixedModsAndVariableMods()
+    {
+        var ox = Mods.GetModification("Oxidation on M");
+
+        var signatures = new[]
+        {
+            ProteaseDigestCache.BuildModSignature(Params("trypsin|P")),
+            ProteaseDigestCache.BuildModSignature(Params("trypsin|P", fixedMods: new List<Modification> { ox })),
+            ProteaseDigestCache.BuildModSignature(Params("trypsin|P", variableMods: new List<Modification> { ox })),
+        };
+
+        Assert.That(signatures, Is.Unique);
+    }
+
     /// <summary>
     /// The key holds the whole DigestionParams rather than a hand-picked subset, so a setting the
     /// old key omitted still separates two entries. MaxMods is one such field.
@@ -138,6 +153,23 @@ public class ProteaseDigestCacheTests
         var second = cache.GetCoverageAndIntervals(_protein, proteaseParams);
 
         Assert.That(cache.Count, Is.EqualTo(2), "changed settings should replace the protease's entry, not add one");
+        Assert.That(second.Coverage["Arg-C"], Is.SameAs(first.Coverage["Arg-C"]));
+        Assert.That(second.Coverage["trypsin|P"], Is.Not.SameAs(first.Coverage["trypsin|P"]));
+    }
+
+    [Test]
+    public void EditingOneProteasesModsInPlaceRedigestsOnlyThatProtease()
+    {
+        var cache = new ProteaseDigestCache(_seeker);
+        var trypsin = Params("trypsin|P");
+        var argC = Params("Arg-C");
+        var proteaseParams = new[] { trypsin, argC };
+
+        var first = cache.GetCoverageAndIntervals(_protein, proteaseParams);
+        trypsin.VariableMods.Add(Mods.GetModification("Oxidation on M"));
+
+        var second = cache.GetCoverageAndIntervals(_protein, proteaseParams);
+
         Assert.That(second.Coverage["Arg-C"], Is.SameAs(first.Coverage["Arg-C"]));
         Assert.That(second.Coverage["trypsin|P"], Is.Not.SameAs(first.Coverage["trypsin|P"]));
     }

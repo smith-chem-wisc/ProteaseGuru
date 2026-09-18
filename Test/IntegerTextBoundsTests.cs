@@ -85,4 +85,8 @@ public class IntegerTextBoundsTests
     [Test]
     public void InvertedBoundsResolveToLowerBound() =>
         Assert.That(IntegerTextBounds.Clamp("7", 10, 5), Is.EqualTo("10"));
+
+    [Test]
+    public void InvertedBoundsLeaveUnparseableTextUnchanged() =>
+        Assert.That(IntegerTextBounds.Clamp("abc", 10, 5), Is.EqualTo("abc"));
 }

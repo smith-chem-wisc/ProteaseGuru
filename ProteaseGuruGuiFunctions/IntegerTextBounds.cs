@@ -26,14 +26,14 @@ public static class IntegerTextBounds
         if (trimmed.Length == 0)
             return original;
 
+        if (!BigInteger.TryParse(trimmed, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed))
+            return original;
+
         // Bounds configured backwards can only come from a XAML typo, and BigInteger.Clamp throws
         // on them. Pick the lower bound rather than letting that escape a UI callback.
         if (upperBound < lowerBound)
             return lowerBound.ToString(CultureInfo.InvariantCulture);
 
-        if (BigInteger.TryParse(trimmed, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed))
-            return ((int)BigInteger.Clamp(parsed, lowerBound, upperBound)).ToString(CultureInfo.InvariantCulture);
-
-        return original;
+        return ((int)BigInteger.Clamp(parsed, lowerBound, upperBound)).ToString(CultureInfo.InvariantCulture);
     }
 }

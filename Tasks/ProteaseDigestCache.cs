@@ -15,6 +15,9 @@ namespace ProteaseGuru.Tasks;
 /// biopolymer it holds at most one entry per protease: the length and missed-cleavage boxes commit
 /// on every keystroke, so keeping superseded settings would retain a coverage set and interval list
 /// for every intermediate value the user typed.
+///
+/// Entries are stored after the seeker's peptide mass filter, but the key does not include the mass
+/// bounds, so the seeker's <see cref="RunParameters"/> must not change while the cache is in use.
 /// </summary>
 public class ProteaseDigestCache
 {
@@ -33,8 +36,8 @@ public class ProteaseDigestCache
     /// <summary>
     /// Identifies a digestion. The digestion parameters are held as a clone because the view model
     /// mutates them in place, so a live reference would go stale; cloning captures them by value.
-    /// Equality therefore covers every field <see cref="IDigestionParams"/> compares, rather than a
-    /// hand-picked subset that has to be extended whenever a new setting is exposed.
+    /// Equality therefore covers every field Clone copies, rather than a hand-picked subset that has
+    /// to be extended whenever a new setting is exposed.
     /// </summary>
     public readonly record struct DigestCacheKey(IDigestionParams DigestionParams, string ModsSignature);
 
