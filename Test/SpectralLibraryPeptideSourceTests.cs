@@ -10,7 +10,6 @@ using Proteomics.ProteolyticDigestion;
 namespace ProteaseGuru.Test;
 
 [TestFixture]
-[NonParallelizable] // The on-demand source predicts retention times through the shared Chronologer model.
 internal class SpectralLibraryPeptideSourceTests
 {
     private const string Sequence = "MSFVNGNEIFTAARKQGHYAVGAFNTNNLEWTRKPEPTIDESAMPLERKNTPVLIQVSMGAAKYLVKTLVEEEMR";
@@ -25,7 +24,7 @@ internal class SpectralLibraryPeptideSourceTests
         {
             SelectedProteases = proteases.ToList(),
             SelectedProteins = proteins.ToList(),
-            PredictionModel = FragmentIntensityPredictionModel.Prosit2020IntensityHcd,
+            FragmentIntensityModel = FragmentIntensityPredictionModel.Prosit2020IntensityHcd,
             OutputFormat = SpectralLibraryFormat.Msp
         };
 
@@ -348,33 +347,4 @@ internal class SpectralLibraryPeptideSourceTests
 
     #endregion
 
-    #region Retention time resolution
-
-    [Test]
-    public static void RetentionTimesArePredictedOnlyForPeptidesLackingThem()
-    {
-                var peptides = new List<SpectralLibraryPeptide>
-        {
-            new("PEPTIDEK", RetentionTime: 42.5),
-            new("ELVISLIVESK", RetentionTime: null)
-        };
-
-        var resolved = SpectralLibraryGenerator.ResolveRetentionTimes(peptides);
-
-        Assert.That(resolved["PEPTIDEK"], Is.EqualTo(42.5).Within(1e-9), "an existing retention time must not be re-predicted");
-        Assert.That(resolved["ELVISLIVESK"], Is.Not.Null, "a missing retention time must be predicted");
-    }
-
-    [Test]
-    public static void ResolvingRetentionTimesTouchesNoModelWhenNoneAreMissing()
-    {
-                var peptides = new List<SpectralLibraryPeptide> { new("PEPTIDEK", RetentionTime: 42.5) };
-
-        var resolved = SpectralLibraryGenerator.ResolveRetentionTimes(peptides);
-
-        Assert.That(resolved["PEPTIDEK"], Is.EqualTo(42.5).Within(1e-9));
-        Assert.That(SharedChronologerPredictor.IsModelLoaded, Is.False);
-    }
-
-    #endregion
 }

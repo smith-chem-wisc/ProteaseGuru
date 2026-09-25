@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:gui="clr-namespace:ProteaseGuru.Gui"
         mc:Ignorable="d"
-        Title="Spectral Library Export Options" Height="710" Width="600" WindowStartupLocation="CenterScreen">
+        Title="Spectral Library Export Options" Height="760" Width="650" WindowStartupLocation="CenterScreen">
     <Window.Resources>
         <SolidColorBrush x:Key="BackgroundColor" Color="#D5D5D5" />
         <SolidColorBrush x:Key="TextColor1" Color="#131313" />
@@ -187,6 +187,20 @@
                     </StackPanel>
                 </Border>
 
+                <!-- Retention Time Prediction Options -->
+                <Expander Header="Retention Time Prediction Options" IsExpanded="True">
+                    <StackPanel Orientation="Vertical" Background="{StaticResource BackgroundColor}">
+                        <StackPanel Orientation="Horizontal" Margin="15,5">
+                            <Label Content="Model:" FontWeight="Bold" Margin="15,0" VerticalAlignment="Center"/>
+                            <ComboBox x:Name="cbRetentionTimeModel" Margin="0,5" Width="280"
+                                      VerticalAlignment="Center" DisplayMemberPath="DisplayName"
+                                      SelectionChanged="RetentionTimeModel_SelectionChanged"/>
+                        </StackPanel>
+                        <TextBlock x:Name="tbRetentionTimeModelSummary" Margin="30,0,30,8"
+                                   FontSize="10" Foreground="#333333" TextWrapping="Wrap"/>
+                    </StackPanel>
+                </Expander>
+
                 <!-- Fragment Intensity Prediction Options -->
                 <Expander Header="Fragment Intensity Prediction Options" IsExpanded="True">
                     <StackPanel Orientation="Vertical" Background="{StaticResource BackgroundColor}">
@@ -194,31 +208,38 @@
                         <!-- Fragment Prediction Model -->
                         <StackPanel Orientation="Horizontal" Margin="15,5">
                             <Label Content="Model:" FontWeight="Bold" Margin="15,0" VerticalAlignment="Center"/>
-                            <ComboBox x:Name="cbFragmentModel" Margin="0,5" Width="200" VerticalAlignment="Center">
-                                <ComboBoxItem Content="Prosit 2020 Intensity HCD" IsSelected="True" IsEnabled="False" Tag="Prosit2020IntensityHCD" />
-                            </ComboBox>
+                            <ComboBox x:Name="cbFragmentModel" Margin="0,5" Width="280"
+                                      VerticalAlignment="Center" DisplayMemberPath="DisplayName"
+                                      SelectionChanged="FragmentModel_SelectionChanged"/>
                         </StackPanel>
 
+                        <TextBlock x:Name="tbFragmentModelSummary" Margin="30,0,30,5"
+                                   FontSize="10" Foreground="#333333" TextWrapping="Wrap"/>
+
                         <!-- Charge States -->
-                        <StackPanel Orientation="Horizontal" Margin="15,5">
+                        <StackPanel Orientation="Horizontal" Margin="15,5" x:Name="chargeStatesPanel">
                             <Label Content="Charge States to Predict:" FontWeight="Bold" Margin="15,0" VerticalAlignment="Center" HorizontalAlignment="Center"/>
-                            <CheckBox x:Name="cbCharge1" Content="1+" IsChecked="False" Margin="5,5" VerticalAlignment="Center"/>
-                            <CheckBox x:Name="cbCharge2" Content="2+" IsChecked="True" Margin="5,5" VerticalAlignment="Center"/>
-                            <CheckBox x:Name="cbCharge3" Content="3+" IsChecked="True" Margin="5,5" VerticalAlignment="Center"/>
-                            <CheckBox x:Name="cbCharge4" Content="4+" IsChecked="False" Margin="5,5" VerticalAlignment="Center"/>
-                            <CheckBox x:Name="cbCharge5" Content="5+" IsChecked="False" Margin="5,5" VerticalAlignment="Center"/>
-                            <CheckBox x:Name="cbCharge6" Content="6+" IsChecked="False" Margin="5,5" VerticalAlignment="Center"/>
+                            <WrapPanel x:Name="chargeStateChoices" VerticalAlignment="Center"/>
                         </StackPanel>
 
                         <!-- Collision Energy -->
-                        <StackPanel Orientation="Horizontal" Margin="15,5">
+                        <StackPanel x:Name="collisionEnergyPanel" Orientation="Horizontal" Margin="15,5">
                             <Label Content="Collision Energy (NCE):" FontWeight="Bold" Margin="15,0" VerticalAlignment="Center" HorizontalAlignment="Center"/>
-                            <gui:IntegerTextBoxControl x:Name="tbCollisionEnergy" Width="60" Text="30" LowerBound="20" UpperBound="45" Margin="5,5">
-                                <gui:IntegerTextBoxControl.ToolTip>
-                                    <ToolTip Content="Prosit 2020 is calibrated for 20, 23, 25, 28, 30 and 35. Values between 20 and 45 are accepted." FontSize="10" Margin="35,0,5,5"/>
-                                </gui:IntegerTextBoxControl.ToolTip>
-                            </gui:IntegerTextBoxControl>
-                            <Label Content="%" Margin="5,0"/>
+                            <gui:IntegerTextBoxControl x:Name="tbCollisionEnergy" Width="60" Text="30"
+                                                       AllowNegative="False" LowerBound="0" UpperBound="100" Margin="5,5"/>
+                            <ComboBox x:Name="cbCollisionEnergy" Width="90" Margin="5,5" Visibility="Collapsed"/>
+                        </StackPanel>
+
+                        <!-- Instrument Type -->
+                        <StackPanel x:Name="instrumentTypePanel" Orientation="Horizontal" Margin="15,5" Visibility="Collapsed">
+                            <Label Content="Instrument Type:" FontWeight="Bold" Margin="15,0" VerticalAlignment="Center"/>
+                            <ComboBox x:Name="cbInstrumentType" Width="180" Margin="5"/>
+                        </StackPanel>
+
+                        <!-- Fragmentation Type -->
+                        <StackPanel x:Name="fragmentationTypePanel" Orientation="Horizontal" Margin="15,5" Visibility="Collapsed">
+                            <Label Content="Fragmentation Type:" FontWeight="Bold" Margin="15,0" VerticalAlignment="Center"/>
+                            <ComboBox x:Name="cbFragmentationType" Width="180" Margin="5"/>
                         </StackPanel>
                     </StackPanel>
                 </Expander>

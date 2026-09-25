@@ -2,6 +2,8 @@ using System.Collections.ObjectModel;
 using System.Windows;
 using System.Windows.Controls;
 using Microsoft.Win32;
+using Omics.SequenceConversion;
+using PredictionClients.Koina.Util;
 using ProteaseGuru.Tasks;
 
 namespace ProteaseGuru.Gui
@@ -18,6 +20,8 @@ namespace ProteaseGuru.Gui
         private ObservableCollection<string> _filteredProteins;
         private HashSet<string> _selectedProteins = new();
         private bool _isRefreshingProteinFilter;
+        private FragmentIntensityInputOptions? _fragmentInputOptions;
+        private int _lastCollisionEnergy = 30;
 
         /// <summary>
         /// The peptides this export will draw from. Both the digestion results and the individual
@@ -33,6 +37,7 @@ namespace ProteaseGuru.Gui
         {
             InitializeComponent();
             _source = source;
+            InitializeModelSelectors();
 
             // Initialize collections
             _allProteases = new ObservableCollection<string>(source.AvailableProteases.OrderBy(p => p));
@@ -167,9 +172,12 @@ namespace ProteaseGuru.Gui
                 SelectedProteases = lbProteases.SelectedItems.Cast<string>().ToList(),
                 SelectedProteins = _selectedProteins.ToList(),
 
-                PredictionModel = Enum.Parse<FragmentIntensityPredictionModel>(((ComboBoxItem)cbFragmentModel.SelectedItem).Tag.ToString()!, ignoreCase: true),
+                FragmentIntensityModel = ((FragmentIntensityModelDefinition)cbFragmentModel.SelectedItem).Id,
+                RetentionTimeModel = ((RetentionTimeModelDefinition)cbRetentionTimeModel.SelectedItem).Id,
                 ChargeStates = GetSelectedChargeStates(),
-                CollisionEnergy = int.Parse(tbCollisionEnergy.Text),
+                CollisionEnergy = GetCollisionEnergy(),
+                InstrumentType = GetStringInput(instrumentTypePanel, cbInstrumentType),
+                FragmentationType = GetStringInput(fragmentationTypePanel, cbFragmentationType),
 
                 ExcludeIncompatiblePeptides = cbExcludeIncompatiblePeptides.IsChecked == true,
                 ExcludeUndetectablePeptides = cbExcludeUndetectablePeptides.IsChecked == true,
@@ -227,6 +235,13 @@ namespace ProteaseGuru.Gui
                 return false;
             }
 
+            if (cbRetentionTimeModel.SelectedItem == null)
+            {
+                MessageBox.Show("Please select a retention time model.", "Invalid Input",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+                return false;
+            }
+
             // Validate at least one charge state selected
             if (!GetSelectedChargeStates().Any())
             {
@@ -235,11 +250,19 @@ namespace ProteaseGuru.Gui
                 return false;
             }
 
-            // Validate collision energy (IntegerTextBoxControl handles bounds, just check if empty)
-            if (string.IsNullOrWhiteSpace(tbCollisionEnergy.Text))
+            if (_fragmentInputOptions == null)
             {
-                MessageBox.Show("Please enter a valid collision energy.", "Invalid Input",
+                MessageBox.Show("The selected model's input options could not be loaded.", "Invalid Input",
                     MessageBoxButton.OK, MessageBoxImage.Error);
+                return false;
+            }
+
+            if (!ValidateCollisionEnergy(_fragmentInputOptions.CollisionEnergies) ||
+                !ValidateStringInput("instrument type", instrumentTypePanel, cbInstrumentType,
+                    _fragmentInputOptions.InstrumentTypes) ||
+                !ValidateStringInput("fragmentation type", fragmentationTypePanel, cbFragmentationType,
+                    _fragmentInputOptions.FragmentationTypes))
+            {
                 return false;
             }
 
@@ -315,17 +338,239 @@ namespace ProteaseGuru.Gui
 
         private List<int> GetSelectedChargeStates()
         {
-            // Prosit 2020 HCD accepts precursor charges 1-6; 7 is not offered because the model
-            // rejects it.
-            var charges = new List<int>();
-            if (cbCharge1.IsChecked == true) charges.Add(1);
-            if (cbCharge2.IsChecked == true) charges.Add(2);
-            if (cbCharge3.IsChecked == true) charges.Add(3);
-            if (cbCharge4.IsChecked == true) charges.Add(4);
-            if (cbCharge5.IsChecked == true) charges.Add(5);
-            if (cbCharge6.IsChecked == true) charges.Add(6);
-            return charges;
+            return chargeStateChoices.Children
+                .OfType<CheckBox>()
+                .Where(checkBox => checkBox.IsChecked == true)
+                .Select(checkBox => (int)checkBox.Tag)
+                .OrderBy(charge => charge)
+                .ToList();
         }
+
+        private void InitializeModelSelectors()
+        {
+            cbRetentionTimeModel.ItemsSource = KoinaModelCatalog.RetentionTimeModels;
+            cbFragmentModel.ItemsSource = KoinaModelCatalog.FragmentIntensityModels;
+
+            cbRetentionTimeModel.SelectedItem = KoinaModelCatalog.RetentionTime(
+                RetentionTimePredictionModel.ChronologerRt);
+            cbFragmentModel.SelectedItem = KoinaModelCatalog.FragmentIntensity(
+                FragmentIntensityPredictionModel.Prosit2020IntensityHcd);
+        }
+
+        private void RetentionTimeModel_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (cbRetentionTimeModel.SelectedItem is not RetentionTimeModelDefinition definition)
+            {
+                tbRetentionTimeModelSummary.Text = string.Empty;
+                return;
+            }
+
+            using var model = definition.Create(SequenceConversionHandlingMode.ReturnNull);
+            string scale = model.IsIndexedRetentionTimeModel ? "indexed retention time (iRT)" : "retention time";
+            tbRetentionTimeModelSummary.Text =
+                $"{model.ModelName} predicts {scale} for peptides of {model.MinPeptideLength}-{model.MaxPeptideLength} " +
+                $"canonical residues; {DescribeAllowedModifications(model.AllowedUnimodIds)}.";
+            AppendInputScopeNote(tbRetentionTimeModelSummary, definition.InputScopeNote);
+        }
+
+        private void FragmentModel_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (cbFragmentModel.SelectedItem is not FragmentIntensityModelDefinition definition)
+            {
+                _fragmentInputOptions = null;
+                tbFragmentModelSummary.Text = string.Empty;
+                return;
+            }
+
+            var previousCharges = GetSelectedChargeStates();
+            _lastCollisionEnergy = GetCollisionEnergy() ?? _lastCollisionEnergy;
+            string? previousInstrument = GetStringInput(instrumentTypePanel, cbInstrumentType);
+            string? previousFragmentation = GetStringInput(fragmentationTypePanel, cbFragmentationType);
+
+            var model = definition.Create(
+                SequenceConversionHandlingMode.ReturnNull,
+                IncompatibleParameterHandlingMode.ReturnNull,
+                FragmentIonMappingMode.MapToInputFullSequence);
+            _fragmentInputOptions = FragmentIntensityInputOptions.From(model);
+
+            tbFragmentModelSummary.Text =
+                $"{model.ModelName} accepts peptides of {model.MinPeptideLength}-{model.MaxPeptideLength} " +
+                $"canonical residues; {DescribeAllowedModifications(model.AllowedUnimodIds)}.";
+            AppendInputScopeNote(tbFragmentModelSummary, definition.InputScopeNote);
+
+            PopulateChargeStates(_fragmentInputOptions.AllowedPrecursorCharges, previousCharges);
+            ConfigureCollisionEnergy(_fragmentInputOptions.CollisionEnergies, _lastCollisionEnergy);
+            ConfigureStringInput(instrumentTypePanel, cbInstrumentType,
+                _fragmentInputOptions.InstrumentTypes, previousInstrument, "LUMOS", "QE", "NONE");
+            ConfigureStringInput(fragmentationTypePanel, cbFragmentationType,
+                _fragmentInputOptions.FragmentationTypes, previousFragmentation, "HCD", "CID");
+        }
+
+        private static void AppendInputScopeNote(TextBlock summary, string? inputScopeNote)
+        {
+            if (!string.IsNullOrWhiteSpace(inputScopeNote))
+            {
+                summary.Text += Environment.NewLine + inputScopeNote;
+            }
+        }
+
+        private void PopulateChargeStates(IReadOnlyList<int> allowedCharges, IReadOnlyCollection<int> previousCharges)
+        {
+            chargeStateChoices.Children.Clear();
+
+            var selected = previousCharges.Where(allowedCharges.Contains).ToHashSet();
+            if (selected.Count == 0)
+            {
+                selected.UnionWith(new[] { 2, 3 }.Where(allowedCharges.Contains));
+                if (selected.Count == 0 && allowedCharges.Count > 0)
+                    selected.Add(allowedCharges[0]);
+            }
+
+            foreach (int charge in allowedCharges)
+            {
+                chargeStateChoices.Children.Add(new CheckBox
+                {
+                    Content = $"{charge}+",
+                    Tag = charge,
+                    IsChecked = selected.Contains(charge),
+                    Margin = new Thickness(5),
+                    VerticalAlignment = VerticalAlignment.Center
+                });
+            }
+        }
+
+        private void ConfigureCollisionEnergy(KoinaInputDomain<int> domain, int? previousValue)
+        {
+            collisionEnergyPanel.Visibility = domain.IsApplicable ? Visibility.Visible : Visibility.Collapsed;
+            if (!domain.IsApplicable)
+            {
+                cbCollisionEnergy.ItemsSource = null;
+                return;
+            }
+
+            tbCollisionEnergy.Visibility = domain.IsRestricted ? Visibility.Collapsed : Visibility.Visible;
+            cbCollisionEnergy.Visibility = domain.IsRestricted ? Visibility.Visible : Visibility.Collapsed;
+
+            if (!domain.IsRestricted)
+            {
+                tbCollisionEnergy.Text = (previousValue ?? 30).ToString();
+                return;
+            }
+
+            var allowed = domain.AllowedValues.OrderBy(value => value).ToArray();
+            cbCollisionEnergy.ItemsSource = allowed;
+            cbCollisionEnergy.SelectedItem = previousValue is { } value && allowed.Contains(value)
+                ? value
+                : allowed.Contains(30) ? 30 : allowed[0];
+        }
+
+        private static void ConfigureStringInput(
+            StackPanel panel,
+            ComboBox comboBox,
+            KoinaInputDomain<string> domain,
+            string? previousValue,
+            params string[] preferredValues)
+        {
+            panel.Visibility = domain.IsApplicable ? Visibility.Visible : Visibility.Collapsed;
+            comboBox.ItemsSource = null;
+            comboBox.IsEditable = domain.IsApplicable && !domain.IsRestricted;
+            comboBox.Text = string.Empty;
+
+            if (!domain.IsApplicable)
+                return;
+
+            if (!domain.IsRestricted)
+            {
+                comboBox.Text = previousValue ?? string.Empty;
+                return;
+            }
+
+            var allowed = domain.AllowedValues.OrderBy(value => value).ToArray();
+            comboBox.ItemsSource = allowed;
+
+            string? selected = allowed.FirstOrDefault(value =>
+                string.Equals(value, previousValue, StringComparison.OrdinalIgnoreCase));
+            selected ??= preferredValues
+                .Select(preferred => allowed.FirstOrDefault(value =>
+                    string.Equals(value, preferred, StringComparison.OrdinalIgnoreCase)))
+                .FirstOrDefault(value => value != null);
+            comboBox.SelectedItem = selected ?? allowed[0];
+        }
+
+        private int? GetCollisionEnergy()
+        {
+            if (collisionEnergyPanel.Visibility != Visibility.Visible)
+                return null;
+
+            if (cbCollisionEnergy.Visibility == Visibility.Visible)
+                return cbCollisionEnergy.SelectedItem is int value ? value : null;
+
+            return int.TryParse(tbCollisionEnergy.Text, out int parsed) ? parsed : null;
+        }
+
+        private static string? GetStringInput(StackPanel panel, ComboBox comboBox)
+        {
+            if (panel.Visibility != Visibility.Visible)
+                return null;
+
+            string? value = comboBox.IsEditable ? comboBox.Text : comboBox.SelectedItem as string;
+            return string.IsNullOrWhiteSpace(value) ? null : value;
+        }
+
+        private bool ValidateCollisionEnergy(KoinaInputDomain<int> domain)
+        {
+            if (!domain.IsApplicable)
+                return true;
+
+            int? value = GetCollisionEnergy();
+            if (value == null)
+            {
+                MessageBox.Show("Please enter a valid collision energy.", "Invalid Input",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+                return false;
+            }
+
+            if (domain.IsRestricted && !domain.AllowedValues.Contains(value.Value))
+            {
+                MessageBox.Show("Please select a collision energy supported by the model.", "Invalid Input",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+                return false;
+            }
+
+            return true;
+        }
+
+        private static bool ValidateStringInput(
+            string fieldName,
+            StackPanel panel,
+            ComboBox comboBox,
+            KoinaInputDomain<string> domain)
+        {
+            if (!domain.IsApplicable)
+                return true;
+
+            string? value = GetStringInput(panel, comboBox);
+            if (value == null)
+            {
+                MessageBox.Show($"Please enter a valid {fieldName}.", "Invalid Input",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+                return false;
+            }
+
+            if (domain.IsRestricted && !domain.AllowedValues.Contains(value, StringComparer.OrdinalIgnoreCase))
+            {
+                MessageBox.Show($"Please select a {fieldName} supported by the model.", "Invalid Input",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+                return false;
+            }
+
+            return true;
+        }
+
+        private static string DescribeAllowedModifications(IReadOnlySet<int> allowedUnimodIds) =>
+            allowedUnimodIds.Count == 0
+                ? "accepts all UNIMOD modifications"
+                : $"supports UNIMOD {string.Join(", ", allowedUnimodIds.OrderBy(id => id))}";
 
         #region Protease Selection Handlers
 
