@@ -609,6 +609,30 @@ internal class SpectralLibraryTests
     }
 
     [Test]
+    public static void ASupportedModificationChangesTheChronologerRetentionTime()
+    {
+        const string unmodified = "LAGESVLDEK";
+        const string phospho = "LAGES[Common Biological:Phosphorylation on S]VLDEK";
+        var peptides = new List<SpectralLibraryPeptide> { new(unmodified, null), new(phospho, null) };
+
+        var resolved = SpectralLibraryGenerator.ResolveChronologerRetentionTimes(peptides);
+
+        Assert.That(resolved[phospho], Is.Not.Null);
+        Assert.That(resolved[phospho], Is.Not.EqualTo(resolved[unmodified]).Within(0.01));
+    }
+
+    [TestCase("PEPTIK", false)]
+    [TestCase("PEPTIDK", true)]
+    public static void ChronologerPredictsFromSevenResidues(string sequence, bool predicted)
+    {
+        var peptides = new List<SpectralLibraryPeptide> { new(sequence, null) };
+
+        var resolved = SpectralLibraryGenerator.ResolveChronologerRetentionTimes(peptides);
+
+        Assert.That(resolved[sequence].HasValue, Is.EqualTo(predicted));
+    }
+
+    [Test]
     public static void PeptidesChronologerCannotPredictAreReported()
     {
         // Chronologer skips peptides shorter than seven residues.

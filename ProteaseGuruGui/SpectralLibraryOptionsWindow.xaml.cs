@@ -367,9 +367,13 @@ namespace ProteaseGuru.Gui
             if (definition.IsLocal)
             {
                 tbRetentionTimeModelSummary.Text =
-                    "Chronologer runs locally and predicts retention time for peptides of up to " +
+                    "Chronologer runs locally and predicts retention time for peptides of 7-" +
                     $"{ChronologerSequenceFormatSchema.MaxSequenceLength} canonical residues. It is the model " +
-                    "behind the results table, so retention times from a completed run are reused.";
+                    "behind the results table, so retention times from a completed run are reused." +
+                    Environment.NewLine +
+                    "It represents phosphorylation on S/T/Y, acetylation, methylation and succinylation on K, " +
+                    "methylation on R, N-terminal acetylation, pyroglutamate, oxidation on M and carbamidomethyl C. " +
+                    "Other modifications are dropped, so those peptides get the unmodified retention time.";
                 return;
             }
 
