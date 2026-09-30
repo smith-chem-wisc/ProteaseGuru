@@ -21,7 +21,6 @@ namespace ProteaseGuru.Gui
         private HashSet<string> _selectedProteins = new();
         private bool _isRefreshingProteinFilter;
         private FragmentIntensityInputOptions? _fragmentInputOptions;
-        private int _lastCollisionEnergy = 30;
 
         /// <summary>
         /// The peptides this export will draw from. Both the digestion results and the individual
@@ -391,11 +390,6 @@ namespace ProteaseGuru.Gui
                 return;
             }
 
-            var previousCharges = GetSelectedChargeStates();
-            _lastCollisionEnergy = GetCollisionEnergy() ?? _lastCollisionEnergy;
-            string? previousInstrument = GetStringInput(instrumentTypePanel, cbInstrumentType);
-            string? previousFragmentation = GetStringInput(fragmentationTypePanel, cbFragmentationType);
-
             var model = definition.Create(
                 SequenceConversionHandlingMode.ReturnNull,
                 IncompatibleParameterHandlingMode.ReturnNull,
@@ -407,12 +401,14 @@ namespace ProteaseGuru.Gui
                 $"canonical residues; {DescribeAllowedModifications(model.AllowedUnimodIds)}.";
             AppendInputScopeNote(tbFragmentModelSummary, definition.InputScopeNote);
 
-            PopulateChargeStates(_fragmentInputOptions.AllowedPrecursorCharges, previousCharges);
-            ConfigureCollisionEnergy(_fragmentInputOptions.CollisionEnergies, _lastCollisionEnergy);
+            // The inputs depend on the model, so a new model starts from its own defaults rather than
+            // inheriting values chosen for the previous one.
+            PopulateChargeStates(_fragmentInputOptions.AllowedPrecursorCharges);
+            ConfigureCollisionEnergy(_fragmentInputOptions.CollisionEnergies);
             ConfigureStringInput(instrumentTypePanel, cbInstrumentType,
-                _fragmentInputOptions.InstrumentTypes, previousInstrument, "LUMOS", "QE", "NONE");
+                _fragmentInputOptions.InstrumentTypes, "LUMOS", "QE", "NONE");
             ConfigureStringInput(fragmentationTypePanel, cbFragmentationType,
-                _fragmentInputOptions.FragmentationTypes, previousFragmentation, "HCD", "CID");
+                _fragmentInputOptions.FragmentationTypes, "HCD", "CID");
         }
 
         private static void AppendInputScopeNote(TextBlock summary, string? inputScopeNote)
@@ -423,17 +419,13 @@ namespace ProteaseGuru.Gui
             }
         }
 
-        private void PopulateChargeStates(IReadOnlyList<int> allowedCharges, IReadOnlyCollection<int> previousCharges)
+        private void PopulateChargeStates(IReadOnlyList<int> allowedCharges)
         {
             chargeStateChoices.Children.Clear();
 
-            var selected = previousCharges.Where(allowedCharges.Contains).ToHashSet();
-            if (selected.Count == 0)
-            {
-                selected.UnionWith(new[] { 2, 3 }.Where(allowedCharges.Contains));
-                if (selected.Count == 0 && allowedCharges.Count > 0)
-                    selected.Add(allowedCharges[0]);
-            }
+            var selected = new[] { 2, 3 }.Where(allowedCharges.Contains).ToHashSet();
+            if (selected.Count == 0 && allowedCharges.Count > 0)
+                selected.Add(allowedCharges[0]);
 
             foreach (int charge in allowedCharges)
             {
@@ -448,7 +440,7 @@ namespace ProteaseGuru.Gui
             }
         }
 
-        private void ConfigureCollisionEnergy(KoinaInputDomain<int> domain, int? previousValue)
+        private void ConfigureCollisionEnergy(KoinaInputDomain<int> domain)
         {
             collisionEnergyPanel.Visibility = domain.IsApplicable ? Visibility.Visible : Visibility.Collapsed;
             if (!domain.IsApplicable)
@@ -462,22 +454,19 @@ namespace ProteaseGuru.Gui
 
             if (!domain.IsRestricted)
             {
-                tbCollisionEnergy.Text = (previousValue ?? 30).ToString();
+                tbCollisionEnergy.Text = "30";
                 return;
             }
 
             var allowed = domain.AllowedValues.OrderBy(value => value).ToArray();
             cbCollisionEnergy.ItemsSource = allowed;
-            cbCollisionEnergy.SelectedItem = previousValue is { } value && allowed.Contains(value)
-                ? value
-                : allowed.Contains(30) ? 30 : allowed[0];
+            cbCollisionEnergy.SelectedItem = allowed.Contains(30) ? 30 : allowed[0];
         }
 
         private static void ConfigureStringInput(
             StackPanel panel,
             ComboBox comboBox,
             KoinaInputDomain<string> domain,
-            string? previousValue,
             params string[] preferredValues)
         {
             panel.Visibility = domain.IsApplicable ? Visibility.Visible : Visibility.Collapsed;
@@ -489,17 +478,12 @@ namespace ProteaseGuru.Gui
                 return;
 
             if (!domain.IsRestricted)
-            {
-                comboBox.Text = previousValue ?? string.Empty;
                 return;
-            }
 
             var allowed = domain.AllowedValues.OrderBy(value => value).ToArray();
             comboBox.ItemsSource = allowed;
 
-            string? selected = allowed.FirstOrDefault(value =>
-                string.Equals(value, previousValue, StringComparison.OrdinalIgnoreCase));
-            selected ??= preferredValues
+            string? selected = preferredValues
                 .Select(preferred => allowed.FirstOrDefault(value =>
                     string.Equals(value, preferred, StringComparison.OrdinalIgnoreCase)))
                 .FirstOrDefault(value => value != null);
