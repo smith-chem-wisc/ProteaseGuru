@@ -101,7 +101,7 @@ public class SeekMaximumCoverage
     /// [0, protein.Length), so the set-cover math runs as word-parallel bitwise ops
     /// (OR / AND-NOT / popcount) instead of per-residue <see cref="HashSet{T}"/> work.
     /// All bitsets in a single algorithm run share the same universe size, so the
-    /// binary operations can assume equal backing-array lengths.
+    /// binary operations can assume equal backing-array lengths. The size is a residue count.
     /// </summary>
     private sealed class Bitset
     {

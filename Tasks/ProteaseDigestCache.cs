@@ -37,7 +37,8 @@ public class ProteaseDigestCache
     /// Identifies a digestion. The digestion parameters are held as a clone because the view model
     /// mutates them in place, so a live reference would go stale; cloning captures them by value.
     /// Equality therefore covers every field Clone copies, rather than a hand-picked subset that has
-    /// to be extended whenever a new setting is exposed.
+    /// to be extended whenever a new setting is exposed. RnaDigestionParams.Clone resets
+    /// SearchModeType, so for RNA that field is not part of the key.
     /// </summary>
     public readonly record struct DigestCacheKey(IDigestionParams DigestionParams, string ModsSignature);
 
