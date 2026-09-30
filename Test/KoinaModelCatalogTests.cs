@@ -36,6 +36,7 @@ internal static class KoinaModelCatalogTests
                 FragmentIonMappingMode.MapToInputFullSequence))
             .ToList();
         var retentionTimeModels = KoinaModelCatalog.RetentionTimeModels
+            .Where(definition => !definition.IsLocal)
             .Select(definition => definition.Create(SequenceConversionHandlingMode.ReturnNull))
             .ToList();
 
@@ -82,6 +83,7 @@ internal static class KoinaModelCatalogTests
     public static void RetentionFactoriesUseTheRequestedHandlingModeAndUniqueKoinaNames()
     {
         var models = KoinaModelCatalog.RetentionTimeModels
+            .Where(definition => !definition.IsLocal)
             .Select(definition => definition.Create(SequenceConversionHandlingMode.RemoveIncompatibleElements))
             .ToList();
 
@@ -97,6 +99,76 @@ internal static class KoinaModelCatalogTests
         {
             foreach (var model in models) model.Dispose();
         }
+    }
+
+    // Set-level checks pass with two factories swapped, so each id is pinned to the Koina name it must build.
+    private static readonly Dictionary<FragmentIntensityPredictionModel, string> FragmentKoinaNames = new()
+    {
+        [FragmentIntensityPredictionModel.AlphaPeptDeepMs2Generic] = "AlphaPeptDeep_ms2_generic",
+        [FragmentIntensityPredictionModel.Altimeter2024Intensities] = "Altimeter_2024_intensities",
+        [FragmentIntensityPredictionModel.Ms2PipHcd2021] = "ms2pip_HCD2021",
+        [FragmentIntensityPredictionModel.Ms2PipImmunoHcd] = "ms2pip_Immuno_HCD",
+        [FragmentIntensityPredictionModel.Ms2PipTimsTof2023] = "ms2pip_timsTOF2023",
+        [FragmentIntensityPredictionModel.Ms2PipTimsTof2024] = "ms2pip_timsTOF2024",
+        [FragmentIntensityPredictionModel.Ms2PipTtof5600] = "ms2pip_TTOF5600",
+        [FragmentIntensityPredictionModel.Prosit2019Intensity] = "Prosit_2019_intensity",
+        [FragmentIntensityPredictionModel.Prosit2020IntensityCid] = "Prosit_2020_intensity_CID",
+        [FragmentIntensityPredictionModel.Prosit2020IntensityHcd] = "Prosit_2020_intensity_HCD",
+        [FragmentIntensityPredictionModel.Prosit2023IntensityTimsTof] = "Prosit_2023_intensity_timsTOF",
+        [FragmentIntensityPredictionModel.Prosit2024IntensityCit] = "Prosit_2024_intensity_cit",
+        [FragmentIntensityPredictionModel.Prosit2024IntensityPtmsGl] = "Prosit_2024_intensity_PTMs_gl",
+        [FragmentIntensityPredictionModel.Prosit2025Intensity22Ptm] = "Prosit_2025_intensity_22PTM",
+        [FragmentIntensityPredictionModel.Prosit2025Intensity40Ptm] = "Prosit_2025_intensity_40PTM",
+        [FragmentIntensityPredictionModel.Prosit2025IntensityLac] = "Prosit_2025_intensity_lac",
+        [FragmentIntensityPredictionModel.Prosit2025IntensityPtm2] = "Prosit_2025_intensity_ptm2"
+    };
+
+    private static readonly Dictionary<RetentionTimePredictionModel, string> RetentionTimeKoinaNames = new()
+    {
+        [RetentionTimePredictionModel.AlphaPeptDeepRtGeneric] = "AlphaPeptDeep_rt_generic",
+        [RetentionTimePredictionModel.DeepLcHelaHf] = "Deeplc_hela_hf",
+        [RetentionTimePredictionModel.Prosit2019Irt] = "Prosit_2019_irt",
+        [RetentionTimePredictionModel.Prosit2024IrtCit] = "Prosit_2024_irt_cit",
+        [RetentionTimePredictionModel.Prosit2024IrtPtmsGl] = "Prosit_2024_irt_PTMs_gl",
+        [RetentionTimePredictionModel.Prosit2025Irt22Ptm] = "Prosit_2025_irt_22PTM",
+        [RetentionTimePredictionModel.Prosit2025Irt40Ptm] = "Prosit_2025_irt_40PTM",
+        [RetentionTimePredictionModel.Prosit2025IrtLac] = "Prosit_2025_irt_lac"
+    };
+
+    [Test]
+    public static void EveryFragmentIntensityIdBuildsTheModelItNames()
+    {
+        Assert.That(FragmentKoinaNames.Keys, Is.EquivalentTo(Enum.GetValues<FragmentIntensityPredictionModel>()));
+
+        Assert.Multiple(() =>
+        {
+            foreach (var (id, koinaName) in FragmentKoinaNames)
+            {
+                var model = KoinaModelCatalog.FragmentIntensity(id).Create(
+                    SequenceConversionHandlingMode.ReturnNull,
+                    IncompatibleParameterHandlingMode.ReturnNull,
+                    FragmentIonMappingMode.MapToInputFullSequence);
+                Assert.That(model.ModelName, Is.EqualTo(koinaName), id.ToString());
+            }
+        });
+    }
+
+    [Test]
+    public static void EveryRetentionTimeIdBuildsTheModelItNamesExceptLocalChronologer()
+    {
+        Assert.That(KoinaModelCatalog.RetentionTimeModels.Where(definition => definition.IsLocal).Select(definition => definition.Id),
+            Is.EqualTo(new[] { RetentionTimePredictionModel.ChronologerRt }));
+        Assert.That(RetentionTimeKoinaNames.Keys.Append(RetentionTimePredictionModel.ChronologerRt),
+            Is.EquivalentTo(Enum.GetValues<RetentionTimePredictionModel>()));
+
+        Assert.Multiple(() =>
+        {
+            foreach (var (id, koinaName) in RetentionTimeKoinaNames)
+            {
+                using var model = KoinaModelCatalog.RetentionTime(id).Create(SequenceConversionHandlingMode.ReturnNull);
+                Assert.That(model.ModelName, Is.EqualTo(koinaName), id.ToString());
+            }
+        });
     }
 
     [Test]

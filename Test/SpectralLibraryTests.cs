@@ -13,6 +13,7 @@ using Proteomics.ProteolyticDigestion;
 namespace ProteaseGuru.Test;
 
 [TestFixture]
+[NonParallelizable] // Opens the process-wide Chronologer model, as the sibling fixtures do.
 internal class SpectralLibraryTests
 {
     private const string MzLibSequence = "PEPTC[Common Fixed:Carbamidomethyl on C]IDEK";
@@ -569,6 +570,89 @@ internal class SpectralLibraryTests
     }
 
     [Test]
+    public static void ANegativeChronologerRetentionTimeIsAPredictionNotAFailure()
+    {
+        // Chronologer predicts below zero for hydrophilic peptides; GSGSGSGSK is about -0.464.
+        var peptides = new List<SpectralLibraryPeptide> { new("GSGSGSGSK", RetentionTime: null) };
+
+        var resolved = SpectralLibraryGenerator.ResolveChronologerRetentionTimes(peptides);
+
+        Assert.That(resolved["GSGSGSGSK"], Is.Not.Null);
+        Assert.That(resolved["GSGSGSGSK"], Is.LessThan(0));
+    }
+
+    [Test]
+    public static void RetentionTimesArePredictedOnlyForPeptidesLackingThem()
+    {
+        var peptides = new List<SpectralLibraryPeptide>
+        {
+            new("PEPTIDEK", RetentionTime: 42.5),
+            new("ELVISLIVESK", RetentionTime: null)
+        };
+
+        var resolved = SpectralLibraryGenerator.ResolveChronologerRetentionTimes(peptides);
+
+        Assert.That(resolved["PEPTIDEK"], Is.EqualTo(42.5).Within(1e-9), "an existing retention time must not be re-predicted");
+        Assert.That(resolved["ELVISLIVESK"], Is.Not.Null, "a missing retention time must be predicted");
+    }
+
+    [Test]
+    public static void AModificationMzLibDoesNotKnowStillGetsAChronologerRetentionTime()
+    {
+        // CNBr's homoserine lactone comes from ProteaseGuru's own mod files, not mzLib's dictionary.
+        const string cnbrPeptide = "AAGGLLKPEPTIDEKM[Protease:Homoserine lactone on M]";
+        var peptides = new List<SpectralLibraryPeptide> { new(cnbrPeptide, RetentionTime: null) };
+
+        var resolved = SpectralLibraryGenerator.ResolveChronologerRetentionTimes(peptides);
+
+        Assert.That(resolved[cnbrPeptide], Is.Not.Null);
+    }
+
+    [Test]
+    public static void PeptidesChronologerCannotPredictAreReported()
+    {
+        // Chronologer skips peptides shorter than seven residues.
+        var peptides = new List<SpectralLibraryPeptide>
+        {
+            new("PEPK", RetentionTime: null),
+            new("PEPTIDEK", RetentionTime: null)
+        };
+        var reported = new List<string>();
+
+        var resolved = SpectralLibraryGenerator.ResolveChronologerRetentionTimes(
+            peptides, new SynchronousProgress(reported.Add));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(resolved["PEPK"], Is.Null);
+            Assert.That(resolved["PEPTIDEK"], Is.Not.Null);
+            Assert.That(reported, Has.Exactly(1).Contains("1 of 2"));
+        });
+    }
+
+    [Test]
+    public static void ChronologerReusesTheRetentionTimeFromTheRunInsteadOfCallingKoina()
+    {
+        var options = PermissiveOptions;
+        options.ChargeStates = new List<int> { 2 };
+        var peptides = new List<SpectralLibraryPeptide> { new("PEPTIDEK", RetentionTime: 42.5) };
+        var model = SeededModel(FragmentIonMappingMode.MapToInputFullSequence, PredictionFor("PEPTIDEK", "PEPTIDEK"));
+        string path = Path.Combine(Path.GetTempPath(), $"pgtest_{Guid.NewGuid():N}.msp");
+
+        try
+        {
+            var spectra = new SpectralLibraryGenerator(peptides, options, path, model).GenerateLibrary();
+
+            Assert.That(options.RetentionTimeModel, Is.EqualTo(RetentionTimePredictionModel.ChronologerRt));
+            Assert.That(spectra.Single().RetentionTime, Is.EqualTo(42.5));
+        }
+        finally
+        {
+            if (File.Exists(path)) File.Delete(path);
+        }
+    }
+
+    [Test]
     public static void ANegativeRetentionTimeIsAPredictionNotAFailure()
     {
         var peptides = new List<SpectralLibraryPeptide> { new("GSGSGSGSK", RetentionTime: null) };
@@ -863,7 +947,7 @@ internal class SpectralLibraryTests
                 var seeded = _seed[input.FullSequence];
                 return new PeptideRTPrediction(
                     input.FullSequence,
-                    seeded.Valid ? input.FullSequence : null,
+                    seeded.Valid ? input.FullSequence : null!,
                     seeded.Value,
                     true,
                     seeded.Warning);

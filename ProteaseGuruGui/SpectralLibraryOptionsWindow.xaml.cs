@@ -365,6 +365,15 @@ namespace ProteaseGuru.Gui
                 return;
             }
 
+            if (definition.IsLocal)
+            {
+                tbRetentionTimeModelSummary.Text =
+                    "Chronologer runs locally and predicts retention time for peptides of up to " +
+                    $"{ChronologerSequenceFormatSchema.MaxSequenceLength} canonical residues. It is the model " +
+                    "behind the results table, so retention times from a completed run are reused.";
+                return;
+            }
+
             using var model = definition.Create(SequenceConversionHandlingMode.ReturnNull);
             string scale = model.IsIndexedRetentionTimeModel ? "indexed retention time (iRT)" : "retention time";
             tbRetentionTimeModelSummary.Text =

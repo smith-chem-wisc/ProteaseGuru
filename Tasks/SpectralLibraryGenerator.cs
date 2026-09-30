@@ -1,3 +1,5 @@
+using Chromatography.RetentionTimePrediction;
+using Omics;
 using Omics.SequenceConversion;
 using Omics.SpectrumMatch;
 using PredictionClients.Koina.AbstractClasses;
@@ -132,19 +134,17 @@ namespace ProteaseGuru.Tasks
 
         /// <summary>
         /// Predicts fragment intensities and writes the library. Cancellation is cooperative between
-        /// stages: a Koina round trip cannot be interrupted once started, so a cancel takes effect at
-        /// the next stage boundary rather than immediately.
+        /// stages: neither a Koina round trip nor a Chronologer forward pass can be interrupted once
+        /// started, so a cancel takes effect at the next stage boundary rather than immediately.
         /// </summary>
         public List<LibrarySpectrum> GenerateLibrary(
             IProgress<string>? progress = null,
             CancellationToken cancellationToken = default)
         {
             var model = CreateIntensityModel();
-            using var retentionTimeModel = CreateRetentionTimeModel();
 
             cancellationToken.ThrowIfCancellationRequested();
-            progress?.Report($"Predicting retention times with {retentionTimeModel.ModelName} for {_peptides.Count} peptides...");
-            var retentionTimes = ResolveRetentionTimes(_peptides, retentionTimeModel, progress);
+            var retentionTimes = PredictRetentionTimes(progress);
 
             var (inputs, rts) = BuildPredictionInputs(retentionTimes);
 
@@ -179,10 +179,76 @@ namespace ProteaseGuru.Tasks
             return library;
         }
 
+        private Dictionary<string, double?> PredictRetentionTimes(IProgress<string>? progress)
+        {
+            if (_retentionTimeModel == null && KoinaModelCatalog.RetentionTime(_options.RetentionTimeModel).IsLocal)
+            {
+                progress?.Report($"Resolving Chronologer retention times for {_peptides.Count} peptides...");
+                return ResolveChronologerRetentionTimes(_peptides, progress);
+            }
+
+            using var retentionTimeModel = CreateRetentionTimeModel();
+            progress?.Report($"Predicting retention times with {retentionTimeModel.ModelName} for {_peptides.Count} peptides...");
+            return ResolveRetentionTimes(_peptides, retentionTimeModel, progress);
+        }
+
+        /// <summary>
+        /// Retention times keyed by full sequence, from ProteaseGuru's own Chronologer. A value the
+        /// source already carries came from that same model during the run, so only peptides without
+        /// one are predicted.
+        /// </summary>
+        internal static Dictionary<string, double?> ResolveChronologerRetentionTimes(
+            List<SpectralLibraryPeptide> peptides,
+            IProgress<string>? progress = null)
+        {
+            var known = new Dictionary<string, double?>(StringComparer.Ordinal);
+            var toPredict = new List<ChronologerInput>();
+
+            foreach (var peptide in peptides)
+            {
+                if (known.ContainsKey(peptide.FullSequence)) continue;
+
+                known[peptide.FullSequence] = peptide.RetentionTime;
+                if (peptide.RetentionTime == null)
+                    toPredict.Add(new ChronologerInput(peptide.FullSequence));
+            }
+
+            if (toPredict.Count == 0) return known;
+
+            using var session = SharedChronologerPredictor.Open();
+            var predictions = session.Predict(toPredict, maxThreads: Environment.ProcessorCount);
+
+            for (int i = 0; i < predictions.Count; i++)
+            {
+                // Null is how the model reports failure. Negative values are real: Chronologer
+                // predicts %ACN at elution, which goes below zero for hydrophilic peptides
+                // (GSGSGSGSK is -0.464).
+                known[toPredict[i].FullSequence] = predictions[i].PredictedValue;
+            }
+
+            int missing = known.Values.Count(value => value == null);
+            if (missing > 0)
+                progress?.Report($"{missing} of {known.Count} peptides have no Chronologer retention time.");
+
+            return known;
+        }
+
+        /// <summary>
+        /// Chronologer reads a peptide from its full-sequence string. Parsing that string into a
+        /// PeptideWithSetModifications instead would look each modification up in mzLib's dictionary,
+        /// which does not hold ProteaseGuru's own mod files and throws on them.
+        /// </summary>
+        private sealed record ChronologerInput(string FullSequence) : IRetentionPredictable
+        {
+            public string BaseSequence { get; } = IBioPolymerWithSetMods.GetBaseSequenceFromFullSequence(FullSequence);
+            public double MonoisotopicMass => double.NaN;
+            public string FullSequenceWithMassShifts => string.Empty;
+        }
+
         /// <summary>
         /// Retention times keyed by full sequence. Every unique peptide is predicted with the selected
-        /// model, even when the source carries a Chronologer value from a completed run; otherwise a
-        /// library could silently mix outputs from two retention-time models.
+        /// Koina model, even when the source carries a Chronologer value from a completed run; otherwise
+        /// a library could silently mix outputs from two retention-time models.
         /// </summary>
         internal static Dictionary<string, double?> ResolveRetentionTimes(
             List<SpectralLibraryPeptide> peptides,

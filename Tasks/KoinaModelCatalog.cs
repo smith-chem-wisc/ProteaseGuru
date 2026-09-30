@@ -79,12 +79,12 @@ public sealed class FragmentIntensityModelDefinition
 
 public sealed class RetentionTimeModelDefinition
 {
-    private readonly Func<SequenceConversionHandlingMode, RetentionTimeModel> _factory;
+    private readonly Func<SequenceConversionHandlingMode, RetentionTimeModel>? _factory;
 
     internal RetentionTimeModelDefinition(
         RetentionTimePredictionModel id,
         string displayName,
-        Func<SequenceConversionHandlingMode, RetentionTimeModel> factory,
+        Func<SequenceConversionHandlingMode, RetentionTimeModel>? factory,
         string? inputScopeNote)
     {
         Id = id;
@@ -97,8 +97,15 @@ public sealed class RetentionTimeModelDefinition
     public string DisplayName { get; }
     public string? InputScopeNote { get; }
 
+    /// <summary>
+    /// Predicted by ProteaseGuru's own Chronologer, the model behind the results table, rather than
+    /// through Koina. Koina's Chronologer wrapper takes fewer residues and modifications.
+    /// </summary>
+    public bool IsLocal => _factory == null;
+
     public RetentionTimeModel Create(SequenceConversionHandlingMode modHandlingMode) =>
-        _factory(modHandlingMode);
+        _factory?.Invoke(modHandlingMode)
+        ?? throw new NotSupportedException($"{DisplayName} runs locally, not through Koina.");
 
     public override string ToString() => DisplayName;
 }
@@ -170,7 +177,7 @@ public static class KoinaModelCatalog
     public static IReadOnlyList<RetentionTimeModelDefinition> RetentionTimeModels { get; } =
     [
         Retention(RetentionTimePredictionModel.AlphaPeptDeepRtGeneric, "AlphaPeptDeep RT Generic", m => new AlphaPeptDeepRTGeneric(m)),
-        Retention(RetentionTimePredictionModel.ChronologerRt, "Chronologer RT", m => new ChronologerRT(m)),
+        Retention(RetentionTimePredictionModel.ChronologerRt, "Chronologer RT", factory: null),
         Retention(RetentionTimePredictionModel.DeepLcHelaHf, "DeepLC HeLa HF", m => new DeeplcHelaHf(m)),
         Retention(RetentionTimePredictionModel.Prosit2019Irt, "Prosit 2019 iRT", m => new Prosit2019iRT(m)),
         Retention(RetentionTimePredictionModel.Prosit2024IrtCit, "Prosit 2024 iRT CIT", m => new Prosit2024iRTCit(m), PtmFocusedInputScopeNote),
@@ -199,7 +206,7 @@ public static class KoinaModelCatalog
     private static RetentionTimeModelDefinition Retention(
         RetentionTimePredictionModel id,
         string displayName,
-        Func<SequenceConversionHandlingMode, RetentionTimeModel> factory,
+        Func<SequenceConversionHandlingMode, RetentionTimeModel>? factory,
         string? inputScopeNote = null) =>
         new(id, displayName, factory, inputScopeNote);
 }

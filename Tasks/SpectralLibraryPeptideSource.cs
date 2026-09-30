@@ -8,8 +8,8 @@ namespace ProteaseGuru.Tasks;
 /// <summary>
 /// A peptide bound for a spectral library, independent of where it came from.
 /// </summary>
-/// <param name="RetentionTime">What the source already knows. The generator predicts its own with
-/// the selected model rather than reading this, so one library cannot mix two models.</param>
+/// <param name="RetentionTime">The Chronologer value the source already has, or null. The generator
+/// reuses it only when Chronologer is the selected model, so one library cannot mix two models.</param>
 public readonly record struct SpectralLibraryPeptide(string FullSequence, double? RetentionTime);
 
 /// <summary>
