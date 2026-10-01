@@ -1,13 +1,9 @@
 using System.Diagnostics;
-using System.Text.RegularExpressions;
 using Chemistry;
-using MzLibUtil;
-using Omics.Digestion;
 using Omics.Modifications;
 using Omics.Modifications.IO;
 using Proteomics.AminoAcidPolymer;
 using Proteomics.ProteolyticDigestion;
-using Transcriptomics.Digestion;
 
 namespace ProteaseGuru.Engine
 {
@@ -127,96 +123,7 @@ namespace ProteaseGuru.Engine
                         UserAddedProteaseNames.Add(key);
             }
 
-            var mc1 = RnaseDictionary.Dictionary["RNase_MC1"];
-            mc1.DigestionMotifs.AddRange(ParseDigestionMotifsFromString("[G]|Y"));
-
             RefreshAminoAcidDictionary();
-        }
-
-        public static List<DigestionMotif> ParseDigestionMotifsFromString(string motifsString)
-        {
-            motifsString = motifsString.Replace("\"", string.Empty).Replace(" ", string.Empty);
-
-            // throws exception if non-supported characters are used
-            if (Regex.Match(motifsString, @"[^a-zA-Z0-9|,[\]{}]+").Success)
-            {
-                throw new MzLibException("Unrecognized protease syntax. The digestion motif can only contain letters and {}[]|");
-            }
-            // throws exception if user attempts separate multiple preventing cleavages using commas
-            if (Regex.Match(motifsString, @"\[([\w]*,+[\w]*)*\]").Success)
-            {
-                throw new MzLibException("Unrecognized protease syntax. Please create a separate motif for each sequence preventing cleavage (comma separated).");
-            }
-            // throws exception if user attempts separate multiple wildcard exclusions
-            if (Regex.Match(motifsString, @"\{([\w]*,+[\w]*)*\}").Success)
-            {
-                throw new MzLibException("Unrecognized protease syntax. Please create a separate motif for each wildcard exclusion (comma separated).");
-            }
-
-            string[] motifStrings = motifsString.Split(',');
-            var motifs = new List<DigestionMotif>();
-
-            for (int i = 0; i < motifStrings.Length; i++)
-            {
-                string motifString = motifStrings[i];
-                motifs.Add(ParseDigestionMotifFromString(motifString));
-            }
-            return motifs;
-        }
-
-        private static DigestionMotif ParseDigestionMotifFromString(string motifString)
-        {
-            string inducingCleavage;
-            string preventingCleavage = null;
-            string excludingWC = null;
-            int cutIndex = 0;
-
-            if (motifString.Contains("{") && !motifString.Contains("}")
-                || !motifString.Contains("{") && motifString.Contains("}")
-                || motifString.Contains("[") && !motifString.Contains("]")
-                || !motifString.Contains("[") && motifString.Contains("]"))
-            {
-                throw new MzLibException("Unrecognized protease syntax. Please close any brackets used.");
-            }
-
-            // find preventing cleavage
-            if (motifString.Contains("["))
-            {
-                int start = motifString.IndexOf("[") + 1;
-                int end = motifString.IndexOf("]");
-
-                preventingCleavage = motifString.Substring(start, end - start);
-                motifString = Regex.Replace(motifString, @"\[[a-zA-Z]+\]", string.Empty);
-            }
-
-            // finds wildcard exceptions
-            if (motifString.Contains("{"))
-            {
-                int start = motifString.IndexOf("{") + 1;
-                int end = motifString.IndexOf("}");
-
-                excludingWC = motifString.Substring(start, end - start);
-                if (Regex.Matches(motifString.ToUpper(), "X").Count != excludingWC.Length)
-                {
-                    throw new MzLibException("Unrecognized protease syntax. Please have equal number of wildcards for multi-letter wildcard exclusions.");
-                }
-                motifString = Regex.Replace(motifString, @"\{[a-zA-Z]+\}", string.Empty);
-            }
-
-            // finds motif cut index
-            for (int j = 0; j < motifString.Length; j++)
-            {
-                if (motifString[j] == '|')
-                {
-                    cutIndex = j;
-                    break;
-                }
-            }
-
-            motifString = motifString.Replace("|", string.Empty);
-            inducingCleavage = motifString;
-
-            return new DigestionMotif(inducingCleavage, preventingCleavage, cutIndex, excludingWC);
         }
 
         public static List<string> ErrorsReadingMods = new();
