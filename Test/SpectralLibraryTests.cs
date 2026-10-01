@@ -742,6 +742,77 @@ internal class SpectralLibraryTests
     }
 
     [Test]
+    public static void AFailedKoinaRetentionTimeCallIsReportedAndTheLibraryIsStillWritten()
+    {
+        var options = PermissiveOptions;
+        options.ChargeStates = new List<int> { 2 };
+        var peptides = new List<SpectralLibraryPeptide> { new("PEPTIDEK", RetentionTime: null) };
+        var model = SeededModel(FragmentIonMappingMode.MapToInputFullSequence, PredictionFor("PEPTIDEK", "PEPTIDEK"));
+        using var retentionTimeModel = new FailingRetentionModel(
+            new HttpRequestException("Response status code does not indicate success: 503 (Service Unavailable)."));
+        var reported = new List<string>();
+        string path = Path.Combine(Path.GetTempPath(), $"pgtest_{Guid.NewGuid():N}.msp");
+
+        try
+        {
+            var spectra = new SpectralLibraryGenerator(peptides, options, path, model, retentionTimeModel)
+                .GenerateLibrary(new SynchronousProgress(reported.Add));
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(spectra.Single().RetentionTime, Is.Null);
+                Assert.That(reported, Has.Exactly(1).Matches<string>(message =>
+                    message.Contains("failed") &&
+                    message.Contains(retentionTimeModel.ModelName) &&
+                    message.Contains("503 (Service Unavailable)")));
+                Assert.That(new FileInfo(path).Length, Is.GreaterThan(0));
+            });
+        }
+        finally
+        {
+            if (File.Exists(path)) File.Delete(path);
+        }
+    }
+
+    [Test]
+    public static void AKoinaTimeoutCostsOnlyTheRetentionTimes()
+    {
+        var peptides = new List<SpectralLibraryPeptide> { new("PEPTIDEK", RetentionTime: null) };
+        using var model = new FailingRetentionModel(new TaskCanceledException());
+        var reported = new List<string>();
+
+        var resolved = SpectralLibraryGenerator.ResolveRetentionTimes(
+            peptides, model, new SynchronousProgress(reported.Add));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(resolved["PEPTIDEK"], Is.Null);
+            Assert.That(reported, Has.Exactly(1).Contains(model.ModelName));
+        });
+    }
+
+    [Test]
+    public static void CancelingDuringRetentionTimePredictionStillStopsTheExport()
+    {
+        var peptides = new List<SpectralLibraryPeptide> { new("PEPTIDEK", RetentionTime: null) };
+        using var canceled = new CancellationTokenSource();
+        canceled.Cancel();
+        using var model = new FailingRetentionModel(new OperationCanceledException(canceled.Token));
+
+        Assert.Throws<OperationCanceledException>(() =>
+            SpectralLibraryGenerator.ResolveRetentionTimes(peptides, model, null, canceled.Token));
+    }
+
+    [Test]
+    public static void ARetentionTimeFailureThatIsNotKoinaStillThrows()
+    {
+        var peptides = new List<SpectralLibraryPeptide> { new("PEPTIDEK", RetentionTime: null) };
+        using var model = new FailingRetentionModel(new ArgumentException("bad input"));
+
+        Assert.Throws<ArgumentException>(() => SpectralLibraryGenerator.ResolveRetentionTimes(peptides, model));
+    }
+
+    [Test]
     public static void RankFilteringKeepsIndicesAscendingSoFragmentsAreNotDuplicated()
     {
         // RetainFragments compacts in place, so a descending keep-set would overwrite a source slot
@@ -979,6 +1050,17 @@ internal class SpectralLibraryTests
 
             return Task.FromResult(Predictions);
         }
+    }
+
+    private sealed class FailingRetentionModel : Prosit2019iRT
+    {
+        private readonly Exception _failure;
+
+        public FailingRetentionModel(Exception failure) => _failure = failure;
+
+        protected override Task<List<PeptideRTPrediction>> AsyncThrottledPredictor(
+            List<RetentionTimePredictionInput> modelInputs) =>
+            Task.FromException<List<PeptideRTPrediction>>(_failure);
     }
 
     #endregion

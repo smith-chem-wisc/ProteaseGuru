@@ -144,7 +144,7 @@ namespace ProteaseGuru.Tasks
             var model = CreateIntensityModel();
 
             cancellationToken.ThrowIfCancellationRequested();
-            var retentionTimes = PredictRetentionTimes(progress);
+            var retentionTimes = PredictRetentionTimes(progress, cancellationToken);
 
             var (inputs, rts) = BuildPredictionInputs(retentionTimes);
 
@@ -179,7 +179,9 @@ namespace ProteaseGuru.Tasks
             return library;
         }
 
-        private Dictionary<string, double?> PredictRetentionTimes(IProgress<string>? progress)
+        private Dictionary<string, double?> PredictRetentionTimes(
+            IProgress<string>? progress,
+            CancellationToken cancellationToken)
         {
             if (_retentionTimeModel == null && KoinaModelCatalog.RetentionTime(_options.RetentionTimeModel).IsLocal)
             {
@@ -189,7 +191,7 @@ namespace ProteaseGuru.Tasks
 
             using var retentionTimeModel = CreateRetentionTimeModel();
             progress?.Report($"Predicting retention times with {retentionTimeModel.ModelName} for {_peptides.Count} peptides...");
-            return ResolveRetentionTimes(_peptides, retentionTimeModel, progress);
+            return ResolveRetentionTimes(_peptides, retentionTimeModel, progress, cancellationToken);
         }
 
         /// <summary>
@@ -253,7 +255,8 @@ namespace ProteaseGuru.Tasks
         internal static Dictionary<string, double?> ResolveRetentionTimes(
             List<SpectralLibraryPeptide> peptides,
             RetentionTimeModel model,
-            IProgress<string>? progress = null)
+            IProgress<string>? progress = null,
+            CancellationToken cancellationToken = default)
         {
             var inputs = peptides
                 .Select(peptide => peptide.FullSequence)
@@ -261,7 +264,21 @@ namespace ProteaseGuru.Tasks
                 .Select(sequence => new RetentionTimePredictionInput(sequence))
                 .ToList();
 
-            var predictions = model.Predict(inputs);
+            // mzLib does not take our token, so a cancellation out of Predict is a Koina timeout.
+            List<PeptideRTPrediction> predictions;
+            try
+            {
+                predictions = model.Predict(inputs);
+            }
+            catch (Exception e) when (e is HttpRequestException
+                || e is OperationCanceledException && !cancellationToken.IsCancellationRequested)
+            {
+                progress?.Report(
+                    $"Retention time prediction with {model.ModelName} failed: {e.Message} The library will " +
+                    "be written without retention times.");
+                return inputs.ToDictionary(input => input.FullSequence, _ => (double?)null, StringComparer.Ordinal);
+            }
+
             if (predictions.Count != inputs.Count)
                 throw new InvalidOperationException(
                     $"{model.ModelName} returned {predictions.Count} retention times for {inputs.Count} inputs.");
