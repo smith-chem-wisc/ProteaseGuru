@@ -81,6 +81,7 @@ namespace ProteaseGuru.Gui
 
             WireProteasePanel();
             this.Loaded += results_Loaded;
+            this.Unloaded += results_Unloaded;
             SearchModifications.SetUp();
             SearchModifications.Timer.Tick += new EventHandler(searchBox_TextChangedHandler);
         }
@@ -107,6 +108,7 @@ namespace ProteaseGuru.Gui
 
             WireProteasePanel();
             this.Loaded += results_Loaded;
+            this.Unloaded += results_Unloaded;
             SearchModifications.SetUp();
             SearchModifications.Timer.Tick += new EventHandler(searchBox_TextChangedHandler);
         }
@@ -141,15 +143,20 @@ namespace ProteaseGuru.Gui
             ProteaseOptionsItemsControl.ItemsSource = _allProteaseVm.ProteaseSpecificParameters;
             foreach (var vm in _allProteaseVm.ProteaseSpecificParameters)
                 vm.PropertyChanged += OnProteaseParameterChanged;
+        }
 
-            // When mode switches, deselect all wrong-mode entries and refresh the map
-            GuiGlobalParamsViewModel.Instance.PropertyChanged += (s, e) =>
-            {
-                if (e.PropertyName != nameof(GuiGlobalParamsViewModel.IsRnaMode)) return;
-                foreach (var vm in _allProteaseVm.ProteaseSpecificParameters.Where(p => !p.IsVisible))
-                    vm.IsSelected = false;
-                ScheduleRefresh();
-            };
+        private void OnGlobalParamsChanged(object? sender, PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName == nameof(GuiGlobalParamsViewModel.IsRnaMode))
+                ApplyRnaMode();
+        }
+
+        // When mode switches, deselect all wrong-mode entries and refresh the map
+        private void ApplyRnaMode()
+        {
+            foreach (var vm in _allProteaseVm.ProteaseSpecificParameters.Where(p => !p.IsVisible))
+                vm.IsSelected = false;
+            ScheduleRefresh();
         }
 
         private void SetUpProteinsForTreeView()
@@ -474,6 +481,10 @@ namespace ProteaseGuru.Gui
             Window window = Window.GetWindow(this);
             window.Closing += window_Closing;
 
+            GuiGlobalParamsViewModel.Instance.PropertyChanged -= OnGlobalParamsChanged;
+            GuiGlobalParamsViewModel.Instance.PropertyChanged += OnGlobalParamsChanged;
+            ApplyRnaMode();
+
             foreach (var vm in _allProteaseVm.ProteaseSpecificParameters)
                 vm.PropertyChanged -= OnProteaseParameterChanged;
 
@@ -493,9 +504,20 @@ namespace ProteaseGuru.Gui
             UpdateToggleButtonStyle();
         }
 
+        void results_Unloaded(object sender, RoutedEventArgs e)
+        {
+            GuiGlobalParamsViewModel.Instance.PropertyChanged -= OnGlobalParamsChanged;
+            _refreshTimer?.Stop();
+            _refreshTimer = null;
+            foreach (var vm in _allProteaseVm.ProteaseSpecificParameters)
+                vm.PropertyChanged -= OnProteaseParameterChanged;
+        }
+
         void window_Closing(object sender, global::System.ComponentModel.CancelEventArgs e)
         {
+            GuiGlobalParamsViewModel.Instance.PropertyChanged -= OnGlobalParamsChanged;
             _refreshTimer?.Stop();
+            _refreshTimer = null;
             SearchModifications.Timer.Tick -= searchBox_TextChangedHandler;
             if (_allProteaseVm != null)
                 foreach (var vm in _allProteaseVm.ProteaseSpecificParameters)
