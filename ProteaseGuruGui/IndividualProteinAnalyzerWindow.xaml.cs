@@ -46,6 +46,7 @@ namespace ProteaseGuru.Gui
         // Coalesces bursts of refresh triggers (checkbox/param spam, mode/view toggles,
         // selection changes) into a single recompute.
         private DispatcherTimer? _refreshTimer;
+        private Window? _hostWindow;
 
         #endregion
 
@@ -141,8 +142,6 @@ namespace ProteaseGuru.Gui
         {
             _allProteaseVm = new DigestionConditionsSetupViewModel(null);
             ProteaseOptionsItemsControl.ItemsSource = _allProteaseVm.ProteaseSpecificParameters;
-            foreach (var vm in _allProteaseVm.ProteaseSpecificParameters)
-                vm.PropertyChanged += OnProteaseParameterChanged;
         }
 
         private void OnGlobalParamsChanged(object? sender, PropertyChangedEventArgs e)
@@ -478,8 +477,9 @@ namespace ProteaseGuru.Gui
 
         void results_Loaded(object sender, RoutedEventArgs e)
         {
-            Window window = Window.GetWindow(this);
-            window.Closing += window_Closing;
+            _hostWindow = Window.GetWindow(this);
+            _hostWindow.Closing -= window_Closing;
+            _hostWindow.Closing += window_Closing;
 
             GuiGlobalParamsViewModel.Instance.PropertyChanged -= OnGlobalParamsChanged;
             GuiGlobalParamsViewModel.Instance.PropertyChanged += OnGlobalParamsChanged;
@@ -506,6 +506,9 @@ namespace ProteaseGuru.Gui
 
         void results_Unloaded(object sender, RoutedEventArgs e)
         {
+            if (_hostWindow != null)
+                _hostWindow.Closing -= window_Closing;
+            _hostWindow = null;
             GuiGlobalParamsViewModel.Instance.PropertyChanged -= OnGlobalParamsChanged;
             _refreshTimer?.Stop();
             _refreshTimer = null;
