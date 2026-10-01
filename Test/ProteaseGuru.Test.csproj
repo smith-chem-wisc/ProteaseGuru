@@ -26,6 +26,7 @@
   
   <ItemGroup>
     <ProjectReference Include="..\Engine\ProteaseGuru.Engine.csproj" />
+    <ProjectReference Include="..\ProteaseGuru.Cli\ProteaseGuru.Cli.csproj" />
     <ProjectReference Include="..\ProteaseGuruGuiFunctions\ProteaseGuru.GuiFunctions.csproj" />
     <ProjectReference Include="..\Tasks\ProteaseGuru.Tasks.csproj" />
   </ItemGroup>
