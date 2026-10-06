@@ -20,6 +20,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "workflows", "workflows", "{
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ProteaseGuru.GuiFunctions", "ProteaseGuruGuiFunctions\ProteaseGuru.GuiFunctions.csproj", "{5A171BFC-8B6E-48D0-80C5-A1B6A5DE3CAD}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ProteaseGuru.Cli", "ProteaseGuru.Cli\ProteaseGuru.Cli.csproj", "{F61CB498-9657-4D21-953E-A04D1E6DF617}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -46,6 +48,10 @@ Global
 		{5A171BFC-8B6E-48D0-80C5-A1B6A5DE3CAD}.Debug|x64.Build.0 = Debug|x64
 		{5A171BFC-8B6E-48D0-80C5-A1B6A5DE3CAD}.Release|x64.ActiveCfg = Release|x64
 		{5A171BFC-8B6E-48D0-80C5-A1B6A5DE3CAD}.Release|x64.Build.0 = Release|x64
+		{F61CB498-9657-4D21-953E-A04D1E6DF617}.Debug|x64.ActiveCfg = Debug|x64
+		{F61CB498-9657-4D21-953E-A04D1E6DF617}.Debug|x64.Build.0 = Debug|x64
+		{F61CB498-9657-4D21-953E-A04D1E6DF617}.Release|x64.ActiveCfg = Release|x64
+		{F61CB498-9657-4D21-953E-A04D1E6DF617}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
