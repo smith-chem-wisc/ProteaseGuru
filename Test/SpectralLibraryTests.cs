@@ -5,6 +5,7 @@ using NUnit.Framework;
 using Omics.SequenceConversion;
 using PredictionClients.Koina.AbstractClasses;
 using PredictionClients.Koina.SupportedModels.FragmentIntensityModels;
+using PredictionClients.Koina.SupportedModels.RetentionTimeModels;
 using PredictionClients.Koina.Util;
 using ProteaseGuru.Tasks;
 using Proteomics.ProteolyticDigestion;
@@ -147,9 +148,18 @@ internal class SpectralLibraryTests
     public static void AnUnsupportedPredictionModelIsRejected()
     {
         var options = PermissiveOptions;
-        options.PredictionModel = (FragmentIntensityPredictionModel)999;
+        options.FragmentIntensityModel = (FragmentIntensityPredictionModel)999;
 
         Assert.Throws<NotSupportedException>(() => GeneratorWith(options).CreateIntensityModel());
+    }
+
+    [Test]
+    public static void AnUnsupportedRetentionTimeModelIsRejected()
+    {
+        var options = PermissiveOptions;
+        options.RetentionTimeModel = (RetentionTimePredictionModel)999;
+
+        Assert.Throws<NotSupportedException>(() => GeneratorWith(options).CreateRetentionTimeModel());
     }
 
     #endregion
@@ -210,21 +220,24 @@ internal class SpectralLibraryTests
 
         var peptides = new List<SpectralLibraryPeptide>
         {
-            new("PEPTIDEK", RetentionTime: 10),
-            new("ELVISLIVESK", RetentionTime: 20),
-            new("PEPTIDEK", RetentionTime: 10)
+            new("PEPTIDEK", RetentionTime: null),
+            new("ELVISLIVESK", RetentionTime: null),
+            new("PEPTIDEK", RetentionTime: null)
         };
         var predictions = options.ChargeStates
             .SelectMany(charge => peptides.Select(peptide =>
                 PredictionFor(peptide.FullSequence, peptide.FullSequence, charge)))
             .ToArray();
         var model = SeededModel(FragmentIonMappingMode.MapToInputFullSequence, predictions);
+        var retentionTimeModel = new SeededRetentionModel(
+            ("PEPTIDEK", 10, true, null),
+            ("ELVISLIVESK", 20, true, null));
         var reported = new List<string>();
         string path = Path.Combine(Path.GetTempPath(), $"pgtest_{Guid.NewGuid():N}.msp");
 
         try
         {
-            var spectra = new SpectralLibraryGenerator(peptides, options, path, model)
+            var spectra = new SpectralLibraryGenerator(peptides, options, path, model, retentionTimeModel)
                 .GenerateLibrary(new SynchronousProgress(reported.Add));
 
             Assert.That(spectra, Has.Count.EqualTo(4), "two sequences at two charges should survive");
@@ -412,7 +425,8 @@ internal class SpectralLibraryTests
         var options = new SpectralLibraryExportOptions();
 
         Assert.That(options.DetectabilityThreshold, Is.EqualTo(0.5).Within(1e-9));
-        Assert.That(options.PredictionModel, Is.EqualTo(FragmentIntensityPredictionModel.Prosit2020IntensityHcd));
+        Assert.That(options.FragmentIntensityModel, Is.EqualTo(FragmentIntensityPredictionModel.Prosit2020IntensityHcd));
+        Assert.That(options.RetentionTimeModel, Is.EqualTo(RetentionTimePredictionModel.ChronologerRt));
         Assert.That(options.OutputFormat, Is.EqualTo(SpectralLibraryFormat.Msp));
     }
 
@@ -502,15 +516,229 @@ internal class SpectralLibraryTests
     }
 
     [Test]
-    public static void ANegativeRetentionTimeIsAPredictionNotAFailure()
+    public static void ModelSpecificParametersAreCopiedToEveryFragmentInput()
+    {
+        var options = PermissiveOptions;
+        options.ChargeStates = new List<int> { 7 };
+        options.CollisionEnergy = 33;
+        options.InstrumentType = "ASTRAL";
+        options.FragmentationType = "CID";
+        var generator = new SpectralLibraryGenerator(
+            new List<SpectralLibraryPeptide> { new("PEPTIDEK", RetentionTime: null) },
+            options,
+            "unused.msp");
+
+        var (inputs, _) = generator.BuildPredictionInputs(
+            new Dictionary<string, double?> { ["PEPTIDEK"] = 12.5 });
+
+        Assert.That(inputs, Has.Count.EqualTo(1));
+        Assert.Multiple(() =>
+        {
+            Assert.That(inputs[0].PrecursorCharge, Is.EqualTo(7));
+            Assert.That(inputs[0].CollisionEnergy, Is.EqualTo(33));
+            Assert.That(inputs[0].InstrumentType, Is.EqualTo("ASTRAL"));
+            Assert.That(inputs[0].FragmentationType, Is.EqualTo("CID"));
+        });
+    }
+
+    [TestCase(true)]
+    [TestCase(false)]
+    public static void RetentionTimeRejectionDoesNotRemoveAPeptideFromTheLibrary(
+        bool excludeIncompatiblePeptides)
+    {
+        var options = PermissiveOptions;
+        options.ExcludeIncompatiblePeptides = excludeIncompatiblePeptides;
+        options.ChargeStates = new List<int> { 2 };
+        var generator = new SpectralLibraryGenerator(
+            new List<SpectralLibraryPeptide>
+            {
+                new("PEPTIDEK", RetentionTime: null),
+                new("ELVISLIVESK", RetentionTime: null)
+            },
+            options,
+            "unused.msp");
+
+        var (inputs, retentionTimes) = generator.BuildPredictionInputs(
+            new Dictionary<string, double?> { ["PEPTIDEK"] = 10, ["ELVISLIVESK"] = null });
+
+        // ExcludeIncompatiblePeptides governs the fragment model's modification handling. A peptide
+        // the retention time model could not take still gets its spectrum, with no retention time.
+        Assert.That(inputs, Has.Count.EqualTo(2));
+        Assert.That(retentionTimes, Has.Count.EqualTo(2));
+        Assert.That(inputs[1].FullSequence, Is.EqualTo("ELVISLIVESK"));
+        Assert.That(retentionTimes[1], Is.Null);
+    }
+
+    [Test]
+    public static void ANegativeChronologerRetentionTimeIsAPredictionNotAFailure()
     {
         // Chronologer predicts below zero for hydrophilic peptides; GSGSGSGSK is about -0.464.
-                var peptides = new List<SpectralLibraryPeptide> { new("GSGSGSGSK", RetentionTime: null) };
+        var peptides = new List<SpectralLibraryPeptide> { new("GSGSGSGSK", RetentionTime: null) };
 
-        var resolved = SpectralLibraryGenerator.ResolveRetentionTimes(peptides);
+        var resolved = SpectralLibraryGenerator.ResolveChronologerRetentionTimes(peptides);
 
         Assert.That(resolved["GSGSGSGSK"], Is.Not.Null);
         Assert.That(resolved["GSGSGSGSK"], Is.LessThan(0));
+    }
+
+    [Test]
+    public static void RetentionTimesArePredictedOnlyForPeptidesLackingThem()
+    {
+        var peptides = new List<SpectralLibraryPeptide>
+        {
+            new("PEPTIDEK", RetentionTime: 42.5),
+            new("ELVISLIVESK", RetentionTime: null)
+        };
+
+        var resolved = SpectralLibraryGenerator.ResolveChronologerRetentionTimes(peptides);
+
+        Assert.That(resolved["PEPTIDEK"], Is.EqualTo(42.5).Within(1e-9), "an existing retention time must not be re-predicted");
+        Assert.That(resolved["ELVISLIVESK"], Is.Not.Null, "a missing retention time must be predicted");
+    }
+
+    [Test]
+    public static void AModificationMzLibDoesNotKnowStillGetsAChronologerRetentionTime()
+    {
+        // CNBr's homoserine lactone comes from ProteaseGuru's own mod files, not mzLib's dictionary.
+        const string cnbrPeptide = "AAGGLLKPEPTIDEKM[Protease:Homoserine lactone on M]";
+        var peptides = new List<SpectralLibraryPeptide> { new(cnbrPeptide, RetentionTime: null) };
+
+        var resolved = SpectralLibraryGenerator.ResolveChronologerRetentionTimes(peptides);
+
+        Assert.That(resolved[cnbrPeptide], Is.Not.Null);
+    }
+
+    [Test]
+    public static void ASupportedModificationChangesTheChronologerRetentionTime()
+    {
+        const string unmodified = "LAGESVLDEK";
+        const string phospho = "LAGES[Common Biological:Phosphorylation on S]VLDEK";
+        var peptides = new List<SpectralLibraryPeptide> { new(unmodified, null), new(phospho, null) };
+
+        var resolved = SpectralLibraryGenerator.ResolveChronologerRetentionTimes(peptides);
+
+        Assert.That(resolved[phospho], Is.Not.Null);
+        Assert.That(resolved[phospho], Is.Not.EqualTo(resolved[unmodified]).Within(0.01));
+    }
+
+    [TestCase("PEPTIK", false)]
+    [TestCase("PEPTIDK", true)]
+    public static void ChronologerPredictsFromSevenResidues(string sequence, bool predicted)
+    {
+        var peptides = new List<SpectralLibraryPeptide> { new(sequence, null) };
+
+        var resolved = SpectralLibraryGenerator.ResolveChronologerRetentionTimes(peptides);
+
+        Assert.That(resolved[sequence].HasValue, Is.EqualTo(predicted));
+    }
+
+    [Test]
+    public static void PeptidesChronologerCannotPredictAreReported()
+    {
+        // Chronologer skips peptides shorter than seven residues.
+        var peptides = new List<SpectralLibraryPeptide>
+        {
+            new("PEPK", RetentionTime: null),
+            new("PEPTIDEK", RetentionTime: null)
+        };
+        var reported = new List<string>();
+
+        var resolved = SpectralLibraryGenerator.ResolveChronologerRetentionTimes(
+            peptides, new SynchronousProgress(reported.Add));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(resolved["PEPK"], Is.Null);
+            Assert.That(resolved["PEPTIDEK"], Is.Not.Null);
+            Assert.That(reported, Has.Exactly(1).Contains("1 of 2"));
+        });
+    }
+
+    [Test]
+    public static void ChronologerReusesTheRetentionTimeFromTheRunInsteadOfCallingKoina()
+    {
+        var options = PermissiveOptions;
+        options.ChargeStates = new List<int> { 2 };
+        var peptides = new List<SpectralLibraryPeptide> { new("PEPTIDEK", RetentionTime: 42.5) };
+        var model = SeededModel(FragmentIonMappingMode.MapToInputFullSequence, PredictionFor("PEPTIDEK", "PEPTIDEK"));
+        string path = Path.Combine(Path.GetTempPath(), $"pgtest_{Guid.NewGuid():N}.msp");
+
+        try
+        {
+            var spectra = new SpectralLibraryGenerator(peptides, options, path, model).GenerateLibrary();
+
+            Assert.That(options.RetentionTimeModel, Is.EqualTo(RetentionTimePredictionModel.ChronologerRt));
+            Assert.That(spectra.Single().RetentionTime, Is.EqualTo(42.5));
+        }
+        finally
+        {
+            if (File.Exists(path)) File.Delete(path);
+        }
+    }
+
+    [Test]
+    public static void ANegativeRetentionTimeIsAPredictionNotAFailure()
+    {
+        var peptides = new List<SpectralLibraryPeptide> { new("GSGSGSGSK", RetentionTime: null) };
+        using var model = new SeededRetentionModel(("GSGSGSGSK", -0.464, true, null));
+
+        var resolved = SpectralLibraryGenerator.ResolveRetentionTimes(peptides, model);
+
+        Assert.That(resolved["GSGSGSGSK"], Is.EqualTo(-0.464).Within(1e-9));
+    }
+
+    [Test]
+    public static void SelectedRetentionModelReplacesValuesCarriedByThePeptideSource()
+    {
+        var peptides = new List<SpectralLibraryPeptide> { new("PEPTIDEK", RetentionTime: 42.5) };
+        using var model = new SeededRetentionModel(("PEPTIDEK", 12.25, true, null));
+
+        var resolved = SpectralLibraryGenerator.ResolveRetentionTimes(peptides, model);
+
+        Assert.That(resolved["PEPTIDEK"], Is.EqualTo(12.25).Within(1e-9),
+            "a selected model must not be mixed with a Chronologer value stored by the source");
+    }
+
+    [Test]
+    public static void RejectingEveryRetentionTimeInputIsReportedButNotFatal()
+    {
+        var peptides = new List<SpectralLibraryPeptide> { new("PEPTIDEK", RetentionTime: null) };
+        using var model = new SeededRetentionModel(("PEPTIDEK", null, false, null));
+        var reported = new List<string>();
+
+        var resolved = SpectralLibraryGenerator.ResolveRetentionTimes(
+            peptides, model, new SynchronousProgress(reported.Add));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(resolved["PEPTIDEK"], Is.Null);
+            Assert.That(reported, Has.Exactly(1).Contains(model.ModelName)
+                .And.Exactly(1).Contains("without retention times"));
+        });
+    }
+
+    [Test]
+    public static void RejectingSomeRetentionTimeInputsIsReportedAndKeptAligned()
+    {
+        var peptides = new List<SpectralLibraryPeptide>
+        {
+            new("PEPTIDEK", RetentionTime: null),
+            new("ELVISLIVESK", RetentionTime: null)
+        };
+        using var model = new SeededRetentionModel(
+            ("PEPTIDEK", 12.5, true, null),
+            ("ELVISLIVESK", null, false, null));
+        var reported = new List<string>();
+
+        var resolved = SpectralLibraryGenerator.ResolveRetentionTimes(
+            peptides, model, new SynchronousProgress(reported.Add));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(resolved["PEPTIDEK"], Is.EqualTo(12.5).Within(1e-9));
+            Assert.That(resolved["ELVISLIVESK"], Is.Null);
+            Assert.That(reported, Has.Exactly(1).Contains("1 of 2"));
+        });
     }
 
     [Test]
@@ -657,7 +885,7 @@ internal class SpectralLibraryTests
 
     private static SpectralLibraryExportOptions PermissiveOptions => new()
     {
-        PredictionModel = FragmentIntensityPredictionModel.Prosit2020IntensityHcd,
+        FragmentIntensityModel = FragmentIntensityPredictionModel.Prosit2020IntensityHcd,
         MinimumMZThreshold = 0,
         MaximumMZThreshold = double.MaxValue,
         FilterByRelativeIntensity = false,
@@ -684,7 +912,10 @@ internal class SpectralLibraryTests
         }
 
         public SeededHcdModel(FragmentIonMappingMode mode, bool[] validInputsMask, params PeptideFragmentIntensityPrediction[] predictions)
-            : base(fragmentIonMappingMode: mode)
+            : base(
+                modHandlingMode: SequenceConversionHandlingMode.ReturnNull,
+                parameterHandlingMode: IncompatibleParameterHandlingMode.ReturnNull,
+                fragmentIonMappingMode: mode)
         {
             _seededPredictions = predictions.ToList();
             _seededValidInputsMask = validInputsMask;
@@ -713,6 +944,39 @@ internal class SpectralLibraryTests
             ModelInputs = modelInputs;
             Predictions = _seededPredictions;
             ValidInputsMask = _seededValidInputsMask;
+            return Task.FromResult(Predictions);
+        }
+    }
+
+    private sealed class SeededRetentionModel : Prosit2019iRT
+    {
+        private readonly Dictionary<string, (double? Value, bool Valid, System.ComponentModel.WarningException? Warning)> _seed;
+
+        public SeededRetentionModel(params (string Sequence, double? Value, bool Valid,
+            System.ComponentModel.WarningException? Warning)[] predictions)
+        {
+            _seed = predictions.ToDictionary(
+                prediction => prediction.Sequence,
+                prediction => (prediction.Value, prediction.Valid, prediction.Warning),
+                StringComparer.Ordinal);
+        }
+
+        protected override Task<List<PeptideRTPrediction>> AsyncThrottledPredictor(
+            List<RetentionTimePredictionInput> modelInputs)
+        {
+            ModelInputs = modelInputs;
+            ValidInputsMask = modelInputs.Select(input => _seed[input.FullSequence].Valid).ToArray();
+            Predictions = modelInputs.Select(input =>
+            {
+                var seeded = _seed[input.FullSequence];
+                return new PeptideRTPrediction(
+                    input.FullSequence,
+                    seeded.Valid ? input.FullSequence : null!,
+                    seeded.Value,
+                    true,
+                    seeded.Warning);
+            }).ToList();
+
             return Task.FromResult(Predictions);
         }
     }
