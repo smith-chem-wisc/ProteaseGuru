@@ -407,12 +407,14 @@ namespace ProteaseGuru.Gui
 
             // The inputs depend on the model, so a new model starts from its own defaults rather than
             // inheriting values chosen for the previous one.
-            PopulateChargeStates(_fragmentInputOptions.AllowedPrecursorCharges);
-            ConfigureCollisionEnergy(_fragmentInputOptions.CollisionEnergies);
+            PopulateChargeStates(
+                _fragmentInputOptions.AllowedPrecursorCharges, _fragmentInputOptions.DefaultChargeStates);
+            ConfigureCollisionEnergy(
+                _fragmentInputOptions.CollisionEnergies, _fragmentInputOptions.DefaultCollisionEnergy);
             ConfigureStringInput(instrumentTypePanel, cbInstrumentType,
-                _fragmentInputOptions.InstrumentTypes, "LUMOS", "QE", "NONE");
+                _fragmentInputOptions.InstrumentTypes, _fragmentInputOptions.DefaultInstrumentType);
             ConfigureStringInput(fragmentationTypePanel, cbFragmentationType,
-                _fragmentInputOptions.FragmentationTypes, "HCD", "CID");
+                _fragmentInputOptions.FragmentationTypes, _fragmentInputOptions.DefaultFragmentationType);
         }
 
         private static void AppendInputScopeNote(TextBlock summary, string? inputScopeNote)
@@ -423,13 +425,9 @@ namespace ProteaseGuru.Gui
             }
         }
 
-        private void PopulateChargeStates(IReadOnlyList<int> allowedCharges)
+        private void PopulateChargeStates(IReadOnlyList<int> allowedCharges, IReadOnlyList<int> selected)
         {
             chargeStateChoices.Children.Clear();
-
-            var selected = new[] { 2, 3 }.Where(allowedCharges.Contains).ToHashSet();
-            if (selected.Count == 0 && allowedCharges.Count > 0)
-                selected.Add(allowedCharges[0]);
 
             foreach (int charge in allowedCharges)
             {
@@ -444,7 +442,7 @@ namespace ProteaseGuru.Gui
             }
         }
 
-        private void ConfigureCollisionEnergy(KoinaInputDomain<int> domain)
+        private void ConfigureCollisionEnergy(KoinaInputDomain<int> domain, int? defaultValue)
         {
             collisionEnergyPanel.Visibility = domain.IsApplicable ? Visibility.Visible : Visibility.Collapsed;
             if (!domain.IsApplicable)
@@ -458,40 +456,30 @@ namespace ProteaseGuru.Gui
 
             if (!domain.IsRestricted)
             {
-                tbCollisionEnergy.Text = "30";
+                tbCollisionEnergy.Text = defaultValue.ToString();
                 return;
             }
 
-            var allowed = domain.AllowedValues.OrderBy(value => value).ToArray();
-            cbCollisionEnergy.ItemsSource = allowed;
-            cbCollisionEnergy.SelectedItem = allowed.Contains(30) ? 30 : allowed[0];
+            cbCollisionEnergy.ItemsSource = domain.AllowedValues.OrderBy(value => value).ToArray();
+            cbCollisionEnergy.SelectedItem = defaultValue;
         }
 
         private static void ConfigureStringInput(
             StackPanel panel,
             ComboBox comboBox,
             KoinaInputDomain<string> domain,
-            params string[] preferredValues)
+            string? defaultValue)
         {
             panel.Visibility = domain.IsApplicable ? Visibility.Visible : Visibility.Collapsed;
             comboBox.ItemsSource = null;
             comboBox.IsEditable = domain.IsApplicable && !domain.IsRestricted;
             comboBox.Text = string.Empty;
 
-            if (!domain.IsApplicable)
-                return;
-
             if (!domain.IsRestricted)
                 return;
 
-            var allowed = domain.AllowedValues.OrderBy(value => value).ToArray();
-            comboBox.ItemsSource = allowed;
-
-            string? selected = preferredValues
-                .Select(preferred => allowed.FirstOrDefault(value =>
-                    string.Equals(value, preferred, StringComparison.OrdinalIgnoreCase)))
-                .FirstOrDefault(value => value != null);
-            comboBox.SelectedItem = selected ?? allowed[0];
+            comboBox.ItemsSource = domain.AllowedValues.OrderBy(value => value).ToArray();
+            comboBox.SelectedItem = defaultValue;
         }
 
         private int? GetCollisionEnergy()

@@ -270,4 +270,73 @@ internal static class KoinaModelCatalogTests
             Assert.That(inputs.FragmentationTypes.AllowedValues, Is.EquivalentTo(new[] { "HCD", "CID" }));
         });
     }
+
+    [TestCase(FragmentIntensityPredictionModel.Prosit2020IntensityHcd, new[] { 2, 3 }, 30, null, null)]
+    [TestCase(FragmentIntensityPredictionModel.Ms2PipHcd2021, new[] { 2, 3 }, null, null, null)]
+    [TestCase(FragmentIntensityPredictionModel.Altimeter2024Intensities, new[] { 2, 3 }, 30, null, null)]
+    [TestCase(FragmentIntensityPredictionModel.Prosit2025IntensityLac, new[] { 2, 3 }, 30, "LUMOS", "HCD")]
+    public static void EachModelStartsFromItsOwnDefaults(
+        FragmentIntensityPredictionModel id,
+        int[] chargeStates,
+        int? collisionEnergy,
+        string? instrumentType,
+        string? fragmentationType)
+    {
+        var inputs = FragmentIntensityInputOptions.From(KoinaModelCatalog.FragmentIntensity(id).Create(
+            SequenceConversionHandlingMode.ReturnNull,
+            IncompatibleParameterHandlingMode.ReturnNull,
+            FragmentIonMappingMode.MapToInputFullSequence));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(inputs.DefaultChargeStates, Is.EqualTo(chargeStates));
+            Assert.That(inputs.DefaultCollisionEnergy, Is.EqualTo(collisionEnergy));
+            Assert.That(inputs.DefaultInstrumentType, Is.EqualTo(instrumentType));
+            Assert.That(inputs.DefaultFragmentationType, Is.EqualTo(fragmentationType));
+        });
+    }
+
+    [TestCase(new[] { 1, 2, 3, 4 }, new[] { 2, 3 })]
+    [TestCase(new[] { 3, 4 }, new[] { 3 })]
+    [TestCase(new[] { 4, 5 }, new[] { 4 })]
+    [TestCase(new int[0], new int[0])]
+    public static void DefaultChargeStatesFallBackToTheLowestAllowedCharge(int[] allowed, int[] expected) =>
+        Assert.That(InputsWith(charges: allowed).DefaultChargeStates, Is.EqualTo(expected));
+
+    [TestCase(null, null)]
+    [TestCase(new int[0], 30)]
+    [TestCase(new[] { 40, 30, 20 }, 30)]
+    [TestCase(new[] { 45, 35, 25 }, 25)]
+    public static void DefaultCollisionEnergyIsThirtyOrTheLowestAllowedValue(int[]? allowed, int? expected) =>
+        Assert.That(InputsWith(collisionEnergies: allowed).DefaultCollisionEnergy, Is.EqualTo(expected));
+
+    [TestCase(null, null)]
+    [TestCase(new string[0], null)]
+    [TestCase(new[] { "QE", "LUMOS" }, "LUMOS")]
+    [TestCase(new[] { "NONE", "QE" }, "QE")]
+    [TestCase(new[] { "AAA", "qe" }, "qe")]
+    [TestCase(new[] { "ECLIPSE", "ASTRAL" }, "ASTRAL")]
+    public static void DefaultInstrumentTypeFollowsThePreferenceListThenTheFirstAllowedValue(
+        string[]? allowed, string? expected) =>
+        Assert.That(InputsWith(instrumentTypes: allowed).DefaultInstrumentType, Is.EqualTo(expected));
+
+    [TestCase(new[] { "CID", "HCD" }, "HCD")]
+    [TestCase(new[] { "ETD", "CID" }, "CID")]
+    [TestCase(new[] { "UVPD", "ETD" }, "ETD")]
+    public static void DefaultFragmentationTypeFollowsThePreferenceListThenTheFirstAllowedValue(
+        string[] allowed, string expected) =>
+        Assert.That(InputsWith(fragmentationTypes: allowed).DefaultFragmentationType, Is.EqualTo(expected));
+
+    private static FragmentIntensityInputOptions InputsWith(
+        int[]? charges = null,
+        int[]? collisionEnergies = null,
+        string[]? instrumentTypes = null,
+        string[]? fragmentationTypes = null) =>
+        new(charges ?? [2, 3],
+            Domain(collisionEnergies),
+            Domain(instrumentTypes),
+            Domain(fragmentationTypes));
+
+    private static KoinaInputDomain<T> Domain<T>(T[]? allowed) =>
+        new(allowed != null, allowed ?? []);
 }

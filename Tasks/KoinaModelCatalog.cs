@@ -131,6 +131,44 @@ public sealed record FragmentIntensityInputOptions(
     KoinaInputDomain<string> InstrumentTypes,
     KoinaInputDomain<string> FragmentationTypes)
 {
+    private const int PreferredCollisionEnergy = 30;
+    private static readonly int[] PreferredCharges = [2, 3];
+    private static readonly string[] PreferredInstrumentTypes = ["LUMOS", "QE", "NONE"];
+    private static readonly string[] PreferredFragmentationTypes = ["HCD", "CID"];
+
+    public IReadOnlyList<int> DefaultChargeStates
+    {
+        get
+        {
+            var preferred = PreferredCharges.Where(AllowedPrecursorCharges.Contains).ToArray();
+            return preferred.Length > 0 ? preferred : AllowedPrecursorCharges.Take(1).ToArray();
+        }
+    }
+
+    /// <summary>Null when the model takes no collision energy.</summary>
+    public int? DefaultCollisionEnergy =>
+        !CollisionEnergies.IsApplicable ? null
+        : !CollisionEnergies.IsRestricted || CollisionEnergies.AllowedValues.Contains(PreferredCollisionEnergy)
+            ? PreferredCollisionEnergy
+            : CollisionEnergies.AllowedValues.Min();
+
+    public string? DefaultInstrumentType => DefaultOf(InstrumentTypes, PreferredInstrumentTypes);
+
+    public string? DefaultFragmentationType => DefaultOf(FragmentationTypes, PreferredFragmentationTypes);
+
+    /// <summary>Null when the input is unused, or takes free text and so has nothing to preselect.</summary>
+    private static string? DefaultOf(KoinaInputDomain<string> domain, string[] preferredValues)
+    {
+        if (!domain.IsRestricted)
+            return null;
+
+        return preferredValues
+                   .Select(preferred => domain.AllowedValues.FirstOrDefault(value =>
+                       string.Equals(value, preferred, StringComparison.OrdinalIgnoreCase)))
+                   .FirstOrDefault(value => value != null)
+               ?? domain.AllowedValues.Order().First();
+    }
+
     public static FragmentIntensityInputOptions From(FragmentIntensityModel model)
     {
         ArgumentNullException.ThrowIfNull(model);
