@@ -1,8 +1,10 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using System.Windows.Threading;
 using ProteaseGuru.Engine;
 using Omics;
 using ProteaseGuru.GuiFunctions;
@@ -34,6 +36,16 @@ namespace ProteaseGuru.Gui
         // ── Display mode toggle ──────────────────────────────────────────────
         private CoverageMapDisplayMode _displayMode = CoverageMapDisplayMode.ProteaseLane;
         private CoverageMapDisplayMode _lastCoverageMode = CoverageMapDisplayMode.ProteaseLane;
+
+        // Serves (coverage, intervals) per protease for the selected protein, re-digesting only
+        // the proteases whose settings changed. Algorithm- and view-toggle refreshes hit it
+        // entirely and skip digestion. Created on first use so every constructor gets one.
+        private ProteaseDigestCache? _digestCache;
+        private ProteaseDigestCache DigestCache => _digestCache ??= new ProteaseDigestCache(_seeker);
+
+        // Coalesces bursts of refresh triggers (checkbox/param spam, mode/view toggles,
+        // selection changes) into a single recompute.
+        private DispatcherTimer? _refreshTimer;
 
         #endregion
 
@@ -136,7 +148,7 @@ namespace ProteaseGuru.Gui
                 if (e.PropertyName != nameof(GuiGlobalParamsViewModel.IsRnaMode)) return;
                 foreach (var vm in _allProteaseVm.ProteaseSpecificParameters.Where(p => !p.IsVisible))
                     vm.IsSelected = false;
-                RefreshMaxCoverage();
+                ScheduleRefresh();
             };
         }
 
@@ -210,7 +222,7 @@ namespace ProteaseGuru.Gui
             if (match.Value == null) return;
 
             SelectedProtein = match.Value;
-            RefreshMaxCoverage();
+            ScheduleRefresh();
         }
 
         #endregion
@@ -218,7 +230,7 @@ namespace ProteaseGuru.Gui
         #region Reactive Digestion
 
         private void OnProteaseParameterChanged(object sender, PropertyChangedEventArgs e)
-            => RefreshMaxCoverage();
+            => ScheduleRefresh();
 
         private void RefreshMaxCoverage()
         {
@@ -236,9 +248,11 @@ namespace ProteaseGuru.Gui
 
             var proteaseParams = checkedProteases.Select(vm => vm.ProteaseSpecificParams).ToList();
 
-            // Single digest pass per protease produces both coverage sets and interval lists,
-            // avoiding the previous double-digest (CalculateCoverageByProtease + GetDetectablePeptideIntervals).
-            var (coverageDict, allIntervalsDict) = _seeker.CalculateCoverageAndIntervals(SelectedProtein.Protein, proteaseParams);
+            // Pull coverage/intervals from the per-protease cache, digesting only the
+            // proteases whose settings changed. Algorithm- and view-toggle refreshes hit
+            // the cache entirely and skip digestion.
+            var (coverageDict, allIntervalsDict) = DigestCache.GetCoverageAndIntervals(
+                SelectedProtein.Protein, proteaseParams);
 
             // Coverage fractions are reported against the whole protein, so the uncovered tail of
             // a protein whose C-terminus yields no detectable peptide still counts against it.
@@ -284,11 +298,23 @@ namespace ProteaseGuru.Gui
             DrawMaxCoverageMap(SelectedProtein.Protein, result, pepsByProtease, orderedChecked);
         }
 
-        private Dictionary<string, List<(int Start, int End)>> BuildPeptidesByProtease(
-            IBioPolymer protein,
-            IEnumerable<ProteaseSpecificParameters> allParams)
+        /// <summary>
+        /// Restarts the debounce timer so a burst of triggers collapses into one recompute.
+        /// </summary>
+        private void ScheduleRefresh()
         {
-            return _seeker.GetDetectablePeptideIntervals(protein, allParams);
+            if (_refreshTimer == null)
+            {
+                _refreshTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(120) };
+                _refreshTimer.Tick += (s, e) =>
+                {
+                    _refreshTimer!.Stop();
+                    RefreshMaxCoverage();
+                };
+            }
+
+            _refreshTimer.Stop();
+            _refreshTimer.Start();
         }
 
         #endregion
@@ -380,7 +406,7 @@ namespace ProteaseGuru.Gui
             => OnSelectionChanged();
 
         private void MaxCoverageMode_Changed(object sender, RoutedEventArgs e)
-            => RefreshMaxCoverage();
+            => ScheduleRefresh();
 
         private void maxCoverageGrid_SizeChanged(object sender, SizeChangedEventArgs e)
         {
@@ -426,7 +452,7 @@ namespace ProteaseGuru.Gui
 
             _lastCoverageMode = _displayMode;
             UpdateToggleButtonStyle();
-            RefreshMaxCoverage();
+            ScheduleRefresh();
         }
 
         private void UpdateToggleButtonStyle()
@@ -469,6 +495,7 @@ namespace ProteaseGuru.Gui
 
         void window_Closing(object sender, global::System.ComponentModel.CancelEventArgs e)
         {
+            _refreshTimer?.Stop();
             SearchModifications.Timer.Tick -= searchBox_TextChangedHandler;
             if (_allProteaseVm != null)
                 foreach (var vm in _allProteaseVm.ProteaseSpecificParameters)

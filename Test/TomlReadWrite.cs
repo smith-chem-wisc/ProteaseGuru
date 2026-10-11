@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Nett;
 using NUnit.Framework;
 using Omics.Modifications;
 using Proteomics.ProteolyticDigestion;
@@ -59,6 +60,28 @@ public class TomlReadWrite
             Assert.That(deserializedParams.FixedMods.Select(m => m.IdWithMotif), Is.EquivalentTo(originalParams.FixedMods.Select(m => m.IdWithMotif)));
             Assert.That(deserializedParams.VariableMods.Select(m => m.IdWithMotif), Is.EquivalentTo(originalParams.VariableMods.Select(m => m.IdWithMotif)));
         }
+
+        File.Delete(path);
+    }
+
+    /// <summary>
+    /// Settings files written before MaxThreads existed have no key for it. Nett must leave the
+    /// property at its initializer rather than zeroing it, or the view model's Clamp(value, 1, N)
+    /// would resolve every upgrading user to a single thread.
+    /// </summary>
+    [Test]
+    public void MissingMaxThreadsKeyKeepsTheMultiThreadedDefault()
+    {
+        var path = Path.Combine(Path.GetTempPath(), "test_globals_no_maxthreads.toml");
+        File.WriteAllText(path,
+            "IsRnaMode = false\nAskAboutSettingsChangeOnClose = true\nOverwriteSettingsWithoutAsking = false\n");
+
+        var loaded = Toml.ReadFile<GlobalParameters>(path);
+
+        Assert.That(loaded.MaxThreads, Is.EqualTo(Environment.ProcessorCount));
+        Assert.That(Math.Clamp(loaded.MaxThreads, 1, Environment.ProcessorCount),
+            Is.GreaterThan(1).Or.EqualTo(Environment.ProcessorCount),
+            "a key-less settings file must not collapse to single-threaded digestion");
 
         File.Delete(path);
     }
