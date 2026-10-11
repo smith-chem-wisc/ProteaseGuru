@@ -347,12 +347,12 @@ namespace ProteaseGuru.Gui
 
         private void InitializeModelSelectors()
         {
-            cbRetentionTimeModel.ItemsSource = KoinaModelCatalog.RetentionTimeModels;
-            cbFragmentModel.ItemsSource = KoinaModelCatalog.FragmentIntensityModels;
+            cbRetentionTimeModel.ItemsSource = PredictionModelCatalog.RetentionTimeModels;
+            cbFragmentModel.ItemsSource = PredictionModelCatalog.FragmentIntensityModels;
 
-            cbRetentionTimeModel.SelectedItem = KoinaModelCatalog.RetentionTime(
+            cbRetentionTimeModel.SelectedItem = PredictionModelCatalog.RetentionTime(
                 RetentionTimePredictionModel.ChronologerRt);
-            cbFragmentModel.SelectedItem = KoinaModelCatalog.FragmentIntensity(
+            cbFragmentModel.SelectedItem = PredictionModelCatalog.FragmentIntensity(
                 FragmentIntensityPredictionModel.Prosit2020IntensityHcd);
         }
 

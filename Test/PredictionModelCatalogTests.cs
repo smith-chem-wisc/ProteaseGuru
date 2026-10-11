@@ -6,36 +6,36 @@ using ProteaseGuru.Tasks;
 namespace ProteaseGuru.Test;
 
 [TestFixture]
-internal static class KoinaModelCatalogTests
+internal static class PredictionModelCatalogTests
 {
     [Test]
     public static void EveryFragmentIntensityEnumValueHasOneCatalogEntry()
     {
-        Assert.That(KoinaModelCatalog.FragmentIntensityModels.Select(model => model.Id),
+        Assert.That(PredictionModelCatalog.FragmentIntensityModels.Select(model => model.Id),
             Is.EquivalentTo(Enum.GetValues<FragmentIntensityPredictionModel>()));
-        Assert.That(KoinaModelCatalog.FragmentIntensityModels.Select(model => model.Id), Is.Unique);
-        Assert.That(KoinaModelCatalog.FragmentIntensityModels.Select(model => model.DisplayName), Is.Unique);
+        Assert.That(PredictionModelCatalog.FragmentIntensityModels.Select(model => model.Id), Is.Unique);
+        Assert.That(PredictionModelCatalog.FragmentIntensityModels.Select(model => model.DisplayName), Is.Unique);
     }
 
     [Test]
     public static void EveryRetentionTimeEnumValueHasOneCatalogEntry()
     {
-        Assert.That(KoinaModelCatalog.RetentionTimeModels.Select(model => model.Id),
+        Assert.That(PredictionModelCatalog.RetentionTimeModels.Select(model => model.Id),
             Is.EquivalentTo(Enum.GetValues<RetentionTimePredictionModel>()));
-        Assert.That(KoinaModelCatalog.RetentionTimeModels.Select(model => model.Id), Is.Unique);
-        Assert.That(KoinaModelCatalog.RetentionTimeModels.Select(model => model.DisplayName), Is.Unique);
+        Assert.That(PredictionModelCatalog.RetentionTimeModels.Select(model => model.Id), Is.Unique);
+        Assert.That(PredictionModelCatalog.RetentionTimeModels.Select(model => model.DisplayName), Is.Unique);
     }
 
     [Test]
     public static void IncompatibleAndDeferredModelsAreDeliberatelyNotOffered()
     {
-        var fragmentModels = KoinaModelCatalog.FragmentIntensityModels
+        var fragmentModels = PredictionModelCatalog.FragmentIntensityModels
             .Select(definition => definition.Create(
                 SequenceConversionHandlingMode.ReturnNull,
                 IncompatibleParameterHandlingMode.ReturnNull,
                 FragmentIonMappingMode.MapToInputFullSequence))
             .ToList();
-        var retentionTimeModels = KoinaModelCatalog.RetentionTimeModels
+        var retentionTimeModels = PredictionModelCatalog.RetentionTimeModels
             .Where(definition => !definition.IsLocal)
             .Select(definition => definition.Create(SequenceConversionHandlingMode.ReturnNull))
             .ToList();
@@ -63,7 +63,7 @@ internal static class KoinaModelCatalogTests
     [Test]
     public static void FragmentFactoriesUseTheRequestedHandlingModesAndUniqueKoinaNames()
     {
-        var models = KoinaModelCatalog.FragmentIntensityModels
+        var models = PredictionModelCatalog.FragmentIntensityModels
             .Select(definition => definition.Create(
                 SequenceConversionHandlingMode.RemoveIncompatibleElements,
                 IncompatibleParameterHandlingMode.ReturnNull,
@@ -82,7 +82,7 @@ internal static class KoinaModelCatalogTests
     [Test]
     public static void RetentionFactoriesUseTheRequestedHandlingModeAndUniqueKoinaNames()
     {
-        var models = KoinaModelCatalog.RetentionTimeModels
+        var models = PredictionModelCatalog.RetentionTimeModels
             .Where(definition => !definition.IsLocal)
             .Select(definition => definition.Create(SequenceConversionHandlingMode.RemoveIncompatibleElements))
             .ToList();
@@ -144,7 +144,7 @@ internal static class KoinaModelCatalogTests
         {
             foreach (var (id, koinaName) in FragmentKoinaNames)
             {
-                var model = KoinaModelCatalog.FragmentIntensity(id).Create(
+                var model = PredictionModelCatalog.FragmentIntensity(id).Create(
                     SequenceConversionHandlingMode.ReturnNull,
                     IncompatibleParameterHandlingMode.ReturnNull,
                     FragmentIonMappingMode.MapToInputFullSequence);
@@ -156,7 +156,7 @@ internal static class KoinaModelCatalogTests
     [Test]
     public static void EveryRetentionTimeIdBuildsTheModelItNamesExceptLocalChronologer()
     {
-        Assert.That(KoinaModelCatalog.RetentionTimeModels.Where(definition => definition.IsLocal).Select(definition => definition.Id),
+        Assert.That(PredictionModelCatalog.RetentionTimeModels.Where(definition => definition.IsLocal).Select(definition => definition.Id),
             Is.EqualTo(new[] { RetentionTimePredictionModel.ChronologerRt }));
         Assert.That(RetentionTimeKoinaNames.Keys.Append(RetentionTimePredictionModel.ChronologerRt),
             Is.EquivalentTo(Enum.GetValues<RetentionTimePredictionModel>()));
@@ -165,7 +165,7 @@ internal static class KoinaModelCatalogTests
         {
             foreach (var (id, koinaName) in RetentionTimeKoinaNames)
             {
-                using var model = KoinaModelCatalog.RetentionTime(id).Create(SequenceConversionHandlingMode.ReturnNull);
+                using var model = PredictionModelCatalog.RetentionTime(id).Create(SequenceConversionHandlingMode.ReturnNull);
                 Assert.That(model.ModelName, Is.EqualTo(koinaName), id.ToString());
             }
         });
@@ -174,10 +174,10 @@ internal static class KoinaModelCatalogTests
     [Test]
     public static void PtmFocusedModelsExplainProteaseGuruInputScope()
     {
-        var fragmentModelsWithNotes = KoinaModelCatalog.FragmentIntensityModels
+        var fragmentModelsWithNotes = PredictionModelCatalog.FragmentIntensityModels
             .Where(definition => definition.InputScopeNote != null)
             .ToArray();
-        var retentionModelsWithNotes = KoinaModelCatalog.RetentionTimeModels
+        var retentionModelsWithNotes = PredictionModelCatalog.RetentionTimeModels
             .Where(definition => definition.InputScopeNote != null)
             .ToArray();
         var notes = fragmentModelsWithNotes.Select(definition => definition.InputScopeNote!)
@@ -209,7 +209,7 @@ internal static class KoinaModelCatalogTests
     [Test]
     public static void PrositHcdUsesAnUnrestrictedCollisionEnergyAndNoOtherOptionalInputs()
     {
-        var definition = KoinaModelCatalog.FragmentIntensity(FragmentIntensityPredictionModel.Prosit2020IntensityHcd);
+        var definition = PredictionModelCatalog.FragmentIntensity(FragmentIntensityPredictionModel.Prosit2020IntensityHcd);
         var inputs = FragmentIntensityInputOptions.From(definition.Create(
             SequenceConversionHandlingMode.ReturnNull,
             IncompatibleParameterHandlingMode.ReturnNull,
@@ -228,7 +228,7 @@ internal static class KoinaModelCatalogTests
     [Test]
     public static void Ms2PipHcdHidesCollisionEnergy()
     {
-        var definition = KoinaModelCatalog.FragmentIntensity(FragmentIntensityPredictionModel.Ms2PipHcd2021);
+        var definition = PredictionModelCatalog.FragmentIntensity(FragmentIntensityPredictionModel.Ms2PipHcd2021);
         var inputs = FragmentIntensityInputOptions.From(definition.Create(
             SequenceConversionHandlingMode.ReturnNull,
             IncompatibleParameterHandlingMode.ReturnNull,
@@ -240,7 +240,7 @@ internal static class KoinaModelCatalogTests
     [Test]
     public static void AltimeterOffersChargeSevenAndItsFiniteCollisionEnergyRange()
     {
-        var definition = KoinaModelCatalog.FragmentIntensity(FragmentIntensityPredictionModel.Altimeter2024Intensities);
+        var definition = PredictionModelCatalog.FragmentIntensity(FragmentIntensityPredictionModel.Altimeter2024Intensities);
         var inputs = FragmentIntensityInputOptions.From(definition.Create(
             SequenceConversionHandlingMode.ReturnNull,
             IncompatibleParameterHandlingMode.ReturnNull,
@@ -257,7 +257,7 @@ internal static class KoinaModelCatalogTests
     [Test]
     public static void LactylationModelShowsEveryInputItRequires()
     {
-        var definition = KoinaModelCatalog.FragmentIntensity(FragmentIntensityPredictionModel.Prosit2025IntensityLac);
+        var definition = PredictionModelCatalog.FragmentIntensity(FragmentIntensityPredictionModel.Prosit2025IntensityLac);
         var inputs = FragmentIntensityInputOptions.From(definition.Create(
             SequenceConversionHandlingMode.ReturnNull,
             IncompatibleParameterHandlingMode.ReturnNull,
@@ -282,7 +282,7 @@ internal static class KoinaModelCatalogTests
         string? instrumentType,
         string? fragmentationType)
     {
-        var inputs = FragmentIntensityInputOptions.From(KoinaModelCatalog.FragmentIntensity(id).Create(
+        var inputs = FragmentIntensityInputOptions.From(PredictionModelCatalog.FragmentIntensity(id).Create(
             SequenceConversionHandlingMode.ReturnNull,
             IncompatibleParameterHandlingMode.ReturnNull,
             FragmentIonMappingMode.MapToInputFullSequence));

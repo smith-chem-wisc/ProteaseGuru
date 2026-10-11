@@ -115,7 +115,7 @@ namespace ProteaseGuru.Tasks
         {
             if (_intensityModel != null) return _intensityModel;
 
-            var definition = KoinaModelCatalog.FragmentIntensity(_options.FragmentIntensityModel);
+            var definition = PredictionModelCatalog.FragmentIntensity(_options.FragmentIntensityModel);
             return definition.Create(
                 ModHandlingMode(),
                 IncompatibleParameterHandlingMode.ReturnNull,
@@ -125,7 +125,7 @@ namespace ProteaseGuru.Tasks
         }
 
         internal RetentionTimeModel CreateRetentionTimeModel() =>
-            _retentionTimeModel ?? KoinaModelCatalog.RetentionTime(_options.RetentionTimeModel).Create(ModHandlingMode());
+            _retentionTimeModel ?? PredictionModelCatalog.RetentionTime(_options.RetentionTimeModel).Create(ModHandlingMode());
 
         private SequenceConversionHandlingMode ModHandlingMode() =>
             _options.ExcludeIncompatiblePeptides
@@ -183,7 +183,7 @@ namespace ProteaseGuru.Tasks
             IProgress<string>? progress,
             CancellationToken cancellationToken)
         {
-            if (_retentionTimeModel == null && KoinaModelCatalog.RetentionTime(_options.RetentionTimeModel).IsLocal)
+            if (_retentionTimeModel == null && PredictionModelCatalog.RetentionTime(_options.RetentionTimeModel).IsLocal)
             {
                 progress?.Report($"Resolving Chronologer retention times for {_peptides.Count} peptides...");
                 return ResolveChronologerRetentionTimes(_peptides, progress);
