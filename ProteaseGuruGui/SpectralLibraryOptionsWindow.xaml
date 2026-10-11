@@ -187,7 +187,6 @@
                     </StackPanel>
                 </Border>
 
-                <!-- Retention Time Prediction Options -->
                 <Expander Header="Retention Time Prediction Options" IsExpanded="True">
                     <StackPanel Orientation="Vertical" Background="{StaticResource BackgroundColor}">
                         <StackPanel Orientation="Horizontal" Margin="15,5">
@@ -230,13 +229,11 @@
                             <ComboBox x:Name="cbCollisionEnergy" Width="90" Margin="5,5" Visibility="Collapsed"/>
                         </StackPanel>
 
-                        <!-- Instrument Type -->
                         <StackPanel x:Name="instrumentTypePanel" Orientation="Horizontal" Margin="15,5" Visibility="Collapsed">
                             <Label Content="Instrument Type:" FontWeight="Bold" Margin="15,0" VerticalAlignment="Center"/>
                             <ComboBox x:Name="cbInstrumentType" Width="180" Margin="5"/>
                         </StackPanel>
 
-                        <!-- Fragmentation Type -->
                         <StackPanel x:Name="fragmentationTypePanel" Orientation="Horizontal" Margin="15,5" Visibility="Collapsed">
                             <Label Content="Fragmentation Type:" FontWeight="Bold" Margin="15,0" VerticalAlignment="Center"/>
                             <ComboBox x:Name="cbFragmentationType" Width="180" Margin="5"/>
