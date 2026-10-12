@@ -215,9 +215,7 @@ namespace ProteaseGuru.Gui
             if (dataGridProteins.SelectedItem == null)
             {
                 SelectedProtein = null;
-                maxCoverageMap.Children.Clear();
-                maxCoverageLegend.Children.Clear();
-                maxCoverageLegendGrid.Children.Clear();
+                ClearCoverageMap();
                 return;
             }
 
@@ -226,7 +224,15 @@ namespace ProteaseGuru.Gui
             if (match.Value == null) return;
 
             SelectedProtein = match.Value;
+            ClearCoverageMap();
             ScheduleRefresh();
+        }
+
+        private void ClearCoverageMap()
+        {
+            maxCoverageMap.Children.Clear();
+            maxCoverageLegend.Children.Clear();
+            maxCoverageLegendGrid.Children.Clear();
         }
 
         #endregion
@@ -244,9 +250,7 @@ namespace ProteaseGuru.Gui
                 .Where(vm => vm.IsSelected && vm.IsVisible)
                 .ToList();
 
-            maxCoverageMap.Children.Clear();
-            maxCoverageLegend.Children.Clear();
-            maxCoverageLegendGrid.Children.Clear();
+            ClearCoverageMap();
 
             if (checkedProteases.Count == 0) return;
 
