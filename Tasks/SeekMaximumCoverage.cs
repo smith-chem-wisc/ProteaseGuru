@@ -171,8 +171,8 @@ public class SeekMaximumCoverage
     ///
     /// The universe spans the indices actually packed, measured after the region filter rather
     /// than taken from the region's end. A region ending near int.MaxValue would otherwise
-    /// overflow the word count, and one starting far into the sequence would allocate across the
-    /// whole gap in front of it.
+    /// overflow the word count. The bitset starts at index 0, so residues before a region's
+    /// start are allocated.
     /// </summary>
     private static (List<string> Names, Bitset[] Sets, int Universe)
         BuildProteaseBitsets(
