@@ -150,7 +150,7 @@ namespace ProteaseGuru.Gui
                 ApplyRnaMode();
         }
 
-        // When mode switches, deselect all wrong-mode entries and refresh the map
+        // Deselect the entries hidden in the current mode and refresh the map
         private void ApplyRnaMode()
         {
             foreach (var vm in _allProteaseVm.ProteaseSpecificParameters.Where(p => !p.IsVisible))
@@ -513,22 +513,22 @@ namespace ProteaseGuru.Gui
             if (_hostWindow != null)
                 _hostWindow.Closing -= window_Closing;
             _hostWindow = null;
+            StopRefreshing();
+        }
+
+        void window_Closing(object sender, global::System.ComponentModel.CancelEventArgs e)
+        {
+            SearchModifications.Timer.Tick -= searchBox_TextChangedHandler;
+            StopRefreshing();
+        }
+
+        private void StopRefreshing()
+        {
             GuiGlobalParamsViewModel.Instance.PropertyChanged -= OnGlobalParamsChanged;
             _refreshTimer?.Stop();
             _refreshTimer = null;
             foreach (var vm in _allProteaseVm.ProteaseSpecificParameters)
                 vm.PropertyChanged -= OnProteaseParameterChanged;
-        }
-
-        void window_Closing(object sender, global::System.ComponentModel.CancelEventArgs e)
-        {
-            GuiGlobalParamsViewModel.Instance.PropertyChanged -= OnGlobalParamsChanged;
-            _refreshTimer?.Stop();
-            _refreshTimer = null;
-            SearchModifications.Timer.Tick -= searchBox_TextChangedHandler;
-            if (_allProteaseVm != null)
-                foreach (var vm in _allProteaseVm.ProteaseSpecificParameters)
-                    vm.PropertyChanged -= OnProteaseParameterChanged;
         }
 
         #endregion
