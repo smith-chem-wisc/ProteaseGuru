@@ -4,6 +4,7 @@ using Omics.SequenceConversion;
 using Omics.SpectrumMatch;
 using PredictionClients.Koina.AbstractClasses;
 using PredictionClients.Koina.Util;
+using ProteaseGuru.Engine;
 using Readers.SpectralLibrary;
 
 namespace ProteaseGuru.Tasks
@@ -218,7 +219,7 @@ namespace ProteaseGuru.Tasks
             if (toPredict.Count == 0) return known;
 
             using var session = SharedChronologerPredictor.Open();
-            var predictions = session.Predict(toPredict, maxThreads: Environment.ProcessorCount);
+            var predictions = session.Predict(toPredict, maxThreads: Math.Max(1, GlobalVariables.MaxThreads));
 
             for (int i = 0; i < predictions.Count; i++)
             {
