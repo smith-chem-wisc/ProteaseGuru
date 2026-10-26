@@ -187,12 +187,8 @@ namespace ProteaseGuru.Gui
 
         private void OnSelectionChanged()
         {
-            if (dataGridProteins.SelectedItem == null)
-            {
-                SelectedProtein = null;
-                ClearCoverageMap();
-                return;
-            }
+            // Nothing is selected (filtered out or deselected); keep showing the last protein
+            if (dataGridProteins.SelectedItem == null) return;
 
             string accession = dataGridProteins.SelectedItem.ToString();
             var match = ProteinsForTreeView.FirstOrDefault(p => p.Key.Accession == accession);

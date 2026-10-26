@@ -215,19 +215,14 @@ namespace ProteaseGuru.Gui
                 MessageShow = false;
             }
 
-            // Determine which protein is selected
-            if (dataGridProteins.SelectedItem != null)
+            // Nothing is selected (filtered out or deselected); keep showing the last protein
+            if (dataGridProteins.SelectedItem == null) return;
+
+            string proteinName = dataGridProteins.SelectedItem.ToString();
+            var protein = ProteinsForTreeView.FirstOrDefault(p => p.Key.Accession == proteinName).Value;
+            if (protein != null)
             {
-                string proteinName = dataGridProteins.SelectedItem.ToString();
-                var protein = ProteinsForTreeView.FirstOrDefault(p => p.Key.Accession == proteinName).Value;
-                if (protein != null)
-                {
-                    SelectedProtein = protein;
-                }
-            }
-            else
-            {
-                SelectedProtein = ProteinsForTreeView.FirstOrDefault().Value;
+                SelectedProtein = protein;
             }
 
             if (SelectedProtein == null) return;
