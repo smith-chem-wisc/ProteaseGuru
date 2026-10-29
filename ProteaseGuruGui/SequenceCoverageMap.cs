@@ -1,9 +1,11 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
 using Easy.Common.Extensions;
 using ProteaseGuru.Engine;
@@ -11,6 +13,7 @@ using Proteomics;
 using Proteomics.ProteolyticDigestion;
 using ProteaseGuru.Tasks;
 using ProteaseGuru.Tasks.CoverageMapConfiguration;
+using SkiaSharp;
 using Transcriptomics.Digestion;
 
 namespace ProteaseGuru.Gui
@@ -104,7 +107,7 @@ namespace ProteaseGuru.Gui
         /// Draws a single amino acid character for COVERED residues.
         /// Uses Bold font for unique peptides, ExtraBold for shared peptides.
         /// </summary>
-        public static void txtDrawing(Canvas cav, Point loc, string txt, Brush clr)
+        public static TextBlock txtDrawing(Canvas cav, Point loc, string txt, Brush clr)
         {
             TextBlock tb = new TextBlock();
             tb.Foreground = clr;
@@ -124,6 +127,22 @@ namespace ProteaseGuru.Gui
             Canvas.SetLeft(tb, loc.X);
             Panel.SetZIndex(tb, 2);
             cav.Children.Add(tb);
+            return tb;
+        }
+
+        /// <summary>
+        /// Draws a header line that wraps at <paramref name="width"/> instead of running past the map,
+        /// and returns how much taller than one line it came out.
+        /// </summary>
+        private static int DrawHeaderLine(Canvas canvas, int top, string text, double width)
+        {
+            var line = txtDrawing(canvas, new Point(0, top), text, Brushes.Black);
+            line.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+            double oneLine = line.DesiredSize.Height;
+            line.TextWrapping = TextWrapping.Wrap;
+            line.Width = width;
+            line.Measure(new Size(width, double.PositiveInfinity));
+            return (int)Math.Ceiling(line.DesiredSize.Height - oneLine);
         }
 
         /// <summary>
@@ -731,14 +750,12 @@ namespace ProteaseGuru.Gui
 
             if (!string.IsNullOrWhiteSpace(fullName))
             {
-                txtDrawing(mapCanvas, new Point(0, height), fullName, Brushes.Black);
-                height += 30;
+                height += 30 + DrawHeaderLine(mapCanvas, height, fullName, canvasWidth - CanvasRightMargin);
             }
 
             if (!string.IsNullOrWhiteSpace(coverageHeader))
             {
-                txtDrawing(mapCanvas, new Point(0, height), coverageHeader, Brushes.Black);
-                height += 30;
+                height += 30 + DrawHeaderLine(mapCanvas, height, coverageHeader, canvasWidth - CanvasRightMargin);
             }
 
             int laneCount = orderedProteases.Count;
@@ -1123,14 +1140,12 @@ namespace ProteaseGuru.Gui
 
                 if (!string.IsNullOrWhiteSpace(fullName))
                 {
-                    txtDrawing(mapCanvas, new Point(0, height), fullName, Brushes.Black);
-                    height += 30;
+                    height += 30 + DrawHeaderLine(mapCanvas, height, fullName, canvasWidth - CanvasRightMargin);
                 }
 
                 if (!string.IsNullOrWhiteSpace(coverageHeader))
                 {
-                    txtDrawing(mapCanvas, new Point(0, height), coverageHeader, Brushes.Black);
-                    height += 30;
+                    height += 30 + DrawHeaderLine(mapCanvas, height, coverageHeader, canvasWidth - CanvasRightMargin);
                 }
             }
             else
@@ -1232,6 +1247,92 @@ namespace ProteaseGuru.Gui
 
             Canvas.SetTop(legendGrid, 0);
             Canvas.SetLeft(legendGrid, Math.Max((legendCanvas.Width - desired.Width) / 2.0, 0));
+        }
+
+        /// <summary>
+        /// Builds a white page for exporting a map off screen: the map canvas over its legend, as in the
+        /// analyzer pane. The drawers start text at x = 0 and build only a right margin into the canvas
+        /// width, so the page pads the left by the same amount.
+        /// </summary>
+        public static (Border Page, Canvas Map, Canvas Legend, Grid LegendGrid) CreateExportPage()
+        {
+            var map = new Canvas();
+            var legendGrid = new Grid { VerticalAlignment = VerticalAlignment.Top, HorizontalAlignment = HorizontalAlignment.Center };
+            var legend = new Canvas { VerticalAlignment = VerticalAlignment.Top };
+            legend.Children.Add(legendGrid);
+
+            var grid = new Grid();
+            grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            Grid.SetRow(legend, 1);
+            grid.Children.Add(map);
+            grid.Children.Add(legend);
+
+            var page = new Border { Background = Brushes.White, Padding = new Thickness(CanvasRightMargin, 0, 0, 0), Child = grid };
+            return (page, map, legend, legendGrid);
+        }
+
+        /// <summary>
+        /// Lays out <paramref name="element"/> (a map built off screen) and writes it to a PDF as an image
+        /// at 600 dpi. Pages are as wide as the map and as tall as it up to Acrobat's
+        /// 200-inch limit; a taller map continues on the next page, and that break can cross a row.
+        /// </summary>
+        public static void SaveRasterPdf(FrameworkElement element, string path)
+        {
+            const double dpi = 600;
+            const double pointsPerDip = 72.0 / 96.0;
+            // Tiles keep each bitmap small; 512 DIPs is a whole number of pixels at 600 dpi, so tiles meet without seams.
+            const double tileDip = 512;
+            // Acrobat refuses pages over 200 inches (14,400 points).
+            const double pageDip = 37 * tileDip;
+
+            element.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+            element.Arrange(new Rect(element.DesiredSize));
+            double width = element.ActualWidth, height = element.ActualHeight;
+            double pixelsPerDip = dpi / 96.0;
+
+            using var pdf = File.Create(path);
+            using (var document = SKDocument.CreatePdf(pdf))
+            {
+                for (double pageTop = 0; pageTop < height; pageTop += pageDip)
+                {
+                    double pageHeight = Math.Min(pageDip, height - pageTop);
+                    var canvas = document.BeginPage((float)(width * pointsPerDip), (float)(pageHeight * pointsPerDip));
+                    canvas.Scale((float)(pointsPerDip / pixelsPerDip));
+
+                    for (double tileTop = pageTop; tileTop < pageTop + pageHeight; tileTop += tileDip)
+                    {
+                        double tileHeight = Math.Min(tileDip, pageTop + pageHeight - tileTop);
+                        int pixelWidth = (int)Math.Ceiling(width * pixelsPerDip);
+                        int pixelHeight = (int)Math.Ceiling(tileHeight * pixelsPerDip);
+
+                        var tile = new DrawingVisual();
+                        using (DrawingContext dc = tile.RenderOpen())
+                        {
+                            // White under the map, so every pixel comes out opaque and Skia adds no soft mask.
+                            dc.DrawRectangle(Brushes.White, null, new Rect(0, 0, pixelWidth / pixelsPerDip, pixelHeight / pixelsPerDip));
+                            var brush = new VisualBrush(element)
+                            {
+                                Viewbox = new Rect(0, tileTop, width, tileHeight),
+                                ViewboxUnits = BrushMappingMode.Absolute,
+                                Stretch = Stretch.Fill
+                            };
+                            dc.DrawRectangle(brush, null, new Rect(0, 0, width, tileHeight));
+                        }
+                        var bitmap = new RenderTargetBitmap(pixelWidth, pixelHeight, dpi, dpi, PixelFormats.Pbgra32);
+                        bitmap.Render(tile);
+
+                        var pixels = new byte[pixelWidth * pixelHeight * 4];
+                        bitmap.CopyPixels(pixels, pixelWidth * 4, 0);
+                        var info = new SKImageInfo(pixelWidth, pixelHeight, SKColorType.Bgra8888, SKAlphaType.Opaque);
+                        using var image = SKImage.FromPixelCopy(info, pixels, pixelWidth * 4);
+                        canvas.DrawImage(image, 0, (float)((tileTop - pageTop) * pixelsPerDip));
+                    }
+
+                    document.EndPage();
+                }
+                document.Close();
+            }
         }
     }
 

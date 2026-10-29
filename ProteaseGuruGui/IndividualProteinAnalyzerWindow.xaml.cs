@@ -1,11 +1,13 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.IO;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
+using Microsoft.Win32;
 using ProteaseGuru.Engine;
 using Omics;
 using ProteaseGuru.GuiFunctions;
@@ -274,16 +276,8 @@ namespace ProteaseGuru.Gui
                 bestNCapHint.Visibility = Visibility.Visible;
             }
 
-            // Re-use the already-computed interval dict; filter to the winning proteases only.
-            var pepsByProtease = result.Proteases
-                .Where(allIntervalsDict.ContainsKey)
-                .ToDictionary(name => name, name => allIntervalsDict[name]);
-
-            var orderedChecked = result.Proteases
-                .OrderBy(GetStableColorIndex)
-                .ToList();
-
-            DrawMaxCoverageMap(SelectedProtein.Protein, result, pepsByProtease, orderedChecked);
+            DrawMaxCoverageMap(SelectedProtein.Protein, result, allIntervalsDict,
+                maxCoverageMap, maxCoverageLegend, maxCoverageLegendGrid);
         }
 
         /// <summary>
@@ -312,20 +306,28 @@ namespace ProteaseGuru.Gui
         private void DrawMaxCoverageMap(
             IBioPolymer protein,
             SeekMaximumCoverage.CombinationResult result,
-            Dictionary<string, List<(int Start, int End)>> pepsByProtease,
-            List<string> orderedCheckedProteases)
+            Dictionary<string, List<(int Start, int End)>> allIntervals,
+            Canvas map, Canvas legend, Grid legendGrid)
         {
+            var pepsByProtease = result.Proteases
+                .Where(allIntervals.ContainsKey)
+                .ToDictionary(name => name, name => allIntervals[name]);
+            var orderedCheckedProteases = result.Proteases
+                .OrderBy(GetStableColorIndex)
+                .ToList();
+
             if (_displayMode == CoverageMapDisplayMode.ProteaseLane)
-                DrawLaneViewCoverageMap(protein, result, pepsByProtease, orderedCheckedProteases);
+                DrawLaneViewCoverageMap(protein, result, pepsByProtease, orderedCheckedProteases, map, legend, legendGrid);
             else
-                DrawPeptideViewCoverageMap(protein, result, pepsByProtease, orderedCheckedProteases);
+                DrawPeptideViewCoverageMap(protein, result, pepsByProtease, orderedCheckedProteases, map, legend, legendGrid);
         }
 
         private void DrawLaneViewCoverageMap(
             IBioPolymer protein,
             SeekMaximumCoverage.CombinationResult result,
             Dictionary<string, List<(int Start, int End)>> pepsByProtease,
-            List<string> orderedCheckedProteases)
+            List<string> orderedCheckedProteases,
+            Canvas map, Canvas legend, Grid legendGrid)
         {
             string pct = SeekMaximumCoverage.CoveragePercentage(result.CoveredResidues, protein.Length);
             string proteaseStr = result.Proteases.Count > 0
@@ -334,7 +336,7 @@ namespace ProteaseGuru.Gui
             string coverageHeader = $"Best coverage: {proteaseStr}  ({pct})";
 
             SequenceCoverageMap.DrawLaneViewMap(
-                maxCoverageMap, maxCoverageLegend, maxCoverageLegendGrid,
+                map, legend, legendGrid,
                 protein.Accession,
                 protein.FullName,
                 protein.BaseSequence,
@@ -350,7 +352,8 @@ namespace ProteaseGuru.Gui
             IBioPolymer protein,
             SeekMaximumCoverage.CombinationResult result,
             Dictionary<string, List<(int Start, int End)>> pepsByProtease,
-            List<string> orderedCheckedProteases)
+            List<string> orderedCheckedProteases,
+            Canvas map, Canvas legend, Grid legendGrid)
         {
             var allCovered = new HashSet<int>();
             foreach (var kvp in pepsByProtease)
@@ -370,9 +373,9 @@ namespace ProteaseGuru.Gui
             string coverageHeader = $"Best coverage: {proteaseStr}  ({pct})";
 
             SequenceCoverageMap.DrawPeptidePerBarIntervalMap(
-                maxCoverageMap,
-                maxCoverageLegend,
-                maxCoverageLegendGrid,
+                map,
+                legend,
+                legendGrid,
                 protein.Accession,
                 protein.BaseSequence,
                 orderedCheckedProteases,
@@ -419,8 +422,88 @@ namespace ProteaseGuru.Gui
         {
             // The map/legend canvases size themselves to their intrinsic content width; here we only
             // size the scroll viewport to the grid, which scrolls when the map is wider than the window.
-            maxCoverageMapViewer.Height = 0.85 * MaxCoverageGrid.ActualHeight;
+            maxCoverageMapViewer.Height = maxCoverageMapRow.ActualHeight;
             maxCoverageMapViewer.Width = MaxCoverageGrid.ActualWidth;
+        }
+
+        private void ExportMaxCoverage_Click(object sender, RoutedEventArgs e)
+        {
+            var checkedProteases = _allProteaseVm.ProteaseSpecificParameters
+                .Where(vm => vm.IsSelected && vm.IsVisible)
+                .Select(vm => vm.ProteaseSpecificParams)
+                .ToList();
+
+            if (SelectedProtein == null || checkedProteases.Count == 0)
+            {
+                NotificationService.Instance.AddNotification(
+                    "Select a protein and at least one protease before exporting a coverage analysis.", NotificationType.Error);
+                return;
+            }
+
+            var protein = SelectedProtein.Protein;
+            var dialog = new OpenFolderDialog
+            {
+                Title = $"Choose where to save the coverage analysis for {protein.Accession}",
+                InitialDirectory = Path.GetDirectoryName(protein.DatabaseFilePath)
+            };
+
+            if (dialog.ShowDialog() != true)
+            {
+                return;
+            }
+
+            string folder = MaxCoverageReport.NewExportFolder(dialog.FolderName, protein.Accession);
+
+            // Rasterizing the maps at 600 dpi takes seconds, and minutes for proteins of several thousand residues.
+            Mouse.OverrideCursor = Cursors.Wait;
+            try
+            {
+                WriteMaxCoverageExport(protein, checkedProteases, folder);
+                NotificationService.Instance.AddNotification(
+                    $"Exported the coverage analysis to {folder}", NotificationType.Success);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                NotificationService.Instance.AddNotification(
+                    $"Could not export the coverage analysis: {ex.Message}", NotificationType.Error);
+            }
+            finally
+            {
+                Mouse.OverrideCursor = null;
+            }
+        }
+
+        /// <summary>
+        /// Writes the summary and parameter tables and one map PDF per result, in the view on screen, into
+        /// <paramref name="folder"/>, creating it if needed. The folder's name is the stem of every file.
+        /// </summary>
+        private void WriteMaxCoverageExport(IBioPolymer protein,
+            List<ProteaseSpecificParameters> checkedProteases, string folder)
+        {
+            var (coverage, intervals) = DigestCache.GetCoverageAndIntervals(protein, checkedProteases);
+            var report = MaxCoverageReport.Compute(_seeker, protein, checkedProteases, coverage);
+
+            string stem = Path.GetFileName(folder);
+            Directory.CreateDirectory(folder);
+
+            using (var writer = new StreamWriter(Path.Combine(folder, $"{stem}_Summary.tsv")))
+                report.WriteSummary(writer);
+            using (var writer = new StreamWriter(Path.Combine(folder, $"{stem}_Parameters.tsv")))
+                report.WriteParameters(writer);
+
+            foreach (var (labeled, fileName, copyOf) in report.MapFiles(stem))
+            {
+                string pdfPath = Path.Combine(folder, fileName);
+                if (copyOf != null)
+                {
+                    File.Copy(Path.Combine(folder, copyOf), pdfPath);
+                    continue;
+                }
+
+                var (page, map, legend, legendGrid) = SequenceCoverageMap.CreateExportPage();
+                DrawMaxCoverageMap(protein, labeled.Result, intervals, map, legend, legendGrid);
+                SequenceCoverageMap.SaveRasterPdf(page, pdfPath);
+            }
         }
 
         private void ExportSpectrumLibrary_Click(object sender, RoutedEventArgs e)

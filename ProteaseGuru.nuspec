@@ -23,6 +23,7 @@
 				<dependency id="OxyPlot.Core" version="2.2.0" />
 				<dependency id="OxyPlot.Wpf" version="2.2.0" />
 				<dependency id="OxyPlot.SkiaSharp" version="2.2.0" />
+				<dependency id="SkiaSharp" version="2.88.8" />
 			</group>
 		</dependencies>
 	</metadata>
