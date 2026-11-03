@@ -516,7 +516,7 @@
                                                     UpperBound="{Binding Source={x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}, Path=MaxAvailableThreads, Mode=OneWay}"
                                                     Width="45">
                                 <TextBox.ToolTip>
-                                    <TextBlock Text="Maximum CPU threads used during in silico digestion. Defaults to all available cores."
+                                    <TextBlock Text="Maximum CPU threads used during in silico digestion and spectral library export. Defaults to all available cores."
                                             ToolTipService.ShowDuration="999999" ToolTipService.InitialShowDelay="500" />
                                 </TextBox.ToolTip>
                             </local:IntegerTextBoxControl>
