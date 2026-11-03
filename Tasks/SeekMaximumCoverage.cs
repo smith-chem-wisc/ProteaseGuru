@@ -7,6 +7,18 @@ using Transcriptomics.Digestion;
 namespace ProteaseGuru.Tasks;
 
 /// <summary>
+/// Which protease combination a maximum coverage analysis reports.
+/// </summary>
+public enum MaxCoverageMode
+{
+    Greedy,
+    BestSingle,
+    BestPair,
+    BestTriplet,
+    All
+}
+
+/// <summary>
 /// Analyzes protease combinations to find optimal coverage for a protein sequence.
 /// Implements greedy and brute-force algorithms for finding minimal protease sets
 /// that achieve maximum detectable peptide coverage.
@@ -171,8 +183,8 @@ public class SeekMaximumCoverage
     ///
     /// The universe spans the indices actually packed, measured after the region filter rather
     /// than taken from the region's end. A region ending near int.MaxValue would otherwise
-    /// overflow the word count, and one starting far into the sequence would allocate across the
-    /// whole gap in front of it.
+    /// overflow the word count. The bitset starts at index 0, so residues before a region's
+    /// start are allocated.
     /// </summary>
     private static (List<string> Names, Bitset[] Sets, int Universe)
         BuildProteaseBitsets(
@@ -516,6 +528,46 @@ public class SeekMaximumCoverage
             bestCount < 0 ? 0 : bestCount,
             CoverageFraction(bestResidues, denominator)
         );
+    }
+
+    #endregion
+
+    #region Mode Selection
+
+    /// <summary>
+    /// Runs the analysis <paramref name="mode"/> names over <paramref name="coverageDict"/>.
+    /// <see cref="MaxCoverageMode.All"/> reports every protease in the dictionary and the union of
+    /// their coverage.
+    /// </summary>
+    public CombinationResult ForMode(
+        MaxCoverageMode mode,
+        Dictionary<string, HashSet<int>> coverageDict,
+        int totalResidues)
+    {
+        switch (mode)
+        {
+            case MaxCoverageMode.Greedy:
+                var greedy = GreedyMinimumProteaseSet(coverageDict, totalResidues);
+                return new CombinationResult(
+                    greedy.SelectedProteases, greedy.CoveredResidues,
+                    greedy.CoveredResidues.Count, greedy.CoverageFraction);
+            case MaxCoverageMode.BestSingle:
+                return BestSingle(coverageDict, totalResidues);
+            case MaxCoverageMode.BestPair:
+                return BestPair(coverageDict, totalResidues);
+            case MaxCoverageMode.BestTriplet:
+                return BestTriplet(coverageDict, totalResidues);
+            case MaxCoverageMode.All:
+                var allCovered = new HashSet<int>();
+                foreach (var covered in coverageDict.Values)
+                    allCovered.UnionWith(covered);
+                return new CombinationResult(
+                    coverageDict.Keys.ToList(), allCovered, allCovered.Count,
+                    CoverageFraction(allCovered, totalResidues));
+            default:
+                throw new ArgumentOutOfRangeException(nameof(mode), mode,
+                    "No analysis runs for this mode.");
+        }
     }
 
     #endregion

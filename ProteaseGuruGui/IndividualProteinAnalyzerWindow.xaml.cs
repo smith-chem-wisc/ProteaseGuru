@@ -22,7 +22,6 @@ namespace ProteaseGuru.Gui
 
         private readonly ProteinCoverageAnalyzer _analyzer;
         private ObservableCollection<string> proteinList;
-        private ObservableCollection<string> filteredList;
         private Dictionary<IBioPolymer, ProteinForTreeView> ProteinsForTreeView;
         private Dictionary<string, SolidColorBrush> ModsByColor;
         private ProteinForTreeView SelectedProtein;
@@ -36,6 +35,8 @@ namespace ProteaseGuru.Gui
         // ── Display mode toggle ──────────────────────────────────────────────
         private CoverageMapDisplayMode _displayMode = CoverageMapDisplayMode.ProteaseLane;
         private CoverageMapDisplayMode _lastCoverageMode = CoverageMapDisplayMode.ProteaseLane;
+
+        private MaxCoverageMode? _maxCoverageMode;
 
         // Serves (coverage, intervals) per protease for the selected protein, re-digesting only
         // the proteases whose settings changed. Algorithm- and view-toggle refreshes hit it
@@ -63,7 +64,6 @@ namespace ProteaseGuru.Gui
 
             SelectedProtein = null;
             proteinList = new ObservableCollection<string>();
-            filteredList = new ObservableCollection<string>();
             ProteinsForTreeView = new Dictionary<IBioPolymer, ProteinForTreeView>();
             ModsByColor = new Dictionary<string, SolidColorBrush>();
 
@@ -75,14 +75,12 @@ namespace ProteaseGuru.Gui
                     new List<InSilicoPep>(), new List<InSilicoPep>(), new List<InSilicoPep>());
                 ProteinsForTreeView[protein] = ptv;
                 proteinList.Add(protein.Accession);
-                dataGridProteins.Items.Add(protein.Accession);
             }
-            dataGridProteins.DataContext = proteinList;
+            dataGridProteins.ItemsSource = proteinList;
 
             WireProteasePanel();
             this.Loaded += results_Loaded;
-            SearchModifications.SetUp();
-            SearchModifications.Timer.Tick += new EventHandler(searchBox_TextChangedHandler);
+            this.Unloaded += results_Unloaded;
         }
 
         public IndividualProteinAnalyzerWindow(
@@ -96,7 +94,6 @@ namespace ProteaseGuru.Gui
 
             SelectedProtein = null;
             proteinList = new ObservableCollection<string>();
-            filteredList = new ObservableCollection<string>();
             ProteinsForTreeView = new Dictionary<IBioPolymer, ProteinForTreeView>();
             ModsByColor = new Dictionary<string, SolidColorBrush>();
 
@@ -107,8 +104,7 @@ namespace ProteaseGuru.Gui
 
             WireProteasePanel();
             this.Loaded += results_Loaded;
-            SearchModifications.SetUp();
-            SearchModifications.Timer.Tick += new EventHandler(searchBox_TextChangedHandler);
+            this.Unloaded += results_Unloaded;
         }
 
         #endregion
@@ -139,17 +135,19 @@ namespace ProteaseGuru.Gui
         {
             _allProteaseVm = new DigestionConditionsSetupViewModel(null);
             ProteaseOptionsItemsControl.ItemsSource = _allProteaseVm.ProteaseSpecificParameters;
-            foreach (var vm in _allProteaseVm.ProteaseSpecificParameters)
-                vm.PropertyChanged += OnProteaseParameterChanged;
+        }
 
-            // When mode switches, deselect all wrong-mode entries and refresh the map
-            GuiGlobalParamsViewModel.Instance.PropertyChanged += (s, e) =>
-            {
-                if (e.PropertyName != nameof(GuiGlobalParamsViewModel.IsRnaMode)) return;
-                foreach (var vm in _allProteaseVm.ProteaseSpecificParameters.Where(p => !p.IsVisible))
-                    vm.IsSelected = false;
-                ScheduleRefresh();
-            };
+        private void OnGlobalParamsChanged(object? sender, PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName == nameof(GuiGlobalParamsViewModel.IsRnaMode))
+                ApplyRnaMode();
+        }
+
+        private void ApplyRnaMode()
+        {
+            foreach (var vm in _allProteaseVm.ProteaseSpecificParameters.Where(p => !p.IsVisible && p.IsSelected))
+                vm.IsSelected = false;
+            ScheduleRefresh();
         }
 
         private void SetUpProteinsForTreeView()
@@ -169,9 +167,8 @@ namespace ProteaseGuru.Gui
             foreach (var accession in _analyzer.ProteinAccessions)
             {
                 proteinList.Add(accession);
-                dataGridProteins.Items.Add(accession);
             }
-            dataGridProteins.DataContext = proteinList;
+            dataGridProteins.ItemsSource = proteinList;
         }
 
         #endregion
@@ -179,27 +176,9 @@ namespace ProteaseGuru.Gui
         #region Search
 
         private void Search_TextChanged(object sender, TextChangedEventArgs e)
-            => SearchModifications.SetTimer();
-
-        private void searchBox_TextChangedHandler(object sender, EventArgs e)
         {
-            string userInput = SearchTextBox.Text;
-            if (string.IsNullOrEmpty(userInput))
-            {
-                dataGridProteins.DataContext = proteinList;
-                return;
-            }
-
-            filteredList.Clear();
-            foreach (var protein in proteinList)
-                if (protein.Contains(userInput, StringComparison.OrdinalIgnoreCase))
-                    filteredList.Add(protein);
-
-            dataGridProteins.Items.Clear();
-            foreach (var entry in filteredList)
-                dataGridProteins.Items.Add(entry);
-
-            SearchModifications.Timer.Stop();
+            string searchText = SearchTextBox.Text;
+            dataGridProteins.Items.Filter = item => TextSearchMatcher.Matches(item as string, searchText);
         }
 
         #endregion
@@ -208,29 +187,41 @@ namespace ProteaseGuru.Gui
 
         private void OnSelectionChanged()
         {
-            if (dataGridProteins.SelectedItem == null)
-            {
-                SelectedProtein = null;
-                maxCoverageMap.Children.Clear();
-                maxCoverageLegend.Children.Clear();
-                maxCoverageLegendGrid.Children.Clear();
-                return;
-            }
+            // Nothing is selected (filtered out or deselected); keep showing the last protein
+            if (dataGridProteins.SelectedItem == null) return;
 
             string accession = dataGridProteins.SelectedItem.ToString();
             var match = ProteinsForTreeView.FirstOrDefault(p => p.Key.Accession == accession);
             if (match.Value == null) return;
 
             SelectedProtein = match.Value;
+            ClearCoverageMap();
             ScheduleRefresh();
+        }
+
+        private void ClearCoverageMap()
+        {
+            maxCoverageMap.Children.Clear();
+            maxCoverageLegend.Children.Clear();
+            maxCoverageLegendGrid.Children.Clear();
         }
 
         #endregion
 
         #region Reactive Digestion
 
+        // Any edit to the protease panel invalidates the last analysis. Clearing the mode instead of
+        // rerunning it keeps ticking through proteases cheap: nothing digests until a mode is picked.
         private void OnProteaseParameterChanged(object sender, PropertyChangedEventArgs e)
-            => ScheduleRefresh();
+            => ClearMode();
+
+        private void ClearMode()
+        {
+            _maxCoverageMode = null;
+            foreach (var toggle in new[] { greedyToggle, singleToggle, pairToggle, tripletToggle, allToggle })
+                toggle.IsChecked = false;
+            ScheduleRefresh();
+        }
 
         private void RefreshMaxCoverage()
         {
@@ -240,11 +231,11 @@ namespace ProteaseGuru.Gui
                 .Where(vm => vm.IsSelected && vm.IsVisible)
                 .ToList();
 
-            maxCoverageMap.Children.Clear();
-            maxCoverageLegend.Children.Clear();
-            maxCoverageLegendGrid.Children.Clear();
+            ClearCoverageMap();
 
-            if (checkedProteases.Count == 0) return;
+            bool ready = _maxCoverageMode != null && checkedProteases.Count > 0;
+            pickModeHint.Visibility = ready ? Visibility.Collapsed : Visibility.Visible;
+            if (!ready) return;
 
             var proteaseParams = checkedProteases.Select(vm => vm.ProteaseSpecificParams).ToList();
 
@@ -258,33 +249,7 @@ namespace ProteaseGuru.Gui
             // a protein whose C-terminus yields no detectable peptide still counts against it.
             int totalResidues = SelectedProtein.Protein.Length;
 
-            SeekMaximumCoverage.CombinationResult result;
-            if (greedyToggle.IsChecked == true)
-            {
-                var g = _seeker.GreedyMinimumProteaseSet(coverageDict, totalResidues);
-                result = new SeekMaximumCoverage.CombinationResult(
-                    g.SelectedProteases, g.CoveredResidues,
-                    g.CoveredResidues.Count, g.CoverageFraction);
-            }
-            else if (singleToggle.IsChecked == true)
-                result = _seeker.BestSingle(coverageDict, totalResidues);
-            else if (pairToggle.IsChecked == true)
-                result = _seeker.BestPair(coverageDict, totalResidues);
-            else if (tripletToggle.IsChecked == true)
-                result = _seeker.BestTriplet(coverageDict, totalResidues);
-            else if (allToggle.IsChecked == true)
-            {
-                // All: show every checked protease — union of all covered residues
-                var allCovered = new HashSet<int>();
-                foreach (var kvp in coverageDict)
-                    allCovered.UnionWith(kvp.Value);
-                result = new SeekMaximumCoverage.CombinationResult(
-                    checkedProteases.Select(vm => vm.DigestionAgentName).ToList(),
-                    allCovered, allCovered.Count,
-                    SeekMaximumCoverage.CoverageFraction(allCovered, totalResidues));
-            }
-            else
-                result = _seeker.BestTriplet(coverageDict, totalResidues);
+            var result = _seeker.ForMode(_maxCoverageMode.Value, coverageDict, totalResidues);
 
             // Re-use the already-computed interval dict; filter to the winning proteases only.
             var pepsByProtease = result.Proteases
@@ -406,7 +371,10 @@ namespace ProteaseGuru.Gui
             => OnSelectionChanged();
 
         private void MaxCoverageMode_Changed(object sender, RoutedEventArgs e)
-            => ScheduleRefresh();
+        {
+            _maxCoverageMode = (MaxCoverageMode)((RadioButton)sender).Tag;
+            ScheduleRefresh();
+        }
 
         private void maxCoverageGrid_SizeChanged(object sender, SizeChangedEventArgs e)
         {
@@ -471,21 +439,17 @@ namespace ProteaseGuru.Gui
 
         void results_Loaded(object sender, RoutedEventArgs e)
         {
-            Window window = Window.GetWindow(this);
-            window.Closing += window_Closing;
+            GuiGlobalParamsViewModel.Instance.PropertyChanged -= OnGlobalParamsChanged;
+            GuiGlobalParamsViewModel.Instance.PropertyChanged += OnGlobalParamsChanged;
 
             foreach (var vm in _allProteaseVm.ProteaseSpecificParameters)
+            {
                 vm.PropertyChanged -= OnProteaseParameterChanged;
-
-            // Select a sensible default based on current mode
-            string defaultAgent = GuiGlobalParamsViewModel.Instance.IsRnaMode ? "RNase T1" : "trypsin|P";
-            var defaultVm = _allProteaseVm.ProteaseSpecificParameters
-                .FirstOrDefault(vm => vm.DigestionAgentName == defaultAgent);
-            if (defaultVm != null)
-                defaultVm.IsSelected = true;
-
-            foreach (var vm in _allProteaseVm.ProteaseSpecificParameters)
                 vm.PropertyChanged += OnProteaseParameterChanged;
+            }
+
+            // After subscribing: a ticked protease hidden while this tab was away must clear the mode.
+            ApplyRnaMode();
 
             if (dataGridProteins.Items.Count > 0)
                 dataGridProteins.SelectedIndex = 0;
@@ -493,13 +457,12 @@ namespace ProteaseGuru.Gui
             UpdateToggleButtonStyle();
         }
 
-        void window_Closing(object sender, global::System.ComponentModel.CancelEventArgs e)
+        void results_Unloaded(object sender, RoutedEventArgs e)
         {
+            GuiGlobalParamsViewModel.Instance.PropertyChanged -= OnGlobalParamsChanged;
             _refreshTimer?.Stop();
-            SearchModifications.Timer.Tick -= searchBox_TextChangedHandler;
-            if (_allProteaseVm != null)
-                foreach (var vm in _allProteaseVm.ProteaseSpecificParameters)
-                    vm.PropertyChanged -= OnProteaseParameterChanged;
+            foreach (var vm in _allProteaseVm.ProteaseSpecificParameters)
+                vm.PropertyChanged -= OnProteaseParameterChanged;
         }
 
         #endregion

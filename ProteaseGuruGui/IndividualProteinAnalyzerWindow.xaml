@@ -6,6 +6,7 @@ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              mc:Ignorable="d"
              xmlns:gui="clr-namespace:ProteaseGuru.Gui"
              xmlns:guiFunctions="clr-namespace:ProteaseGuru.GuiFunctions;assembly=ProteaseGuru.GuiFunctions"
+             xmlns:tasks="clr-namespace:ProteaseGuru.Tasks;assembly=ProteaseGuru.Tasks"
              d:DesignHeight="600" d:DesignWidth="1200">
     <UserControl.Resources>
 
@@ -237,22 +238,27 @@ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                                 VerticalAlignment="Center" Margin="4,0,0,0">
                         <RadioButton x:Name="greedyToggle" Content="Greedy (Min Set)"
                                      GroupName="MaxCovMode" Width="115"
-                                     IsChecked="True" Checked="MaxCoverageMode_Changed"
+                                     Tag="{x:Static tasks:MaxCoverageMode.Greedy}"
+                                     Checked="MaxCoverageMode_Changed"
                                      Style="{StaticResource ModeToggleStyle}"/>
                         <RadioButton x:Name="singleToggle" Content="Best Single"
                                      GroupName="MaxCovMode"
+                                     Tag="{x:Static tasks:MaxCoverageMode.BestSingle}"
                                      Checked="MaxCoverageMode_Changed"
                                      Style="{StaticResource ModeToggleStyle}"/>
                         <RadioButton x:Name="pairToggle" Content="Best Pair"
                                      GroupName="MaxCovMode"
+                                     Tag="{x:Static tasks:MaxCoverageMode.BestPair}"
                                      Checked="MaxCoverageMode_Changed"
                                      Style="{StaticResource ModeToggleStyle}"/>
                         <RadioButton x:Name="tripletToggle" Content="Best Triplet"
                                      GroupName="MaxCovMode"
+                                     Tag="{x:Static tasks:MaxCoverageMode.BestTriplet}"
                                      Checked="MaxCoverageMode_Changed"
                                      Style="{StaticResource ModeToggleStyle}"/>
                         <RadioButton x:Name="allToggle" Content="All"
                                      GroupName="MaxCovMode"
+                                     Tag="{x:Static tasks:MaxCoverageMode.All}"
                                      Checked="MaxCoverageMode_Changed"
                                      Style="{StaticResource ModeToggleStyle}"/>
                         <TextBlock x:Name="computingLabel"
@@ -280,6 +286,12 @@ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                             </Canvas>
                         </Grid>
                     </ScrollViewer>
+
+                    <TextBlock Grid.Row="2" x:Name="pickModeHint"
+                               Text="Pick proteases and a mode to run the analysis"
+                               FontStyle="Italic" FontSize="13"
+                               HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,24,0,0"
+                               Foreground="#888888" Visibility="Collapsed"/>
                 </Grid>
 
             </Grid>

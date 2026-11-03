@@ -349,4 +349,61 @@ public class MaxCoverageTests
         TestContext.WriteLine($"  Greedy ({greedyResult.SelectedProteases.Count} proteases): {greedyResult.CoverageFraction:P1}");
         TestContext.WriteLine($"  Best Triplet (3 proteases): {bestTriplet.CoverageFraction:P1}");
     }
+
+    // Full coverage takes four proteases, so every mode reports a different set.
+    private const int ModeTestResidues = 10;
+
+    private static Dictionary<string, HashSet<int>> CoverageWhereEveryModeDiffers() => new()
+    {
+        ["A"] = new HashSet<int> { 0, 1, 2, 3, 4 },
+        ["B"] = new HashSet<int> { 5, 6, 7 },
+        ["C"] = new HashSet<int> { 8 },
+        ["D"] = new HashSet<int> { 9 },
+        ["E"] = new HashSet<int> { 0 }
+    };
+
+    [TestCase(MaxCoverageMode.BestSingle, 1)]
+    [TestCase(MaxCoverageMode.BestPair, 2)]
+    [TestCase(MaxCoverageMode.BestTriplet, 3)]
+    public void ForModeMatchesTheBruteForceSearchOfThatSize(MaxCoverageMode mode, int combinationSize)
+    {
+        var coverage = CoverageWhereEveryModeDiffers();
+
+        var expected = _analyzer.BestCombination(coverage, combinationSize, ModeTestResidues);
+        var actual = _analyzer.ForMode(mode, coverage, ModeTestResidues);
+
+        Assert.That(actual.Proteases, Has.Count.EqualTo(combinationSize));
+        Assert.That(actual.Proteases, Is.EqualTo(expected.Proteases));
+        Assert.That(actual.CoveredResidues, Is.EquivalentTo(expected.CoveredResidues));
+        Assert.That(actual.CoverageCount, Is.EqualTo(expected.CoverageCount));
+        Assert.That(actual.CoverageFraction, Is.EqualTo(expected.CoverageFraction));
+    }
+
+    [Test]
+    public void ForModeGreedyCarriesTheGreedySetOver()
+    {
+        var coverage = CoverageWhereEveryModeDiffers();
+
+        var greedy = _analyzer.GreedyMinimumProteaseSet(coverage, ModeTestResidues);
+        var actual = _analyzer.ForMode(MaxCoverageMode.Greedy, coverage, ModeTestResidues);
+
+        Assert.That(actual.Proteases, Is.EqualTo(new[] { "A", "B", "C", "D" }));
+        Assert.That(actual.Proteases, Is.EqualTo(greedy.SelectedProteases));
+        Assert.That(actual.CoveredResidues, Is.EquivalentTo(greedy.CoveredResidues));
+        Assert.That(actual.CoverageCount, Is.EqualTo(ModeTestResidues));
+        Assert.That(actual.CoverageFraction, Is.EqualTo(greedy.CoverageFraction));
+    }
+
+    [Test]
+    public void ForModeAllReportsEveryProteaseAndTheUnionOfTheirCoverage()
+    {
+        var coverage = CoverageWhereEveryModeDiffers();
+
+        var actual = _analyzer.ForMode(MaxCoverageMode.All, coverage, ModeTestResidues);
+
+        Assert.That(actual.Proteases, Is.EquivalentTo(coverage.Keys));
+        Assert.That(actual.CoveredResidues, Is.EquivalentTo(Enumerable.Range(0, ModeTestResidues)));
+        Assert.That(actual.CoverageCount, Is.EqualTo(ModeTestResidues));
+        Assert.That(actual.CoverageFraction, Is.EqualTo(1.0));
+    }
 }
