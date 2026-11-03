@@ -357,7 +357,8 @@ namespace ProteaseGuru.Tasks
                         peptide.OneBasedStartResidue,
                         peptide.OneBasedEndResidue,
                         peptide.DigestionParams.DigestionAgent.Name,
-                        detectabilityProbability
+                        detectabilityProbability,
+                        peptide.MissedCleavages
                     );
 
                     peptideList.Add(inSilicoPep);
@@ -645,14 +646,7 @@ namespace ProteaseGuru.Tasks
             string filePath,
             RunParameters userParams)
         {
-            const string tab = "\t";
-            string header = string.Join(tab,
-                "Database", "Protease", "Base Sequence", "Full Sequence", "Previous Amino Acid",
-                "Next Amino Acid", "Start Residue", "End Residue", "Length", "Molecular Weight",
-                "Protein Accession", "Protein Name", "Unique Peptide (in this database)",
-                "Unique Peptide (in all databases)", "Peptide sequence exclusive to this Database",
-                "Hydrophobicity", "Electrophoretic Mobility", "Chronologer Retention Time", $"Pfly Detectability (>={userParams.DetectabilityThreshold:0.0##})",
-                "PFly NotDetectable Prob", "PFly Low Detectability Prob", "PFly Intermediate Detectability Prob", "PFly High Detectability Prob");
+            string header = InSilicoPep.TsvHeader(userParams.DetectabilityThreshold);
 
             var allPeptides = new List<InSilicoPep>();
 

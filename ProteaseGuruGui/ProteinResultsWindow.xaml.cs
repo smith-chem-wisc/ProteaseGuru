@@ -539,7 +539,7 @@ namespace ProteaseGuru.Gui
             SaveMetadata(subFolder, proteinName, SelectedProtein.Protein, allPeptides);
 
             // Save peptide TSV files
-            string header = BuildPeptideHeader();
+            string header = InSilicoPep.TsvHeader(UserParams.DetectabilityThreshold);
             WritePeptidesToTsv(allPeptides, subFolder, proteinName, header, "ProteaseGuruPeptides");
             if (uniquePeptides.Count > 0)
             {
@@ -585,16 +585,6 @@ namespace ProteaseGuru.Gui
             }
 
             File.WriteAllLines(Path.Combine(subFolder, $"{proteinName}_MapMetaData.txt"), metaData);
-        }
-
-        private static string BuildPeptideHeader()
-        {
-            return string.Join("\t",
-                "Database", "Protease", "Base Sequence", "Full Sequence", "Previous Amino Acid",
-                "Next Amino Acid", "Start Residue", "End Residue", "Length", "Molecular Weight",
-                "Protein Accession", "Protein Name", "Unique Peptide (in this database)",
-                "Unique Peptide (in all databases)", "Peptide sequence exclusive to this Database",
-                "Hydrophobicity", "Electrophoretic Mobility");
         }
 
         private void WritePeptidesToTsv(List<InSilicoPep> peptides, string subFolder, string proteinName, string header, string filePrefix)
