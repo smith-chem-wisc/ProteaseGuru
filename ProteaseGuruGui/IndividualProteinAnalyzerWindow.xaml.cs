@@ -3,6 +3,7 @@ using System.ComponentModel;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
 using ProteaseGuru.Engine;
@@ -37,6 +38,7 @@ namespace ProteaseGuru.Gui
         private CoverageMapDisplayMode _lastCoverageMode = CoverageMapDisplayMode.ProteaseLane;
 
         private MaxCoverageMode? _maxCoverageMode;
+        private int _bestN = 2;
 
         // Serves (coverage, intervals) per protease for the selected protein, re-digesting only
         // the proteases whose settings changed. Algorithm- and view-toggle refreshes hit it
@@ -220,7 +222,7 @@ namespace ProteaseGuru.Gui
         private void ClearMode()
         {
             _maxCoverageMode = null;
-            foreach (var toggle in new[] { greedyToggle, singleToggle, pairToggle, tripletToggle, allToggle })
+            foreach (var toggle in new[] { bestNToggle, maxCoverageSetToggle, allToggle })
                 toggle.IsChecked = false;
             ScheduleRefresh();
         }
@@ -234,6 +236,7 @@ namespace ProteaseGuru.Gui
                 .ToList();
 
             ClearCoverageMap();
+            bestNCapHint.Visibility = Visibility.Collapsed;
 
             bool ready = _maxCoverageMode != null && checkedProteases.Count > 0;
             pickModeHint.Visibility = ready ? Visibility.Collapsed : Visibility.Visible;
@@ -251,7 +254,14 @@ namespace ProteaseGuru.Gui
             // a protein whose C-terminus yields no detectable peptide still counts against it.
             int totalResidues = SelectedProtein.Protein.Length;
 
-            var result = _seeker.ForMode(_maxCoverageMode.Value, coverageDict, totalResidues);
+            var result = _seeker.ForMode(_maxCoverageMode.Value, coverageDict, totalResidues, _bestN);
+
+            int reached = result.Proteases.Count;
+            if (_maxCoverageMode == MaxCoverageMode.BestN && result.ReachedMaximumCoverage)
+            {
+                bestNCapHint.Text = $"Maximum coverage reached with {reached} protease{(reached == 1 ? "" : "s")}";
+                bestNCapHint.Visibility = Visibility.Visible;
+            }
 
             // Re-use the already-computed interval dict; filter to the winning proteases only.
             var pepsByProtease = result.Proteases
@@ -376,6 +386,22 @@ namespace ProteaseGuru.Gui
         {
             _maxCoverageMode = (MaxCoverageMode)((RadioButton)sender).Tag;
             ScheduleRefresh();
+        }
+
+        // Empty or partly typed text keeps the last N.
+        private void BestNTextBox_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            if (!int.TryParse(((TextBox)sender).Text, out int n) || n < 1 || n == _bestN) return;
+
+            _bestN = n;
+            if (_maxCoverageMode == MaxCoverageMode.BestN)
+                ScheduleRefresh();
+        }
+
+        private void BestNTextBox_LostKeyboardFocus(object sender, KeyboardFocusChangedEventArgs e)
+        {
+            if (!int.TryParse(bestNTextBox.Text, out int n) || n < 1)
+                bestNTextBox.Text = _bestN.ToString();
         }
 
         private void maxCoverageGrid_SizeChanged(object sender, SizeChangedEventArgs e)

@@ -11,10 +11,13 @@ namespace ProteaseGuru.Tasks;
 /// </summary>
 public enum MaxCoverageMode
 {
-    Greedy,
-    BestSingle,
-    BestPair,
-    BestTriplet,
+    /// <summary>The N proteases with the highest coverage, or the Maximum Coverage Set when that is smaller.</summary>
+    BestN,
+
+    /// <summary>The smallest set of proteases whose coverage equals the coverage of all of them.</summary>
+    MaximumCoverageSet,
+
+    /// <summary>Every protease.</summary>
     All
 }
 
@@ -33,24 +36,31 @@ public class SeekMaximumCoverage
     #region Result Types
 
     /// <summary>
-    /// Result of a set cover algorithm.
-    /// </summary>
-    public record SetCoverResult(
-        List<string> SelectedProteases,
-        HashSet<int> CoveredResidues,
-        int TotalResidues,
-        double CoverageFraction
-    );
-
-    /// <summary>
-    /// Result of a protease combination search.
+    /// Result of a protease set search. Every search returns this record, so one search can take
+    /// another's place. <see cref="TiedSetCount"/> counts the sets of the reported size that cover
+    /// as many residues, not necessarily the same ones, the reported set included, so 1 means no
+    /// ties. <see cref="TiedSets"/> lists up to <see cref="MaxListedTiedSets"/> of the other sets in
+    /// search order. A search that does not try every set of its size (greedy, All) reports 0 and an
+    /// empty list.
     /// </summary>
     public record CombinationResult(
         List<string> Proteases,
         HashSet<int> CoveredResidues,
         int CoverageCount,
-        double CoverageFraction
-    );
+        int TotalResidues,
+        double CoverageFraction,
+        int TiedSetCount,
+        List<List<string>> TiedSets
+    )
+    {
+        /// <summary>
+        /// Whether the reported set covers every residue the proteases cover together. Only the Best N
+        /// and Maximum Coverage Set searches set it; the others report false.
+        /// </summary>
+        public bool ReachedMaximumCoverage { get; init; }
+    }
+
+    public const int MaxListedTiedSets = 10;
 
     #endregion
 
@@ -368,8 +378,9 @@ public class SeekMaximumCoverage
     #region STEP 2: Greedy Set Cover
 
     /// <summary>
-    /// Implements a greedy set cover algorithm to find a minimal set of proteases
-    /// that achieves maximum coverage.
+    /// Implements a greedy set cover algorithm to find a small set of proteases that reaches the
+    /// coverage of all of them. The set is not always the smallest; <see cref="MaximumCoverageSet"/>
+    /// finds that one and takes the same arguments.
     /// </summary>
     /// <param name="totalResidues">
     /// Residue count the coverage fraction is reported against — normally the biopolymer's length.
@@ -378,7 +389,7 @@ public class SeekMaximumCoverage
     /// uncovered C-terminus from both numerator and denominator. Ignored when
     /// <paramref name="region"/> is supplied, since a region carries its own span.
     /// </param>
-    public SetCoverResult GreedyMinimumProteaseSet(
+    public CombinationResult GreedyMinimumProteaseSet(
         Dictionary<string, HashSet<int>> coverageDict,
         int totalResidues,
         (int Start, int End)? region = null)
@@ -416,17 +427,20 @@ public class SeekMaximumCoverage
         }
 
         var coveredResidues = covered.ToHashSet();
-        return new SetCoverResult(
+        return new CombinationResult(
             selectedProteases,
             coveredResidues,
+            coveredResidues.Count,
             denominator,
-            CoverageFraction(coveredResidues, denominator)
+            CoverageFraction(coveredResidues, denominator),
+            0,
+            new List<List<string>>()
         );
     }
 
     #endregion
 
-    #region STEP 3: Brute-Force Combinations
+    #region STEP 3: Exhaustive Combinations
 
     /// <summary>Finds the single protease that alone produces the highest sequence coverage.</summary>
     public CombinationResult BestSingle(
@@ -449,7 +463,10 @@ public class SeekMaximumCoverage
         (int Start, int End)? region = null)
         => BestCombination(coverageDict, 3, totalResidues, region);
 
-    /// <summary>Finds the best combination of N proteases that maximizes coverage.</summary>
+    /// <summary>
+    /// Finds the best combination of N proteases that maximizes coverage. With fewer than N
+    /// proteases in <paramref name="coverageDict"/>, every protease is reported.
+    /// </summary>
     /// <param name="totalResidues">
     /// Residue count the coverage fraction is reported against — normally the biopolymer's length.
     /// Required because the coverage sets alone cannot reveal it: residues past the last covered
@@ -467,67 +484,141 @@ public class SeekMaximumCoverage
         int denominator = ResolveDenominator(totalResidues, region);
 
         if (names.Count < combinationSize)
+            return CombinationSearch.Everything(sets, universe).ToResult(names, denominator);
+
+        return CombinationSearch.OfSize(sets, universe, combinationSize).ToResult(names, denominator);
+    }
+
+    /// <summary>
+    /// Finds the smallest set of proteases whose coverage equals the coverage of all of them,
+    /// trying every set of one protease, then of two, and so on. When several sets of that size
+    /// reach it, the first in search order is reported and the rest are counted as ties. Reports
+    /// no proteases when none of them covers anything.
+    /// </summary>
+    /// <param name="totalResidues">
+    /// Residue count the coverage fraction is reported against — normally the biopolymer's length.
+    /// Ignored when <paramref name="region"/> is supplied, since a region carries its own span.
+    /// </param>
+    public CombinationResult MaximumCoverageSet(
+        Dictionary<string, HashSet<int>> coverageDict,
+        int totalResidues,
+        (int Start, int End)? region = null)
+        => BestUpToSize(coverageDict, int.MaxValue, totalResidues, region);
+
+    /// <summary>
+    /// Tries sets of one protease, then two, up to <paramref name="combinationSize"/>, and reports
+    /// the first size whose best set covers everything all the proteases cover together. When no
+    /// size up to <paramref name="combinationSize"/> does, reports the best set of that size.
+    /// </summary>
+    private CombinationResult BestUpToSize(
+        Dictionary<string, HashSet<int>> coverageDict,
+        int combinationSize,
+        int totalResidues,
+        (int Start, int End)? region)
+    {
+        var (names, sets, universe) = BuildProteaseBitsets(coverageDict, region);
+        int denominator = ResolveDenominator(totalResidues, region);
+
+        var everything = CombinationSearch.Everything(sets, universe);
+        if (everything.Count == 0)
+            return new CombinationResult(new List<string>(), new HashSet<int>(), 0, denominator,
+                0.0, 0, new List<List<string>>());
+
+        int largest = Math.Min(combinationSize, names.Count);
+        for (int size = 1; ; size++)
         {
-            var allCovered = new Bitset(universe);
+            var search = CombinationSearch.OfSize(sets, universe, size);
+            bool reachedEverything = search.Count == everything.Count;
+            if (reachedEverything || size == largest)
+                return search.ToResult(names, denominator) with { ReachedMaximumCoverage = reachedEverything };
+        }
+    }
+
+    /// <summary>
+    /// The best coverage reached by sets of one size: the first set in search order that reaches
+    /// it, how many sets reach it, and up to <see cref="MaxListedTiedSets"/> of the others.
+    /// </summary>
+    private sealed record CombinationSearch(
+        int[] Best, Bitset Coverage, int Count, int TiedSetCount, List<int[]> TiedSets)
+    {
+        public static CombinationSearch Everything(Bitset[] sets, int universe)
+        {
+            var union = new Bitset(universe);
             foreach (var bits in sets)
-                allCovered.OrWith(bits);
+                union.OrWith(bits);
 
-            var union = allCovered.ToHashSet();
-            return new CombinationResult(
-                names, union, union.Count,
-                CoverageFraction(union, denominator));
+            var all = Enumerable.Range(0, sets.Length).ToArray();
+            return new CombinationSearch(all, union, union.PopCount(), 1, new List<int[]>());
         }
 
-        int n = names.Count;
-        var combo = new int[combinationSize];
-        var scratch = new Bitset(universe);
-
-        int bestCount = -1;
-        int[]? bestCombo = null;
-        Bitset? bestCoverage = null;
-
-        // Enumerate index combinations in lexicographic order (matching the previous
-        // generator), unioning each into a reused scratch bitset and keeping the first
-        // combination that strictly improves on the best coverage seen so far.
-        void Search(int start, int depth)
+        /// <summary>
+        /// Enumerates index combinations in lexicographic order, unioning each into a reused
+        /// scratch bitset. The first combination to reach the best count is kept.
+        /// </summary>
+        public static CombinationSearch OfSize(Bitset[] sets, int universe, int combinationSize)
         {
-            if (depth == combinationSize)
-            {
-                scratch.Clear();
-                for (int d = 0; d < combinationSize; d++)
-                    scratch.OrWith(sets[combo[d]]);
+            int n = sets.Length;
+            var combo = new int[combinationSize];
+            var scratch = new Bitset(universe);
 
-                int count = scratch.PopCount();
-                if (count > bestCount)
+            int bestCount = -1;
+            int[] bestCombo = Array.Empty<int>();
+            var bestCoverage = new Bitset(universe);
+            int tiedSetCount = 0;
+            var tiedSets = new List<int[]>();
+
+            void Search(int start, int depth)
+            {
+                if (depth == combinationSize)
                 {
-                    bestCount = count;
-                    bestCombo = (int[])combo.Clone();
-                    bestCoverage = scratch.Clone();
+                    scratch.Clear();
+                    for (int d = 0; d < combinationSize; d++)
+                        scratch.OrWith(sets[combo[d]]);
+
+                    int count = scratch.PopCount();
+                    if (count > bestCount)
+                    {
+                        bestCount = count;
+                        bestCombo = (int[])combo.Clone();
+                        bestCoverage = scratch.Clone();
+                        tiedSetCount = 1;
+                        tiedSets.Clear();
+                    }
+                    else if (count == bestCount)
+                    {
+                        tiedSetCount++;
+                        if (tiedSets.Count < MaxListedTiedSets)
+                            tiedSets.Add((int[])combo.Clone());
+                    }
+                    return;
                 }
-                return;
+
+                int last = n - (combinationSize - depth);
+                for (int i = start; i <= last; i++)
+                {
+                    combo[depth] = i;
+                    Search(i + 1, depth + 1);
+                }
             }
 
-            int last = n - (combinationSize - depth);
-            for (int i = start; i <= last; i++)
-            {
-                combo[depth] = i;
-                Search(i + 1, depth + 1);
-            }
+            Search(0, 0);
+
+            return new CombinationSearch(bestCombo, bestCoverage, Math.Max(bestCount, 0),
+                tiedSetCount, tiedSets);
         }
 
-        Search(0, 0);
-
-        var bestNames = bestCombo == null
-            ? new List<string>()
-            : bestCombo.Select(i => names[i]).ToList();
-        var bestResidues = bestCoverage?.ToHashSet() ?? new HashSet<int>();
-
-        return new CombinationResult(
-            bestNames,
-            bestResidues,
-            bestCount < 0 ? 0 : bestCount,
-            CoverageFraction(bestResidues, denominator)
-        );
+        public CombinationResult ToResult(List<string> names, int denominator)
+        {
+            var residues = Coverage.ToHashSet();
+            return new CombinationResult(
+                Best.Select(i => names[i]).ToList(),
+                residues,
+                Count,
+                denominator,
+                CoverageFraction(residues, denominator),
+                TiedSetCount,
+                TiedSets.Select(set => set.Select(i => names[i]).ToList()).ToList());
+        }
     }
 
     #endregion
@@ -536,38 +627,43 @@ public class SeekMaximumCoverage
 
     /// <summary>
     /// Runs the analysis <paramref name="mode"/> names over <paramref name="coverageDict"/>.
+    /// <see cref="MaxCoverageMode.BestN"/> needs <paramref name="combinationSize"/>, and reports the
+    /// Maximum Coverage Set instead when that set is smaller, since extra proteases add no coverage.
     /// <see cref="MaxCoverageMode.All"/> reports every protease in the dictionary and the union of
     /// their coverage.
     /// </summary>
     public CombinationResult ForMode(
         MaxCoverageMode mode,
         Dictionary<string, HashSet<int>> coverageDict,
-        int totalResidues)
+        int totalResidues,
+        int? combinationSize = null)
     {
         switch (mode)
         {
-            case MaxCoverageMode.Greedy:
-                var greedy = GreedyMinimumProteaseSet(coverageDict, totalResidues);
-                return new CombinationResult(
-                    greedy.SelectedProteases, greedy.CoveredResidues,
-                    greedy.CoveredResidues.Count, greedy.CoverageFraction);
-            case MaxCoverageMode.BestSingle:
-                return BestSingle(coverageDict, totalResidues);
-            case MaxCoverageMode.BestPair:
-                return BestPair(coverageDict, totalResidues);
-            case MaxCoverageMode.BestTriplet:
-                return BestTriplet(coverageDict, totalResidues);
+            case MaxCoverageMode.BestN:
+                if (combinationSize is not >= 1)
+                    throw new ArgumentOutOfRangeException(nameof(combinationSize), combinationSize,
+                        "Best N needs a combination size of at least 1.");
+                return BestUpToSize(coverageDict, combinationSize.Value, totalResidues, null);
+            case MaxCoverageMode.MaximumCoverageSet:
+                return MaximumCoverageSet(coverageDict, totalResidues);
             case MaxCoverageMode.All:
-                var allCovered = new HashSet<int>();
-                foreach (var covered in coverageDict.Values)
-                    allCovered.UnionWith(covered);
+                var allCovered = UnionOf(coverageDict);
                 return new CombinationResult(
-                    coverageDict.Keys.ToList(), allCovered, allCovered.Count,
-                    CoverageFraction(allCovered, totalResidues));
+                    coverageDict.Keys.ToList(), allCovered, allCovered.Count, totalResidues,
+                    CoverageFraction(allCovered, totalResidues), 0, new List<List<string>>());
             default:
                 throw new ArgumentOutOfRangeException(nameof(mode), mode,
                     "No analysis runs for this mode.");
         }
+    }
+
+    private static HashSet<int> UnionOf(Dictionary<string, HashSet<int>> coverageDict)
+    {
+        var union = new HashSet<int>();
+        foreach (var covered in coverageDict.Values)
+            union.UnionWith(covered);
+        return union;
     }
 
     #endregion

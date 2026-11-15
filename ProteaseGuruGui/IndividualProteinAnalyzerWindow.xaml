@@ -236,24 +236,20 @@ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
 
                     <StackPanel Grid.Row="1" Orientation="Horizontal"
                                 VerticalAlignment="Center" Margin="4,0,0,0">
-                        <RadioButton x:Name="greedyToggle" Content="Greedy (Min Set)"
-                                     GroupName="MaxCovMode" Width="115"
-                                     Tag="{x:Static tasks:MaxCoverageMode.Greedy}"
+                        <RadioButton x:Name="bestNToggle" Content="Best N:"
+                                     GroupName="MaxCovMode" Margin="0,0,4,0"
+                                     Tag="{x:Static tasks:MaxCoverageMode.BestN}"
                                      Checked="MaxCoverageMode_Changed"
                                      Style="{StaticResource ModeToggleStyle}"/>
-                        <RadioButton x:Name="singleToggle" Content="Best Single"
+                        <gui:IntegerTextBoxControl x:Name="bestNTextBox" Text="2"
+                                                   LowerBound="1" AllowNegative="False"
+                                                   Width="35" Margin="0,0,12,0" VerticalAlignment="Center"
+                                                   TextChanged="BestNTextBox_TextChanged"
+                                                   LostKeyboardFocus="BestNTextBox_LostKeyboardFocus"
+                                                   ToolTip="Number of proteases to combine. Capped at the Maximum Coverage Set size."/>
+                        <RadioButton x:Name="maxCoverageSetToggle" Content="Maximum Coverage Set"
                                      GroupName="MaxCovMode"
-                                     Tag="{x:Static tasks:MaxCoverageMode.BestSingle}"
-                                     Checked="MaxCoverageMode_Changed"
-                                     Style="{StaticResource ModeToggleStyle}"/>
-                        <RadioButton x:Name="pairToggle" Content="Best Pair"
-                                     GroupName="MaxCovMode"
-                                     Tag="{x:Static tasks:MaxCoverageMode.BestPair}"
-                                     Checked="MaxCoverageMode_Changed"
-                                     Style="{StaticResource ModeToggleStyle}"/>
-                        <RadioButton x:Name="tripletToggle" Content="Best Triplet"
-                                     GroupName="MaxCovMode"
-                                     Tag="{x:Static tasks:MaxCoverageMode.BestTriplet}"
+                                     Tag="{x:Static tasks:MaxCoverageMode.MaximumCoverageSet}"
                                      Checked="MaxCoverageMode_Changed"
                                      Style="{StaticResource ModeToggleStyle}"/>
                         <RadioButton x:Name="allToggle" Content="All"
@@ -261,6 +257,10 @@ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                                      Tag="{x:Static tasks:MaxCoverageMode.All}"
                                      Checked="MaxCoverageMode_Changed"
                                      Style="{StaticResource ModeToggleStyle}"/>
+                        <TextBlock x:Name="bestNCapHint"
+                                   FontStyle="Italic" FontSize="11"
+                                   VerticalAlignment="Center" Margin="6,0,0,0"
+                                   Foreground="#888888" Visibility="Collapsed"/>
                         <TextBlock x:Name="computingLabel"
                                    Text="  ⟳  Computing…"
                                    FontStyle="Italic" FontSize="11"

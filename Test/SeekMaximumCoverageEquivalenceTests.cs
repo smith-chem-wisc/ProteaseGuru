@@ -60,7 +60,7 @@ public class SeekMaximumCoverageEquivalenceTests
         var actual = _analyzer.GreedyMinimumProteaseSet(coverage, _testProtein.Length);
         var (expectedProteases, expectedResidues) = ReferenceGreedy(coverage, null);
 
-        Assert.That(actual.SelectedProteases, Is.EqualTo(expectedProteases));
+        Assert.That(actual.Proteases, Is.EqualTo(expectedProteases));
         Assert.That(actual.CoveredResidues, Is.EquivalentTo(expectedResidues));
     }
 
@@ -72,14 +72,12 @@ public class SeekMaximumCoverageEquivalenceTests
         var actual = _analyzer.GreedyMinimumProteaseSet(coverage, _testProtein.Length);
         var (expectedProteases, expectedResidues) = ReferenceGreedy(coverage, null);
 
-        Assert.That(actual.SelectedProteases, Is.EqualTo(expectedProteases));
+        Assert.That(actual.Proteases, Is.EqualTo(expectedProteases));
         Assert.That(actual.CoveredResidues, Is.EquivalentTo(expectedResidues));
     }
 
     /// <summary>
-    /// 7 exceeds the six proteases in the fixture, which takes the short-dictionary branch — the
-    /// one the analyzer reaches whenever fewer proteases are checked than the combination asks
-    /// for, since it calls BestPair/BestTriplet without looking at how many are ticked.
+    /// 7 exceeds the six proteases in the fixture, which takes the short-dictionary branch.
     /// </summary>
     [TestCase(1)]
     [TestCase(2)]
@@ -132,7 +130,7 @@ public class SeekMaximumCoverageEquivalenceTests
 
         var greedy = _analyzer.GreedyMinimumProteaseSet(coverage, _testProtein.Length, region);
         var (expectedGreedyProteases, expectedGreedyResidues) = ReferenceGreedy(coverage, region);
-        Assert.That(greedy.SelectedProteases, Is.EqualTo(expectedGreedyProteases));
+        Assert.That(greedy.Proteases, Is.EqualTo(expectedGreedyProteases));
         Assert.That(greedy.CoveredResidues, Is.EquivalentTo(expectedGreedyResidues));
 
         var pair = _analyzer.BestCombination(coverage, 2, _testProtein.Length, region);
