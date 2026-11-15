@@ -28,6 +28,29 @@ ProteaseGuru is a **Windows desktop application**. To run your first *in silico*
 
 For a walkthrough of each window, see the [wiki Getting Started page](https://github.com/smith-chem-wisc/ProteaseGuru/wiki/Getting-Started).
 
+### Command-line runs
+
+The `ProteaseGuru.Cli` executable runs the digestion pipeline without opening the desktop interface. It accepts one or more `.fasta`, `.fa`, or `.xml` databases (optionally `.gz` compressed), and writes the same digestion outputs as a GUI run to the specified output directory.
+
+Use a saved `DigestionParameters.toml` when you need the full GUI configuration, including protease-specific values and modifications. Any explicitly supplied digestion option overrides that value from the TOML for all selected proteases/RNases, while unspecified values and modifications stay as configured in the file:
+
+```powershell
+ProteaseGuru.Cli.exe --database proteins.fasta --output results --params DigestionParameters.toml
+ProteaseGuru.Cli.exe --database proteins.fasta --output results-mc3 `
+  --params DigestionParameters.toml --missed-cleavages 3
+```
+
+Or supply shared digestion values for all selected proteases/RNases. Values shown below are defaults; `--rna` enables RNA mode and otherwise the run is protein mode:
+
+```powershell
+ProteaseGuru.Cli.exe --database proteins.fasta --database contaminants.fasta `
+  --output results --protease "trypsin|P" --protease "Lys-C|P" `
+  --missed-cleavages 2 --min-length 7 --max-length 50 `
+  --min-mass -1 --max-mass -1 --detectability-threshold 0.5
+```
+
+For RNA mode, use RNase names and add `--rna`. Multiple database and protease options can be space-delimited or repeated. In TOML mode the TOML file supplies protease selection; `--protease` cannot be combined with it. Shared CLI overrides include missed cleavages, min/max length, min/max mass, detectability threshold, and modified-sequence uniqueness (including explicit `true` or `false`). Each supplied override applies uniformly to all proteases/RNases in the TOML. Run `ProteaseGuru.Cli.exe --help` for all options.
+
 ### Build from source
 
 Requires the [.NET 10 SDK](https://dotnet.microsoft.com/en-us/download/dotnet/10.0) and Windows.
@@ -37,6 +60,12 @@ git clone https://github.com/smith-chem-wisc/ProteaseGuru.git
 cd ProteaseGuru
 dotnet build ProteaseGuru.sln -c Release
 dotnet run --project ProteaseGuruGui/ProteaseGuru.Gui.csproj
+```
+
+Build and run the CLI with:
+
+```
+dotnet run --project ProteaseGuru.Cli/ProteaseGuru.Cli.csproj -- --help
 ```
 
 Or open `ProteaseGuru.sln` in Visual Studio 2022, set **ProteaseGuru.Gui** as the startup project, and press **F5**.

@@ -27,13 +27,17 @@ public abstract class ParameterBaseClass<TParameters> where TParameters : Parame
                     tmlTable.ContainsKey("Protease")
                         ? tmlTable.Get<DigestionParams>()
                         : tmlTable.Get<RnaDigestionParams>())))
+        // SpecificDigestionAgent (mzLib 1.0.592, #1318) is derived from the named agent, like
+        // DigestionAgent, and has no TOML conversion: writing it makes every settings file unreadable.
         .ConfigureType<DigestionParams>(type => type
             .IgnoreProperty(p => p.DigestionAgent)
+            .IgnoreProperty(p => p.SpecificDigestionAgent)
             .IgnoreProperty(p => p.MaxMods)
             .IgnoreProperty(p => p.MaxLength)
             .IgnoreProperty(p => p.MinLength))
         .ConfigureType<RnaDigestionParams>(type => type
-            .IgnoreProperty(p => p.DigestionAgent))
+            .IgnoreProperty(p => p.DigestionAgent)
+            .IgnoreProperty(p => p.SpecificDigestionAgent))
         .ConfigureType<Rnase>(type => type
             .WithConversionFor<TomlString>(convert => convert
                 .ToToml(custom => custom.Name)

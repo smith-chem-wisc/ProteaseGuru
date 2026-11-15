@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using ProteaseGuru.GuiFunctions;
 
 namespace ProteaseGuru.Gui
 {
@@ -120,41 +121,12 @@ namespace ProteaseGuru.Gui
 
         private void ClampToBounds()
         {
-            if (string.IsNullOrEmpty(Text))
-                return;
-
-            string target = Text;
-
-            if (int.TryParse(Text, out int value))
-            {
-                if (value < LowerBound)
-                    target = LowerBound.ToString();
-                else if (value > UpperBound)
-                    target = UpperBound.ToString();
-            }
-            else
-            {
-                string trimmed = Text.Trim();
-                bool negative = trimmed.StartsWith("-");
-                string digits = negative ? trimmed.Substring(1) : trimmed;
-                if (IsAllDigits(digits))
-                    target = negative ? LowerBound.ToString() : UpperBound.ToString();
-            }
+            string clamped = IntegerTextBounds.Clamp(Text, LowerBound, UpperBound);
 
             // Only assign if the value changed to avoid redundant TextChanged events
             // (e.g. when this is called from the bound-change callback).
-            if (target != Text)
-                Text = target;
-        }
-
-        private static bool IsAllDigits(string s)
-        {
-            if (s.Length == 0)
-                return false;
-            foreach (char c in s)
-                if (!char.IsDigit(c))
-                    return false;
-            return true;
+            if (clamped != Text)
+                Text = clamped;
         }
 
         /// <summary>
