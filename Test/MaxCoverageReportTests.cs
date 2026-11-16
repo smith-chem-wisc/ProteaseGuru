@@ -61,7 +61,13 @@ public class MaxCoverageReportTests
     [Test]
     public void FormatOneBasedRanges_CollapsesRunsAndShiftsToOneBased()
     {
-        Assert.That(MaxCoverageReport.FormatOneBasedRanges([0, 1, 2, 6, 10, 11]), Is.EqualTo("1-3  7  11-12"));
+        Assert.That(MaxCoverageReport.FormatOneBasedRanges([0, 1, 2, 6, 10, 11]), Is.EqualTo("1..3  7  11..12"));
+    }
+
+    [Test]
+    public void FormatOneBasedRanges_WritesASingleRunThatExcelCannotReadAsADate()
+    {
+        Assert.That(MaxCoverageReport.FormatOneBasedRanges(Enumerable.Range(0, 7)), Is.EqualTo("1..7"));
     }
 
     [Test]
@@ -218,7 +224,7 @@ public class MaxCoverageReportTests
         var trypsin = SummaryRows(report).First(r => r[2] == "Single");
 
         // Residues 1-2 and the last two are uncovered.
-        Assert.That(trypsin[6], Is.EqualTo($"1-2  {SampleSequence.Length - 1}-{SampleSequence.Length}"));
+        Assert.That(trypsin[6], Is.EqualTo($"1..2  {SampleSequence.Length - 1}..{SampleSequence.Length}"));
     }
 
     [Test]
@@ -230,7 +236,7 @@ public class MaxCoverageReportTests
         var maximum = rows.Single(r => r[2] == MaxCoverageReport.MaximumCoverageSetLabel);
         Assert.That(maximum[4], Is.EqualTo("none"));
         Assert.That(maximum[5], Is.EqualTo("0.0000"));
-        Assert.That(maximum[6], Is.EqualTo($"1-{SampleSequence.Length}"));
+        Assert.That(maximum[6], Is.EqualTo($"1..{SampleSequence.Length}"));
         Assert.That(maximum[7], Is.EqualTo("0"));
         Assert.That(maximum[8], Is.Empty);
     }

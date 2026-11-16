@@ -120,7 +120,8 @@ public record MaxCoverageReport(
     }
 
     /// <summary>
-    /// Formats ascending, distinct 0-based residue indices as 1-based inclusive ranges, e.g. {0,1,2,6} → "1-3  7".
+    /// Formats ascending, distinct 0-based residue indices as 1-based inclusive ranges, e.g. {0,1,2,6} → "1..3  7".
+    /// The ".." keeps Excel from reading a lone range such as "1-7" as a date.
     /// </summary>
     public static string FormatOneBasedRanges(IEnumerable<int> zeroBasedIndices)
     {
@@ -133,7 +134,7 @@ public record MaxCoverageReport(
         {
             if (i < sorted.Count && sorted[i] == sorted[i - 1] + 1) continue;
             int runEnd = sorted[i - 1];
-            ranges.Add(runStart == runEnd ? $"{runStart + 1}" : $"{runStart + 1}-{runEnd + 1}");
+            ranges.Add(runStart == runEnd ? $"{runStart + 1}" : $"{runStart + 1}..{runEnd + 1}");
             if (i < sorted.Count) runStart = sorted[i];
         }
         return string.Join("  ", ranges);
