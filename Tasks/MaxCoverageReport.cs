@@ -23,7 +23,8 @@ public record MaxCoverageReport(
     public record LabeledResult(string Label, string FileTag, SeekMaximumCoverage.CombinationResult Result);
 
     /// <param name="CopyOf">The file of an earlier result with the same proteases in the same order, or null.</param>
-    public record MapFile(LabeledResult Result, string FileName, string? CopyOf);
+    /// <param name="Modes">The labels of every result this map shows, for its heading.</param>
+    public record MapFile(LabeledResult Result, string FileName, string? CopyOf, IReadOnlyList<string> Modes);
 
     public const string MaximumCoverageSetLabel = "Maximum Coverage Set";
 
@@ -71,23 +72,23 @@ public record MaxCoverageReport(
     /// <summary>
     /// One map PDF per result, in <see cref="Results"/> order, named <paramref name="stem"/>_&lt;FileTag&gt;.pdf.
     /// Results often pick the same proteases, so a result whose map was already drawn names that file
-    /// in <see cref="MapFile.CopyOf"/>, to be copied rather than drawn again.
+    /// in <see cref="MapFile.CopyOf"/>, to be copied rather than drawn again. A map and its copies share
+    /// <see cref="MapFile.Modes"/>, so the heading drawn once is right in every copy.
     /// </summary>
     public IEnumerable<MapFile> MapFiles(string stem)
     {
+        static string Key(LabeledResult result) => string.Join(" + ", result.Result.Proteases);
+        var modesByProteases = Results.GroupBy(Key)
+            .ToDictionary(g => g.Key, g => (IReadOnlyList<string>)g.Select(r => r.Label).ToList());
+
         var fileByProteases = new Dictionary<string, string>();
         foreach (var result in Results)
         {
             string fileName = $"{stem}_{result.FileTag}.pdf";
-            string proteases = string.Join(" + ", result.Result.Proteases);
-            if (fileByProteases.TryGetValue(proteases, out var drawn))
-            {
-                yield return new MapFile(result, fileName, drawn);
-                continue;
-            }
-
-            fileByProteases[proteases] = fileName;
-            yield return new MapFile(result, fileName, null);
+            string proteases = Key(result);
+            fileByProteases.TryGetValue(proteases, out var drawn);
+            fileByProteases.TryAdd(proteases, fileName);
+            yield return new MapFile(result, fileName, drawn, modesByProteases[proteases]);
         }
     }
 

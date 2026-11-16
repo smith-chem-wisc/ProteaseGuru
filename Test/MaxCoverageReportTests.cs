@@ -158,6 +158,19 @@ public class MaxCoverageReportTests
     }
 
     [Test]
+    public void MapFiles_NameEveryModeTheMapShows()
+    {
+        var coverage = new Dictionary<string, HashSet<int>> { ["A"] = [0, 1, 2], ["B"] = [3, 4] };
+        var report = MaxCoverageReport.Compute(_seeker, _protein, [], coverage);
+
+        var files = report.MapFiles("S").ToList();
+
+        Assert.That(files[0].Modes, Is.EqualTo(new[] { "Best 1" }));
+        Assert.That(files[1].Modes, Is.EqualTo(new[] { MaxCoverageReport.MaximumCoverageSetLabel, "All" }));
+        Assert.That(files[2].Modes, Is.EqualTo(files[1].Modes));
+    }
+
+    [Test]
     public void MapFiles_WithOneProteaseCopyTheBest1Map()
     {
         var report = Report(_proteaseParams.Take(1).ToList());
