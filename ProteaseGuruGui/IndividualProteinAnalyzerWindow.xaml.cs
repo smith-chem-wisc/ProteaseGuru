@@ -151,9 +151,11 @@ namespace ProteaseGuru.Gui
 
         private void ApplyRnaMode()
         {
-            foreach (var vm in _allProteaseVm.ProteaseSpecificParameters.Where(p => !p.IsVisible))
+            var hiddenTicked = _allProteaseVm.ProteaseSpecificParameters.Where(p => !p.IsVisible && p.IsSelected).ToList();
+            foreach (var vm in hiddenTicked)
                 vm.IsSelected = false;
-            ScheduleRefresh();
+            if (hiddenTicked.Count > 0)
+                ScheduleRefresh();
         }
 
         private void SetUpProteinsForTreeView()
@@ -490,8 +492,11 @@ namespace ProteaseGuru.Gui
             string defaultAgent = GuiGlobalParamsViewModel.Instance.IsRnaMode ? "RNase T1" : "trypsin|P";
             var defaultVm = _allProteaseVm.ProteaseSpecificParameters
                 .FirstOrDefault(vm => vm.DigestionAgentName == defaultAgent);
-            if (defaultVm != null)
+            if (defaultVm is { IsSelected: false })
+            {
                 defaultVm.IsSelected = true;
+                ScheduleRefresh();
+            }
 
             foreach (var vm in _allProteaseVm.ProteaseSpecificParameters)
                 vm.PropertyChanged += OnProteaseParameterChanged;
