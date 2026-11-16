@@ -510,7 +510,6 @@ namespace ProteaseGuru.Gui
         void results_Unloaded(object sender, RoutedEventArgs e)
         {
             GuiGlobalParamsViewModel.Instance.PropertyChanged -= OnGlobalParamsChanged;
-            _refreshTimer?.Stop();
             foreach (var vm in _allProteaseVm.ProteaseSpecificParameters)
                 vm.PropertyChanged -= OnProteaseParameterChanged;
         }
