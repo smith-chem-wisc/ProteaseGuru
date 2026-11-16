@@ -125,7 +125,6 @@ namespace ProteaseGuru.Gui
 
             Canvas.SetTop(tb, loc.Y);
             Canvas.SetLeft(tb, loc.X);
-            Panel.SetZIndex(tb, 2);
             cav.Children.Add(tb);
             return tb;
         }
@@ -163,7 +162,6 @@ namespace ProteaseGuru.Gui
 
             Canvas.SetTop(tb, loc.Y);
             Canvas.SetLeft(tb, loc.X);
-            Panel.SetZIndex(tb, 2);
             cav.Children.Add(tb);
         }
         /// <summary>
@@ -190,7 +188,6 @@ namespace ProteaseGuru.Gui
 
             Canvas.SetTop(tb, loc.Y);
             Canvas.SetLeft(tb, loc.X);
-            Panel.SetZIndex(tb, 2);
             cav.Children.Add(tb);
         }
         public static void txtDrawingLabel(Canvas cav, Point loc, string txt, Brush clr)
@@ -211,7 +208,6 @@ namespace ProteaseGuru.Gui
 
             Canvas.SetTop(tb, loc.Y);
             Canvas.SetLeft(tb, loc.X);
-            Panel.SetZIndex(tb, 2);
             cav.Children.Add(tb);
         }
 
@@ -252,8 +248,6 @@ namespace ProteaseGuru.Gui
             }
 
             cav.Children.Add(top);
-
-            Canvas.SetZIndex(top, 1);
         }
 
         public static void circledTxtDraw(Canvas cav, Point loc, SolidColorBrush clr)
@@ -269,7 +263,6 @@ namespace ProteaseGuru.Gui
             };
             Canvas.SetLeft(circle, loc.X);
             Canvas.SetTop(circle, loc.Y - .75);
-            Panel.SetZIndex(circle, 1);
             cav.Children.Add(circle);
         }
 
@@ -289,7 +282,6 @@ namespace ProteaseGuru.Gui
                 };
                 Canvas.SetLeft(circle, loc.X);
                 Canvas.SetTop(circle, ((loc.Y - .75) - (circleCount * 18)));
-                Panel.SetZIndex(circle, 1);
                 cav.Children.Add(circle);
                 circleCount++;
             }
@@ -703,7 +695,6 @@ namespace ProteaseGuru.Gui
                 StrokeThickness = 2,
                 Opacity = isUnique ? 1.0 : 0.35
             };
-            Panel.SetZIndex(cap, 2);
             canvas.Children.Add(cap);
         }
 
@@ -772,12 +763,7 @@ namespace ProteaseGuru.Gui
 
                 txtDrawingLabel(mapCanvas, new Point(0, height), lineStartRes.ToString(), Brushes.Black);
 
-                for (int r = 0; r < line.Length; r++)
-                {
-                    string ch = GetUpperCharString(line[r]);
-                    txtDrawing(mapCanvas, new Point(r * residueSpacing + seqLeftOffset, height), ch, Brushes.Black);
-                }
-
+                var caps = new List<(double X, int LaneY, SolidColorBrush Brush)>();
                 int barBaseY = height + SeqTextHeight + BarTopMargin;
 
                 for (int pi = 0; pi < orderedProteases.Count; pi++)
@@ -810,14 +796,23 @@ namespace ProteaseGuru.Gui
                         };
                         Canvas.SetLeft(bar, x1);
                         Canvas.SetTop(bar, laneY);
-                        Panel.SetZIndex(bar, 1);
                         mapCanvas.Children.Add(bar);
 
                         if (pepStart >= lineStartRes)
-                            DrawBarEndCap(mapCanvas, x1, laneY, brush, true, BarHeight);
+                            caps.Add((x1, laneY, brush));
                         if (pepEnd <= lineEndRes)
-                            DrawBarEndCap(mapCanvas, x2, laneY, brush, true, BarHeight);
+                            caps.Add((x2, laneY, brush));
                     }
+                }
+
+                // Children stack in the order they are added: bars, then their end caps, then the letters.
+                foreach (var (capX, capY, capBrush) in caps)
+                    DrawBarEndCap(mapCanvas, capX, capY, capBrush, true, BarHeight);
+
+                for (int r = 0; r < line.Length; r++)
+                {
+                    string ch = GetUpperCharString(line[r]);
+                    txtDrawing(mapCanvas, new Point(r * residueSpacing + seqLeftOffset, height), ch, Brushes.Black);
                 }
 
                 height += lineStride;
@@ -1164,7 +1159,6 @@ namespace ProteaseGuru.Gui
                 int lineEndResidue = lineStartResidue + line.Length - 1;
 
                 txtDrawingLabel(mapCanvas, new Point(0, height), lineLabel.ToString(), Brushes.Black);
-                DrawSequenceCharacters(mapCanvas, line, height, residueSpacing, uniqueCovered, sharedOnlyCovered, lineStartResidue, seqLeftOffset);
 
                 // Process carry-over partial peptides from the previous line
                 if (partialPeptideMatches.Count > 0)
@@ -1227,6 +1221,8 @@ namespace ProteaseGuru.Gui
                             residueSpacing, seqLeftOffset);
                     }
                 }
+
+                DrawSequenceCharacters(mapCanvas, line, height, residueSpacing, uniqueCovered, sharedOnlyCovered, lineStartResidue, seqLeftOffset);
 
                 int addedSpace = indices.Count > 7 ? (indices.Count - 7) * 10 : 0;
                 height += 100 + addedSpace;
