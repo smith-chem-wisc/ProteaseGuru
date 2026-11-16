@@ -501,7 +501,7 @@ namespace ProteaseGuru.Gui
             foreach (var vm in _allProteaseVm.ProteaseSpecificParameters)
                 vm.PropertyChanged += OnProteaseParameterChanged;
 
-            if (dataGridProteins.Items.Count > 0)
+            if (SelectedProtein == null && dataGridProteins.Items.Count > 0)
                 dataGridProteins.SelectedIndex = 0;
 
             UpdateToggleButtonStyle();
