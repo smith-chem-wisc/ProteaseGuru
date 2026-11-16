@@ -1291,6 +1291,11 @@ namespace ProteaseGuru.Gui
             double width = element.ActualWidth, height = element.ActualHeight;
             double pixelsPerDip = dpi / 96.0;
 
+            // One bitmap and pixel buffer serve every tile of the same height: each holds tens of megabytes,
+            // and bitmaps made per tile stay in memory until the GC finalizes them.
+            RenderTargetBitmap bitmap = null;
+            byte[] pixels = null;
+
             using var pdf = File.Create(path);
             using (var document = SKDocument.CreatePdf(pdf))
             {
@@ -1319,10 +1324,16 @@ namespace ProteaseGuru.Gui
                             };
                             dc.DrawRectangle(brush, null, new Rect(0, 0, width, tileHeight));
                         }
-                        var bitmap = new RenderTargetBitmap(pixelWidth, pixelHeight, dpi, dpi, PixelFormats.Pbgra32);
+                        if (bitmap == null || bitmap.PixelHeight != pixelHeight)
+                        {
+                            bitmap = new RenderTargetBitmap(pixelWidth, pixelHeight, dpi, dpi, PixelFormats.Pbgra32);
+                            pixels = new byte[pixelWidth * pixelHeight * 4];
+                        }
+                        else
+                        {
+                            bitmap.Clear();
+                        }
                         bitmap.Render(tile);
-
-                        var pixels = new byte[pixelWidth * pixelHeight * 4];
                         bitmap.CopyPixels(pixels, pixelWidth * 4, 0);
                         var info = new SKImageInfo(pixelWidth, pixelHeight, SKColorType.Bgra8888, SKAlphaType.Opaque);
                         using var image = SKImage.FromPixelCopy(info, pixels, pixelWidth * 4);
