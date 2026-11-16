@@ -532,6 +532,13 @@ public class MaxCoverageTests
             var bestN = _analyzer.ForMode(MaxCoverageMode.BestN, coverage, ModeTestResidues, 2);
             Assert.That(bestN.Proteases, Is.Empty, "Best N with nothing covered goes through the cap to the empty set");
             Assert.That(bestN.ReachedMaximumCoverage, Is.False);
+
+            for (int size = 1; size <= 3; size++)
+            {
+                var best = _analyzer.BestCombination(coverage, size, ModeTestResidues);
+                Assert.That(best.Proteases, Is.Empty, $"BestCombination of {size} agrees with Best N");
+                Assert.That(best.TiedSetCount, Is.EqualTo(0));
+            }
         }
     }
 

@@ -465,7 +465,8 @@ public class SeekMaximumCoverage
 
     /// <summary>
     /// Finds the best combination of N proteases that maximizes coverage. With fewer than N
-    /// proteases in <paramref name="coverageDict"/>, every protease is reported.
+    /// proteases in <paramref name="coverageDict"/>, every protease is reported. Reports no
+    /// proteases when none of them covers anything, as Best N and the Maximum Coverage Set do.
     /// </summary>
     /// <param name="totalResidues">
     /// Residue count the coverage fraction is reported against — normally the biopolymer's length.
@@ -483,8 +484,11 @@ public class SeekMaximumCoverage
         var (names, sets, universe) = BuildProteaseBitsets(coverageDict, region);
         int denominator = ResolveDenominator(totalResidues, region);
 
+        var everything = CombinationSearch.Everything(sets, universe);
+        if (everything.Count == 0)
+            return NothingCovered(denominator);
         if (names.Count < combinationSize)
-            return CombinationSearch.Everything(sets, universe).ToResult(names, denominator);
+            return everything.ToResult(names, denominator);
 
         return CombinationSearch.OfSize(sets, universe, combinationSize).ToResult(names, denominator);
     }
@@ -521,8 +525,7 @@ public class SeekMaximumCoverage
 
         var everything = CombinationSearch.Everything(sets, universe);
         if (everything.Count == 0)
-            return new CombinationResult(new List<string>(), new HashSet<int>(), 0, denominator,
-                0.0, 0, new List<List<string>>());
+            return NothingCovered(denominator);
 
         int largest = Math.Min(combinationSize, names.Count);
         for (int size = 1; ; size++)
@@ -533,6 +536,9 @@ public class SeekMaximumCoverage
                 return search.ToResult(names, denominator) with { ReachedMaximumCoverage = reachedEverything };
         }
     }
+
+    private static CombinationResult NothingCovered(int denominator) =>
+        new(new List<string>(), new HashSet<int>(), 0, denominator, 0.0, 0, new List<List<string>>());
 
     /// <summary>
     /// The best coverage reached by sets of one size: the first set in search order that reaches
