@@ -150,8 +150,19 @@ namespace ProteaseGuru.Gui
             var hiddenTicked = _allProteaseVm.ProteaseSpecificParameters.Where(p => !p.IsVisible && p.IsSelected).ToList();
             foreach (var vm in hiddenTicked)
                 vm.IsSelected = false;
+            ApplyDigestionAgentLabels();
             if (hiddenTicked.Count > 0)
                 ScheduleRefresh();
+        }
+
+        private void ApplyDigestionAgentLabels()
+        {
+            string agent = GlobalVariables.AnalyteType.GetDigestionAgentNoun();
+            pickModeHint.Text = $"Tick {agent}s, then pick a mode to run the analysis";
+            bestNTextBox.ToolTip = $"Number of {agent}s to combine. Capped at the Maximum Coverage Set size.";
+            bestNToggle.ToolTip = $"Up to N ticked {agent}s that together cover the most residues";
+            maxCoverageSetToggle.ToolTip = $"The fewest ticked {agent}s that reach the coverage of all of them";
+            allToggle.ToolTip = $"Every ticked {agent}";
         }
 
         private void SetUpProteinsForTreeView()
@@ -259,7 +270,7 @@ namespace ProteaseGuru.Gui
             int reached = result.Proteases.Count;
             if (_maxCoverageMode == MaxCoverageMode.BestN && result.ReachedMaximumCoverage)
             {
-                bestNCapHint.Text = $"Maximum coverage reached with {reached} protease{(reached == 1 ? "" : "s")}";
+                bestNCapHint.Text = $"Maximum coverage reached with {reached} {GlobalVariables.AnalyteType.GetDigestionAgentNoun()}{(reached == 1 ? "" : "s")}";
                 bestNCapHint.Visibility = Visibility.Visible;
             }
 

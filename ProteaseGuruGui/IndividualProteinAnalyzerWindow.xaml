@@ -245,8 +245,7 @@ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                                                    LowerBound="1" AllowNegative="False"
                                                    Width="35" Margin="0,0,12,0" VerticalAlignment="Center"
                                                    TextChanged="BestNTextBox_TextChanged"
-                                                   LostKeyboardFocus="BestNTextBox_LostKeyboardFocus"
-                                                   ToolTip="Number of proteases to combine. Capped at the Maximum Coverage Set size."/>
+                                                   LostKeyboardFocus="BestNTextBox_LostKeyboardFocus"/>
                         <RadioButton x:Name="maxCoverageSetToggle" Content="Maximum Coverage Set"
                                      GroupName="MaxCovMode"
                                      Tag="{x:Static tasks:MaxCoverageMode.MaximumCoverageSet}"
@@ -288,7 +287,6 @@ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     </ScrollViewer>
 
                     <TextBlock Grid.Row="2" x:Name="pickModeHint"
-                               Text="Tick proteases, then pick a mode to run the analysis"
                                FontStyle="Italic" FontSize="13"
                                HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,24,0,0"
                                Foreground="#888888" Visibility="Collapsed"/>

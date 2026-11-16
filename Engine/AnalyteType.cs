@@ -18,13 +18,14 @@ public static class AnalyteTypeExtensions
 {
     private static readonly Dictionary<AnalyteType, AnalyteTypeData> AnalyteTypes = new()
             {
-                { AnalyteType.Peptide, new AnalyteTypeData("Peptide", "Protein", "Protease") },
-                { AnalyteType.Oligo, new AnalyteTypeData("Oligo", "Transcript", "RNase") },
+                { AnalyteType.Peptide, new AnalyteTypeData("Peptide", "Protein", "Protease", "protease") },
+                { AnalyteType.Oligo, new AnalyteTypeData("Oligo", "Transcript", "RNase", "RNase") },
             };
 
     public static string GetUniqueFormLabel(this AnalyteType analyteType) => AnalyteTypes[analyteType].UniqueFormLabel;
     public static string GetBioPolymerLabel(this AnalyteType analyteType) => AnalyteTypes[analyteType].BioPolymerLabel;
     public static string GetDigestionAgentLabel(this AnalyteType analyteType) => AnalyteTypes[analyteType].DigestionAgentLabel;
+    public static string GetDigestionAgentNoun(this AnalyteType analyteType) => AnalyteTypes[analyteType].DigestionAgentNoun;
 }
 
 /// <summary>
@@ -33,7 +34,8 @@ public static class AnalyteTypeExtensions
 internal class AnalyteTypeData(
     string uniqueFormLabel,
     string bioPolymerLabel,
-    string digestionAgentLabel)
+    string digestionAgentLabel,
+    string digestionAgentNoun)
 {
 
     /// <summary>
@@ -50,4 +52,9 @@ internal class AnalyteTypeData(
     /// Gets the label for the digestion agent class (e.g. Protease)
     /// </summary>
     internal string DigestionAgentLabel { get; init; } = digestionAgentLabel;
+
+    /// <summary>
+    /// Gets the digestion agent class as written mid-sentence (e.g. protease, but RNase)
+    /// </summary>
+    internal string DigestionAgentNoun { get; init; } = digestionAgentNoun;
 }
