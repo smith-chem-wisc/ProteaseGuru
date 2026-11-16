@@ -411,7 +411,7 @@ namespace ProteaseGuru.Gui
 
         private void BestNTextBox_LostKeyboardFocus(object sender, KeyboardFocusChangedEventArgs e)
         {
-            if (!int.TryParse(bestNTextBox.Text, out int n) || n < 1)
+            if (!int.TryParse(bestNTextBox.Text, out _))
                 bestNTextBox.Text = _bestN.ToString();
         }
 
