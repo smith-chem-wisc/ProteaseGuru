@@ -5,6 +5,7 @@ using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using ProteaseGuru.Engine;
+using ProteaseGuru.GuiFunctions;
 using Omics;
 using Omics.BioPolymer;
 using Omics.Modifications;
@@ -32,9 +33,6 @@ namespace ProteaseGuru.Gui
 
         /// <summary>Complete list of protein accessions from all databases</summary>
         private ObservableCollection<string> proteinList;
-
-        /// <summary>Filtered list of proteins based on user search input</summary>
-        private ObservableCollection<string> filteredList;
 
         /// <summary>
         /// Maps Protein objects to their tree view representation (GUI-specific)
@@ -92,7 +90,6 @@ namespace ProteaseGuru.Gui
             MessageShow = true;
 
             proteinList = new ObservableCollection<string>();
-            filteredList = new ObservableCollection<string>();
             ProteinsForTreeView = new Dictionary<IBioPolymer, ProteinForTreeView>();
 
             SetUpProteinsForTreeView();
@@ -106,8 +103,6 @@ namespace ProteaseGuru.Gui
             ProteaseByColor = rgbColorMap.ToDictionary(kvp => kvp.Key, kvp => ToWpfColor(kvp.Value));
 
             this.Loaded += results_Loaded;
-            SearchModifications.SetUp();
-            SearchModifications.Timer.Tick += new EventHandler(searchBox_TextChangedHandler);
         }
 
         #endregion
@@ -134,9 +129,9 @@ namespace ProteaseGuru.Gui
             foreach (var accession in _analyzer.ProteinAccessions)
             {
                 proteinList.Add(accession);
-                dataGridProteins.Items.Add(accession);
             }
-            dataGridProteins.DataContext = proteinList;
+
+            dataGridProteins.ItemsSource = proteinList;
         }
 
         #endregion
@@ -152,50 +147,12 @@ namespace ProteaseGuru.Gui
 
         /// <summary>
         /// Event handler for search text box changes.
-        /// Triggers debounced search timer to avoid searching on every keystroke.
+        /// Filters the protein list to the accessions that match the search text.
         /// </summary>
         private void Search_TextChanged(object sender, TextChangedEventArgs e)
         {
-            SearchModifications.SetTimer();
-        }
-
-        /// <summary>
-        /// Handles the debounced search timer tick.
-        /// Filters the protein list based on user input.
-        /// </summary>
-        private void searchBox_TextChangedHandler(object sender, EventArgs e)
-        {
-            string userInput = SearchTextBox.Text;
-
-            if (string.IsNullOrEmpty(userInput))
-            {
-                dataGridProteins.DataContext = proteinList;
-                return;
-            }
-
-            searchProtein(userInput);
-            dataGridProteins.Items.Clear();
-            foreach (var entry in filteredList)
-            {
-                dataGridProteins.Items.Add(entry);
-            }
-
-            SearchModifications.Timer.Stop();
-        }
-
-        /// <summary>
-        /// Filters the protein list by checking if accession contains the search text.
-        /// </summary>
-        private void searchProtein(string txt)
-        {
-            filteredList.Clear();
-            foreach (var protein in proteinList)
-            {
-                if (protein.Contains(txt, StringComparison.OrdinalIgnoreCase))
-                {
-                    filteredList.Add(protein);
-                }
-            }
+            string searchText = SearchTextBox.Text;
+            dataGridProteins.Items.Filter = item => TextSearchMatcher.Matches(item as string, searchText);
         }
 
         #endregion
@@ -258,19 +215,14 @@ namespace ProteaseGuru.Gui
                 MessageShow = false;
             }
 
-            // Determine which protein is selected
-            if (dataGridProteins.SelectedItem != null)
+            // Nothing is selected (filtered out or deselected); keep showing the last protein
+            if (dataGridProteins.SelectedItem == null) return;
+
+            string proteinName = dataGridProteins.SelectedItem.ToString();
+            var protein = ProteinsForTreeView.FirstOrDefault(p => p.Key.Accession == proteinName).Value;
+            if (protein != null)
             {
-                string proteinName = dataGridProteins.SelectedItem.ToString();
-                var protein = ProteinsForTreeView.FirstOrDefault(p => p.Key.Accession == proteinName).Value;
-                if (protein != null)
-                {
-                    SelectedProtein = protein;
-                }
-            }
-            else
-            {
-                SelectedProtein = ProteinsForTreeView.FirstOrDefault().Value;
+                SelectedProtein = protein;
             }
 
             if (SelectedProtein == null) return;
@@ -450,9 +402,6 @@ namespace ProteaseGuru.Gui
 
         private void results_Loaded(object sender, RoutedEventArgs e)
         {
-            Window window = Window.GetWindow(this);
-            window.Closing += window_Closing;
-
             // Auto-select the first protein so the coverage map is populated on load
             if (dataGridProteins.Items.Count > 0)
             {
@@ -461,11 +410,6 @@ namespace ProteaseGuru.Gui
             }
 
             UpdateToggleButtonStyle();
-        }
-
-        void window_Closing(object sender, global::System.ComponentModel.CancelEventArgs e)
-        {
-            SearchModifications.Timer.Tick -= searchBox_TextChangedHandler;
         }
 
         #endregion
