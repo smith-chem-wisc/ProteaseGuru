@@ -67,17 +67,6 @@ internal class SpectralLibraryTests
     }
 
     [Test]
-    public static void TheValidatedMappingModeCannotBuildModifiedPeptides()
-    {
-        // Why production must ask for MapToInputFullSequence: under the validated mode mzLib builds the
-        // peptide from the Unimod spelling, which has no parser.
-        var model = SeededModel(FragmentIonMappingMode.MapToValidatedFullSequence, PredictionFor(MzLibSequence, UnimodSequence));
-
-        var ex = Assert.Throws<MzLibException>(() => GenerateFrom(model, retentionTime: 12.3));
-        Assert.That(ex!.Message, Does.Contain("Could not find modification"));
-    }
-
-    [Test]
     public static void FragmentMassesComeFromTheSubmittedPeptideNotTheValidatedOne()
     {
         // With "Exclude Incompatible Peptides" off, mzLib strips mods Prosit cannot model, so the two
@@ -122,8 +111,8 @@ internal class SpectralLibraryTests
     {
         var model = GeneratorWith(PermissiveOptions).CreateIntensityModel();
 
-        // The validated spelling is Unimod-encoded and has no parser, so mapping onto it cannot build
-        // a peptide at all; see TheValidatedMappingModeCannotBuildModifiedPeptides.
+        // The validated spelling can drop mods the model cannot handle, so fragments built from it may
+        // describe a different molecule; see FragmentMassesComeFromTheSubmittedPeptideNotTheValidatedOne.
         Assert.That(model.FragmentIonMappingMode, Is.EqualTo(FragmentIonMappingMode.MapToInputFullSequence));
 
         // Decides whether an out-of-range charge or collision energy drops the input or throws.
