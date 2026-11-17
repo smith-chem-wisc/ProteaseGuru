@@ -428,8 +428,7 @@ internal class SpectralLibraryTests
         var ex = Assert.Throws<InvalidOperationException>(
             () => SpectralLibraryGenerator.ReportRejectedInputs(model, null));
 
-        // The limits come off the model, so the message stays true if the model changes.
-        Assert.That(ex!.Message, Does.Contain("1-30").And.Contain("UNIMOD"));
+        Assert.That(ex!.Message, Does.Contain(model.ModelName).And.Contain("Every peptide was rejected"));
     }
 
     [Test]

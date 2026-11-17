@@ -308,10 +308,8 @@ namespace ProteaseGuru.Tasks
             if (rejected == total)
             {
                 progress?.Report(
-                    $"No peptide could be given a retention time by {model.ModelName}. It accepts base " +
-                    $"sequences of {model.MinPeptideLength}-{model.MaxPeptideLength} canonical residues, with " +
-                    $"modifications limited to {DescribeAllowedModifications(model.AllowedUnimodIds)}. The " +
-                    "library will be written without retention times.");
+                    $"No peptide could be given a retention time by {model.ModelName}. The library will be " +
+                    "written without retention times.");
                 return;
             }
 
@@ -395,8 +393,7 @@ namespace ProteaseGuru.Tasks
 
         /// <summary>
         /// Says how many inputs the model refused, and fails loudly if it refused all of them rather
-        /// than writing an empty library. The model decides what it can accept -- its limits are read
-        /// back off it here rather than restated -- so this stays correct if those limits change.
+        /// than writing an empty library.
         /// </summary>
         internal static void ReportRejectedInputs(FragmentIntensityModel model, IProgress<string>? progress)
         {
@@ -407,21 +404,14 @@ namespace ProteaseGuru.Tasks
             if (rejected == total)
             {
                 throw new InvalidOperationException(
-                    $"Every peptide was rejected by {model.ModelName}. It accepts base sequences of " +
-                    $"{model.MinPeptideLength}-{model.MaxPeptideLength} canonical residues at charges " +
-                    $"{string.Join(", ", model.AllowedPrecursorCharges.OrderBy(c => c))}, with modifications " +
-                    $"limited to {DescribeAllowedModifications(model.AllowedUnimodIds)}.");
+                    $"Every peptide was rejected by {model.ModelName}. Its length, charge or modification " +
+                    "limits may not fit these peptides.");
             }
 
             progress?.Report(
                 $"{rejected} of {total} peptide and charge combinations were rejected by {model.ModelName} " +
                 "and will not appear in the library.");
         }
-
-        private static string DescribeAllowedModifications(IReadOnlySet<int> allowedUnimodIds) =>
-            allowedUnimodIds.Count == 0
-                ? "any UNIMOD modification"
-                : $"UNIMOD {string.Join(", ", allowedUnimodIds.OrderBy(id => id))}";
 
         /// <summary>
         /// One prediction input per peptide per charge state, with a retention time array of the same

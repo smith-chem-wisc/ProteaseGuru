@@ -381,7 +381,7 @@ namespace ProteaseGuru.Gui
             string scale = model.IsIndexedRetentionTimeModel ? "indexed retention time (iRT)" : "retention time";
             tbRetentionTimeModelSummary.Text =
                 $"{model.ModelName} predicts {scale} for peptides of {model.MinPeptideLength}-{model.MaxPeptideLength} " +
-                $"canonical residues; {DescribeAllowedModifications(model.AllowedUnimodIds)}.";
+                $"canonical residues. {DescribeAllowedModifications(model.AllowedUnimodIds)}.";
             AppendInputScopeNote(tbRetentionTimeModelSummary, definition.InputScopeNote);
         }
 
@@ -402,7 +402,7 @@ namespace ProteaseGuru.Gui
 
             tbFragmentModelSummary.Text =
                 $"{model.ModelName} accepts peptides of {model.MinPeptideLength}-{model.MaxPeptideLength} " +
-                $"canonical residues; {DescribeAllowedModifications(model.AllowedUnimodIds)}.";
+                $"canonical residues. {DescribeAllowedModifications(model.AllowedUnimodIds)}.";
             AppendInputScopeNote(tbFragmentModelSummary, definition.InputScopeNote);
 
             // The inputs depend on the model, so a new model starts from its own defaults rather than
@@ -554,8 +554,8 @@ namespace ProteaseGuru.Gui
 
         private static string DescribeAllowedModifications(IReadOnlySet<int> allowedUnimodIds) =>
             allowedUnimodIds.Count == 0
-                ? "accepts all UNIMOD modifications"
-                : $"supports UNIMOD {string.Join(", ", allowedUnimodIds.OrderBy(id => id))}";
+                ? "No fixed UNIMOD list; Koina may still refuse some modifications by residue"
+                : $"Supports UNIMOD {string.Join(", ", allowedUnimodIds.OrderBy(id => id))}";
 
         #region Protease Selection Handlers
 
