@@ -12,5 +12,7 @@ namespace ProteaseGuru.Tasks;
 internal static class DetectabilityModel
 {
     internal static PFly2024FineTuned Create() =>
-        new(modHandlingMode: SequenceConversionHandlingMode.RemoveIncompatibleElements);
+        new(modHandlingMode: SequenceConversionHandlingMode.RemoveIncompatibleElements,
+            maxNumberOfBatchesPerRequest: 50,
+            throttlingDelayInMilliseconds: 1000);
 }
