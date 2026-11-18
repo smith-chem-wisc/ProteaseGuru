@@ -11,8 +11,6 @@ namespace ProteaseGuru.Tasks;
 /// </summary>
 internal static class DetectabilityModel
 {
-    // The public Koina server answers bursts above roughly 35 requests a second with 429, and one
-    // refused request fails the whole prediction. 50 at once with a 1 s pause stays near 30 a second.
     internal static PFly2024FineTuned Create() =>
         new(modHandlingMode: SequenceConversionHandlingMode.RemoveIncompatibleElements,
             maxNumberOfBatchesPerRequest: 50,
