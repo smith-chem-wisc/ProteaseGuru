@@ -3,6 +3,7 @@ using System.ComponentModel;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
 using ProteaseGuru.Engine;
@@ -35,6 +36,9 @@ namespace ProteaseGuru.Gui
         // ── Display mode toggle ──────────────────────────────────────────────
         private CoverageMapDisplayMode _displayMode = CoverageMapDisplayMode.ProteaseLane;
         private CoverageMapDisplayMode _lastCoverageMode = CoverageMapDisplayMode.ProteaseLane;
+
+        private MaxCoverageMode? _maxCoverageMode;
+        private int _bestN = 2;
 
         // Serves (coverage, intervals) per protease for the selected protein, re-digesting only
         // the proteases whose settings changed. Algorithm- and view-toggle refreshes hit it
@@ -146,8 +150,19 @@ namespace ProteaseGuru.Gui
             var hiddenTicked = _allProteaseVm.ProteaseSpecificParameters.Where(p => !p.IsVisible && p.IsSelected).ToList();
             foreach (var vm in hiddenTicked)
                 vm.IsSelected = false;
+            ApplyDigestionAgentLabels();
             if (hiddenTicked.Count > 0)
                 ScheduleRefresh();
+        }
+
+        private void ApplyDigestionAgentLabels()
+        {
+            string agent = GlobalVariables.AnalyteType.GetDigestionAgentNoun();
+            pickModeHint.Text = $"Tick {agent}s, then pick a mode to run the analysis";
+            bestNTextBox.ToolTip = $"Number of {agent}s to combine. Capped at the Maximum Coverage Set size.";
+            bestNToggle.ToolTip = $"Up to N ticked {agent}s that together cover the most residues";
+            maxCoverageSetToggle.ToolTip = $"The fewest ticked {agent}s that reach the coverage of all of them";
+            allToggle.ToolTip = $"Every ticked {agent}";
         }
 
         private void SetUpProteinsForTreeView()
@@ -210,8 +225,18 @@ namespace ProteaseGuru.Gui
 
         #region Reactive Digestion
 
+        // Any edit to the protease panel invalidates the last analysis. Clearing the mode instead of
+        // rerunning it keeps ticking through proteases cheap: nothing digests until a mode is picked.
         private void OnProteaseParameterChanged(object sender, PropertyChangedEventArgs e)
-            => ScheduleRefresh();
+            => ClearMode();
+
+        private void ClearMode()
+        {
+            _maxCoverageMode = null;
+            foreach (var toggle in new[] { bestNToggle, maxCoverageSetToggle, allToggle })
+                toggle.IsChecked = false;
+            ScheduleRefresh();
+        }
 
         private void RefreshMaxCoverage()
         {
@@ -222,8 +247,11 @@ namespace ProteaseGuru.Gui
                 .ToList();
 
             ClearCoverageMap();
+            bestNCapHint.Visibility = Visibility.Collapsed;
 
-            if (checkedProteases.Count == 0) return;
+            bool ready = _maxCoverageMode != null && checkedProteases.Count > 0;
+            pickModeHint.Visibility = ready ? Visibility.Collapsed : Visibility.Visible;
+            if (!ready) return;
 
             var proteaseParams = checkedProteases.Select(vm => vm.ProteaseSpecificParams).ToList();
 
@@ -237,33 +265,14 @@ namespace ProteaseGuru.Gui
             // a protein whose C-terminus yields no detectable peptide still counts against it.
             int totalResidues = SelectedProtein.Protein.Length;
 
-            SeekMaximumCoverage.CombinationResult result;
-            if (greedyToggle.IsChecked == true)
+            var result = _seeker.ForMode(_maxCoverageMode.Value, coverageDict, totalResidues, _bestN);
+
+            int reached = result.Proteases.Count;
+            if (_maxCoverageMode == MaxCoverageMode.BestN && result.ReachedMaximumCoverage)
             {
-                var g = _seeker.GreedyMinimumProteaseSet(coverageDict, totalResidues);
-                result = new SeekMaximumCoverage.CombinationResult(
-                    g.SelectedProteases, g.CoveredResidues,
-                    g.CoveredResidues.Count, g.CoverageFraction);
+                bestNCapHint.Text = $"Maximum coverage reached with {reached} {GlobalVariables.AnalyteType.GetDigestionAgentNoun()}{(reached == 1 ? "" : "s")}";
+                bestNCapHint.Visibility = Visibility.Visible;
             }
-            else if (singleToggle.IsChecked == true)
-                result = _seeker.BestSingle(coverageDict, totalResidues);
-            else if (pairToggle.IsChecked == true)
-                result = _seeker.BestPair(coverageDict, totalResidues);
-            else if (tripletToggle.IsChecked == true)
-                result = _seeker.BestTriplet(coverageDict, totalResidues);
-            else if (allToggle.IsChecked == true)
-            {
-                // All: show every checked protease — union of all covered residues
-                var allCovered = new HashSet<int>();
-                foreach (var kvp in coverageDict)
-                    allCovered.UnionWith(kvp.Value);
-                result = new SeekMaximumCoverage.CombinationResult(
-                    checkedProteases.Select(vm => vm.DigestionAgentName).ToList(),
-                    allCovered, allCovered.Count,
-                    SeekMaximumCoverage.CoverageFraction(allCovered, totalResidues));
-            }
-            else
-                result = _seeker.BestTriplet(coverageDict, totalResidues);
 
             // Re-use the already-computed interval dict; filter to the winning proteases only.
             var pepsByProtease = result.Proteases
@@ -385,7 +394,26 @@ namespace ProteaseGuru.Gui
             => OnSelectionChanged();
 
         private void MaxCoverageMode_Changed(object sender, RoutedEventArgs e)
-            => ScheduleRefresh();
+        {
+            _maxCoverageMode = (MaxCoverageMode)((RadioButton)sender).Tag;
+            ScheduleRefresh();
+        }
+
+        // Empty or partly typed text keeps the last N.
+        private void BestNTextBox_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            if (!int.TryParse(((TextBox)sender).Text, out int n) || n < 1 || n == _bestN) return;
+
+            _bestN = n;
+            if (_maxCoverageMode == MaxCoverageMode.BestN)
+                ScheduleRefresh();
+        }
+
+        private void BestNTextBox_LostKeyboardFocus(object sender, KeyboardFocusChangedEventArgs e)
+        {
+            if (!int.TryParse(bestNTextBox.Text, out _))
+                bestNTextBox.Text = _bestN.ToString();
+        }
 
         private void maxCoverageGrid_SizeChanged(object sender, SizeChangedEventArgs e)
         {
@@ -452,23 +480,15 @@ namespace ProteaseGuru.Gui
         {
             GuiGlobalParamsViewModel.Instance.PropertyChanged -= OnGlobalParamsChanged;
             GuiGlobalParamsViewModel.Instance.PropertyChanged += OnGlobalParamsChanged;
-            ApplyRnaMode();
 
             foreach (var vm in _allProteaseVm.ProteaseSpecificParameters)
-                vm.PropertyChanged -= OnProteaseParameterChanged;
-
-            // Select a sensible default based on current mode
-            string defaultAgent = GuiGlobalParamsViewModel.Instance.IsRnaMode ? "RNase T1" : "trypsin|P";
-            var defaultVm = _allProteaseVm.ProteaseSpecificParameters
-                .FirstOrDefault(vm => vm.DigestionAgentName == defaultAgent);
-            if (defaultVm is { IsSelected: false })
             {
-                defaultVm.IsSelected = true;
-                ScheduleRefresh();
+                vm.PropertyChanged -= OnProteaseParameterChanged;
+                vm.PropertyChanged += OnProteaseParameterChanged;
             }
 
-            foreach (var vm in _allProteaseVm.ProteaseSpecificParameters)
-                vm.PropertyChanged += OnProteaseParameterChanged;
+            // After subscribing: a ticked protease hidden while this tab was away must clear the mode.
+            ApplyRnaMode();
 
             if (SelectedProtein == null && dataGridProteins.Items.Count > 0)
                 dataGridProteins.SelectedIndex = 0;

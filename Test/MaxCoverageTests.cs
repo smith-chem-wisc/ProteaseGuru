@@ -80,13 +80,13 @@ public class MaxCoverageTests
         var result = _analyzer.GreedyMinimumProteaseSet(coverage, _testProtein.Length);
 
         Assert.That(result, Is.Not.Null);
-        Assert.That(result.SelectedProteases, Is.Not.Empty);
+        Assert.That(result.Proteases, Is.Not.Empty);
         Assert.That(result.CoveredResidues.Count, Is.GreaterThan(0));
         Assert.That(result.CoverageFraction, Is.GreaterThan(0));
 
         TestContext.WriteLine("Greedy Minimum Protease Set:");
         TestContext.WriteLine(new string('-', 50));
-        TestContext.WriteLine($"  Selected: {string.Join(", ", result.SelectedProteases)}");
+        TestContext.WriteLine($"  Selected: {string.Join(", ", result.Proteases)}");
         TestContext.WriteLine($"  Coverage: {result.CoveredResidues.Count}/{result.TotalResidues} ({result.CoverageFraction:P1})");
     }
 
@@ -135,7 +135,7 @@ public class MaxCoverageTests
 
         TestContext.WriteLine($"Coverage for Region {region.Start}-{region.End}:");
         TestContext.WriteLine(new string('-', 50));
-        TestContext.WriteLine($"  Selected: {string.Join(", ", result.SelectedProteases)}");
+        TestContext.WriteLine($"  Selected: {string.Join(", ", result.Proteases)}");
         TestContext.WriteLine($"  Coverage: {result.CoveredResidues.Count}/{result.TotalResidues} ({result.CoverageFraction:P1})");
     }
 
@@ -346,7 +346,252 @@ public class MaxCoverageTests
 
         TestContext.WriteLine("Greedy vs Brute-Force Comparison:");
         TestContext.WriteLine(new string('-', 50));
-        TestContext.WriteLine($"  Greedy ({greedyResult.SelectedProteases.Count} proteases): {greedyResult.CoverageFraction:P1}");
+        TestContext.WriteLine($"  Greedy ({greedyResult.Proteases.Count} proteases): {greedyResult.CoverageFraction:P1}");
         TestContext.WriteLine($"  Best Triplet (3 proteases): {bestTriplet.CoverageFraction:P1}");
+    }
+
+    // Full coverage takes four proteases, so Best 1, 2 and 3, the Maximum Coverage Set and All each
+    // report a different set.
+    private const int ModeTestResidues = 10;
+
+    private static Dictionary<string, HashSet<int>> CoverageWhereEveryModeDiffers() => new()
+    {
+        ["A"] = new HashSet<int> { 0, 1, 2, 3, 4 },
+        ["B"] = new HashSet<int> { 5, 6, 7 },
+        ["C"] = new HashSet<int> { 8 },
+        ["D"] = new HashSet<int> { 9 },
+        ["E"] = new HashSet<int> { 0 }
+    };
+
+    // A + B + C and A + B + D both cover nine residues.
+    [TestCase(1, 1)]
+    [TestCase(2, 1)]
+    [TestCase(3, 2)]
+    public void ForModeBestNMatchesTheExhaustiveSearchOfThatSize(int combinationSize, int tiedSetCount)
+    {
+        var coverage = CoverageWhereEveryModeDiffers();
+
+        var expected = _analyzer.BestCombination(coverage, combinationSize, ModeTestResidues);
+        var actual = _analyzer.ForMode(MaxCoverageMode.BestN, coverage, ModeTestResidues, combinationSize);
+
+        Assert.That(actual.Proteases, Has.Count.EqualTo(combinationSize));
+        Assert.That(actual.Proteases, Is.EqualTo(expected.Proteases));
+        Assert.That(actual.CoveredResidues, Is.EquivalentTo(expected.CoveredResidues));
+        Assert.That(actual.CoverageCount, Is.EqualTo(expected.CoverageCount));
+        Assert.That(actual.CoverageFraction, Is.EqualTo(expected.CoverageFraction));
+        Assert.That(actual.TiedSetCount, Is.EqualTo(tiedSetCount));
+        Assert.That(actual.ReachedMaximumCoverage, Is.False);
+    }
+
+    [Test]
+    public void ForModeMaximumCoverageSetReportsTheSmallestSetCoveringEverything()
+    {
+        var coverage = CoverageWhereEveryModeDiffers();
+
+        var actual = _analyzer.ForMode(MaxCoverageMode.MaximumCoverageSet, coverage, ModeTestResidues);
+
+        Assert.That(actual.Proteases, Is.EqualTo(new[] { "A", "B", "C", "D" }));
+        Assert.That(actual.CoveredResidues, Is.EquivalentTo(Enumerable.Range(0, ModeTestResidues)));
+        Assert.That(actual.CoverageCount, Is.EqualTo(ModeTestResidues));
+        Assert.That(actual.TotalResidues, Is.EqualTo(ModeTestResidues));
+        Assert.That(actual.CoverageFraction, Is.EqualTo(1.0));
+        Assert.That(actual.TiedSetCount, Is.EqualTo(1));
+        Assert.That(actual.ReachedMaximumCoverage, Is.True);
+    }
+
+    // 6 asks for more proteases than the five there are.
+    [TestCase(4)]
+    [TestCase(5)]
+    [TestCase(6)]
+    public void ForModeBestNPastTheMaximumCoverageSetReportsThatSet(int combinationSize)
+    {
+        var coverage = CoverageWhereEveryModeDiffers();
+
+        var actual = _analyzer.ForMode(MaxCoverageMode.BestN, coverage, ModeTestResidues, combinationSize);
+
+        Assert.That(actual.Proteases, Is.EqualTo(new[] { "A", "B", "C", "D" }));
+        Assert.That(actual.CoverageCount, Is.EqualTo(ModeTestResidues));
+        Assert.That(actual.TiedSetCount, Is.EqualTo(1));
+        Assert.That(actual.ReachedMaximumCoverage, Is.True);
+    }
+
+    [TestCase(0)]
+    [TestCase(-1)]
+    [TestCase(null)]
+    public void ForModeBestNRejectsASizeBelowOne(int? combinationSize)
+    {
+        var coverage = CoverageWhereEveryModeDiffers();
+
+        Assert.Throws<ArgumentOutOfRangeException>(
+            () => _analyzer.ForMode(MaxCoverageMode.BestN, coverage, ModeTestResidues, combinationSize));
+    }
+
+    [Test]
+    public void ForModeAllReportsEveryProteaseAndTheUnionOfTheirCoverage()
+    {
+        var coverage = CoverageWhereEveryModeDiffers();
+
+        var actual = _analyzer.ForMode(MaxCoverageMode.All, coverage, ModeTestResidues);
+
+        Assert.That(actual.Proteases, Is.EquivalentTo(coverage.Keys));
+        Assert.That(actual.CoveredResidues, Is.EquivalentTo(Enumerable.Range(0, ModeTestResidues)));
+        Assert.That(actual.CoverageCount, Is.EqualTo(ModeTestResidues));
+        Assert.That(actual.CoverageFraction, Is.EqualTo(1.0));
+        Assert.That(actual.TiedSetCount, Is.EqualTo(0));
+        Assert.That(actual.TiedSets, Is.Empty);
+    }
+
+    /// <summary>
+    /// Greedy takes X first for its four residues and then needs both Y and Z for the last two,
+    /// while Y and Z alone cover all six. Both searches are assigned to one delegate, which pins
+    /// that either can take the other's place.
+    /// </summary>
+    [Test]
+    public void MaximumCoverageSetFindsASmallerSetThanGreedy()
+    {
+        var coverage = new Dictionary<string, HashSet<int>>
+        {
+            ["X"] = new HashSet<int> { 0, 1, 2, 3 },
+            ["Y"] = new HashSet<int> { 0, 1, 4 },
+            ["Z"] = new HashSet<int> { 2, 3, 5 }
+        };
+
+        Func<Dictionary<string, HashSet<int>>, int, (int Start, int End)?, SeekMaximumCoverage.CombinationResult>
+            search = _analyzer.GreedyMinimumProteaseSet;
+        var greedy = search(coverage, 6, null);
+        search = _analyzer.MaximumCoverageSet;
+        var exact = search(coverage, 6, null);
+
+        Assert.That(greedy.Proteases, Is.EqualTo(new[] { "X", "Y", "Z" }));
+        Assert.That(greedy.TiedSetCount, Is.EqualTo(0));
+        Assert.That(greedy.TiedSets, Is.Empty);
+        Assert.That(exact.Proteases, Is.EqualTo(new[] { "Y", "Z" }));
+        Assert.That(exact.CoverageCount, Is.EqualTo(greedy.CoverageCount));
+        Assert.That(exact.CoverageFraction, Is.EqualTo(1.0));
+    }
+
+    /// <summary>
+    /// P and Q cover the same residues, so P + R and Q + R both reach all three. P + R comes first
+    /// in search order and is the one reported.
+    /// </summary>
+    [Test]
+    public void TiedSetsAreCountedAndListedInSearchOrder()
+    {
+        var coverage = new Dictionary<string, HashSet<int>>
+        {
+            ["P"] = new HashSet<int> { 0, 1 },
+            ["Q"] = new HashSet<int> { 0, 1 },
+            ["R"] = new HashSet<int> { 2 },
+            ["S"] = new HashSet<int> { 0 }
+        };
+
+        var result = _analyzer.MaximumCoverageSet(coverage, 3);
+
+        Assert.That(result.Proteases, Is.EqualTo(new[] { "P", "R" }));
+        Assert.That(result.TiedSetCount, Is.EqualTo(2));
+        Assert.That(result.TiedSets, Is.EqualTo(new[] { new[] { "Q", "R" } }));
+    }
+
+    [Test]
+    public void TiedSetListStopsAtTheCapButTheCountDoesNot()
+    {
+        var coverage = Enumerable.Range(0, SeekMaximumCoverage.MaxListedTiedSets + 2)
+            .ToDictionary(i => $"p{i:D2}", _ => new HashSet<int> { 0 });
+
+        var result = _analyzer.BestCombination(coverage, 1, 1);
+
+        Assert.That(result.TiedSetCount, Is.EqualTo(SeekMaximumCoverage.MaxListedTiedSets + 2));
+        Assert.That(result.TiedSets, Has.Count.EqualTo(SeekMaximumCoverage.MaxListedTiedSets));
+        Assert.That(result.Proteases, Is.EqualTo(new[] { "p00" }));
+        Assert.That(result.TiedSets.Select(set => set.Single()),
+            Is.EqualTo(coverage.Keys.Skip(1).Take(SeekMaximumCoverage.MaxListedTiedSets)));
+    }
+
+    [Test]
+    public void MaximumCoverageSetIsEmptyWhenNothingIsCovered()
+    {
+        var uncovered = new Dictionary<string, HashSet<int>>
+        {
+            ["A"] = new HashSet<int>(),
+            ["B"] = new HashSet<int>()
+        };
+
+        foreach (var coverage in new[] { uncovered, new Dictionary<string, HashSet<int>>() })
+        {
+            var result = _analyzer.MaximumCoverageSet(coverage, ModeTestResidues);
+
+            Assert.That(result.Proteases, Is.Empty);
+            Assert.That(result.CoveredResidues, Is.Empty);
+            Assert.That(result.CoverageCount, Is.EqualTo(0));
+            Assert.That(result.TotalResidues, Is.EqualTo(ModeTestResidues));
+            Assert.That(result.CoverageFraction, Is.EqualTo(0.0));
+            Assert.That(result.TiedSetCount, Is.EqualTo(0));
+            Assert.That(result.TiedSets, Is.Empty);
+            Assert.That(result.ReachedMaximumCoverage, Is.False);
+
+            var bestN = _analyzer.ForMode(MaxCoverageMode.BestN, coverage, ModeTestResidues, 2);
+            Assert.That(bestN.Proteases, Is.Empty, "Best N with nothing covered goes through the cap to the empty set");
+            Assert.That(bestN.ReachedMaximumCoverage, Is.False);
+
+            for (int size = 1; size <= 3; size++)
+            {
+                var best = _analyzer.BestCombination(coverage, size, ModeTestResidues);
+                Assert.That(best.Proteases, Is.Empty, $"BestCombination of {size} agrees with Best N");
+                Assert.That(best.TiedSetCount, Is.EqualTo(0));
+            }
+        }
+    }
+
+    [Test]
+    public void MaximumCoverageSetOfOneProteaseIsThatProtease()
+    {
+        var coverage = new Dictionary<string, HashSet<int>> { ["A"] = new HashSet<int> { 1, 2 } };
+
+        var result = _analyzer.MaximumCoverageSet(coverage, 4);
+
+        Assert.That(result.Proteases, Is.EqualTo(new[] { "A" }));
+        Assert.That(result.CoverageFraction, Is.EqualTo(0.5));
+        Assert.That(result.TiedSetCount, Is.EqualTo(1));
+        Assert.That(result.TiedSets, Is.Empty);
+    }
+
+    [Test]
+    public void MaximumCoverageSetOnlyCountsResiduesInsideTheRegion()
+    {
+        var coverage = new Dictionary<string, HashSet<int>>
+        {
+            ["A"] = new HashSet<int> { 0, 1, 2 },
+            ["B"] = new HashSet<int> { 5, 6 }
+        };
+
+        var whole = _analyzer.MaximumCoverageSet(coverage, ModeTestResidues);
+        var region = _analyzer.MaximumCoverageSet(coverage, ModeTestResidues, (Start: 0, End: 3));
+
+        Assert.That(whole.Proteases, Is.EqualTo(new[] { "A", "B" }));
+        Assert.That(region.Proteases, Is.EqualTo(new[] { "A" }));
+        Assert.That(region.CoveredResidues, Is.EquivalentTo(new[] { 0, 1, 2 }));
+        Assert.That(region.TotalResidues, Is.EqualTo(4));
+    }
+
+    /// <summary>
+    /// With two missed cleavages one protease covers everything the six do, so this digest allows
+    /// none and leaves gaps each protease fills differently.
+    /// </summary>
+    [Test]
+    public void MaximumCoverageSetOnADigestIsTheSmallestSetReachingTheUnion()
+    {
+        var noMissedCleavages = _proteaseParams.Select(p => new ProteaseSpecificParameters(
+            new DigestionParams(protease: p.DigestionAgentName, maxMissedCleavages: 0,
+                minPeptideLength: 7, maxPeptideLength: 50))).ToList();
+        var coverage = _analyzer.CalculateCoverageByProtease(_testProtein, noMissedCleavages);
+        int union = coverage.Values.SelectMany(s => s).Distinct().Count();
+
+        var result = _analyzer.MaximumCoverageSet(coverage, _testProtein.Length);
+
+        Assert.That(result.Proteases.Count, Is.GreaterThan(1),
+            "test needs a digest no single protease covers fully");
+        Assert.That(result.CoverageCount, Is.EqualTo(union));
+        Assert.That(_analyzer.BestCombination(coverage, result.Proteases.Count - 1, _testProtein.Length).CoverageCount,
+            Is.LessThan(union), "a smaller set already reached the union");
     }
 }
