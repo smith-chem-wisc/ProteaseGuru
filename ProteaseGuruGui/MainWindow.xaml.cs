@@ -855,62 +855,13 @@ namespace ProteaseGuru.Gui
                         continue;
                     }
 
-                    var info = line.Split('\t');
-                    if (info.Length < 17)
+                    var pep = InSilicoPep.FromTsvRow(line, Intern);
+                    if (pep == null)
                     {
                         continue; // skip blank or truncated lines
                     }
 
-                    string database = Intern(info[0]);
-                    string protease = Intern(info[1]);
-                    string baseSeq = Intern(info[2]);
-                    string fullSeq = info[3];
-                    char previousAA = Convert.ToChar(info[4]);
-                    char nextAA = Convert.ToChar(info[5]);
-                    int start = Convert.ToInt32(info[6]);
-                    int end = Convert.ToInt32(info[7]);
-                    int length = Convert.ToInt32(info[8]);
-                    double molecularWeight = Convert.ToDouble(info[9]);
-                    string protein = Intern(info[10]);
-                    string proteinName = Intern(info[11]);
-                    bool unique = info[12] == "True";
-                    bool uniqueAll = info[13] == "True";
-                    bool oneDb = info[14] == "True";
-                    double hydrophobicity = Convert.ToDouble(info[15]);
-                    double electrophoreticMobility = Convert.ToDouble(info[16]);
-
-                    // Older files have no such column at all. Within the column, -1 and NaN were both
-                    // written for "no prediction"; neither is a retention time.
-                    double? chronologerRetentionTime = null;
-                    bool? pflyDetectability = null;
-                    if (info.Length > 17)
-                    {
-                        chronologerRetentionTime = InSilicoPep.RetentionTimeFromStoredValue(Convert.ToDouble(info[17]));
-                    }
-                    if (info.Length > 18 && bool.TryParse(info[18], out bool parsedDetectability))
-                    {
-                        pflyDetectability = parsedDetectability;
-                    }
-
-                    // Handle PFly probabilities - columns 19-22 (may be missing in older files)
-                    (double NotDetectable, double LowDetectability, double IntermediateDetectability, double HighDetectability)? pflyProbabilities = null;
-                    if (info.Length > 22)
-                    {
-                        if (double.TryParse(info[19], out double notDetectable) &&
-                            double.TryParse(info[20], out double lowDetectability) &&
-                            double.TryParse(info[21], out double intermediateDetectability) &&
-                            double.TryParse(info[22], out double highDetectability))
-                        {
-                            pflyProbabilities = (notDetectable, lowDetectability, intermediateDetectability, highDetectability);
-                        }
-                    }
-
-                    InSilicoPep pep = new InSilicoPep(baseSeq, fullSeq, previousAA, nextAA, unique, hydrophobicity, electrophoreticMobility,
-                        chronologerRetentionTime, pflyDetectability, length, molecularWeight, database, protein, proteinName, start, end, protease, pflyProbabilities);
-                    pep.UniqueAllDbs = uniqueAll;
-                    pep.SeqOnlyInThisDb = oneDb;
-
-                    var key = (database, protease, protein);
+                    var key = (pep.Database, pep.Protease, pep.Protein);
                     if (!peptidesByKey.TryGetValue(key, out var pepList))
                     {
                         pepList = new List<InSilicoPep>();
