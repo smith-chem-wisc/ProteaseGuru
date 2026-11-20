@@ -119,7 +119,9 @@ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
             </Run>
         </TextBlock>
 
-        <Grid Grid.Row="2" Style="{StaticResource InternalGridStyle}">
+        <!-- The bottom margin keeps the export buttons clear of MainWindow's collapsed notifications bar,
+             which is drawn over the bottom of the tab. -->
+        <Grid Grid.Row="2" Style="{StaticResource InternalGridStyle}" Margin="0,0,0,26">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="100"/>
                 <ColumnDefinition Width="3"/>
@@ -198,13 +200,15 @@ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     <Grid.RowDefinitions>
                         <RowDefinition Height="30"/>
                         <RowDefinition Height="28"/>
-                        <RowDefinition Height="*"/>
+                        <RowDefinition x:Name="maxCoverageMapRow" Height="*"/>
+                        <RowDefinition Height="5"/>
+                        <RowDefinition Height="30"/>
                     </Grid.RowDefinitions>
 
                     <!--Header label with view toggle button-->
                     <Grid Grid.Row="0" Style="{StaticResource InternalGridStyle}">
                         <!-- Auto on the button column and star on the label: narrowing this pane
-                             squeezes the label rather than clipping a button out of reach. -->
+                             squeezes the label rather than clipping the button out of reach. -->
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*"/>
                             <ColumnDefinition Width="Auto"/>
@@ -216,22 +220,13 @@ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                                          ConverterParameter="Maximum Coverage Analysis"/>
                             </Label.Content>
                         </Label>
-                        <StackPanel Grid.Column="1" Orientation="Horizontal"
-                                    HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,10,0">
-                            <Button x:Name="ExportSpectrumLibraryButton"
-                                    Content="Export Spectrum Library..."
-                                    Click="ExportSpectrumLibrary_Click"
-                                    Width="180" Height="24" Margin="0,0,6,0"
-                                    Style="{StaticResource ImportantButtonStyle}"
-                                    FontSize="11" FontWeight="SemiBold"
-                                    Visibility="{Binding Source={x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}, Path=IsRnaMode, Converter={StaticResource CollapseOnRna}}"/>
-                            <Button x:Name="coverageViewToggleButton"
-                                    Content="Lane View"
-                                    Click="CoverageViewToggle_Click"
-                                    Width="130" Height="24"
-                                    Style="{StaticResource ImportantButtonStyle}"
-                                    FontSize="11" FontWeight="SemiBold"/>
-                        </StackPanel>
+                        <Button x:Name="coverageViewToggleButton" Grid.Column="1"
+                                Content="Lane View"
+                                Click="CoverageViewToggle_Click"
+                                Width="130" Height="24"
+                                HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,10,0"
+                                Style="{StaticResource ImportantButtonStyle}"
+                                FontSize="11" FontWeight="SemiBold"/>
                     </Grid>
 
                     <StackPanel Grid.Row="1" Orientation="Horizontal"
@@ -290,6 +285,25 @@ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                                FontStyle="Italic" FontSize="13"
                                HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,24,0,0"
                                Foreground="#888888" Visibility="Collapsed"/>
+
+                    <Grid Grid.Row="4" Style="{StaticResource InternalGridStyle}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="5*" MaxWidth="270"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="4*" MaxWidth="220"/>
+                        </Grid.ColumnDefinitions>
+                        <Button x:Name="ExportMaxCoverageButton" Grid.Column="0"
+                                Content="Export Coverage Analysis..."
+                                Click="ExportMaxCoverage_Click"
+                                Width="Auto" Margin="20,0,0,0"
+                                Style="{StaticResource ImportantButtonStyle}"/>
+                        <Button x:Name="ExportSpectrumLibraryButton" Grid.Column="2"
+                                Content="Export Spectrum Library..."
+                                Click="ExportSpectrumLibrary_Click"
+                                Width="Auto" Margin="0,0,20,0"
+                                Style="{StaticResource ImportantButtonStyle}"
+                                Visibility="{Binding Source={x:Static guiFunctions:GuiGlobalParamsViewModel.Instance}, Path=IsRnaMode, Converter={StaticResource CollapseOnRna}}"/>
+                    </Grid>
                 </Grid>
 
             </Grid>
