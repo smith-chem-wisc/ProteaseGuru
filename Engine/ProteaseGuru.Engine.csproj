@@ -9,7 +9,7 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="mzLib" Version="1.0.598" />
+        <PackageReference Include="mzLib" Version="1.0.600" />
     </ItemGroup>
 
     <ItemGroup>
